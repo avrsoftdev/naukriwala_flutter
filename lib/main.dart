@@ -22,6 +22,7 @@ void main() async {
       appleProvider: AppleProvider.appAttest,
     );
   }
+  //demo change
 
   // Connect to emulators in debug mode with connectivity check
   if (kDebugMode) {
