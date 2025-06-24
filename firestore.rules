@@ -1,0 +1,72 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 👤 Helper Functions
+    function isJobRecruiter(recruiterId, jobId) {
+      return exists(/databases/$(database)/documents/Recruiters/$(recruiterId)/Jobs/$(jobId)) &&
+             get(/databases/$(database)/documents/Recruiters/$(recruiterId)/Jobs/$(jobId)).data.recruiterId == request.auth.uid;
+    }
+
+    function isAdmin() {
+      return request.auth.token.admin == true;
+    }
+
+    // 👥 User Profiles
+    match /Recruiters/{uid} {
+      allow read, write: if request.auth.uid == uid || isAdmin();
+    }
+
+    match /Seekers/{uid} {
+      allow read, write: if request.auth.uid == uid || isAdmin();
+    }
+
+    match /UsersIndex/{uid} {
+      allow read: if request.auth != null;
+      allow write: if request.auth.uid == uid || isAdmin();
+    }
+
+    // 📄 Job Listings
+    match /Recruiters/{recruiterId}/Jobs/{jobId} {
+      allow read: if true;
+      allow create: if request.auth != null &&
+                    (request.auth.token.role == "recruiter" || isAdmin()) &&
+                    request.resource.data.recruiterId == request.auth.uid &&
+                    request.resource.data.keys().hasAll(['jobId', 'recruiterId', 'status', 'createdAt']) &&
+                    request.resource.data.keys().hasOnly(['jobId', 'recruiterId', 'status', 'createdAt', 'title', 'description', 'location', 'salary']);
+      allow update: if request.auth != null &&
+                    (request.auth.token.role == "recruiter" || isAdmin()) &&
+                    request.auth.uid == resource.data.recruiterId &&
+                    request.resource.data.keys().hasOnly(['jobId', 'recruiterId', 'status', 'createdAt', 'title', 'description', 'location', 'salary']);
+    }
+
+    // 📥 Applications
+    match /Applications/{seekerId}/AppliedJobs/{jobId} {
+      allow read: if request.auth.uid == seekerId || isJobRecruiter(seekerId, jobId) || isAdmin();
+      allow write: if request.auth.uid == seekerId &&
+                   request.resource.data.keys().hasAll(['seekerId', 'jobId', 'appliedAt']) &&
+                   request.resource.data.keys().hasOnly(['seekerId', 'jobId', 'appliedAt', 'resumeUrl', 'status']);
+    }
+
+    // ✅ Shortlist Management
+    match /Shortlisted/{jobId}/{seekerId} {
+      allow read: if request.auth.uid == seekerId || isJobRecruiter(seekerId, jobId) || isAdmin();
+      allow write: if isJobRecruiter(seekerId, jobId) || isAdmin();
+    }
+
+    // ⭐ Bookmarks
+    match /Bookmarks/{uid}/SavedJobs/{jobId} {
+      allow read, write: if request.auth.uid == uid || isAdmin();
+    }
+
+    // 🔔 Notifications
+    match /SeekerNotifications/{uid}/Notifications/{notifId} {
+      allow read, write, delete: if request.auth.uid == uid || isAdmin();
+    }
+
+    // 🚫 Fallback
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

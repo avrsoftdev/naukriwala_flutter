@@ -1,0 +1,40 @@
+name: naukariwala
+description: "A new Flutter project."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.8.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  firebase_core: ^3.14.0
+  firebase_auth: ^5.6.0
+  cloud_firestore: ^5.6.9
+  cloud_functions: ^5.5.2
+  firebase_database: ^11.3.7
+  firebase_storage: ^12.4.7
+  file_picker: ^10.2.0
+  image_picker: ^1.0.2
+  path: ^1.8.0
+  intl: ^0.20.2
+  url_launcher: ^6.2.5
+  firebase_messaging: ^15.2.7
+  firebase_app_check: ^0.3.2+7
+  i: ^1.0.1
+  add_2_calendar: ^3.0.1
+  excel: ^2.0.5
+  path_provider: ^2.1.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/logo.png

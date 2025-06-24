@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "307134434935",
+    "firebase_url": "https://naukriwala-455909-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "naukriwala-455909",
+    "storage_bucket": "naukriwala-455909.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:307134434935:android:ef91db9b571cb93b170072",
+        "android_client_info": {
+          "package_name": "com.example.naukariwala"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "307134434935-v7up21dbm3it15io8qecu8b0giufhohr.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.naukariwala",
+            "certificate_hash": "027e6001eec6ce671e7b2b8de13ce3d36c06bde8"
+          }
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCKrXURTVygfYeQEEY1YMCHacYan66_-6A"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
