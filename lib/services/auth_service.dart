@@ -21,12 +21,15 @@ class AuthService {
 
     try {
       log("Writing to $collection/$uid", name: 'AuthService');
-      await _firestore.collection(collection).doc(uid).set(data, SetOptions(merge: true));
+      final normalizedData = Map<String, dynamic>.from(data)
+        ..remove('UID') // Remove UID if present, as it's the document ID
+        ..['mobileNumber'] = data['Mobile Number'] ?? ''; // Standardize to 'mobileNumber'
+      await _firestore.collection(collection).doc(uid).set(normalizedData, SetOptions(merge: true));
 
       log("Write successful", name: 'AuthService');
       await _firestore.collection('UsersIndex').doc(uid).set({
         'email': data['Email Id'],
-        'mobile': data['Mobile Number'],
+        'mobileNumber': data['Mobile Number'] ?? '', // Standardize to 'mobileNumber'
       }, SetOptions(merge: true));
       log("UsersIndex updated", name: 'AuthService');
 
@@ -148,7 +151,6 @@ class AuthService {
           .doc(uid)
           .collection('AppliedJobs')
           .doc(jobId)
-
           .set(applicationData);
     } catch (e) {
       log("applyToJob ERROR: $e", name: 'AuthService', error: e);

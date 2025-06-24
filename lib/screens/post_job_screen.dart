@@ -24,21 +24,30 @@ class PostJobScreenState extends State<PostJobScreen> {
     if (widget.editJobData != null) {
       jobData.addAll(widget.editJobData!
           .map((key, value) => MapEntry(key, value?.toString() ?? '')));
+      _mapEditData();
     } else {
       _loadRecruiterLocation();
     }
   }
 
+  void _mapEditData() {
+    jobData['title'] = jobData.remove('Job Title') ?? '';
+    jobData['company'] = jobData.remove('Company Name') ?? '';
+    jobData['location'] = jobData.remove('Location (Remote, On-site, Hybrid)') ?? '';
+    jobData['experience'] = jobData.remove('Experience Required') ?? '';
+    jobData['salary'] = jobData.remove('Salary Range') ?? '';
+    jobData['jobType'] = jobData.remove('Job Type (Full-time, Part-time)') ?? '';
+    jobData['description'] = jobData.remove('Job Description') ?? '';
+  }
+
   Future<void> _loadRecruiterLocation() async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
-    final doc =
-        await FirebaseFirestore.instance.collection('Recruiters').doc(uid).get();
+    final doc = await FirebaseFirestore.instance.collection('Recruiters').doc(uid).get();
     final location = doc.data()?['location'];
-    if (location != null &&
-        jobData['Location (Remote, On-site, Hybrid)'] == null) {
+    if (location != null && jobData['location'] == null) {
       setState(() {
-        jobData['Location (Remote, On-site, Hybrid)'] = location;
+        jobData['location'] = location;
       });
     }
   }
@@ -47,7 +56,7 @@ class PostJobScreenState extends State<PostJobScreen> {
     if (!_formKey.currentState!.validate()) return;
     _formKey.currentState!.save();
 
-    if (!jobData.containsKey('Job Title') || jobData['Job Title']!.isEmpty) {
+    if (jobData['title'] == null || jobData['title']!.isEmpty) {
       _showSnack('Job Title is required before posting.');
       return;
     }
@@ -72,7 +81,7 @@ class PostJobScreenState extends State<PostJobScreen> {
     if (user == null) return;
 
     final uid = user.uid;
-    final timestamp = Timestamp.now();
+    final createdAt = FieldValue.serverTimestamp();
 
     setState(() => isLoading = true);
 
@@ -86,20 +95,34 @@ class PostJobScreenState extends State<PostJobScreen> {
       if (widget.editJobData != null && widget.editJobData!['jobId'] != null) {
         final jobId = widget.editJobData!['jobId'];
         await jobsRef.doc(jobId).update({
-          ...jobData,
-          'updatedAt': timestamp,
+          'title': jobData['title'],
+          'company': jobData['company'],
+          'location': jobData['location'],
+          'experience': jobData['experience'],
+          'salary': jobData['salary'],
+          'jobType': jobData['jobType'],
+          'description': jobData['description'],
+          'updatedAt': createdAt,
         });
         if (!mounted) return;
         _showSnack('Job updated successfully');
       } else {
         final newDoc = jobsRef.doc();
-        await newDoc.set({
+        final jobDataToSet = {
           'jobId': newDoc.id,
           'recruiterId': uid,
           'status': 'open',
-          ...jobData,
-          'createdAt': timestamp,
-        });
+          'createdAt': createdAt,
+          'title': jobData['title'],
+          'company': jobData['company'],
+          'location': jobData['location'],
+          'experience': jobData['experience'],
+          'salary': jobData['salary'],
+          'jobType': jobData['jobType'],
+          'description': jobData['description'],
+        };
+        debugPrint('[DEBUG] Writing to ${newDoc.path} with data: $jobDataToSet');
+        await newDoc.set(jobDataToSet);
         if (!mounted) return;
         _showSnack('Job posted successfully');
       }
@@ -139,14 +162,13 @@ class PostJobScreenState extends State<PostJobScreen> {
                 key: _formKey,
                 child: ListView(
                   children: [
-                    _buildTextField('Job Title'),
-                    _buildTextField('Company Name'),
-                    _buildTextField('Location (Remote, On-site, Hybrid)'),
-                    _buildTextField('Experience Required',
-                        keyboardType: TextInputType.number),
-                    _buildTextField('Salary Range'),
-                    _buildTextField('Job Type (Full-time, Part-time)'),
-                    _buildTextField('Job Description', maxLines: 4),
+                    _buildTextField('title', labelText: 'Job Title'),
+                    _buildTextField('company', labelText: 'Company Name'),
+                    _buildTextField('location', labelText: 'Location (Job Location)'),
+                    _buildTextField('experience', labelText: 'Experience Required', keyboardType: TextInputType.number),
+                    _buildTextField('salary', labelText: 'Salary Range'),
+                    _buildTextField('jobType', labelText: 'Job Type (Full-time, Part-time)'),
+                    _buildTextField('description', labelText: 'Job Description', maxLines: 4),
                     const SizedBox(height: 20),
                     ElevatedButton(
                       onPressed: _submitJob,
@@ -159,22 +181,20 @@ class PostJobScreenState extends State<PostJobScreen> {
     );
   }
 
-  Widget _buildTextField(String label,
-      {int maxLines = 1, TextInputType keyboardType = TextInputType.text}) {
+  Widget _buildTextField(String key, {required String labelText, int maxLines = 1, TextInputType keyboardType = TextInputType.text}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: TextFormField(
-        initialValue: jobData[label],
+        initialValue: jobData[key],
         decoration: InputDecoration(
-          labelText: label,
+          labelText: labelText,
           border: const OutlineInputBorder(),
         ),
         maxLines: maxLines,
         keyboardType: keyboardType,
-        validator: (value) =>
-            value == null || value.trim().isEmpty ? 'Please enter $label' : null,
+        validator: (value) => value == null || value.trim().isEmpty ? 'Please enter $labelText' : null,
         onSaved: (value) {
-          if (value != null) jobData[label] = value.trim();
+          if (value != null) jobData[key] = value.trim();
         },
       ),
     );

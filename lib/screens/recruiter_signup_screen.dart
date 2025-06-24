@@ -1,11 +1,12 @@
-import 'dart:io';
+// ignore_for_file: library_private_types_in_public_api
+
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/auth_service.dart';
 import 'recruiter_dashboard.dart';
 
+// ignore: use_key_in_widget_constructors
 class RecruiterSignupScreen extends StatefulWidget {
   @override
   _RecruiterSignupScreenState createState() => _RecruiterSignupScreenState();
@@ -17,21 +18,11 @@ class _RecruiterSignupScreenState extends State<RecruiterSignupScreen> {
   final _mobileController = TextEditingController(text: "+91");
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  File? _logoFile;
   bool _isLoading = false;
 
-  Future<void> _pickLogo() async {
-    final picked = await ImagePicker().pickImage(source: ImageSource.gallery);
-    if (picked != null) setState(() => _logoFile = File(picked.path));
-  }
-
+  
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate() || _logoFile == null) {
-      _showSnack("Please complete all fields and upload a logo.");
-      return;
-    }
-
-    final confirm = await showDialog<bool>(
+        final confirm = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
         title: Text('Confirm Submission'),
@@ -59,12 +50,10 @@ class _RecruiterSignupScreenState extends State<RecruiterSignupScreen> {
       final uid = AuthService().getCurrentUser()?.uid;
       if (uid == null) throw Exception("Could not create account");
 
-      final logoUrl = await AuthService().uploadCompanyLogo(_logoFile!);
       _formData['Mobile Number'] = _mobileController.text.trim();
       _formData['Email Id'] = _emailController.text.trim();
       _formData['Password'] = _passwordController.text.trim();
-      _formData['Company Logo'] = logoUrl;
-
+ 
       await AuthService().storeSignupData(isRecruiter: true, data: _formData);
 
       // Save for indexed access
@@ -128,32 +117,11 @@ class _RecruiterSignupScreenState extends State<RecruiterSignupScreen> {
                 key: _formKey,
                 child: ListView(
                   children: [
-                    _buildTextField('Name'),
-                    _buildTextField('Company Name'),
                     _buildTextField('Mobile Number', controller: _mobileController),
                     _buildTextField('Email Id', controller: _emailController),
                     _buildTextField('Password', isPassword: true, controller: _passwordController),
-                    _buildTextField('Company Profile', multiline: true),
-                    _buildTextField('Designation'),
+                
                     const SizedBox(height: 10),
-                    _logoFile != null
-                        ? Container(
-                            height: 120,
-                            width: 120,
-                            decoration: BoxDecoration(
-                              border: Border.all(color: Colors.grey),
-                              image: DecorationImage(
-                                image: FileImage(_logoFile!),
-                                fit: BoxFit.cover,
-                              ),
-                            ),
-                          )
-                        : Text('No logo selected'),
-                    TextButton.icon(
-                      icon: Icon(Icons.upload),
-                      label: Text('Upload Company Logo'),
-                      onPressed: _pickLogo,
-                    ),
                     const SizedBox(height: 20),
                     ElevatedButton(
                       onPressed: _submit,

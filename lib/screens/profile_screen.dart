@@ -63,8 +63,9 @@ class ProfileScreenState extends State<ProfileScreen> {
           .get();
       if (doc.exists && mounted) {
         final data = doc.data()!;
+        print('Firestore data: $data'); // Debug log
         _nameController.text = data['name'] ?? '';
-        _mobileController.text = data['mobileNumber'] ?? '';
+        _mobileController.text = data['mobileNumber'] ?? data['mobile'] ?? data['Mobile Number'] ?? ''; // Fallback for old keys
         _emailController.text = user.email ?? '';
         _imageUrl = data[widget.isRecruiter ? 'companyLogo' : 'photoUrl'];
         if (widget.isRecruiter) {

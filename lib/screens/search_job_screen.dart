@@ -4,7 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:naukariwala/screens/apply_job_screen.dart';
 import 'package:naukariwala/screens/job_details_screen.dart';
-import 'package:naukariwala/services/auth_service.dart';
+
 
 class SearchJobScreen extends StatefulWidget {
   final bool isSeekerProfileView;
