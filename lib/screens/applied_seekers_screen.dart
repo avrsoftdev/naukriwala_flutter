@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart'; // Added for canLaunchUrl and launchUrl
+import 'dart:developer' as dev; // Added for logging
 
 class AppliedSeekersScreen extends StatefulWidget {
   final bool isRecruiter;
@@ -15,33 +16,45 @@ class AppliedSeekersScreen extends StatefulWidget {
   });
 
   @override
-  _AppliedSeekersScreenState createState() => _AppliedSeekersScreenState();
+  AppliedSeekersScreenState createState() => AppliedSeekersScreenState(); // Public state class
 }
 
-class _AppliedSeekersScreenState extends State<AppliedSeekersScreen> {
+class AppliedSeekersScreenState extends State<AppliedSeekersScreen> {
   late final Stream<QuerySnapshot> _applicationsStream;
   final String? recruiterId = FirebaseAuth.instance.currentUser?.uid;
 
   @override
   void initState() {
     super.initState();
-    if (recruiterId != null) {
-      _applicationsStream = FirebaseFirestore.instance
-          .collectionGroup('AppliedJobs')
-          .where('recruiterId', isEqualTo: recruiterId)
-          .orderBy('appliedAt', descending: true)
-          .snapshots();
+    if (recruiterId == null) {
+      dev.log('No authenticated user found', name: 'AppliedSeekersScreen');
+      return;
     }
+    _applicationsStream = FirebaseFirestore.instance
+        .collectionGroup('AppliedJobs')
+        .where('recruiterId', isEqualTo: recruiterId)
+        .orderBy('appliedAt', descending: true)
+        .snapshots();
   }
 
-  String _formatTimestamp(Timestamp ts) {
+  String _formatTimestamp(Timestamp? ts) {
+    if (ts == null) return 'N/A';
     final dt = ts.toDate();
     return DateFormat('dd MMM yyyy, hh:mm a').format(dt);
   }
 
   Future<void> _openResume(String url) async {
-    if (await canLaunchUrl(Uri.parse(url))) { // Updated to canLaunchUrl
-      await launchUrl(Uri.parse(url)); // Updated to launchUrl
+    if (url.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No resume available')),
+        );
+      }
+      return;
+    }
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
     } else {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -68,6 +81,7 @@ class _AppliedSeekersScreenState extends State<AppliedSeekersScreen> {
         stream: _applicationsStream,
         builder: (context, snapshot) {
           if (snapshot.hasError) {
+            dev.log('Error loading applications: ${snapshot.error}', name: 'AppliedSeekersScreen');
             return Center(child: Text('Error loading applications: ${snapshot.error}'));
           }
           if (snapshot.connectionState == ConnectionState.waiting) {

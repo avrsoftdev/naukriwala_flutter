@@ -1,13 +1,15 @@
-// lib/screens/email_password_login_screen.dart
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:developer' as dev; // Added for logging
 
 class EmailPasswordLoginScreen extends StatefulWidget {
+  const EmailPasswordLoginScreen({super.key}); // Added key parameter
+
   @override
-  _EmailPasswordLoginScreenState createState() => _EmailPasswordLoginScreenState();
+  EmailPasswordLoginScreenState createState() => EmailPasswordLoginScreenState(); // Made public
 }
 
-class _EmailPasswordLoginScreenState extends State<EmailPasswordLoginScreen> {
+class EmailPasswordLoginScreenState extends State<EmailPasswordLoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
@@ -21,24 +23,48 @@ class _EmailPasswordLoginScreenState extends State<EmailPasswordLoginScreen> {
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
-      Navigator.pop(context); // Replace with navigation to dashboard
+      if (mounted) {
+        // Navigate to dashboard instead of pop (optional)
+        // Navigator.pushReplacementNamed(context, '/dashboard');
+        Navigator.pop(context); // Current behavior: return to previous screen
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Login failed: \$e')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Login failed: $e')), // Fixed interpolation
+        );
+      }
+      dev.log('Login failed: $e', name: 'EmailPasswordLoginScreen', error: e);
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
   void _sendPasswordReset() async {
     if (_emailController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Enter email first')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Enter email first')),
+        );
+      }
       return;
     }
     try {
       await FirebaseAuth.instance.sendPasswordResetEmail(email: _emailController.text.trim());
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Reset link sent to email')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Reset link sent to email')),
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: \$e')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed: $e')), // Fixed interpolation
+        );
+      }
+      dev.log('Password reset failed: $e', name: 'EmailPasswordLoginScreen', error: e);
     }
   }
 

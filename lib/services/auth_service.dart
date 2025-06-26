@@ -1,5 +1,5 @@
 import 'dart:io';
-import 'dart:developer';
+import 'dart:developer' as dev; // Changed to avoid conflict with global log
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -20,18 +20,18 @@ class AuthService {
     final collection = isRecruiter ? 'Recruiters' : 'Seekers';
 
     try {
-      log("Writing to $collection/$uid", name: 'AuthService');
+      dev.log("Writing to $collection/$uid", name: 'AuthService');
       final normalizedData = Map<String, dynamic>.from(data)
-        ..remove('UID') // Remove UID if present, as it's the document ID
-        ..['mobileNumber'] = data['Mobile Number'] ?? ''; // Standardize to 'mobileNumber'
+        ..remove('UID')
+        ..['mobileNumber'] = data['Mobile Number'] ?? '';
       await _firestore.collection(collection).doc(uid).set(normalizedData, SetOptions(merge: true));
 
-      log("Write successful", name: 'AuthService');
+      dev.log("Write successful", name: 'AuthService');
       await _firestore.collection('UsersIndex').doc(uid).set({
         'email': data['Email Id'],
-        'mobileNumber': data['Mobile Number'] ?? '', // Standardize to 'mobileNumber'
+        'mobileNumber': data['Mobile Number'] ?? '',
       }, SetOptions(merge: true));
-      log("UsersIndex updated", name: 'AuthService');
+      dev.log("UsersIndex updated", name: 'AuthService');
 
       await FirebaseFunctions.instanceFor(region: 'asia-south1')
           .httpsCallable('setUserRole')
@@ -40,9 +40,9 @@ class AuthService {
             'role': isRecruiter ? 'recruiter' : 'seeker',
           });
 
-      log("storeSignupData completed", name: 'AuthService');
+      dev.log("storeSignupData completed", name: 'AuthService');
     } catch (e) {
-      log("storeSignupData ERROR: $e", name: 'AuthService', error: e);
+      dev.log("storeSignupData ERROR: $e", name: 'AuthService', error: e);
       rethrow;
     }
   }
@@ -65,7 +65,7 @@ class AuthService {
       await ref.putFile(file);
       return await ref.getDownloadURL();
     } catch (e) {
-      log("uploadCompanyLogo ERROR: $e", name: 'AuthService', error: e);
+      dev.log("uploadCompanyLogo ERROR: $e", name: 'AuthService', error: e);
       rethrow;
     }
   }
@@ -79,7 +79,7 @@ class AuthService {
       await ref.putFile(file);
       return await ref.getDownloadURL();
     } catch (e) {
-      log("uploadSeekerPhoto ERROR: $e", name: 'AuthService', error: e);
+      dev.log("uploadSeekerPhoto ERROR: $e", name: 'AuthService', error: e);
       rethrow;
     }
   }
@@ -136,10 +136,17 @@ class AuthService {
     if (uid == null) throw Exception("User not logged in");
 
     try {
-      // Fetch recruiter ID from the job to store application under the correct job
-      final jobDoc = await _firestore.collection('Recruiters').doc(uid).collection('Jobs').doc(jobId).get();
-      if (!jobDoc.exists) throw Exception("Job not found");
-      final recruiterId = jobDoc.data()?['recruiterId'];
+      // Fetch recruiterId from the job document
+      final jobSnapshot = await _firestore
+          .collectionGroup('Jobs')
+          .where('jobId', isEqualTo: jobId)
+          .limit(1)
+          .get();
+      if (jobSnapshot.docs.isEmpty) throw Exception("Job not found");
+      final recruiterId = jobSnapshot.docs.first.data()['recruiterId'];
+
+      // Optionally create Applications/{jobId} with recruiterId if not exists
+      await _firestore.collection('Applications').doc(jobId).set({'recruiterId': recruiterId}, SetOptions(merge: true));
 
       if (resumeFile != null) {
         final fileName = "${DateTime.now().millisecondsSinceEpoch}.pdf";
@@ -149,10 +156,10 @@ class AuthService {
         applicationData['resumeUrl'] = resumeUrl;
       }
 
-      // Store application under /Applications/{jobId}/AppliedJobs/{seekerId}
       applicationData['seekerId'] = uid;
+      applicationData['jobId'] = jobId;
       applicationData['appliedAt'] = FieldValue.serverTimestamp();
-      applicationData['recruiterId'] = recruiterId; // Add recruiterId for querying
+      applicationData['recruiterId'] = recruiterId;
 
       await _firestore
           .collection('Applications')
@@ -161,53 +168,38 @@ class AuthService {
           .doc(uid)
           .set(applicationData);
 
-      // Send notification to recruiter
-      await sendApplicationNotification(recruiterId!, 'New application for job $jobId from $uid');
+      await sendApplicationNotification(recruiterId, 'New application for job $jobId from $uid');
     } catch (e) {
-      log("applyToJob ERROR: $e", name: 'AuthService', error: e);
+      dev.log("applyToJob ERROR: $e", name: 'AuthService', error: e);
       rethrow;
     }
   }
 
-  // New method to fetch applied seekers for a recruiter
   Future<List<Map<String, dynamic>>> fetchAppliedSeekers() async {
     final uid = _auth.currentUser?.uid;
     if (uid == null) throw Exception("User not logged in");
 
-    final jobsSnapshot = await _firestore
-        .collection('Recruiters')
-        .doc(uid)
-        .collection('Jobs')
+    final List<Map<String, dynamic>> seekers = [];
+    final appsSnapshot = await FirebaseFirestore.instance
+        .collectionGroup('AppliedJobs')
+        .where('recruiterId', isEqualTo: uid)
+        .orderBy('appliedAt', descending: true)
         .get();
 
-    final List<Map<String, dynamic>> seekers = [];
-
-    for (final job in jobsSnapshot.docs) {
-      final jobId = job.id;
-      final appsSnapshot = await _firestore
-          .collection('Applications')
-          .doc(jobId)
-          .collection('AppliedJobs')
-          .get();
-
-      for (final app in appsSnapshot.docs) {
-        final data = app.data();
-        if (data['recruiterId'] == uid) {
-          seekers.add({
-            'seekerId': app.id,
-            'jobId': jobId,
-            'appliedAt': data['appliedAt'],
-            'resumeUrl': data['resumeUrl'],
-            ...data,
-          });
-        }
-      }
+    for (final app in appsSnapshot.docs) {
+      final data = app.data();
+      seekers.add({
+        'seekerId': app.id,
+        'jobId': data['jobId'],
+        'appliedAt': data['appliedAt'],
+        'resumeUrl': data['resumeUrl'],
+        ...data,
+      });
     }
 
     return seekers;
   }
 
-  // New method to send application-related notifications
   Future<void> sendApplicationNotification(String recipientId, String message) async {
     try {
       final tokenSnapshot = await _firestore.collection('UsersIndex').doc(recipientId).get();
@@ -220,12 +212,12 @@ class AuthService {
           'timestamp': FieldValue.serverTimestamp(),
           'read': false,
         });
-        log("Notification sent to $recipientId", name: 'AuthService');
+        dev.log("Notification sent to $recipientId", name: 'AuthService');
       } else {
-        log("No FCM token found for $recipientId", name: 'AuthService');
+        dev.log("No FCM token found for $recipientId", name: 'AuthService');
       }
     } catch (e) {
-      log("sendApplicationNotification ERROR: $e", name: 'AuthService', error: e);
+      dev.log("sendApplicationNotification ERROR: $e", name: 'AuthService', error: e);
       rethrow;
     }
   }

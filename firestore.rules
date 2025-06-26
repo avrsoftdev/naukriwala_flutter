@@ -1,7 +1,6 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
     // 👤 Helper Functions
     function isJobRecruiter(recruiterId, jobId) {
       return exists(/databases/$(database)/documents/Recruiters/$(recruiterId)/Jobs/$(jobId)) &&
@@ -26,9 +25,9 @@ service cloud.firestore {
       allow write: if request.auth.uid == uid || isAdmin();
     }
 
-    // 📄 Job Listings (Collection Group Support)
+    // 📄 Job Listings
     match /Recruiters/{recruiterId}/Jobs/{jobId} {
-      allow read: if true; // Allow all reads for now (to be tightened later)
+      allow read: if true;
       allow create: if request.auth != null &&
                     (request.auth.token.role == "recruiter" || isAdmin()) &&
                     request.resource.data.recruiterId == request.auth.uid &&
@@ -48,22 +47,27 @@ service cloud.firestore {
                       'company', 'experience', 'jobType'
                     ]);
     }
-    // 📄 Jobs Collection Group Query Support for Seekers
+
+    // 📄 Jobs Collection Group Query Support
     match /{path=**}/Jobs/{jobId} {
-      allow read: if request.auth != null &&
-                   request.auth.token.role == "seeker" &&
-                   resource.data.status == "open";
+      allow read: if request.auth != null && resource.data.status == "open";
     }
 
-
-
-
     // 📥 Applications
-    match /Applications/{seekerId}/AppliedJobs/{jobId} {
-      allow read: if request.auth.uid == seekerId || isJobRecruiter(seekerId, jobId) || isAdmin();
+    match /Applications/{jobId}/AppliedJobs/{seekerId} {
+      allow read: if request.auth != null &&
+                  (request.auth.uid == seekerId ||
+                   (request.auth.token.role == "recruiter" && request.auth.uid == get(/databases/$(database)/documents/Applications/$(jobId)).data.recruiterId) ||
+                   isAdmin());
       allow write: if request.auth.uid == seekerId &&
                    request.resource.data.keys().hasAll(['seekerId', 'jobId', 'appliedAt']) &&
-                   request.resource.data.keys().hasOnly(['seekerId', 'jobId', 'appliedAt', 'resumeUrl', 'status']);
+                   request.resource.data.keys().hasOnly([
+                     'seekerId', 'jobId', 'appliedAt', 'resumeUrl', 'status',
+                     'jobTitle', 'recruiterId', 'company', 'location',
+                     'Full Name', 'Email', 'Mobile Number', 'Educational Qualifications',
+                     'Work Experience', 'Skills', 'References (Optional)',
+                     'Government ID Proof (Aadhaar/PAN)'
+                   ]);
     }
 
     // ✅ Shortlist Management
@@ -78,11 +82,13 @@ service cloud.firestore {
     }
 
     // 🔔 Notifications
-    match /SeekerNotifications/{uid}/Notifications/{notifId} {
-      allow read, write, delete: if request.auth.uid == uid || isAdmin();
+    match /Notifications/{notifId} {
+      allow read: if request.auth.uid == resource.data.to || isAdmin();
+      allow write: if request.auth != null;
+      allow delete: if request.auth.uid == resource.data.to || isAdmin();
     }
 
-    // 🚫 Fallback (Adjusted to avoid overriding specific rules)
+    // 🚫 Fallback
     match /{document=**} {
       allow read, write: if false;
     }

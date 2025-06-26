@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:developer' as dev; // Added for logging
 
 class EditJobScreen extends StatefulWidget {
   final String jobId;
   final Map<String, dynamic> jobData;
 
   const EditJobScreen({
-    Key? key,
+    super.key, // Converted to super parameter
     required this.jobId,
     required this.jobData,
-  }) : super(key: key);
+  });
 
   @override
   State<EditJobScreen> createState() => _EditJobScreenState();
@@ -23,7 +24,17 @@ class _EditJobScreenState extends State<EditJobScreen> {
   @override
   void initState() {
     super.initState();
-    // Pre-fill data
+    // Pre-fill data and validate recruiterId
+    final recruiterId = widget.jobData['recruiterId']?.toString();
+    if (recruiterId == null) {
+      dev.log('Missing recruiterId in jobData', name: 'EditJobScreen');
+      return; // Prevent further initialization if recruiterId is missing
+    }
+    final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+    if (currentUserId == null || currentUserId != recruiterId) {
+      dev.log('Unauthorized access attempt by $currentUserId for jobId ${widget.jobId}',
+          name: 'EditJobScreen');
+    }
     widget.jobData.forEach((key, value) {
       if (value is String) {
         updatedJobData[key] = value;
@@ -33,6 +44,17 @@ class _EditJobScreenState extends State<EditJobScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+    final recruiterId = widget.jobData['recruiterId']?.toString();
+    if (currentUserId == null || recruiterId == null || currentUserId != recruiterId) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Edit Job')),
+        body: const Center(
+          child: Text('You are not authorized to edit this job.'),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(title: const Text('Edit Job')),
       body: Padding(
@@ -95,7 +117,7 @@ class _EditJobScreenState extends State<EditJobScreen> {
 
     try {
       await FirebaseFirestore.instance
-          .collection('PostedJobs')
+          .collection('Recruiters')
           .doc(uid)
           .collection('Jobs')
           .doc(widget.jobId)
@@ -103,14 +125,21 @@ class _EditJobScreenState extends State<EditJobScreen> {
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Job updated successfully!')),
-      );
-      Navigator.pop(context);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Job updated successfully!')),
+        );
+      }
+      if (mounted) {
+        Navigator.pop(context);
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to update job: $e')),
-      );
+      dev.log('Failed to update job: $e', name: 'EditJobScreen', error: e);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to update job: $e')),
+        );
+      }
     }
   }
 }

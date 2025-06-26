@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+
+  <!-- Allow cleartext calls *only* to the Android‐emulator host -->
+  <domain-config cleartextTrafficPermitted="true">
+    <!-- 
+      Android emulator maps "localhost" on your machine 
+      to 10.0.2.2 inside the emulator.
+    -->
+    <domain includeSubdomains="true">10.0.2.2</domain>
+  </domain-config>
+
+  <!-- Everything else uses default (i.e. HTTPS-only) -->
+</network-security-config>

@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:naukariwala/screens/apply_job_screen.dart';
 import 'package:naukariwala/screens/job_details_screen.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
 
 class SearchJobScreen extends StatefulWidget {
   final bool isSeekerProfileView;
@@ -30,51 +31,53 @@ class SearchJobScreenState extends State<SearchJobScreen> {
   }
 
   Future<void> fetchJobsFromFirestore() async {
-  try {
-    dev.log('Fetching jobs with collection group query, emulator: localhost:8080', name: 'SearchJobScreen');
-    FirebaseFirestore.instance.settings = const Settings(
-      host: 'localhost:8080',
-      sslEnabled: false,
-      persistenceEnabled: false,
-    );
-    final snapshot = await FirebaseFirestore.instance
-        .collectionGroup('Jobs')
-        .where('status', isEqualTo: 'open')
-        .orderBy('createdAt', descending: true)
-        .get();
+    try {
+      dev.log('Fetching jobs with collection group query, emulator: ${kDebugMode ? "localhost:8080" : "default"}', name: 'SearchJobScreen');
+      if (kDebugMode) {
+        FirebaseFirestore.instance.settings = const Settings(
+          host: 'localhost:8080',
+          sslEnabled: false,
+          persistenceEnabled: false,
+        );
+      }
+      final snapshot = await FirebaseFirestore.instance
+          .collectionGroup('Jobs')
+          .where('status', isEqualTo: 'open')
+          .orderBy('createdAt', descending: true)
+          .get();
 
-    dev.log('Fetched ${snapshot.docs.length} jobs, docs: ${snapshot.docs.map((d) => d.id).toList()}', name: 'SearchJobScreen');
-    final jobList = snapshot.docs.map((doc) {
-      final data = doc.data();
-      return {
-        ...data,
-        'jobId': doc.id,
-        'recruiterId': data['recruiterId'],
-        'postedAt': (data['createdAt'] as Timestamp?)?.toDate(),
-      };
-    }).toList();
+      dev.log('Fetched ${snapshot.docs.length} jobs, docs: ${snapshot.docs.map((d) => d.id).toList()}', name: 'SearchJobScreen');
+      final jobList = snapshot.docs.map((doc) {
+        final data = doc.data();
+        return {
+          ...data,
+          'jobId': doc.id,
+          'recruiterId': data['recruiterId'],
+          'postedAt': (data['createdAt'] as Timestamp?)?.toDate(),
+        };
+      }).toList();
 
-    if (mounted) {
-      setState(() {
-        jobs = jobList;
-        filteredJobs = jobList;
-        isLoading = false;
-        errorMessage = null;
-      });
-    }
-  } catch (e) {
-    dev.log('Error fetching jobs: $e, stack: ${StackTrace.current}', name: 'SearchJobScreen', error: e);
-    if (mounted) {
-      setState(() {
-        isLoading = false;
-        errorMessage = 'Failed to load jobs: $e';
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to load jobs: $e')),
-      );
+      if (mounted) {
+        setState(() {
+          jobs = jobList;
+          filteredJobs = jobList;
+          isLoading = false;
+          errorMessage = null;
+        });
+      }
+    } catch (e) {
+      dev.log('Error fetching jobs: $e, stack: ${StackTrace.current}', name: 'SearchJobScreen', error: e);
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+          errorMessage = 'Failed to load jobs: $e';
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to load jobs: $e')),
+        );
+      }
     }
   }
-}
 
   void _filterJobs(String query) {
     _searchQuery = query.toLowerCase();
@@ -98,13 +101,18 @@ class SearchJobScreenState extends State<SearchJobScreen> {
   Future<bool> _hasApplied(String jobId) async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return false;
-    final doc = await FirebaseFirestore.instance
-        .collection('Applications')
-        .doc(uid)
-        .collection('AppliedJobs')
-        .doc(jobId)
-        .get();
-    return doc.exists;
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('Applications')
+          .doc(jobId)
+          .collection('AppliedJobs')
+          .doc(uid)
+          .get();
+      return doc.exists;
+    } catch (e) {
+      dev.log('Error checking application status: $e', name: 'SearchJobScreen', error: e);
+      return false; // Default to false on error to avoid blocking UI
+    }
   }
 
   void _navigateToJobDetails(Map<String, dynamic> job) {
