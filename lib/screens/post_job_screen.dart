@@ -123,6 +123,14 @@ class PostJobScreenState extends State<PostJobScreen> {
         };
         debugPrint('[DEBUG] Writing to ${newDoc.path} with data: $jobDataToSet');
         await newDoc.set(jobDataToSet);
+        // Verify the write
+        final docSnap = await newDoc.get();
+        if (docSnap.exists) {
+          debugPrint('[DEBUG] Write verified: ${docSnap.data()}');
+        } else {
+          debugPrint('[ERROR] Write failed: Document not found after set');
+          throw Exception('Write verification failed');
+        }
         if (!mounted) return;
         _showSnack('Job posted successfully');
       }
@@ -164,7 +172,7 @@ class PostJobScreenState extends State<PostJobScreen> {
                   children: [
                     _buildTextField('title', labelText: 'Job Title'),
                     _buildTextField('company', labelText: 'Company Name'),
-                    _buildTextField('location', labelText: 'Location (Job Location)'),
+                    _buildTextField('location', labelText: 'Location (Remote, On-site, Hybrid)'),
                     _buildTextField('experience', labelText: 'Experience Required', keyboardType: TextInputType.number),
                     _buildTextField('salary', labelText: 'Salary Range'),
                     _buildTextField('jobType', labelText: 'Job Type (Full-time, Part-time)'),

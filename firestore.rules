@@ -26,28 +26,36 @@ service cloud.firestore {
       allow write: if request.auth.uid == uid || isAdmin();
     }
 
-    // 📄 Job Listings
- match /Recruiters/{recruiterId}/Jobs/{jobId} {
-  allow read: if true;
-  allow create: if request.auth != null &&
-                (request.auth.token.role == "recruiter" || isAdmin()) &&
-                request.resource.data.recruiterId == request.auth.uid &&
-                request.resource.data.keys().hasAll(['jobId', 'recruiterId', 'status', 'createdAt']) &&
-                request.resource.data.keys().hasAny(['title', 'description', 'location', 'salary']) &&
-                request.resource.data.keys().hasOnly([
-                  'jobId', 'recruiterId', 'status', 'createdAt',
-                  'title', 'description', 'location', 'salary',
-                  'company', 'experience', 'jobType'
-                ]);
-  allow update: if request.auth != null &&
-                (request.auth.token.role == "recruiter" || isAdmin()) &&
-                request.auth.uid == resource.data.recruiterId &&
-                request.resource.data.keys().hasOnly([
-                  'jobId', 'recruiterId', 'status', 'createdAt',
-                  'title', 'description', 'location', 'salary',
-                  'company', 'experience', 'jobType'
-                ]);
- }
+    // 📄 Job Listings (Collection Group Support)
+    match /Recruiters/{recruiterId}/Jobs/{jobId} {
+      allow read: if true; // Allow all reads for now (to be tightened later)
+      allow create: if request.auth != null &&
+                    (request.auth.token.role == "recruiter" || isAdmin()) &&
+                    request.resource.data.recruiterId == request.auth.uid &&
+                    request.resource.data.keys().hasAll(['jobId', 'recruiterId', 'status', 'createdAt']) &&
+                    request.resource.data.keys().hasAny(['title', 'description', 'location', 'salary']) &&
+                    request.resource.data.keys().hasOnly([
+                      'jobId', 'recruiterId', 'status', 'createdAt',
+                      'title', 'description', 'location', 'salary',
+                      'company', 'experience', 'jobType'
+                    ]);
+      allow update: if request.auth != null &&
+                    (request.auth.token.role == "recruiter" || isAdmin()) &&
+                    request.auth.uid == resource.data.recruiterId &&
+                    request.resource.data.keys().hasOnly([
+                      'jobId', 'recruiterId', 'status', 'createdAt',
+                      'title', 'description', 'location', 'salary',
+                      'company', 'experience', 'jobType'
+                    ]);
+    }
+    // 📄 Jobs Collection Group Query Support for Seekers
+    match /{path=**}/Jobs/{jobId} {
+      allow read: if request.auth != null &&
+                   request.auth.token.role == "seeker" &&
+                   resource.data.status == "open";
+    }
+
+
 
 
     // 📥 Applications
@@ -74,7 +82,7 @@ service cloud.firestore {
       allow read, write, delete: if request.auth.uid == uid || isAdmin();
     }
 
-    // 🚫 Fallback
+    // 🚫 Fallback (Adjusted to avoid overriding specific rules)
     match /{document=**} {
       allow read, write: if false;
     }

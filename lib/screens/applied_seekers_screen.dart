@@ -1,29 +1,37 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:url_launcher/url_launcher.dart'; // Add to pubspec.yaml
+import 'package:url_launcher/url_launcher.dart'; // Added for canLaunchUrl and launchUrl
 
-class MyApplicationsScreen extends StatefulWidget {
-  final String seekerId;
+class AppliedSeekersScreen extends StatefulWidget {
+  final bool isRecruiter;
+  final List<dynamic>? notifications;
 
-  const MyApplicationsScreen({required this.seekerId});
+  const AppliedSeekersScreen({
+    this.isRecruiter = true,
+    this.notifications,
+    super.key, // Added key parameter
+  });
 
   @override
-  _MyApplicationsScreenState createState() => _MyApplicationsScreenState();
+  _AppliedSeekersScreenState createState() => _AppliedSeekersScreenState();
 }
 
-class _MyApplicationsScreenState extends State<MyApplicationsScreen> {
+class _AppliedSeekersScreenState extends State<AppliedSeekersScreen> {
   late final Stream<QuerySnapshot> _applicationsStream;
+  final String? recruiterId = FirebaseAuth.instance.currentUser?.uid;
 
   @override
   void initState() {
     super.initState();
-    _applicationsStream = FirebaseFirestore.instance
-        .collection('Applications')
-        .doc(widget.seekerId)
-        .collection('AppliedJobs')
-        .orderBy('appliedAt', descending: true)
-        .snapshots();
+    if (recruiterId != null) {
+      _applicationsStream = FirebaseFirestore.instance
+          .collectionGroup('AppliedJobs')
+          .where('recruiterId', isEqualTo: recruiterId)
+          .orderBy('appliedAt', descending: true)
+          .snapshots();
+    }
   }
 
   String _formatTimestamp(Timestamp ts) {
@@ -32,8 +40,8 @@ class _MyApplicationsScreenState extends State<MyApplicationsScreen> {
   }
 
   Future<void> _openResume(String url) async {
-    if (await canLaunch(url)) {
-      await launch(url);
+    if (await canLaunchUrl(Uri.parse(url))) { // Updated to canLaunchUrl
+      await launchUrl(Uri.parse(url)); // Updated to launchUrl
     } else {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -45,9 +53,16 @@ class _MyApplicationsScreenState extends State<MyApplicationsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (recruiterId == null) {
+      return Scaffold(
+        appBar: AppBar(title: Text('Applied Seekers')),
+        body: Center(child: Text('Please log in as a recruiter.')),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
-        title: Text('My Applications'),
+        title: Text('Applied Seekers'),
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: _applicationsStream,
@@ -68,22 +83,20 @@ class _MyApplicationsScreenState extends State<MyApplicationsScreen> {
             itemCount: docs.length,
             itemBuilder: (context, index) {
               final data = docs[index].data() as Map<String, dynamic>;
+              final seekerId = data['seekerId'] ?? 'N/A';
               final jobTitle = data['jobTitle'] ?? 'N/A';
-              final company = data['company'] ?? 'N/A'; // Add company to ApplyJobScreen if needed
               final appliedAt = data['appliedAt'] as Timestamp?;
-              final status = data['status'] ?? 'Pending'; // Use 'status' from ApplyJobScreen
               final resumeUrl = data['resumeUrl'] ?? '';
 
               return Card(
                 margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: ListTile(
-                  title: Text(jobTitle),
+                  title: Text('Seeker ID: $seekerId'),
                   subtitle: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Company: $company'),
+                      Text('Job: $jobTitle'),
                       if (appliedAt != null) Text('Applied on: ${_formatTimestamp(appliedAt)}'),
-                      Text('Status: $status'),
                     ],
                   ),
                   trailing: resumeUrl.isNotEmpty

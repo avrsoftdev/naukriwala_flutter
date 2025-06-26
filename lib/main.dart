@@ -1,10 +1,13 @@
+import 'dart:io';
+import 'dart:developer' as dev;
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart'; // Added for kDebugMode
-import 'dart:io'; // Added for ping test
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:firebase_messaging/firebase_messaging.dart'; // Added for FCM
 import 'firebase_options.dart';
 import 'screens/home_screen.dart';
 
@@ -15,36 +18,61 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  // Activate Firebase App Check only in release mode
+  // 🔐 Activate App Check only in release mode
   if (!kDebugMode) {
-    await FirebaseAppCheck.instance.activate(
-      androidProvider: AndroidProvider.playIntegrity,
-      appleProvider: AppleProvider.appAttest,
-    );
+    try {
+      await FirebaseAppCheck.instance.activate(
+        androidProvider: AndroidProvider.playIntegrity,
+        appleProvider: AppleProvider.appAttest,
+      );
+    } catch (e) {
+      dev.log('App Check activation failed: $e', name: 'Main');
+    }
   }
-  //demo change
 
-  // Connect to emulators in debug mode with connectivity check
+  // 🧪 Connect to Firebase emulators in debug mode
   if (kDebugMode) {
     try {
-      // Test connectivity to emulator ports
-      await _testEmulatorConnection('localhost', 8080);
-      await _testEmulatorConnection('localhost', 9099);
-      FirebaseFirestore.instance.useFirestoreEmulator('localhost', 8080);
-      FirebaseAuth.instance.useAuthEmulator('localhost', 9099);
-      print('Using emulators on localhost:8080 (Firestore) and 9099 (Auth)');
+      // Use 10.0.2.2 for Android emulator, localhost for other platforms
+      final String emulatorHost = defaultTargetPlatform == TargetPlatform.android ? '10.0.2.2' : 'localhost';
+      await _testEmulatorConnection(emulatorHost, 8080); // Firestore
+      await _testEmulatorConnection(emulatorHost, 9099); // Auth
+      await _testEmulatorConnection(emulatorHost, 9199); // Storage
+
+      FirebaseFirestore.instance.useFirestoreEmulator(emulatorHost, 8080);
+      FirebaseAuth.instance.useAuthEmulator(emulatorHost, 9099);
+      FirebaseStorage.instance.useStorageEmulator(emulatorHost, 9199);
+
+      dev.log('✅ Connected to Firebase emulators at $emulatorHost.', name: 'Main');
     } catch (e) {
-      print('Emulator connection failed: $e. Falling back to live servers.');
+      dev.log('⚠️ Emulator connection failed: $e. Falling back to live servers.', name: 'Main', error: e);
+    }
+  }
+
+  // 📲 Initialize FCM and get token in debug mode
+  if (kDebugMode) {
+    try {
+      final fcmToken = await FirebaseMessaging.instance.getToken();
+      if (fcmToken != null) {
+        dev.log('FCM Token: $fcmToken', name: 'Main');
+        // Optionally store in Firestore via AuthService (e.g., _authService.updateFcmToken(fcmToken))
+      }
+    } catch (e) {
+      dev.log('FCM token retrieval failed: $e', name: 'Main', error: e);
     }
   }
 
   runApp(const NaukariwalaApp());
 }
 
-// Helper function to test emulator connectivity
+// 📶 Helper to test if emulator ports are reachable
 Future<void> _testEmulatorConnection(String host, int port) async {
-  final socket = await Socket.connect(host, port, timeout: Duration(seconds: 2));
-  await socket.close();
+  try {
+    final socket = await Socket.connect(host, port, timeout: const Duration(seconds: 2));
+    await socket.close();
+  } catch (e) {
+    throw Exception('Failed to connect to $host:$port - $e');
+  }
 }
 
 class NaukariwalaApp extends StatelessWidget {
@@ -59,7 +87,7 @@ class NaukariwalaApp extends StatelessWidget {
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
       debugShowCheckedModeBanner: false,
-      home: HomeScreen(),
+      home: const HomeScreen(),
     );
   }
 }

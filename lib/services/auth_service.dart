@@ -88,11 +88,11 @@ class AuthService {
     final uid = _auth.currentUser?.uid;
     if (uid == null) throw Exception("User not logged in");
 
-    final doc = _firestore.collection('Jobs').doc();
+    final doc = _firestore.collection('Recruiters').doc(uid).collection('Jobs').doc();
     jobData['jobId'] = doc.id;
     jobData['recruiterId'] = uid;
     jobData['status'] = 'open';
-    jobData['timestamp'] = FieldValue.serverTimestamp();
+    jobData['createdAt'] = FieldValue.serverTimestamp();
 
     await doc.set(jobData);
   }
@@ -102,9 +102,10 @@ class AuthService {
     if (uid == null) throw Exception("User not logged in");
 
     final jobsSnapshot = await _firestore
+        .collection('Recruiters')
+        .doc(uid)
         .collection('Jobs')
-        .where('recruiterId', isEqualTo: uid)
-        .orderBy('timestamp', descending: true)
+        .orderBy('createdAt', descending: true)
         .get();
 
     final List<Map<String, dynamic>> result = [];
@@ -135,6 +136,11 @@ class AuthService {
     if (uid == null) throw Exception("User not logged in");
 
     try {
+      // Fetch recruiter ID from the job to store application under the correct job
+      final jobDoc = await _firestore.collection('Recruiters').doc(uid).collection('Jobs').doc(jobId).get();
+      if (!jobDoc.exists) throw Exception("Job not found");
+      final recruiterId = jobDoc.data()?['recruiterId'];
+
       if (resumeFile != null) {
         final fileName = "${DateTime.now().millisecondsSinceEpoch}.pdf";
         final ref = _storage.ref("resumes/$jobId/$uid/$fileName");
@@ -143,17 +149,83 @@ class AuthService {
         applicationData['resumeUrl'] = resumeUrl;
       }
 
+      // Store application under /Applications/{jobId}/AppliedJobs/{seekerId}
       applicationData['seekerId'] = uid;
       applicationData['appliedAt'] = FieldValue.serverTimestamp();
+      applicationData['recruiterId'] = recruiterId; // Add recruiterId for querying
 
       await _firestore
           .collection('Applications')
-          .doc(uid)
-          .collection('AppliedJobs')
           .doc(jobId)
+          .collection('AppliedJobs')
+          .doc(uid)
           .set(applicationData);
+
+      // Send notification to recruiter
+      await sendApplicationNotification(recruiterId!, 'New application for job $jobId from $uid');
     } catch (e) {
       log("applyToJob ERROR: $e", name: 'AuthService', error: e);
+      rethrow;
+    }
+  }
+
+  // New method to fetch applied seekers for a recruiter
+  Future<List<Map<String, dynamic>>> fetchAppliedSeekers() async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) throw Exception("User not logged in");
+
+    final jobsSnapshot = await _firestore
+        .collection('Recruiters')
+        .doc(uid)
+        .collection('Jobs')
+        .get();
+
+    final List<Map<String, dynamic>> seekers = [];
+
+    for (final job in jobsSnapshot.docs) {
+      final jobId = job.id;
+      final appsSnapshot = await _firestore
+          .collection('Applications')
+          .doc(jobId)
+          .collection('AppliedJobs')
+          .get();
+
+      for (final app in appsSnapshot.docs) {
+        final data = app.data();
+        if (data['recruiterId'] == uid) {
+          seekers.add({
+            'seekerId': app.id,
+            'jobId': jobId,
+            'appliedAt': data['appliedAt'],
+            'resumeUrl': data['resumeUrl'],
+            ...data,
+          });
+        }
+      }
+    }
+
+    return seekers;
+  }
+
+  // New method to send application-related notifications
+  Future<void> sendApplicationNotification(String recipientId, String message) async {
+    try {
+      final tokenSnapshot = await _firestore.collection('UsersIndex').doc(recipientId).get();
+      final token = tokenSnapshot.data()?['fcmToken'];
+
+      if (token != null) {
+        await _firestore.collection('Notifications').add({
+          'to': token,
+          'message': message,
+          'timestamp': FieldValue.serverTimestamp(),
+          'read': false,
+        });
+        log("Notification sent to $recipientId", name: 'AuthService');
+      } else {
+        log("No FCM token found for $recipientId", name: 'AuthService');
+      }
+    } catch (e) {
+      log("sendApplicationNotification ERROR: $e", name: 'AuthService', error: e);
       rethrow;
     }
   }

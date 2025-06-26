@@ -1,39 +1,82 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
-class NotificationsScreen extends StatelessWidget {
-  final List<Map<String, String>> notifications;
+class NotificationsScreen extends StatefulWidget {
+  final List<Map<String, String>>? notifications;
   final bool isRecruiter;
 
-  const NotificationsScreen({
-    Key? key,
-    required this.notifications,
-    required this.isRecruiter,
-  }) : super(key: key);
+  const NotificationsScreen({this.notifications, this.isRecruiter = false, super.key});
+  @override
+  _NotificationsScreenState createState() => _NotificationsScreenState();
+}
+
+class _NotificationsScreenState extends State<NotificationsScreen> {
+  late final Stream<QuerySnapshot> _notificationsStream;
+  final String? uid = FirebaseAuth.instance.currentUser?.uid;
+
+  @override
+  void initState() {
+    super.initState();
+    if (uid != null) {
+      _notificationsStream = FirebaseFirestore.instance
+          .collection('SeekerNotifications')
+          .doc(uid)
+          .collection('Notifications')
+          .orderBy('timestamp', descending: true)
+          .snapshots();
+    }
+  }
+
+  String _formatTimestamp(Timestamp ts) {
+    final dt = ts.toDate();
+    return DateFormat('dd MMM yyyy, hh:mm a').format(dt);
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Notifications')),
-      body: notifications.isEmpty
-          ? const Center(child: Text('No notifications yet.'))
-          : ListView.separated(
-              padding: const EdgeInsets.all(16),
-              itemCount: notifications.length,
-              separatorBuilder: (_, __) => const Divider(),
-              itemBuilder: (context, index) {
-                final notification = notifications[index];
-                final title = notification['title'] ?? 'Notification';
-                final subtitle = isRecruiter
-                    ? 'Seeker: ${notification['seekerName'] ?? "N/A"}  •  Job: ${notification['jobTitle'] ?? "-"}'
-                    : 'Recruiter: ${notification['recruiterName'] ?? "N/A"}  •  Job: ${notification['jobTitle'] ?? "-"}';
+    if (uid == null) {
+      return Scaffold(
+        appBar: AppBar(title: Text('Notifications')),
+        body: Center(child: Text('Please log in.')),
+      );
+    }
 
-                return ListTile(
-                  leading: const Icon(Icons.notifications_active, color: Colors.blueAccent),
-                  title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-                  subtitle: Text(subtitle),
-                );
-              },
-            ),
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Notifications'),
+      ),
+      body: StreamBuilder<QuerySnapshot>(
+        stream: _notificationsStream,
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Center(child: Text('Error loading notifications: ${snapshot.error}'));
+          }
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          final docs = snapshot.data?.docs ?? [];
+          if (docs.isEmpty) {
+            return const Center(child: Text('No notifications found.'));
+          }
+
+          return ListView.builder(
+            itemCount: docs.length,
+            itemBuilder: (context, index) {
+              final data = docs[index].data() as Map<String, dynamic>;
+              final message = data['message'] ?? 'N/A';
+              final timestamp = data['timestamp'] as Timestamp?;
+
+              return ListTile(
+                title: Text(message),
+                subtitle: timestamp != null ? Text(_formatTimestamp(timestamp)) : null,
+              );
+            },
+          );
+        },
+      ),
     );
   }
 }

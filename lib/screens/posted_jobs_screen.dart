@@ -61,30 +61,22 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
               final jobId = jobs[index].id;
               debugPrint('Job $jobId data: $job');
 
-              final title = job['Job Title'] ?? 'Untitled Job';
-              final company = job['Company Name'] ?? 'Unknown Company';
-              final location =
-                  job['Location (Remote, On-site, Hybrid)'] ?? 'Unspecified';
-              final salary = job['Salary Range'] ?? 'Not specified';
+              final title = job['title'] ?? 'Untitled Job';
+              final company = job['company'] ?? 'Unknown Company';
+              final location = job['location'] ?? 'Unspecified';
+              final salary = job['salary'] ?? 'Not specified';
               final status = job['status'] ?? 'unknown';
               final timestamp = job['createdAt'] as Timestamp?;
               final postedDate = timestamp != null
                   ? DateFormat('dd MMM yyyy').format(timestamp.toDate())
                   : 'N/A';
 
-              return FutureBuilder<QuerySnapshot>(
-                future: FirebaseFirestore.instance
-                    .collectionGroup('AppliedJobs')
-                    .where('jobId', isEqualTo: jobId)
-                    .where('recruiterId', isEqualTo: user!.uid)
-                    .get(),
+              return FutureBuilder<int>(
+                future: _getApplicantCount(jobId),
                 builder: (context, applicantSnapshot) {
-                  int applicantCount = 0;
+                  final applicantCount = applicantSnapshot.data ?? 0;
                   if (applicantSnapshot.hasError) {
-                    debugPrint('Applicant query error: ${applicantSnapshot.error}');
-                  }
-                  if (applicantSnapshot.hasData) {
-                    applicantCount = applicantSnapshot.data!.docs.length;
+                    debugPrint('Applicant count error: ${applicantSnapshot.error}');
                   }
 
                   return Card(
@@ -158,6 +150,19 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
         },
       ),
     );
+  }
+
+  Future<int> _getApplicantCount(String jobId) async {
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collectionGroup('AppliedJobs')
+          .where('jobId', isEqualTo: jobId)
+          .get();
+      return snapshot.docs.length;
+    } catch (e) {
+      debugPrint('Error fetching applicant count: $e');
+      return 0;
+    }
   }
 
   void _confirmDeleteJob(BuildContext context, String jobId) {

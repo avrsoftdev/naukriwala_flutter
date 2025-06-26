@@ -1,39 +1,9 @@
 {
-  "flutter": {
-    "platforms": {
-      "android": {
-        "default": {
-          "projectId": "naukriwala-455909",
-          "appId": "1:307134434935:android:ef91db9b571cb93b170072",
-          "fileOutput": "android/app/google-services.json"
-        }
-      },
-      "dart": {
-        "lib/firebase_options.dart": {
-          "projectId": "naukriwala-455909",
-          "configurations": {
-            "android": "1:307134434935:android:ef91db9b571cb93b170072",
-            "ios": "1:307134434935:ios:a2916cc885949ded170072"
-          }
-        }
-      }
-    }
-  },
-  "functions": [
-    {
-      "source": "functions",
-      "codebase": "default",
-      "ignore": [
-        "node_modules",
-        ".git",
-        "firebase-debug.log",
-        "firebase-debug.*.log",
-        "*.local"
-      ]
-    }
-  ],
   "firestore": {
     "rules": "firestore.rules"
+  },
+  "storage": {
+    "rules": "storage.rules"
   },
   "emulators": {
     "auth": {
@@ -48,15 +18,29 @@
     "database": {
       "port": 9000
     },
-    "ui": {
-      "port": 4000
-    },
-    "singleProjectMode": true,
     "storage": {
       "port": 9199
     },
+    "ui": {
+      "enabled": true,
+      "port": 4000
+    },
     "tasks": {
       "port": 9499
+    },
+    "singleProjectMode": true
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ]
     }
-  }
+  ]
 }

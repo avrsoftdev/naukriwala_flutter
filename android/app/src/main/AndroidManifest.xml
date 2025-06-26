@@ -11,7 +11,7 @@
         android:label="naukariwala"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
-        android:usesCleartextTraffic="true"> <!-- Optional for dev / http endpoints -->
+        android:usesCleartextTraffic="true"> <!-- Enabled for dev/emulator HTTP traffic; disable in production -->
 
         <!-- Firebase Messaging: FCM Registration Receiver -->
         <receiver
@@ -29,10 +29,10 @@
             </intent-filter>
         </receiver>
 
-        <!-- App Check integrity enforcement (meta-data not required if using latest SDKs) -->
+        <!-- App Check debug token (uncomment and set in strings.xml for debug builds) -->
         <meta-data
             android:name="firebase_app_check_debug_token"
-            android:value="@string/debug_app_check_token" /> <!-- Only if using debug App Check -->
+            android:value="@string/debug_app_check_token" /> <!-- Only for debug/emulator testing -->
 
         <activity
             android:name=".MainActivity"

@@ -1,15 +1,17 @@
 import 'dart:io';
+import 'dart:developer' as dev;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as path;
+import '../services/auth_service.dart'; // Assuming AuthService is in a services directory
 
 class ApplyJobScreen extends StatefulWidget {
   final String jobId;
   final String jobTitle;
-  final String recruiterId; // Add recruiterId
+  final String recruiterId;
 
   const ApplyJobScreen({
     required this.jobId,
@@ -19,15 +21,22 @@ class ApplyJobScreen extends StatefulWidget {
   });
 
   @override
-  _ApplyJobScreenState createState() => _ApplyJobScreenState();
+  ApplyJobScreenState createState() => ApplyJobScreenState(); // Made public
 }
 
-class _ApplyJobScreenState extends State<ApplyJobScreen> {
+class ApplyJobScreenState extends State<ApplyJobScreen> {
   final _formKey = GlobalKey<FormState>();
   final Map<String, String> _formData = {};
   File? _resumeFile;
   bool _isSubmitting = false;
   final user = FirebaseAuth.instance.currentUser;
+  final AuthService _authService = AuthService(); // Instance of AuthService
+
+  @override
+  void initState() {
+    super.initState();
+    FirebaseStorage.instance.useStorageEmulator('10.0.2.2', 9199); // Ensure this matches
+  }
 
   Future<void> _pickResume() async {
     final result = await FilePicker.platform.pickFiles(
@@ -43,11 +52,15 @@ class _ApplyJobScreenState extends State<ApplyJobScreen> {
 
   Future<String?> _uploadResume(String seekerName) async {
     if (_resumeFile == null) return null;
-    final filename =
-        '${seekerName}_${DateTime.now().millisecondsSinceEpoch}_${path.basename(_resumeFile!.path)}';
-    final ref = FirebaseStorage.instance.ref('resumes/$filename');
-    await ref.putFile(_resumeFile!);
-    return await ref.getDownloadURL();
+    try {
+      final filename = '${seekerName}_${DateTime.now().millisecondsSinceEpoch}_${path.basename(_resumeFile!.path)}';
+      final ref = FirebaseStorage.instance.ref('resumes/$filename');
+      await ref.putFile(_resumeFile!);
+      return await ref.getDownloadURL();
+    } catch (e) {
+      dev.log('Upload failed: $e', name: 'ApplyJobScreen');
+      rethrow; // Let _submitApplication() handle it too
+    }
   }
 
   Future<void> _submitApplication() async {
@@ -61,19 +74,15 @@ class _ApplyJobScreenState extends State<ApplyJobScreen> {
       final appData = {
         'jobId': widget.jobId,
         'jobTitle': widget.jobTitle,
-        'recruiterId': widget.recruiterId, // Include recruiterId
-        'seekerId': user!.uid, // Include seekerId
+        'recruiterId': widget.recruiterId,
+        'seekerId': user!.uid,
         ..._formData,
         'resumeUrl': resumeUrl ?? '',
         'appliedAt': Timestamp.now(),
       };
 
-      await FirebaseFirestore.instance
-          .collection('Applications')
-          .doc(user!.uid)
-          .collection('AppliedJobs')
-          .doc(widget.jobId)
-          .set(appData);
+      // Use AuthService to apply and send notification
+      await _authService.applyToJob(widget.jobId, appData, _resumeFile);
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

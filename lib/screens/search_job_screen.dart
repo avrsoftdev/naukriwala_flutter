@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:naukariwala/screens/apply_job_screen.dart';
 import 'package:naukariwala/screens/job_details_screen.dart';
 
-
 class SearchJobScreen extends StatefulWidget {
   final bool isSeekerProfileView;
 
@@ -31,46 +30,51 @@ class SearchJobScreenState extends State<SearchJobScreen> {
   }
 
   Future<void> fetchJobsFromFirestore() async {
-    try {
-      dev.log('Fetching jobs with collection group query', name: 'SearchJobScreen');
-      final snapshot = await FirebaseFirestore.instance
-          .collectionGroup('Jobs')
-          .where('status', isEqualTo: 'open')
-          .orderBy('createdAt', descending: true)
-          .get();
+  try {
+    dev.log('Fetching jobs with collection group query, emulator: localhost:8080', name: 'SearchJobScreen');
+    FirebaseFirestore.instance.settings = const Settings(
+      host: 'localhost:8080',
+      sslEnabled: false,
+      persistenceEnabled: false,
+    );
+    final snapshot = await FirebaseFirestore.instance
+        .collectionGroup('Jobs')
+        .where('status', isEqualTo: 'open')
+        .orderBy('createdAt', descending: true)
+        .get();
 
-      dev.log('Fetched ${snapshot.docs.length} jobs', name: 'SearchJobScreen');
-      final jobList = snapshot.docs.map((doc) {
-        final data = doc.data();
-        return {
-          ...data,
-          'jobId': doc.id,
-          'recruiterId': data['recruiterId'],
-          'postedAt': (data['createdAt'] as Timestamp?)?.toDate(),
-        };
-      }).toList();
+    dev.log('Fetched ${snapshot.docs.length} jobs, docs: ${snapshot.docs.map((d) => d.id).toList()}', name: 'SearchJobScreen');
+    final jobList = snapshot.docs.map((doc) {
+      final data = doc.data();
+      return {
+        ...data,
+        'jobId': doc.id,
+        'recruiterId': data['recruiterId'],
+        'postedAt': (data['createdAt'] as Timestamp?)?.toDate(),
+      };
+    }).toList();
 
-      if (mounted) {
-        setState(() {
-          jobs = jobList;
-          filteredJobs = jobList;
-          isLoading = false;
-          errorMessage = null;
-        });
-      }
-    } catch (e) {
-      dev.log('Error fetching jobs: $e', name: 'SearchJobScreen', error: e);
-      if (mounted) {
-        setState(() {
-          isLoading = false;
-          errorMessage = 'Failed to load jobs: $e';
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to load jobs: $e')),
-        );
-      }
+    if (mounted) {
+      setState(() {
+        jobs = jobList;
+        filteredJobs = jobList;
+        isLoading = false;
+        errorMessage = null;
+      });
+    }
+  } catch (e) {
+    dev.log('Error fetching jobs: $e, stack: ${StackTrace.current}', name: 'SearchJobScreen', error: e);
+    if (mounted) {
+      setState(() {
+        isLoading = false;
+        errorMessage = 'Failed to load jobs: $e';
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to load jobs: $e')),
+      );
     }
   }
+}
 
   void _filterJobs(String query) {
     _searchQuery = query.toLowerCase();
@@ -80,9 +84,9 @@ class SearchJobScreenState extends State<SearchJobScreen> {
     }
 
     final results = jobs.where((job) {
-      final title = (job['Job Title'] ?? '').toString().toLowerCase();
-      final company = (job['Company Name'] ?? '').toString().toLowerCase();
-      final location = (job['Location (Remote, On-site, Hybrid)'] ?? '').toString().toLowerCase();
+      final title = (job['title'] ?? '').toString().toLowerCase();
+      final company = (job['company'] ?? '').toString().toLowerCase();
+      final location = (job['location'] ?? '').toString().toLowerCase();
       return title.contains(_searchQuery) ||
           company.contains(_searchQuery) ||
           location.contains(_searchQuery);
@@ -140,7 +144,7 @@ class SearchJobScreenState extends State<SearchJobScreen> {
           builder: (_) => ApplyJobScreen(
             jobId: job['jobId'],
             recruiterId: job['recruiterId'],
-            jobTitle: job['Job Title'] ?? 'Untitled',
+            jobTitle: job['title'] ?? 'Untitled',
           ),
         ),
       );
@@ -199,9 +203,9 @@ class SearchJobScreenState extends State<SearchJobScreen> {
                                 return Card(
                                   margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                                   child: ListTile(
-                                    title: Text(job['Job Title'] ?? 'Untitled'),
+                                    title: Text(job['title'] ?? 'Untitled'),
                                     subtitle: Text(
-                                      '${job['Company Name'] ?? ''} • ${job['Location (Remote, On-site, Hybrid)'] ?? ''} • ${job['Job Type (Full-time, Part-time)'] ?? ''}',
+                                      '${job['company'] ?? ''} • ${job['location'] ?? ''} • ${job['jobType'] ?? ''}',
                                     ),
                                     trailing: FutureBuilder<bool>(
                                       future: _hasApplied(job['jobId']),

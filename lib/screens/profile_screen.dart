@@ -9,7 +9,7 @@ import 'package:naukariwala/services/auth_service.dart';
 class ProfileScreen extends StatefulWidget {
   final bool isRecruiter;
 
-  const ProfileScreen({super.key, required this.isRecruiter});
+  const ProfileScreen({this.isRecruiter = false, super.key});
 
   @override
   ProfileScreenState createState() => ProfileScreenState();
@@ -178,10 +178,10 @@ class ProfileScreenState extends State<ProfileScreen> {
   Future<void> _logout() async {
     try {
       await AuthService().signOut();
-      if (mounted) {
-        Navigator.pushReplacementNamed(context, '/login');
-      }
+      if (!mounted) return;
+      Navigator.pushReplacementNamed(context, '/login');
     } catch (e) {
+      debugPrint('❌ Logout error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error logging out: $e')),

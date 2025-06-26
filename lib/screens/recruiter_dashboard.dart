@@ -123,59 +123,60 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Exported to $path')));
   }
 
- @override
-Widget build(BuildContext context) {
-  // Dummy notifications list for example, replace with actual data
-  final List<Map<String, String>> dummyNotifications = [
-    {
-      'title': 'Application Received',
-      'seekerName': 'John Doe',
-      'jobTitle': 'Flutter Developer',
-    },
-  ];
+  @override
+  Widget build(BuildContext context) {
+    // Dummy notifications list for example, replace with actual data
+    final List<Map<String, String>> dummyNotifications = [
+      {
+        'title': 'Application Received',
+        'seekerName': 'John Doe',
+        'jobTitle': 'Flutter Developer',
+      },
+    ];
 
-  return DefaultTabController(
-    length: 6, // Fix: you now have 5 tabs
-    child: Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.deepPurple,
-        title: const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 8.0),
-          child: Text(
-            'Recruiter Dashboard',
-            style: TextStyle(color: Colors.white),
+    return DefaultTabController(
+      length: 6, // Matches the number of tabs
+      child: Scaffold(
+        appBar: AppBar(
+          backgroundColor: Colors.deepPurple,
+          title: const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 8.0),
+            child: Text(
+              'Recruiter Dashboard',
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+          bottom: const TabBar(
+            labelColor: Colors.white,
+            unselectedLabelColor: Colors.white,
+            indicatorColor: Colors.white,
+            tabs: [
+              Tab(icon: Icon(Icons.person)),
+              Tab(icon: Icon(Icons.work)),
+              Tab(icon: Icon(Icons.work_history_rounded)),
+              Tab(icon: Icon(Icons.group_add)),
+              Tab(icon: Icon(Icons.post_add)),
+              Tab(icon: Icon(Icons.notifications)),
+            ],
           ),
         ),
-        bottom: const TabBar(
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white,
-          indicatorColor: Colors.white,
-          tabs: [
-            Tab(icon: Icon(Icons.person)),
-            Tab(icon: Icon(Icons.work)),
-            Tab(icon: Icon(Icons.work_history_rounded)),
-            Tab(icon: Icon(Icons.group_add)),
-            Tab(icon: Icon(Icons.post_add)),
-            Tab(icon: Icon(Icons.notifications)),
+        body: TabBarView(
+          children: [
+            ProfileScreen(isRecruiter: true), // Updated to include isRecruiter
+            PostedJobsScreen(),
+            _buildApplicantsTab(),
+            PostJobScreen(),
+            // Assuming the fifth tab is for posting jobs, adjust if needed
+            Container(), // Placeholder for the fifth tab (e.g., additional stats or settings)
+            NotificationsScreen(
+              notifications: dummyNotifications, // Updated to include notifications
+              isRecruiter: true, // Updated to include isRecruiter
+            ),
           ],
         ),
       ),
-      body: TabBarView(
-        children: [
-          ProfileScreen(isRecruiter: true),
-          PostedJobsScreen(),
-          _buildApplicantsTab(),
-          PostJobScreen(),
-          NotificationsScreen(
-            notifications: dummyNotifications, // Replace with real data
-            isRecruiter: true,
-          ),
-        ],
-      ),
-    ),
-  );
-}
-
+    );
+  }
 
   Widget _buildApplicantsTab() {
     return Padding(

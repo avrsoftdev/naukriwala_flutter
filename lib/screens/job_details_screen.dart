@@ -48,9 +48,9 @@ class JobDetailsScreen extends StatelessWidget {
         'seekerId': seekerId,
         'recruiterId': recruiterId,
         'appliedAt': FieldValue.serverTimestamp(),
-        'jobTitle': job['Job Title']?.toString() ?? 'Unknown',
-        'company': job['Company Name']?.toString() ?? 'Unknown',
-        'location': job['Location (Remote, On-site, Hybrid)']?.toString() ?? 'Unknown',
+        'jobTitle': job['title']?.toString() ?? 'Unknown',
+        'company': job['company']?.toString() ?? 'Unknown',
+        'location': job['location']?.toString() ?? 'Unknown',
         'status': 'Pending',
       });
 
@@ -63,8 +63,8 @@ class JobDetailsScreen extends StatelessWidget {
       await notifRef.set({
         'seekerId': seekerId,
         'jobId': jobId,
-        'jobTitle': job['Job Title']?.toString() ?? 'Unknown',
-        'message': 'A seeker applied to your job: ${job['Job Title']?.toString() ?? 'Unknown'}',
+        'jobTitle': job['title']?.toString() ?? 'Unknown',
+        'message': 'A seeker applied to your job: ${job['title']?.toString() ?? 'Unknown'}',
         'timestamp': FieldValue.serverTimestamp(),
         'read': false,
       });
@@ -85,13 +85,13 @@ class JobDetailsScreen extends StatelessWidget {
     // Debug log
     print('Job data in JobDetailsScreen: $job');
 
-    final jobTitle = job['Job Title']?.toString() ?? 'Job Details';
-    final company = job['Company Name']?.toString() ?? 'Unknown Company';
-    final location = job['Location (Remote, On-site, Hybrid)']?.toString() ?? 'Unknown Location';
-    final jobType = job['Job Type (Full-time, Part-time)']?.toString() ?? 'Unknown Type';
-    final salary = job['Salary Range']?.toString() ?? 'Not specified';
-    final experience = job['Experience Required']?.toString() ?? 'N/A';
-    final description = job['Job Description']?.toString() ?? 'No description provided';
+    final jobTitle = job['title']?.toString() ?? 'Job Details';
+    final company = job['company']?.toString() ?? 'Unknown Company';
+    final location = job['location']?.toString() ?? 'Unknown Location';
+    final jobType = job['jobType']?.toString() ?? 'Unknown Type';
+    final salary = job['salary']?.toString() ?? 'Not specified';
+    final experience = job['experience']?.toString() ?? 'N/A';
+    final description = job['description']?.toString() ?? 'No description provided';
 
     return Scaffold(
       appBar: AppBar(title: Text(jobTitle)),
