@@ -22,12 +22,34 @@ class SearchJobScreenState extends State<SearchJobScreen> {
   List<Map<String, dynamic>> filteredJobs = [];
   bool isLoading = true;
   String? errorMessage;
+  Map<String, dynamic>? _seekerProfile;
 
   @override
   void initState() {
     super.initState();
+    fetchSeekerProfile();
     fetchJobsFromFirestore();
     _searchController.addListener(() => _filterJobs(_searchController.text));
+  }
+
+  Future<void> fetchSeekerProfile() async {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) return;
+
+    try {
+      final seekerDoc = await FirebaseFirestore.instance
+          .collection('Seekers')
+          .doc(currentUser.uid)
+          .get();
+
+      if (seekerDoc.exists && mounted) {
+        setState(() {
+          _seekerProfile = seekerDoc.data();
+        });
+      }
+    } catch (e) {
+      dev.log('Error fetching seeker profile: $e', name: 'SearchJobScreen', error: e);
+    }
   }
 
   Future<void> fetchJobsFromFirestore() async {
@@ -60,7 +82,7 @@ class SearchJobScreenState extends State<SearchJobScreen> {
       if (mounted) {
         setState(() {
           jobs = jobList;
-          filteredJobs = jobList;
+          filteredJobs = _filterJobsByProfile(jobList);
           isLoading = false;
           errorMessage = null;
         });
@@ -79,14 +101,48 @@ class SearchJobScreenState extends State<SearchJobScreen> {
     }
   }
 
+  List<Map<String, dynamic>> _filterJobsByProfile(List<Map<String, dynamic>> jobList) {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (_seekerProfile == null || currentUser == null || jobList.isEmpty || currentUser.uid == jobList.first['recruiterId']?.toString()) {
+      return jobList;
+    }
+
+    return jobList.where((job) {
+      final jobSkills = (job['skills'] as List<dynamic>?)?.cast<String>() ?? [];
+      final seekerSkills = (_seekerProfile!['skills'] as List<dynamic>?)?.cast<String>() ?? [];
+      final jobEducation = job['education']?.toString().toLowerCase() ?? '';
+      final seekerEducation = _seekerProfile!['education']?.toString().toLowerCase() ?? '';
+      final jobExperience = _parseExperience(job['experience']?.toString() ?? '0');
+      final seekerExperience = _parseExperience(_seekerProfile!['experience']?.toString() ?? '0');
+
+      bool skillsMatch = jobSkills.isEmpty || seekerSkills.any((skill) => jobSkills.contains(skill));
+      bool educationMatch = jobEducation.isEmpty || seekerEducation.contains(jobEducation);
+      bool experienceMatch = seekerExperience >= jobExperience;
+
+      dev.log('Job: ${job['title']}, Skills match: $skillsMatch, Education match: $educationMatch, Experience match: $experienceMatch',
+          name: 'SearchJobScreen');
+
+      return skillsMatch && educationMatch && experienceMatch;
+    }).toList();
+  }
+
+  double _parseExperience(String experience) {
+    try {
+      final match = RegExp(r'\d+').firstMatch(experience);
+      return double.parse(match?.group(0) ?? '0');
+    } catch (e) {
+      return 0;
+    }
+  }
+
   void _filterJobs(String query) {
     _searchQuery = query.toLowerCase();
     if (_searchQuery.isEmpty) {
-      setState(() => filteredJobs = jobs);
+      setState(() => filteredJobs = _filterJobsByProfile(jobs));
       return;
     }
 
-    final results = jobs.where((job) {
+    final results = _filterJobsByProfile(jobs).where((job) {
       final title = (job['title'] ?? '').toString().toLowerCase();
       final company = (job['company'] ?? '').toString().toLowerCase();
       final location = (job['location'] ?? '').toString().toLowerCase();
@@ -111,7 +167,7 @@ class SearchJobScreenState extends State<SearchJobScreen> {
       return doc.exists;
     } catch (e) {
       dev.log('Error checking application status: $e', name: 'SearchJobScreen', error: e);
-      return false; // Default to false on error to avoid blocking UI
+      return false;
     }
   }
 
@@ -119,7 +175,7 @@ class SearchJobScreenState extends State<SearchJobScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => JobDetailsScreen(job: job),
+        builder: (context) => JobDetailsScreen(job: job),
       ),
     );
   }
@@ -149,10 +205,11 @@ class SearchJobScreenState extends State<SearchJobScreen> {
       await Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => ApplyJobScreen(
+          builder: (context) => ApplyJobScreen(
             jobId: job['jobId'],
             recruiterId: job['recruiterId'],
             jobTitle: job['title'] ?? 'Untitled',
+            seekerProfile: _seekerProfile, // Pass seeker profile
           ),
         ),
       );
@@ -203,7 +260,7 @@ class SearchJobScreenState extends State<SearchJobScreen> {
                       ),
                     Expanded(
                       child: filteredJobs.isEmpty
-                          ? const Center(child: Text('No jobs found.'))
+                          ? const Center(child: Text('No jobs found matching your skills, education, or experience.'))
                           : ListView.builder(
                               itemCount: filteredJobs.length,
                               itemBuilder: (context, index) {

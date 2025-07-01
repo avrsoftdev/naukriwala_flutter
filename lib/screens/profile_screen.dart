@@ -5,6 +5,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:naukariwala/services/auth_service.dart';
+import 'dart:developer' as dev;
 
 class ProfileScreen extends StatefulWidget {
   final bool isRecruiter;
@@ -32,6 +33,7 @@ class ProfileScreenState extends State<ProfileScreen> {
   // Controllers for Seeker fields
   final TextEditingController _experienceController = TextEditingController();
   final TextEditingController _educationController = TextEditingController();
+  final TextEditingController _skillsController = TextEditingController();
   final TextEditingController _specializationController = TextEditingController();
   final TextEditingController _currentCompanyController = TextEditingController();
   final TextEditingController _currentCtcController = TextEditingController();
@@ -63,9 +65,9 @@ class ProfileScreenState extends State<ProfileScreen> {
           .get();
       if (doc.exists && mounted) {
         final data = doc.data()!;
-        print('Firestore data: $data'); // Debug log
+        dev.log('Firestore data: $data', name: 'ProfileScreen');
         _nameController.text = data['name'] ?? '';
-        _mobileController.text = data['mobileNumber'] ?? data['mobile'] ?? data['Mobile Number'] ?? ''; // Fallback for old keys
+        _mobileController.text = data['mobileNumber'] ?? data['mobile'] ?? data['Mobile Number'] ?? '';
         _emailController.text = user.email ?? '';
         _imageUrl = data[widget.isRecruiter ? 'companyLogo' : 'photoUrl'];
         if (widget.isRecruiter) {
@@ -75,6 +77,7 @@ class ProfileScreenState extends State<ProfileScreen> {
         } else {
           _experienceController.text = data['experience'] ?? '';
           _educationController.text = data['education'] ?? '';
+          _skillsController.text = (data['skills'] as List<dynamic>?)?.join(', ') ?? '';
           _specializationController.text = data['specialization'] ?? '';
           _currentCompanyController.text = data['currentCompany'] ?? '';
           _currentCtcController.text = data['currentCtc'] ?? '';
@@ -84,6 +87,7 @@ class ProfileScreenState extends State<ProfileScreen> {
         setState(() => errorMessage = 'Profile not found');
       }
     } catch (e) {
+      dev.log('Error loading profile: $e', name: 'ProfileScreen');
       if (mounted) {
         setState(() => errorMessage = 'Error loading profile: $e');
       }
@@ -117,11 +121,30 @@ class ProfileScreenState extends State<ProfileScreen> {
       await ref.putFile(_imageFile!);
       return await ref.getDownloadURL();
     } catch (e) {
+      dev.log('Error uploading image: $e', name: 'ProfileScreen');
       if (mounted) {
         setState(() => errorMessage = 'Error uploading image: $e');
       }
       return null;
     }
+  }
+
+  Map<String, dynamic> _generateResumeData() {
+    if (widget.isRecruiter) return {};
+    return {
+      'name': _nameController.text.trim(),
+      'email': _emailController.text.trim(),
+      'mobileNumber': _mobileController.text.trim(),
+      'skills': _skillsController.text.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList(),
+      'education': _educationController.text.trim(),
+      'experience': _experienceController.text.trim(),
+      'specialization': _specializationController.text.trim(),
+      'currentCompany': _currentCompanyController.text.trim(),
+      'currentCtc': _currentCtcController.text.trim(),
+      'expectedCtc': _expectedCtcController.text.trim(),
+      'photoUrl': _imageUrl,
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
   }
 
   Future<void> _updateProfile() async {
@@ -131,33 +154,65 @@ class ProfileScreenState extends State<ProfileScreen> {
       return;
     }
 
+    // Validate required fields for seekers
+    if (!widget.isRecruiter) {
+      if (_nameController.text.trim().isEmpty) {
+        setState(() => errorMessage = 'Name is required');
+        return;
+      }
+      if (_skillsController.text.trim().isEmpty) {
+        setState(() => errorMessage = 'At least one skill is required');
+        return;
+      }
+      if (_educationController.text.trim().isEmpty) {
+        setState(() => errorMessage = 'Education is required');
+        return;
+      }
+      if (_experienceController.text.trim().isEmpty) {
+        setState(() => errorMessage = 'Experience is required');
+        return;
+      }
+      final experienceMatch = RegExp(r'^\d+\s*(years?|yrs?)?$').hasMatch(_experienceController.text.trim());
+      if (!experienceMatch) {
+        setState(() => errorMessage = 'Experience must be in format "X years" (e.g., "2 years")');
+        return;
+      }
+    }
+
     try {
       setState(() => isLoading = true);
       final imageUrl = await _uploadImage();
-      final profileData = {
-        'name': _nameController.text.trim(),
-        'mobileNumber': _mobileController.text.trim(),
-        'email': _emailController.text.trim(),
-        'updatedAt': FieldValue.serverTimestamp(),
-        if (imageUrl != null) (widget.isRecruiter ? 'companyLogo' : 'photoUrl'): imageUrl,
-        if (widget.isRecruiter) ...{
-          'companyName': _companyNameController.text.trim(),
-          'companyProfile': _companyProfileController.text.trim(),
-          'designation': _designationController.text.trim(),
-        } else ...{
-          'experience': _experienceController.text.trim(),
-          'education': _educationController.text.trim(),
-          'specialization': _specializationController.text.trim(),
-          'currentCompany': _currentCompanyController.text.trim(),
-          'currentCtc': _currentCtcController.text.trim(),
-          'expectedCtc': _expectedCtcController.text.trim(),
-        },
-      };
+      final profileData = widget.isRecruiter
+          ? {
+              'name': _nameController.text.trim(),
+              'mobileNumber': _mobileController.text.trim(),
+              'email': _emailController.text.trim(),
+              'companyName': _companyNameController.text.trim(),
+              'companyProfile': _companyProfileController.text.trim(),
+              'designation': _designationController.text.trim(),
+              'updatedAt': FieldValue.serverTimestamp(),
+              if (imageUrl != null) 'companyLogo': imageUrl,
+            }
+          : {
+              'name': _nameController.text.trim(),
+              'mobileNumber': _mobileController.text.trim(),
+              'email': _emailController.text.trim(),
+              'skills': _skillsController.text.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList(),
+              'education': _educationController.text.trim(),
+              'experience': _experienceController.text.trim(),
+              'specialization': _specializationController.text.trim(),
+              'currentCompany': _currentCompanyController.text.trim(),
+              'currentCtc': _currentCtcController.text.trim(),
+              'expectedCtc': _expectedCtcController.text.trim(),
+              'updatedAt': FieldValue.serverTimestamp(),
+              if (imageUrl != null) 'photoUrl': imageUrl,
+            };
 
       await _firestore
           .collection(widget.isRecruiter ? 'Recruiters' : 'Seekers')
           .doc(user.uid)
           .set(profileData, SetOptions(merge: true));
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Profile updated successfully')),
@@ -165,6 +220,7 @@ class ProfileScreenState extends State<ProfileScreen> {
         setState(() => errorMessage = null);
       }
     } catch (e) {
+      dev.log('Error updating profile: $e', name: 'ProfileScreen');
       if (mounted) {
         setState(() => errorMessage = 'Error updating profile: $e');
       }
@@ -181,7 +237,7 @@ class ProfileScreenState extends State<ProfileScreen> {
       if (!mounted) return;
       Navigator.pushReplacementNamed(context, '/login');
     } catch (e) {
-      debugPrint('❌ Logout error: $e');
+      dev.log('Logout error: $e', name: 'ProfileScreen');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error logging out: $e')),
@@ -190,10 +246,14 @@ class ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  Widget _buildTextField(String label, {bool isPassword = false, bool multiline = false, TextEditingController? controller}) {
+  Widget _buildTextField(String label,
+      {bool isPassword = false,
+      bool multiline = false,
+      TextEditingController? controller,
+      String? Function(String?)? validator}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: TextField(
+      child: TextFormField(
         controller: controller,
         obscureText: isPassword,
         maxLines: multiline ? 4 : 1,
@@ -201,6 +261,10 @@ class ProfileScreenState extends State<ProfileScreen> {
           labelText: label,
           border: const OutlineInputBorder(),
         ),
+        validator: validator,
+        onChanged: (value) {
+          if (mounted) setState(() => errorMessage = null);
+        },
       ),
     );
   }
@@ -215,6 +279,7 @@ class ProfileScreenState extends State<ProfileScreen> {
     _designationController.dispose();
     _experienceController.dispose();
     _educationController.dispose();
+    _skillsController.dispose();
     _specializationController.dispose();
     _currentCompanyController.dispose();
     _currentCtcController.dispose();
@@ -227,6 +292,44 @@ class ProfileScreenState extends State<ProfileScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.isRecruiter ? 'Recruiter Profile' : 'Seeker Profile'),
+        actions: [
+          if (!widget.isRecruiter)
+            IconButton(
+              icon: const Icon(Icons.description),
+              onPressed: () {
+                final resumeData = _generateResumeData();
+                showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('Resume Preview'),
+                    content: SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Name: ${resumeData['name'] ?? ''}'),
+                          Text('Email: ${resumeData['email'] ?? ''}'),
+                          Text('Mobile: ${resumeData['mobileNumber'] ?? ''}'),
+                          Text('Skills: ${(resumeData['skills'] as List<dynamic>?)?.join(', ') ?? ''}'),
+                          Text('Education: ${resumeData['education'] ?? ''}'),
+                          Text('Experience: ${resumeData['experience'] ?? ''}'),
+                          Text('Specialization: ${resumeData['specialization'] ?? ''}'),
+                          Text('Current Company: ${resumeData['currentCompany'] ?? ''}'),
+                          Text('Current CTC: ${resumeData['currentCtc'] ?? ''}'),
+                          Text('Expected CTC: ${resumeData['expectedCtc'] ?? ''}'),
+                        ],
+                      ),
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Close'),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+        ],
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -234,76 +337,117 @@ class ProfileScreenState extends State<ProfileScreen> {
               ? Center(child: Text(errorMessage!, style: const TextStyle(color: Colors.red)))
               : SingleChildScrollView(
                   padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Image Display and Upload
-                      Center(
-                        child: Stack(
-                          children: [
-                            CircleAvatar(
-                              radius: 60,
-                              backgroundImage: _imageFile != null
-                                  ? FileImage(_imageFile!)
-                                  : _imageUrl != null
-                                      ? NetworkImage(_imageUrl!)
-                                      : null,
-                              child: _imageFile == null && _imageUrl == null
-                                  ? const Icon(Icons.person, size: 60)
-                                  : null,
-                            ),
-                            Positioned(
-                              bottom: 0,
-                              right: 0,
-                              child: IconButton(
-                                icon: const Icon(Icons.camera_alt),
-                                onPressed: _pickImage,
+                  child: Form(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Image Display and Upload
+                        Center(
+                          child: Stack(
+                            children: [
+                              CircleAvatar(
+                                radius: 60,
+                                backgroundImage: _imageFile != null
+                                    ? FileImage(_imageFile!)
+                                    : _imageUrl != null
+                                        ? NetworkImage(_imageUrl!)
+                                        : null,
+                                child: _imageFile == null && _imageUrl == null
+                                    ? const Icon(Icons.person, size: 60)
+                                    : null,
                               ),
-                            ),
-                          ],
+                              Positioned(
+                                bottom: 0,
+                                right: 0,
+                                child: IconButton(
+                                  icon: const Icon(Icons.camera_alt),
+                                  onPressed: _pickImage,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        widget.isRecruiter ? 'Company Logo' : 'Profile Photo',
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 16),
-                      // Common Fields
-                      _buildTextField('Name', controller: _nameController),
-                      _buildTextField('Mobile Number', controller: _mobileController),
-                      _buildTextField('Email Id', controller: _emailController),
-                      // Recruiter-Specific Fields
-                      if (widget.isRecruiter) ...[
-                        _buildTextField('Company Name', controller: _companyNameController),
-                        _buildTextField('Company Profile', multiline: true, controller: _companyProfileController),
-                        _buildTextField('Designation', controller: _designationController),
-                      ]
-                      // Seeker-Specific Fields
-                      else ...[
-                        _buildTextField('Experience', controller: _experienceController),
-                        _buildTextField('Education', controller: _educationController),
-                        _buildTextField('Specialization', controller: _specializationController),
-                        _buildTextField('Current Company', controller: _currentCompanyController),
-                        _buildTextField('Current CTC', controller: _currentCtcController),
-                        _buildTextField('Expected CTC', controller: _expectedCtcController),
+                        const SizedBox(height: 16),
+                        Text(
+                          widget.isRecruiter ? 'Company Logo' : 'Profile Photo',
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 16),
+                        // Common Fields
+                        _buildTextField(
+                          'Name',
+                          controller: _nameController,
+                          validator: (value) => value == null || value.trim().isEmpty ? 'Name is required' : null,
+                        ),
+                        _buildTextField(
+                          'Mobile Number',
+                          controller: _mobileController,
+                          validator: (value) => value == null || value.trim().isEmpty ? 'Mobile Number is required' : null,
+                        ),
+                        _buildTextField(
+                          'Email Id',
+                          controller: _emailController,
+                          validator: (value) => value == null || value.trim().isEmpty ? 'Email is required' : null,
+                        ),
+                        // Recruiter-Specific Fields
+                        if (widget.isRecruiter) ...[
+                          _buildTextField(
+                            'Company Name',
+                            controller: _companyNameController,
+                            validator: (value) => value == null || value.trim().isEmpty ? 'Company Name is required' : null,
+                          ),
+                          _buildTextField('Company Profile', multiline: true, controller: _companyProfileController),
+                          _buildTextField('Designation', controller: _designationController),
+                        ]
+                        // Seeker-Specific Fields
+                        else ...[
+                          _buildTextField(
+                            'Skills (comma-separated, e.g., Java, Python)',
+                            controller: _skillsController,
+                            multiline: true,
+                            validator: (value) => value == null || value.trim().isEmpty ? 'At least one skill is required' : null,
+                          ),
+                          _buildTextField(
+                            'Education (e.g., Bachelor\'s in Computer Science)',
+                            controller: _educationController,
+                            validator: (value) => value == null || value.trim().isEmpty ? 'Education is required' : null,
+                          ),
+                          _buildTextField(
+                            'Experience (e.g., 2 years)',
+                            controller: _experienceController,
+                            validator: (value) {
+                              if (value == null || value.trim().isEmpty) {
+                                return 'Experience is required';
+                              }
+                              final match = RegExp(r'^\d+\s*(years?|yrs?)?$').hasMatch(value.trim());
+                              if (!match) {
+                                return 'Experience must be in format "X years" (e.g., "2 years")';
+                              }
+                              return null;
+                            },
+                          ),
+                          _buildTextField('Specialization', controller: _specializationController),
+                          _buildTextField('Current Company', controller: _currentCompanyController),
+                          _buildTextField('Current CTC', controller: _currentCtcController),
+                          _buildTextField('Expected CTC', controller: _expectedCtcController),
+                        ],
+                        const SizedBox(height: 16),
+                        Center(
+                          child: ElevatedButton(
+                            onPressed: _updateProfile,
+                            child: const Text('Update Profile'),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Center(
+                          child: ElevatedButton(
+                            onPressed: _logout,
+                            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                            child: const Text('Logout', style: TextStyle(color: Colors.white)),
+                          ),
+                        ),
                       ],
-                      const SizedBox(height: 16),
-                      Center(
-                        child: ElevatedButton(
-                          onPressed: _updateProfile,
-                          child: const Text('Update Profile'),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Center(
-                        child: ElevatedButton(
-                          onPressed: _logout,
-                          style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                          child: const Text('Logout', style: TextStyle(color: Colors.white)),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
     );
