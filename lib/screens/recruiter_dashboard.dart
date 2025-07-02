@@ -5,7 +5,6 @@ import 'package:intl/intl.dart';
 import 'package:naukariwala/screens/profile_screen.dart';
 import 'package:naukariwala/screens/posted_jobs_screen.dart';
 import 'package:naukariwala/screens/chat_screen.dart';
-import 'package:naukariwala/screens/applied_seekers_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:add_2_calendar/add_2_calendar.dart';
@@ -258,7 +257,7 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
                       elevation: 2,
                       margin: const EdgeInsets.symmetric(vertical: 5),
                       child: ListTile(
-                        title: Text(resume['name'] ?? applicant['name'] ?? seekerId),
+                        title: Text(resume['name'] ?? applicant['name'] ?? seekerId), // Use fallback
                         subtitle: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -366,7 +365,7 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
     }
 
     return DefaultTabController(
-      length: 6,
+      length: 5,
       child: Scaffold(
         appBar: AppBar(
           backgroundColor: Colors.deepPurple,
@@ -382,12 +381,11 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
             unselectedLabelColor: Colors.white70,
             indicatorColor: Colors.white,
             tabs: [
-              Tab(icon: Icon(Icons.person)),
-              Tab(icon: Icon(Icons.work)),
-              Tab(icon: Icon(Icons.group_add)),
-              Tab(icon: Icon(Icons.post_add)),
-              Tab(icon: Icon(Icons.settings)),
-              Tab(icon: Icon(Icons.notifications)),
+              Tab(icon: Icon(Icons.person)),       // Profile
+              Tab(icon: Icon(Icons.work)),         // Posted Jobs
+              Tab(icon: Icon(Icons.group_add)),    // Applicants
+              Tab(icon: Icon(Icons.post_add)),     // Post Job
+              Tab(icon: Icon(Icons.notifications)), // Notifications
             ],
           ),
         ),
@@ -397,7 +395,6 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
             PostedJobsScreen(),
             _buildApplicantsTab(),
             PostJobScreen(),
-            Container(),
             _buildNotificationsTab(),
           ],
         ),

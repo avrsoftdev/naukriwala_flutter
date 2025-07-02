@@ -181,8 +181,8 @@ class AuthService {
     try {
       // Fetch job data directly from the recruiter's Jobs collection
       final jobSnapshot = await _firestore
-          .collectionGroup('Jobs')
-          .where('jobId', isEqualTo: jobId)
+          .collection('Recruiters')
+          .where('Jobs', arrayContains: {'jobId': jobId}) // Adjust based on structure
           .limit(1)
           .get();
       if (jobSnapshot.docs.isEmpty) throw Exception("Job not found");
@@ -200,7 +200,7 @@ class AuthService {
         ..['jobId'] = jobId
         ..['recruiterId'] = recruiterId
         ..['appliedAt'] = FieldValue.serverTimestamp()
-        ..['status'] = 'Applied'; // Default status
+        ..['status'] = 'Applied';
 
       await _firestore
           .collection('Applications')
@@ -236,14 +236,20 @@ class AuthService {
       final List<Map<String, dynamic>> seekers = [];
       for (final app in appsSnapshot.docs) {
         final data = app.data();
+        // Fetch seeker name from Seekers collection
+        final seekerId = app.id;
+        final seekerProfile = await _firestore.collection('Seekers').doc(seekerId).get();
+        final name = seekerProfile.exists ? (seekerProfile.data()?['name'] ?? seekerId) : seekerId;
+
         seekers.add({
-          'seekerId': app.id,
+          'seekerId': seekerId,
           'jobId': data['jobId'] as String? ?? '',
           'jobTitle': data['jobTitle'] as String? ?? '',
           'appliedAt': data['appliedAt'],
           'resume': data['resume'] as Map<String, dynamic>? ?? {},
           'coverLetter': data['coverLetter'] as String? ?? '',
           'status': data['status'] as String? ?? 'Applied',
+          'name': name,
         });
       }
       return seekers;
@@ -259,7 +265,7 @@ class AuthService {
       final token = tokenSnapshot.data()?['fcmToken'] as String?;
 
       if (token != null) {
-        await _firestore.collection('Notifications').add({
+        await _firestore.collection('SeekerNotifications').doc(recipientId).collection('Notifications').add({
           'to': recipientId,
           'from': _auth.currentUser?.uid,
           'message': 'New application for "$jobTitle" from $seekerName',

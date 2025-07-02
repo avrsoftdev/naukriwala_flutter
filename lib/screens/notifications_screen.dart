@@ -8,11 +8,12 @@ class NotificationsScreen extends StatefulWidget {
   final bool isRecruiter;
 
   const NotificationsScreen({this.notifications, this.isRecruiter = false, super.key});
+
   @override
-  _NotificationsScreenState createState() => _NotificationsScreenState();
+  NotificationsScreenState createState() => NotificationsScreenState();
 }
 
-class _NotificationsScreenState extends State<NotificationsScreen> {
+class NotificationsScreenState extends State<NotificationsScreen> {
   late final Stream<QuerySnapshot> _notificationsStream;
   final String? uid = FirebaseAuth.instance.currentUser?.uid;
 

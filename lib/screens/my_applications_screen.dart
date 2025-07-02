@@ -14,25 +14,32 @@ class MyApplicationsScreen extends StatefulWidget {
 }
 
 class _MyApplicationsScreenState extends State<MyApplicationsScreen> {
-  late final Stream<QuerySnapshot> _applicationsStream;
-  final String? currentUserId = FirebaseAuth.instance.currentUser?.uid;
+  late Stream<QuerySnapshot> _applicationsStream;
+  String? currentUserId;
+
+  void _initStream() {
+    if (currentUserId != null && currentUserId == widget.seekerId) {
+      _applicationsStream = FirebaseFirestore.instance
+          .collectionGroup('AppliedJobs')
+          .where('seekerId', isEqualTo: widget.seekerId)
+          .orderBy('appliedAt', descending: true)
+          .snapshots();
+    } else {
+      _applicationsStream = const Stream.empty();
+    }
+  }
 
   @override
   void initState() {
     super.initState();
-    if (currentUserId == null) {
-      dev.log('No authenticated user found', name: 'MyApplicationsScreen');
-      return;
-    }
-    if (currentUserId != widget.seekerId) {
-      dev.log('SeekerId mismatch: currentUserId=$currentUserId, widget.seekerId=${widget.seekerId}', name: 'MyApplicationsScreen');
-    }
-    dev.log('Fetching applications for seekerId: ${widget.seekerId}', name: 'MyApplicationsScreen');
-    _applicationsStream = FirebaseFirestore.instance
-        .collectionGroup('AppliedJobs')
-        .where('seekerId', isEqualTo: widget.seekerId)
-        .orderBy('appliedAt', descending: true)
-        .snapshots();
+    currentUserId = FirebaseAuth.instance.currentUser?.uid;
+    _initStream();
+    FirebaseAuth.instance.authStateChanges().listen((user) {
+      setState(() {
+        currentUserId = user?.uid;
+        _initStream();
+      });
+    });
   }
 
   String _formatTimestamp(Timestamp ts) {
@@ -95,7 +102,8 @@ class _MyApplicationsScreenState extends State<MyApplicationsScreen> {
               final company = data['company'] ?? 'N/A';
               final appliedAt = data['appliedAt'] as Timestamp?;
               final status = data['status'] ?? 'Pending';
-              final resumeUrl = data['cvUrl'] ?? data['resumeUrl'] ?? ''; // Check both possible keys
+              final resumeData = data['resume'] as Map<String, dynamic>?;
+              final resumeUrl = resumeData?['url'] ?? data['cvUrl'] ?? data['resumeUrl'] ?? '';
 
               return Card(
                 margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),

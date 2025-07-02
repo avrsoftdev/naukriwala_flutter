@@ -50,6 +50,7 @@ service cloud.firestore {
       allow write: if false; // Parent document is read-only for recruiters
     }
 
+    // 📄 Applications (AppliedJobs subcollection)
     match /Applications/{jobId}/AppliedJobs/{seekerId} {
       allow write: if request.auth.uid == seekerId &&
         request.resource.data.seekerId == seekerId &&
@@ -58,16 +59,13 @@ service cloud.firestore {
         request.auth.token.role == "recruiter" &&
         get(/databases/$(database)/documents/Applications/$(jobId)).data.recruiterId == request.auth.uid
       ) || isAdmin();
-      // Allow collection group query for recruiters
-      allow read: if request.auth.token.role == "recruiter" &&
-        get(/databases/$(database)/documents/Applications/$(jobId)).data.recruiterId == request.auth.uid;
     }
 
-    // 📄 Applications (collection group support with order by)
+    // 📄 Applications (collection group support for AppliedJobs)
     match /{path=**}/AppliedJobs/{seekerId} {
       allow read: if request.auth != null && (
-        request.auth.uid == seekerId || // Seeker can read their own applications
-        (get(/databases/$(database)/documents/AppliedJobs/$(path)/$(seekerId)).data.recruiterId == request.auth.uid) ||
+        request.auth.uid == seekerId || // Seeker access
+        (resource.data.recruiterId == request.auth.uid && resource.data.jobId != null) || // Recruiter access
         isAdmin()
       );
       allow write: if request.auth.uid == seekerId &&

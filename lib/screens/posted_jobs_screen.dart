@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'post_job_screen.dart';
-import 'job_details_screen.dart';
 import 'package:intl/intl.dart';
 
 class PostedJobsScreen extends StatefulWidget {
@@ -71,17 +70,18 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
                   ? DateFormat('dd MMM yyyy').format(timestamp.toDate())
                   : 'N/A';
 
-              return FutureBuilder<int>(
-                future: _getApplicantCount(jobId),
+              return FutureBuilder<Map<String, dynamic>>(
+                future: _getApplicantData(jobId),
                 builder: (context, applicantSnapshot) {
-                  final applicantCount = applicantSnapshot.data ?? 0;
+                  final applicantCount = applicantSnapshot.data?['count'] ?? 0;
+                  final applicantNames = applicantSnapshot.data?['names'] ?? [];
                   if (applicantSnapshot.hasError) {
-                    debugPrint('Applicant count error for job $jobId: ${applicantSnapshot.error}');
+                    debugPrint('Applicant data error for job $jobId: ${applicantSnapshot.error}');
                   }
 
                   return Card(
                     margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    child: ListTile(
+                    child: ExpansionTile(
                       title: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -105,7 +105,6 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
                       subtitle: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const SizedBox(height: 4),
                           Text('Company: $company'),
                           Text('Location: $location'),
                           Text('Salary: $salary'),
@@ -113,13 +112,13 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
                           Text('Applicants: $applicantCount'),
                         ],
                       ),
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => JobDetailsScreen(job: {...job, 'jobId': jobId}),
-                          ),
-                        );
+                      children: applicantNames.isNotEmpty
+                          ? applicantNames.map((name) => ListTile(title: Text(name))).toList()
+                          : [const ListTile(title: Text('No applicants yet'))],
+                      onExpansionChanged: (expanded) {
+                        if (expanded && applicantNames.isEmpty) {
+                          setState(() {}); // Refresh to ensure data loads
+                        }
                       },
                       trailing: PopupMenuButton<String>(
                         onSelected: (value) {
@@ -127,9 +126,7 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (_) => PostJobScreen(
-                                  editJobData: {...job, 'jobId': jobId},
-                                ),
+                                builder: (_) => PostJobScreen(editJobData: {...job, 'jobId': jobId}),
                               ),
                             );
                           } else if (value == 'delete') {
@@ -137,8 +134,8 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
                           }
                         },
                         itemBuilder: (context) => [
-                          PopupMenuItem(value: 'edit', child: const Text('Edit')),
-                          PopupMenuItem(value: 'delete', child: const Text('Delete')),
+                          const PopupMenuItem(value: 'edit', child: Text('Edit')),
+                          const PopupMenuItem(value: 'delete', child: Text('Delete')),
                         ],
                       ),
                     ),
@@ -152,7 +149,7 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
     );
   }
 
-  Future<int> _getApplicantCount(String jobId) async {
+  Future<Map<String, dynamic>> _getApplicantData(String jobId) async {
     try {
       final snapshot = await FirebaseFirestore.instance
           .collectionGroup('AppliedJobs')
@@ -160,10 +157,11 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
           .where('recruiterId', isEqualTo: user!.uid)
           .get();
       debugPrint('Fetched ${snapshot.docs.length} applicants for job $jobId');
-      return snapshot.docs.length;
+      final names = snapshot.docs.map((doc) => doc['name'] ?? 'Unknown Seeker').toList();
+      return {'count': snapshot.docs.length, 'names': names};
     } catch (e) {
-      debugPrint('Error fetching applicant count for job $jobId: $e');
-      return 0;
+      debugPrint('Error fetching applicant data for job $jobId: $e');
+      return {'count': 0, 'names': []};
     }
   }
 
