@@ -76,7 +76,7 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
                 builder: (context, applicantSnapshot) {
                   final applicantCount = applicantSnapshot.data ?? 0;
                   if (applicantSnapshot.hasError) {
-                    debugPrint('Applicant count error: ${applicantSnapshot.error}');
+                    debugPrint('Applicant count error for job $jobId: ${applicantSnapshot.error}');
                   }
 
                   return Card(
@@ -157,10 +157,12 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
       final snapshot = await FirebaseFirestore.instance
           .collectionGroup('AppliedJobs')
           .where('jobId', isEqualTo: jobId)
+          .where('recruiterId', isEqualTo: user!.uid)
           .get();
+      debugPrint('Fetched ${snapshot.docs.length} applicants for job $jobId');
       return snapshot.docs.length;
     } catch (e) {
-      debugPrint('Error fetching applicant count: $e');
+      debugPrint('Error fetching applicant count for job $jobId: $e');
       return 0;
     }
   }

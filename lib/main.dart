@@ -7,9 +7,10 @@ import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
-import 'package:firebase_messaging/firebase_messaging.dart'; // Added for FCM
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'firebase_options.dart';
-import 'screens/home_screen.dart';
+import 'screens/unified_screen.dart';
+import 'services/auth_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,7 +19,6 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  // 🔐 Activate App Check only in release mode
   if (!kDebugMode) {
     try {
       await FirebaseAppCheck.instance.activate(
@@ -30,14 +30,12 @@ void main() async {
     }
   }
 
-  // 🧪 Connect to Firebase emulators in debug mode
   if (kDebugMode) {
     try {
-      // Use 10.0.2.2 for Android emulator, localhost for other platforms
       final String emulatorHost = defaultTargetPlatform == TargetPlatform.android ? '10.0.2.2' : 'localhost';
-      await _testEmulatorConnection(emulatorHost, 8080); // Firestore
-      await _testEmulatorConnection(emulatorHost, 9099); // Auth
-      await _testEmulatorConnection(emulatorHost, 9199); // Storage
+      await _testEmulatorConnection(emulatorHost, 8080);
+      await _testEmulatorConnection(emulatorHost, 9099);
+      await _testEmulatorConnection(emulatorHost, 9199);
 
       FirebaseFirestore.instance.useFirestoreEmulator(emulatorHost, 8080);
       FirebaseAuth.instance.useAuthEmulator(emulatorHost, 9099);
@@ -49,13 +47,11 @@ void main() async {
     }
   }
 
-  // 📲 Initialize FCM and get token in debug mode
   if (kDebugMode) {
     try {
       final fcmToken = await FirebaseMessaging.instance.getToken();
       if (fcmToken != null) {
         dev.log('FCM Token: $fcmToken', name: 'Main');
-        // Optionally store in Firestore via AuthService (e.g., _authService.updateFcmToken(fcmToken))
       }
     } catch (e) {
       dev.log('FCM token retrieval failed: $e', name: 'Main', error: e);
@@ -65,7 +61,6 @@ void main() async {
   runApp(const NaukariwalaApp());
 }
 
-// 📶 Helper to test if emulator ports are reachable
 Future<void> _testEmulatorConnection(String host, int port) async {
   try {
     final socket = await Socket.connect(host, port, timeout: const Duration(seconds: 2));
@@ -87,7 +82,7 @@ class NaukariwalaApp extends StatelessWidget {
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
       debugShowCheckedModeBanner: false,
-      home: const HomeScreen(),
+      home: const UnifiedScreen(),
     );
   }
 }

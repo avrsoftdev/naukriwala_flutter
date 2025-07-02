@@ -1,27 +1,36 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:url_launcher/url_launcher.dart'; // Add to pubspec.yaml
+import 'package:url_launcher/url_launcher.dart';
+import 'dart:developer' as dev;
+import 'package:firebase_auth/firebase_auth.dart';
 
 class MyApplicationsScreen extends StatefulWidget {
   final String seekerId;
-
-  const MyApplicationsScreen({required this.seekerId});
+  const MyApplicationsScreen({super.key, required this.seekerId});
 
   @override
-  _MyApplicationsScreenState createState() => _MyApplicationsScreenState();
+  State<MyApplicationsScreen> createState() => _MyApplicationsScreenState();
 }
 
 class _MyApplicationsScreenState extends State<MyApplicationsScreen> {
   late final Stream<QuerySnapshot> _applicationsStream;
+  final String? currentUserId = FirebaseAuth.instance.currentUser?.uid;
 
   @override
   void initState() {
     super.initState();
+    if (currentUserId == null) {
+      dev.log('No authenticated user found', name: 'MyApplicationsScreen');
+      return;
+    }
+    if (currentUserId != widget.seekerId) {
+      dev.log('SeekerId mismatch: currentUserId=$currentUserId, widget.seekerId=${widget.seekerId}', name: 'MyApplicationsScreen');
+    }
+    dev.log('Fetching applications for seekerId: ${widget.seekerId}', name: 'MyApplicationsScreen');
     _applicationsStream = FirebaseFirestore.instance
-        .collection('Applications')
-        .doc(widget.seekerId)
-        .collection('AppliedJobs')
+        .collectionGroup('AppliedJobs')
+        .where('seekerId', isEqualTo: widget.seekerId)
         .orderBy('appliedAt', descending: true)
         .snapshots();
   }
@@ -32,8 +41,8 @@ class _MyApplicationsScreenState extends State<MyApplicationsScreen> {
   }
 
   Future<void> _openResume(String url) async {
-    if (await canLaunch(url)) {
-      await launch(url);
+    if (await canLaunchUrl(Uri.parse(url))) {
+      await launchUrl(Uri.parse(url));
     } else {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -45,14 +54,26 @@ class _MyApplicationsScreenState extends State<MyApplicationsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (currentUserId == null) {
+      return const Scaffold(
+        body: Center(child: Text('Please log in to view your applications.')),
+      );
+    }
+    if (currentUserId != widget.seekerId) {
+      return const Scaffold(
+        body: Center(child: Text('Unauthorized access. Seeker ID mismatch.')),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
-        title: Text('My Applications'),
+        title: const Text('My Applications'),
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: _applicationsStream,
         builder: (context, snapshot) {
           if (snapshot.hasError) {
+            dev.log('Error loading applications for seekerId ${widget.seekerId}: ${snapshot.error}', name: 'MyApplicationsScreen');
             return Center(child: Text('Error loading applications: ${snapshot.error}'));
           }
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -61,18 +82,20 @@ class _MyApplicationsScreenState extends State<MyApplicationsScreen> {
 
           final docs = snapshot.data?.docs ?? [];
           if (docs.isEmpty) {
+            dev.log('No applications found for seekerId: ${widget.seekerId}', name: 'MyApplicationsScreen');
             return const Center(child: Text('No applications found.'));
           }
 
+          dev.log('Loaded ${docs.length} applications for seekerId: ${widget.seekerId}', name: 'MyApplicationsScreen');
           return ListView.builder(
             itemCount: docs.length,
             itemBuilder: (context, index) {
               final data = docs[index].data() as Map<String, dynamic>;
               final jobTitle = data['jobTitle'] ?? 'N/A';
-              final company = data['company'] ?? 'N/A'; // Add company to ApplyJobScreen if needed
+              final company = data['company'] ?? 'N/A';
               final appliedAt = data['appliedAt'] as Timestamp?;
-              final status = data['status'] ?? 'Pending'; // Use 'status' from ApplyJobScreen
-              final resumeUrl = data['resumeUrl'] ?? '';
+              final status = data['status'] ?? 'Pending';
+              final resumeUrl = data['cvUrl'] ?? data['resumeUrl'] ?? ''; // Check both possible keys
 
               return Card(
                 margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),

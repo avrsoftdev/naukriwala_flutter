@@ -233,15 +233,27 @@ class ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _logout() async {
     try {
-      await AuthService().signOut();
-      if (!mounted) return;
-      Navigator.pushReplacementNamed(context, '/login');
+      setState(() => isLoading = true); // Show loading state
+      await AuthService().signOut(); // Use the provided AuthService signOut
+      if (mounted) {
+        Navigator.pushReplacementNamed(context, '/login'); // Navigate to login screen
+      }
     } catch (e) {
       dev.log('Logout error: $e', name: 'ProfileScreen');
-      if (mounted) {
+      if (e is FirebaseAuthException) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Firebase Error: ${e.message}')),
+          );
+        }
+      } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error logging out: $e')),
         );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => isLoading = false); // Reset loading state
       }
     }
   }

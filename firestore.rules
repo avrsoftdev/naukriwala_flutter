@@ -15,7 +15,6 @@ service cloud.firestore {
     // 👤 Seeker Profiles
     match /Seekers/{uid} {
       allow read: if request.auth.uid == uid || isAdmin() ||
-        // Allow recruiters to read seeker profiles if they own the job the seeker applied to
         exists(/databases/$(database)/documents/Applications/$(request.resource.data.jobId)/AppliedJobs/$(uid)) &&
         get(/databases/$(database)/documents/Applications/$(request.resource.data.jobId)).data.recruiterId == request.auth.uid;
       allow write: if request.auth.uid == uid || isAdmin();
@@ -30,19 +29,16 @@ service cloud.firestore {
     // 📄 Recruiter Jobs
     match /Recruiters/{recruiterId}/Jobs/{jobId} {
       allow read: if true; // Anyone can browse jobs
-
       allow create: if request.auth != null &&
         (request.auth.token.role == 'recruiter' || isAdmin()) &&
         request.resource.data.recruiterId == request.auth.uid;
-
       allow update: if request.auth != null &&
         (request.auth.token.role == 'recruiter' || isAdmin()) &&
         request.auth.uid == resource.data.recruiterId;
-
       allow delete: if false; // Protect job history
     }
 
-    // 🌍 Enable job group query via fallback
+    // 🌍 Enable job group query
     match /{any=**}/Jobs/{jobId} {
       allow read: if resource.data.status == "open" && request.auth != null;
     }
@@ -58,11 +54,25 @@ service cloud.firestore {
       allow write: if request.auth.uid == seekerId &&
         request.resource.data.seekerId == seekerId &&
         request.resource.data.jobId == jobId;
-
       allow read: if request.auth.uid == seekerId || (
         request.auth.token.role == "recruiter" &&
-        get(/databases/$(database)/documents/Recruiters/$(request.auth.uid)/Jobs/$(jobId)).data.recruiterId == request.auth.uid
+        get(/databases/$(database)/documents/Applications/$(jobId)).data.recruiterId == request.auth.uid
       ) || isAdmin();
+      // Allow collection group query for recruiters
+      allow read: if request.auth.token.role == "recruiter" &&
+        get(/databases/$(database)/documents/Applications/$(jobId)).data.recruiterId == request.auth.uid;
+    }
+
+    // 📄 Applications (collection group support with order by)
+    match /{path=**}/AppliedJobs/{seekerId} {
+      allow read: if request.auth != null && (
+        request.auth.uid == seekerId || // Seeker can read their own applications
+        (get(/databases/$(database)/documents/AppliedJobs/$(path)/$(seekerId)).data.recruiterId == request.auth.uid) ||
+        isAdmin()
+      );
+      allow write: if request.auth.uid == seekerId &&
+        request.resource.data.seekerId == seekerId &&
+        request.resource.data.jobId == get(/databases/$(database)/documents/AppliedJobs/$(path)/$(seekerId)).data.jobId;
     }
 
     // ⭐ Bookmarks
@@ -76,6 +86,7 @@ service cloud.firestore {
       allow create: if request.auth != null &&
         request.resource.data.to != null &&
         request.resource.data.from == request.auth.uid;
+      allow update: if request.auth.uid == resource.data.to || isAdmin();
     }
 
     // 🚫 Fallback

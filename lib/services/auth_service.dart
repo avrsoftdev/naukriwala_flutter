@@ -25,7 +25,6 @@ class AuthService {
         ..remove('UID')
         ..['mobileNumber'] = data['Mobile Number'] ?? data['mobileNumber'] ?? ''
         ..['email'] = data['Email Id'] ?? data['email'] ?? _auth.currentUser?.email ?? '';
-      // Ensure skills are stored as a list for seekers
       if (!isRecruiter && normalizedData['skills'] is String) {
         normalizedData['skills'] = normalizedData['skills']
             .split(',')
@@ -120,7 +119,6 @@ class AuthService {
         ..['recruiterId'] = uid
         ..['status'] = 'open'
         ..['createdAt'] = FieldValue.serverTimestamp();
-      // Ensure skills are stored as a list
       if (normalizedJobData['skills'] is String) {
         normalizedJobData['skills'] = normalizedJobData['skills']
             .split(',')
@@ -181,7 +179,7 @@ class AuthService {
     if (uid == null) throw Exception("User not logged in");
 
     try {
-      // Fetch recruiterId from the job document
+      // Fetch job data directly from the recruiter's Jobs collection
       final jobSnapshot = await _firestore
           .collectionGroup('Jobs')
           .where('jobId', isEqualTo: jobId)
@@ -189,8 +187,9 @@ class AuthService {
           .get();
       if (jobSnapshot.docs.isEmpty) throw Exception("Job not found");
       final jobData = jobSnapshot.docs.first.data();
-      final recruiterId = jobData['recruiterId'];
-      final jobTitle = jobData['title'] ?? 'Untitled';
+      final recruiterId = jobData['recruiterId'] as String?;
+      if (recruiterId == null) throw Exception("Recruiter ID not found for job $jobId");
+      final jobTitle = jobData['title'] as String? ?? 'Untitled';
 
       // Ensure parent document exists
       await _firestore.collection('Applications').doc(jobId).set({'recruiterId': recruiterId}, SetOptions(merge: true));
@@ -200,7 +199,8 @@ class AuthService {
         ..['seekerId'] = uid
         ..['jobId'] = jobId
         ..['recruiterId'] = recruiterId
-        ..['appliedAt'] = FieldValue.serverTimestamp();
+        ..['appliedAt'] = FieldValue.serverTimestamp()
+        ..['status'] = 'Applied'; // Default status
 
       await _firestore
           .collection('Applications')
@@ -211,7 +211,7 @@ class AuthService {
 
       // Fetch seeker profile for notification
       final seekerProfile = await fetchProfileData(isRecruiter: false);
-      final seekerName = seekerProfile?['name'] ?? uid;
+      final seekerName = seekerProfile?['name'] as String? ?? uid;
 
       await sendApplicationNotification(recruiterId, jobId, jobTitle, seekerName);
       dev.log("Application submitted for job $jobId by $uid", name: 'AuthService');
@@ -222,7 +222,7 @@ class AuthService {
   }
 
   Future<List<Map<String, dynamic>>> fetchAppliedSeekers() async {
-    final uid = _auth.currentUser?.uid;
+    final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) throw Exception("User not logged in");
 
     try {
@@ -231,25 +231,24 @@ class AuthService {
           .where('recruiterId', isEqualTo: uid)
           .orderBy('appliedAt', descending: true)
           .get();
+      dev.log('Fetched ${appsSnapshot.docs.length} applications for $uid with query: recruiterId=$uid, orderBy=appliedAt', name: 'AuthService');
 
       final List<Map<String, dynamic>> seekers = [];
-
       for (final app in appsSnapshot.docs) {
         final data = app.data();
         seekers.add({
           'seekerId': app.id,
-          'jobId': data['jobId'],
-          'jobTitle': data['jobTitle'],
+          'jobId': data['jobId'] as String? ?? '',
+          'jobTitle': data['jobTitle'] as String? ?? '',
           'appliedAt': data['appliedAt'],
-          'resume': data['resume'] ?? {}, // Include resume data
-          'coverLetter': data['coverLetter'],
+          'resume': data['resume'] as Map<String, dynamic>? ?? {},
+          'coverLetter': data['coverLetter'] as String? ?? '',
+          'status': data['status'] as String? ?? 'Applied',
         });
       }
-
-      dev.log("Fetched ${seekers.length} applied seekers for $uid", name: 'AuthService');
       return seekers;
     } catch (e) {
-      dev.log("fetchAppliedSeekers ERROR: $e", name: 'AuthService', error: e);
+      dev.log('fetchAppliedSeekers ERROR: $e', name: 'AuthService', error: e);
       rethrow;
     }
   }
@@ -257,11 +256,11 @@ class AuthService {
   Future<void> sendApplicationNotification(String recipientId, String jobId, String jobTitle, String seekerName) async {
     try {
       final tokenSnapshot = await _firestore.collection('UsersIndex').doc(recipientId).get();
-      final token = tokenSnapshot.data()?['fcmToken'];
+      final token = tokenSnapshot.data()?['fcmToken'] as String?;
 
       if (token != null) {
         await _firestore.collection('Notifications').add({
-          'to': recipientId, // Changed to recipientId for consistency with rules
+          'to': recipientId,
           'from': _auth.currentUser?.uid,
           'message': 'New application for "$jobTitle" from $seekerName',
           'timestamp': FieldValue.serverTimestamp(),
@@ -290,6 +289,15 @@ class AuthService {
     if (uid == null) return null;
 
     try {
+      final userIndexDoc = await _firestore.collection('UsersIndex').doc(uid).get();
+      if (userIndexDoc.exists) {
+        final role = userIndexDoc.data()?['role'] as String?;
+        if (role != null) {
+          dev.log("Role found for $uid: $role", name: 'AuthService');
+          return role;
+        }
+      }
+      dev.log("No role found in UsersIndex for $uid, falling back to collections", name: 'AuthService');
       final recruiterDoc = await _firestore.collection('Recruiters').doc(uid).get();
       if (recruiterDoc.exists) return 'recruiter';
 
