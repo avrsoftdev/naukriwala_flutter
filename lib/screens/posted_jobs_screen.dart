@@ -43,7 +43,7 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
           }
 
           if (snapshot.hasError) {
-            debugPrint('Stream error: ${snapshot.error}');
+            debugPrint('Stream error for user ${user!.uid}: ${snapshot.error}');
             return Center(child: Text('Error loading jobs: ${snapshot.error}'));
           }
 
@@ -58,7 +58,7 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
             itemBuilder: (context, index) {
               final job = jobs[index].data() as Map<String, dynamic>;
               final jobId = jobs[index].id;
-              debugPrint('Job $jobId data: $job');
+              debugPrint('Job $jobId data for user ${user!.uid}: $job');
 
               final title = job['title'] ?? 'Untitled Job';
               final company = job['company'] ?? 'Unknown Company';
@@ -75,8 +75,71 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
                 builder: (context, applicantSnapshot) {
                   final applicantCount = applicantSnapshot.data?['count'] ?? 0;
                   final applicantNames = applicantSnapshot.data?['names'] ?? [];
+
                   if (applicantSnapshot.hasError) {
-                    debugPrint('Applicant data error for job $jobId: ${applicantSnapshot.error}');
+                    debugPrint(
+                        'Applicant data error for job $jobId (user ${user!.uid}): ${applicantSnapshot.error}');
+                    return Card(
+                      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      child: ExpansionTile(
+                        title: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(title,
+                                style: const TextStyle(fontWeight: FontWeight.bold)),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: status == 'open'
+                                    ? Colors.green[100]
+                                    : Colors.red[100],
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                status.toUpperCase(),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: status == 'open'
+                                      ? Colors.green
+                                      : Colors.red,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Company: $company'),
+                            Text('Location: $location'),
+                            Text('Salary: $salary'),
+                            Text('Posted: $postedDate'),
+                            Text('Applicants: Error loading count'),
+                          ],
+                        ),
+                        children: [const ListTile(title: Text('Error loading applicants'))],
+                        trailing: PopupMenuButton<String>(
+                          onSelected: (value) {
+                            if (value == 'edit') {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      PostJobScreen(editJobData: {...job, 'jobId': jobId}),
+                                ),
+                              );
+                            } else if (value == 'delete') {
+                              _confirmDeleteJob(context, jobId);
+                            }
+                          },
+                          itemBuilder: (context) => [
+                            const PopupMenuItem(value: 'edit', child: Text('Edit')),
+                            const PopupMenuItem(value: 'delete', child: Text('Delete')),
+                          ],
+                        ),
+                      ),
+                    );
                   }
 
                   return Card(
@@ -85,11 +148,15 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
                       title: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+                          Text(title,
+                              style: const TextStyle(fontWeight: FontWeight.bold)),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
-                              color: status == 'open' ? Colors.green[100] : Colors.red[100],
+                              color: status == 'open'
+                                  ? Colors.green[100]
+                                  : Colors.red[100],
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Text(
@@ -113,20 +180,18 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
                         ],
                       ),
                       children: applicantNames.isNotEmpty
-                          ? applicantNames.map((name) => ListTile(title: Text(name))).toList()
+                          ? applicantNames
+                              .map<Widget>((name) => ListTile(title: Text(name)))
+                              .toList()
                           : [const ListTile(title: Text('No applicants yet'))],
-                      onExpansionChanged: (expanded) {
-                        if (expanded && applicantNames.isEmpty) {
-                          setState(() {}); // Refresh to ensure data loads
-                        }
-                      },
                       trailing: PopupMenuButton<String>(
                         onSelected: (value) {
                           if (value == 'edit') {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (_) => PostJobScreen(editJobData: {...job, 'jobId': jobId}),
+                                builder: (_) =>
+                                    PostJobScreen(editJobData: {...job, 'jobId': jobId}),
                               ),
                             );
                           } else if (value == 'delete') {
@@ -156,11 +221,21 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
           .where('jobId', isEqualTo: jobId)
           .where('recruiterId', isEqualTo: user!.uid)
           .get();
-      debugPrint('Fetched ${snapshot.docs.length} applicants for job $jobId');
-      final names = snapshot.docs.map((doc) => doc['name'] ?? 'Unknown Seeker').toList();
+
+      debugPrint('Fetched ${snapshot.docs.length} applicants for job $jobId by user ${user!.uid}');
+
+      final names = snapshot.docs.map((doc) {
+        final data = doc.data() as Map<String, dynamic>? ?? {};
+        // Check resume.name or fallback to 'Unknown Seeker'
+        return (data['resume']?['name'] as String?) ?? data['name'] ?? 'Unknown Seeker';
+      }).toList();
+
       return {'count': snapshot.docs.length, 'names': names};
     } catch (e) {
-      debugPrint('Error fetching applicant data for job $jobId: $e');
+      debugPrint('Error fetching applicant data for job $jobId by user ${user!.uid}: $e');
+      if (e is FirebaseException) {
+        debugPrint('Firebase error details: ${e.code} - ${e.message}');
+      }
       return {'count': 0, 'names': []};
     }
   }

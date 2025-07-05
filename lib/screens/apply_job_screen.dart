@@ -7,7 +7,7 @@ class ApplyJobScreen extends StatefulWidget {
   final String jobId;
   final String jobTitle;
   final String recruiterId;
-  final Map<String, dynamic>? seekerProfile; // Added to receive profile data
+  final Map<String, dynamic>? seekerProfile;
 
   const ApplyJobScreen({
     super.key,
@@ -30,11 +30,8 @@ class ApplyJobScreenState extends State<ApplyJobScreen> {
   @override
   void initState() {
     super.initState();
-    if (widget.seekerProfile != null) {
-      _seekerProfile = widget.seekerProfile;
-    } else {
-      _fetchSeekerProfile();
-    }
+    _seekerProfile = widget.seekerProfile;
+    if (_seekerProfile == null) _fetchSeekerProfile();
   }
 
   Future<void> _fetchSeekerProfile() async {
@@ -52,20 +49,11 @@ class ApplyJobScreenState extends State<ApplyJobScreen> {
           _seekerProfile = seekerDoc.data();
         });
       } else {
-        dev.log('Seeker profile not found', name: 'ApplyJobScreen');
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Please complete your profile before applying')),
-          );
-        }
+        _showSnackBar('Please complete your profile before applying');
       }
     } catch (e) {
       dev.log('Error fetching seeker profile: $e', name: 'ApplyJobScreen');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading profile: $e')),
-        );
-      }
+      _showSnackBar('Error loading profile');
     }
   }
 
@@ -79,20 +67,12 @@ class ApplyJobScreenState extends State<ApplyJobScreen> {
           .get();
 
       if (!jobDoc.exists || jobDoc.data()?['status'] != 'open') {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('This job is no longer available')),
-          );
-        }
+        _showSnackBar('This job is no longer available');
         return false;
       }
 
       if (_seekerProfile == null) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Profile data not available')),
-          );
-        }
+        _showSnackBar('Profile data not available');
         return false;
       }
 
@@ -104,67 +84,44 @@ class ApplyJobScreenState extends State<ApplyJobScreen> {
       final jobExperience = _parseExperience(jobData['experience']?.toString() ?? '0');
       final seekerExperience = _parseExperience(_seekerProfile!['experience']?.toString() ?? '0');
 
-      bool skillsMatch = jobSkills.isEmpty || seekerSkills.any((skill) => jobSkills.contains(skill));
+      bool skillsMatch = jobSkills.isEmpty || seekerSkills.any((s) => jobSkills.contains(s));
       bool educationMatch = jobEducation.isEmpty || seekerEducation.contains(jobEducation);
       bool experienceMatch = seekerExperience >= jobExperience;
 
       if (!skillsMatch || !educationMatch || !experienceMatch) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('You are not eligible for this job')),
-          );
-        }
+        _showSnackBar('You are not eligible for this job');
         return false;
       }
+
       return true;
     } catch (e) {
       dev.log('Error checking job eligibility: $e', name: 'ApplyJobScreen');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error checking eligibility: $e')),
-        );
-      }
+      _showSnackBar('Error checking eligibility');
       return false;
     }
   }
 
-  double _parseExperience(String experience) {
+  double _parseExperience(String exp) {
     try {
-      final match = RegExp(r'\d+').firstMatch(experience);
-      return double.parse(match?.group(0) ?? '0');
-    } catch (e) {
+      final match = RegExp(r'\d+').firstMatch(exp);
+      return double.tryParse(match?.group(0) ?? '0') ?? 0;
+    } catch (_) {
       return 0;
     }
   }
 
   Future<void> _applyForJob() async {
     if (!_formKey.currentState!.validate()) return;
+
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please log in to apply')),
-        );
-      }
-      return;
-    }
+    if (user == null) return _showSnackBar('Please log in to apply');
 
     if (user.uid == widget.recruiterId) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('You cannot apply for your own job')),
-        );
-      }
-      return;
+      return _showSnackBar('You cannot apply for your own job');
     }
 
     if (_seekerProfile == null) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profile data not available')),
-        );
-      }
-      return;
+      return _showSnackBar('Profile data not available');
     }
 
     final isEligible = await _checkJobEligibility();
@@ -181,7 +138,6 @@ class ApplyJobScreenState extends State<ApplyJobScreen> {
         'coverLetter': _coverLetterController.text.trim(),
         'status': 'applied',
         'appliedAt': FieldValue.serverTimestamp(),
-        // Include resume data
         'resume': {
           'name': _seekerProfile!['name'],
           'email': _seekerProfile!['email'],
@@ -197,6 +153,7 @@ class ApplyJobScreenState extends State<ApplyJobScreen> {
         },
       };
 
+      // Recruiter-centric
       await FirebaseFirestore.instance
           .collection('Applications')
           .doc(widget.jobId)
@@ -204,32 +161,48 @@ class ApplyJobScreenState extends State<ApplyJobScreen> {
           .doc(user.uid)
           .set(applicationData);
 
-      await FirebaseFirestore.instance.collection('Notifications').add({
-        'to': widget.recruiterId,
-        'from': user.uid,
-        'message': 'New application for ${widget.jobTitle} from ${_seekerProfile!['name']}',
-        'timestamp': FieldValue.serverTimestamp(),
-        'type': 'application',
-        'jobId': widget.jobId,
-      });
+      // Seeker-centric
+      await FirebaseFirestore.instance
+          .collection('Applications')
+          .doc(user.uid)
+          .collection('AppliedJobs')
+          .doc(widget.jobId)
+          .set(applicationData);
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Application submitted successfully')),
-        );
-        Navigator.pop(context);
-      }
+      // ApplicationsIndex
+      await FirebaseFirestore.instance
+          .collection('ApplicationsIndex')
+          .doc('${widget.recruiterId}_${user.uid}')
+          .set({'status': 'active'}, SetOptions(merge: true));
+
+      // Notification
+      await FirebaseFirestore.instance
+          .collection('SeekerNotifications')
+          .doc(widget.recruiterId)
+          .collection('Notifications')
+          .add({
+            'to': widget.recruiterId,
+            'from': user.uid,
+            'message': 'New application for ${widget.jobTitle} from ${_seekerProfile!['name']}',
+            'timestamp': FieldValue.serverTimestamp(),
+            'type': 'application',
+            'jobId': widget.jobId,
+            'read': false,
+          });
+
+      _showSnackBar('Application submitted successfully');
+      if (mounted) Navigator.pop(context);
     } catch (e) {
       dev.log('Error applying for job: $e', name: 'ApplyJobScreen');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to apply: $e')),
-        );
-      }
+      _showSnackBar('Failed to apply');
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  void _showSnackBar(String message) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
     }
   }
 
@@ -242,22 +215,16 @@ class ApplyJobScreenState extends State<ApplyJobScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Apply for ${widget.jobTitle}'),
-      ),
+      appBar: AppBar(title: Text('Apply for ${widget.jobTitle}')),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : Padding(
               padding: const EdgeInsets.all(16.0),
               child: Form(
                 key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: ListView(
                   children: [
-                    const Text(
-                      'Cover Letter',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
+                    const Text('Cover Letter', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 10),
                     TextFormField(
                       controller: _coverLetterController,
@@ -266,26 +233,19 @@ class ApplyJobScreenState extends State<ApplyJobScreen> {
                         border: OutlineInputBorder(),
                         hintText: 'Write your cover letter here...',
                       ),
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'Please enter a cover letter';
-                        }
-                        return null;
-                      },
+                      validator: (value) =>
+                          value == null || value.trim().isEmpty ? 'Please enter a cover letter' : null,
                     ),
                     const SizedBox(height: 20),
                     if (_seekerProfile != null)
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            'Resume Details',
-                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                          ),
+                          const Text('Resume Details', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                           const SizedBox(height: 10),
                           Text('Name: ${_seekerProfile!['name'] ?? ''}'),
                           Text('Email: ${_seekerProfile!['email'] ?? ''}'),
-                          Text('Skills: ${(_seekerProfile!['skills'] as List<dynamic>?)?.join(', ') ?? ''}'),
+                          Text('Skills: ${(_seekerProfile!['skills'] as List?)?.join(', ') ?? ''}'),
                           Text('Education: ${_seekerProfile!['education'] ?? ''}'),
                           Text('Experience: ${_seekerProfile!['experience'] ?? ''}'),
                         ],

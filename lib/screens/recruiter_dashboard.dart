@@ -28,10 +28,7 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
   final FirebaseMessaging _messaging = FirebaseMessaging.instance;
   final String? recruiterId = FirebaseAuth.instance.currentUser?.uid;
   final AuthService _authService = AuthService();
-
-  String _selectedFilter = 'All';
-  String _searchQuery = '';
-  String _experienceFilter = 'All';
+  String _searchQuery = ''; // Retained for _buildCallsTab
 
   @override
   void initState() {
@@ -50,8 +47,8 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
 
   Future<void> _sendNotification(String seekerId, String message) async {
     try {
-      final token = await _authService.fetchProfileData(isRecruiter: false)
-          ?.then((profile) => profile?['fcmToken'] as String?) ??
+      final profile = await _authService.fetchProfileData(isRecruiter: false); // Removed ?.then
+      final token = profile?['fcmToken'] as String? ??
           (await _firestore.collection('UsersIndex').doc(seekerId).get())
               .data()?['fcmToken'] as String?;
       if (token != null) {
@@ -62,12 +59,12 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
           'read': false,
           'type': 'application',
         });
-        dev.log('Notification sent to $seekerId', name: 'RecruiterDashboard');
+        dev.log('Notification sent to $seekerId with message: $message', name: 'RecruiterDashboard');
       } else {
         dev.log('No FCM token found for $seekerId', name: 'RecruiterDashboard');
       }
     } catch (e) {
-      dev.log('Error sending notification: $e', name: 'RecruiterDashboard', error: e);
+      dev.log('Error sending notification to $seekerId: $e', name: 'RecruiterDashboard', error: e);
     }
   }
 
@@ -154,66 +151,29 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Exported to $path')));
   }
 
-  Widget _buildApplicantsTab() {
+  Widget _buildAppliedSeekersTab() {
     return Padding(
       padding: const EdgeInsets.all(8.0),
       child: Column(
         children: [
           Row(
             children: [
-              Expanded(
-                child: TextField(
-                  decoration: InputDecoration(
-                    labelText: 'Search by name...',
-                    border: OutlineInputBorder(),
-                    prefixIcon: const Icon(Icons.search),
-                  ),
-                  onChanged: (value) {
-                    setState(() {
-                      _searchQuery = value.toLowerCase();
-                    });
-                  },
-                ),
-              ),
               const SizedBox(width: 10),
               ElevatedButton.icon(
                 onPressed: () async {
-                  final applicants = await _authService.fetchAppliedSeekers();
-                  await _exportToExcel(applicants);
+                  try {
+                    final applicants = await _authService.fetchAppliedSeekers();
+                    await _exportToExcel(applicants);
+                  } catch (e) {
+                    dev.log('Error exporting applicants for recruiter $recruiterId: $e', name: 'RecruiterDashboard');
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Error exporting applicants. Check logs.')));
+                    }
+                  }
                 },
                 icon: const Icon(Icons.download),
                 label: const Text('Export'),
                 style: ElevatedButton.styleFrom(backgroundColor: Colors.deepPurple),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: DropdownButtonFormField<String>(
-                  value: _experienceFilter,
-                  decoration: const InputDecoration(labelText: 'Experience'),
-                  items: ['All', '0-1', '1-3', '3+'].map((e) {
-                    return DropdownMenuItem(value: e, child: Text(e));
-                  }).toList(),
-                  onChanged: (value) {
-                    setState(() => _experienceFilter = value!);
-                  },
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: DropdownButtonFormField<String>(
-                  value: _selectedFilter,
-                  decoration: const InputDecoration(labelText: 'Status'),
-                  items: ['All', 'Applied', 'Shortlisted', 'Rejected', 'Interview Scheduled'].map((e) {
-                    return DropdownMenuItem(value: e, child: Text(e));
-                  }).toList(),
-                  onChanged: (value) {
-                    setState(() => _selectedFilter = value!);
-                  },
-                ),
               ),
             ],
           ),
@@ -226,38 +186,35 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
                   return const Center(child: CircularProgressIndicator());
                 }
                 if (snapshot.hasError) {
-                  dev.log('Error loading applicants: ${snapshot.error}', name: 'RecruiterDashboard');
-                  return Center(child: Text('Error loading applicants: ${snapshot.error}. Please check Firestore permissions or contact support.'));
+                  final error = snapshot.error;
+                  String errorMessage = 'Error loading applied seekers. Please check Firestore permissions or contact support.';
+                  if (error is AuthException) {
+                    errorMessage = error.message;
+                  } else if (error != null && error.toString().contains('FAILED_PRECONDITION')) {
+                    errorMessage = 'Error loading applied seekers: Missing index required. Create it here: https://console.firebase.google.com/v1/r/project/naukriwala-455909/firestore/indexes';
+                  }
+                  dev.log('Error loading applied seekers for recruiter $recruiterId: $error (Query: recruiterId=$recruiterId, orderBy=appliedAt)', name: 'RecruiterDashboard');
+                  return Center(child: Text(errorMessage));
                 }
-                final applicants = snapshot.data?.where((applicant) {
-                  final name = (applicant['resume']?['name'] ?? applicant['name'] ?? '').toLowerCase();
-                  final exp = applicant['resume']?['experience'] ?? applicant['experience'] ?? '';
-                  final status = applicant['status'] ?? '';
-
-                  final matchesSearch = name.contains(_searchQuery);
-                  final matchesExp = _experienceFilter == 'All' || exp == _experienceFilter;
-                  final matchesStatus = _selectedFilter == 'All' || status == _selectedFilter;
-
-                  return matchesSearch && matchesExp && matchesStatus;
-                }).toList() ?? [];
+                final applicants = snapshot.data ?? [];
 
                 if (applicants.isEmpty) {
-                  return const Center(child: Text('No applicants found. Check if applications exist in Firestore or if permissions are set correctly.'));
+                  return const Center(child: Text('No applied seekers found. Check if applications exist in Firestore or if permissions are set correctly.'));
                 }
 
                 return ListView.builder(
                   itemCount: applicants.length,
                   itemBuilder: (_, index) {
                     final applicant = applicants[index];
-                    final seekerId = applicant['seekerId'] as String;
-                    final jobId = applicant['jobId'] as String;
+                    final seekerId = applicant['seekerId'] as String? ?? 'Unknown';
+                    final jobId = applicant['jobId'] as String? ?? 'Unknown';
                     final resume = applicant['resume'] as Map<String, dynamic>? ?? {};
 
                     return Card(
                       elevation: 2,
                       margin: const EdgeInsets.symmetric(vertical: 5),
                       child: ListTile(
-                        title: Text(resume['name'] ?? applicant['name'] ?? seekerId), // Use fallback
+                        title: Text(resume['name'] ?? applicant['name'] ?? seekerId),
                         subtitle: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -288,6 +245,95 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
     );
   }
 
+  Widget _buildCallsTab() {
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: Column(
+        children: [
+          TextField(
+            decoration: InputDecoration(
+              labelText: 'Search by name or date...',
+              border: OutlineInputBorder(),
+              prefixIcon: const Icon(Icons.search),
+            ),
+            onChanged: (value) {
+              setState(() {
+                _searchQuery = value.toLowerCase();
+              });
+            },
+          ),
+          const SizedBox(height: 10),
+          Expanded(
+            child: StreamBuilder<QuerySnapshot>(
+              stream: _firestore
+                  .collectionGroup('AppliedJobs')
+                  .where('recruiterId', isEqualTo: recruiterId)
+                  .where('status', isEqualTo: 'Interview Scheduled')
+                  .orderBy('interviewDate', descending: false)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (snapshot.hasError) {
+                  dev.log('Error loading calls for recruiter $recruiterId: ${snapshot.error}', name: 'RecruiterDashboard');
+                  return Center(child: Text('Error loading calls: ${snapshot.error}'));
+                }
+                final calls = snapshot.data?.docs ?? [];
+                if (calls.isEmpty) {
+                  return const Center(child: Text('No scheduled calls found.'));
+                }
+
+                final filteredCalls = calls.where((doc) {
+                  final data = doc.data() as Map<String, dynamic>;
+                  final name = (data['resume']?['name'] ?? data['name'] ?? '').toLowerCase();
+                  final date = data['interviewDate'] as Timestamp?;
+                  final dateStr = date != null ? DateFormat('dd MMM yyyy').format(date.toDate()).toLowerCase() : '';
+                  return name.contains(_searchQuery) || dateStr.contains(_searchQuery);
+                }).toList();
+
+                return ListView.builder(
+                  itemCount: filteredCalls.length,
+                  itemBuilder: (_, index) {
+                    final data = filteredCalls[index].data() as Map<String, dynamic>;
+                    final seekerId = data['seekerId'] as String? ?? 'Unknown';
+                    final jobId = data['jobId'] as String? ?? 'Unknown';
+                    final resume = data['resume'] as Map<String, dynamic>? ?? {};
+                    final interviewDate = data['interviewDate'] as Timestamp?;
+                    final dateStr = interviewDate != null ? DateFormat('dd MMM yyyy, hh:mm a').format(interviewDate.toDate()) : 'N/A';
+
+                    return Card(
+                      elevation: 2,
+                      margin: const EdgeInsets.symmetric(vertical: 5),
+                      child: ListTile(
+                        title: Text(resume['name'] ?? data['name'] ?? seekerId),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Job: ${data['jobTitle'] ?? jobId}'),
+                            Text('Date: $dateStr'),
+                          ],
+                        ),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.calendar_today),
+                          onPressed: () {
+                            if (interviewDate != null) {
+                              _addToCalendar('Interview with ${resume['name'] ?? seekerId}', interviewDate.toDate());
+                            }
+                          },
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildNotificationsTab() {
     return StreamBuilder<QuerySnapshot>(
       stream: _firestore.collection('Notifications')
@@ -300,7 +346,7 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
           return const Center(child: CircularProgressIndicator());
         }
         if (snapshot.hasError) {
-          dev.log('Error loading notifications: ${snapshot.error}', name: 'RecruiterDashboard');
+          dev.log('Error loading notifications for recruiter $recruiterId: ${snapshot.error}', name: 'RecruiterDashboard');
           if (snapshot.error.toString().contains('FAILED_PRECONDITION')) {
             return Center(child: Text('Error loading notifications: Index required. Create it here: https://console.firebase.google.com/v1/r/project/naukriwala-455909/firestore/indexes'));
           }
@@ -331,7 +377,7 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
                 onTap: () async {
                   try {
                     await _firestore.collection('Notifications').doc(docs[index].id).update({'read': true});
-                    dev.log('Marked notification ${docs[index].id} as read', name: 'RecruiterDashboard');
+                    dev.log('Marked notification ${docs[index].id} as read for recruiter $recruiterId', name: 'RecruiterDashboard');
                   } catch (e) {
                     dev.log('Error marking notification as read: $e', name: 'RecruiterDashboard');
                   }
@@ -365,7 +411,7 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
     }
 
     return DefaultTabController(
-      length: 5,
+      length: 6, // Increased to 6 tabs
       child: Scaffold(
         appBar: AppBar(
           backgroundColor: Colors.deepPurple,
@@ -381,11 +427,12 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
             unselectedLabelColor: Colors.white70,
             indicatorColor: Colors.white,
             tabs: [
-              Tab(icon: Icon(Icons.person)),       // Profile
-              Tab(icon: Icon(Icons.work)),         // Posted Jobs
-              Tab(icon: Icon(Icons.group_add)),    // Applicants
-              Tab(icon: Icon(Icons.post_add)),     // Post Job
-              Tab(icon: Icon(Icons.notifications)), // Notifications
+              Tab(icon: Icon(Icons.person)),         // Profile
+              Tab(icon: Icon(Icons.work)),           // Posted Jobs
+              Tab(icon: Icon(Icons.group_add)),      // Applied Seekers
+              Tab(icon: Icon(Icons.call)),           // Calls
+              Tab(icon: Icon(Icons.post_add)),       // Post Job
+              Tab(icon: Icon(Icons.notifications)),  // Notifications
             ],
           ),
         ),
@@ -393,7 +440,8 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
           children: [
             ProfileScreen(isRecruiter: true),
             PostedJobsScreen(),
-            _buildApplicantsTab(),
+            _buildAppliedSeekersTab(),
+            _buildCallsTab(),
             PostJobScreen(),
             _buildNotificationsTab(),
           ],

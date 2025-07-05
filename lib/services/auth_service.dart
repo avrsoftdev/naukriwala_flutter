@@ -15,7 +15,7 @@ class AuthService {
     required Map<String, dynamic> data,
   }) async {
     final uid = _auth.currentUser?.uid;
-    if (uid == null) throw Exception("User not logged in");
+    if (uid == null) throw const AuthException("User not logged in");
 
     final collection = isRecruiter ? 'Recruiters' : 'Seekers';
 
@@ -42,16 +42,19 @@ class AuthService {
       }, SetOptions(merge: true));
       dev.log("UsersIndex updated for $uid", name: 'AuthService');
 
+      // Ensure role claim is set via Cloud Function
       await FirebaseFunctions.instanceFor(region: 'asia-south1')
           .httpsCallable('setUserRole')
-          .call({
-            'uid': uid,
-            'role': isRecruiter ? 'recruiter' : 'seeker',
-          });
+          .call({'uid': uid, 'role': isRecruiter ? 'recruiter' : 'seeker'});
+      await _auth.currentUser!.getIdToken(true); // Refresh token to include new claim
+      dev.log("Role claim set and token refreshed for $uid", name: 'AuthService');
 
       dev.log("storeSignupData completed for $uid", name: 'AuthService');
     } catch (e) {
       dev.log("storeSignupData ERROR: $e", name: 'AuthService', error: e);
+      if (e is FirebaseException) {
+        throw AuthException("Firebase error: ${e.message}");
+      }
       rethrow;
     }
   }
@@ -78,7 +81,7 @@ class AuthService {
 
   Future<String> uploadCompanyLogo(File file) async {
     final uid = _auth.currentUser?.uid;
-    if (uid == null) throw Exception("User not logged in");
+    if (uid == null) throw const AuthException("User not logged in");
 
     try {
       final ref = _storage.ref("company_logos/$uid/logo.png");
@@ -88,13 +91,16 @@ class AuthService {
       return url;
     } catch (e) {
       dev.log("uploadCompanyLogo ERROR: $e", name: 'AuthService', error: e);
+      if (e is FirebaseException) {
+        throw AuthException("Upload failed: ${e.message}");
+      }
       rethrow;
     }
   }
 
   Future<String> uploadSeekerPhoto(File file) async {
     final uid = _auth.currentUser?.uid;
-    if (uid == null) throw Exception("User not logged in");
+    if (uid == null) throw const AuthException("User not logged in");
 
     try {
       final ref = _storage.ref("seeker_photos/$uid/photo.png");
@@ -104,13 +110,16 @@ class AuthService {
       return url;
     } catch (e) {
       dev.log("uploadSeekerPhoto ERROR: $e", name: 'AuthService', error: e);
+      if (e is FirebaseException) {
+        throw AuthException("Upload failed: ${e.message}");
+      }
       rethrow;
     }
   }
 
   Future<void> postJob(Map<String, dynamic> jobData) async {
     final uid = _auth.currentUser?.uid;
-    if (uid == null) throw Exception("User not logged in");
+    if (uid == null) throw const AuthException("User not logged in");
 
     try {
       final doc = _firestore.collection('Recruiters').doc(uid).collection('Jobs').doc();
@@ -130,13 +139,16 @@ class AuthService {
       dev.log("Job posted with ID ${doc.id} by $uid", name: 'AuthService');
     } catch (e) {
       dev.log("postJob ERROR: $e", name: 'AuthService', error: e);
+      if (e is FirebaseException) {
+        throw AuthException("Job posting failed: ${e.message}");
+      }
       rethrow;
     }
   }
 
   Future<List<Map<String, dynamic>>> fetchJobsWithApplicationCounts() async {
     final uid = _auth.currentUser?.uid;
-    if (uid == null) throw Exception("User not logged in");
+    if (uid == null) throw const AuthException("User not logged in");
 
     try {
       final jobsSnapshot = await _firestore
@@ -167,28 +179,31 @@ class AuthService {
       return result;
     } catch (e) {
       dev.log("fetchJobsWithApplicationCounts ERROR: $e", name: 'AuthService', error: e);
+      if (e is FirebaseException) {
+        throw AuthException("Failed to fetch jobs: ${e.message}");
+      }
       rethrow;
     }
   }
 
   Future<void> applyToJob(
     String jobId,
+    String recruiterId,
     Map<String, dynamic> applicationData,
   ) async {
     final uid = _auth.currentUser?.uid;
-    if (uid == null) throw Exception("User not logged in");
+    if (uid == null) throw const AuthException("User not logged in");
 
     try {
-      // Fetch job data directly from the recruiter's Jobs collection
+      // Fetch job data from Recruiters/{recruiterId}/Jobs/{jobId}
       final jobSnapshot = await _firestore
-          .collection('Recruiters')
-          .where('Jobs', arrayContains: {'jobId': jobId}) // Adjust based on structure
-          .limit(1)
-          .get();
-      if (jobSnapshot.docs.isEmpty) throw Exception("Job not found");
-      final jobData = jobSnapshot.docs.first.data();
-      final recruiterId = jobData['recruiterId'] as String?;
-      if (recruiterId == null) throw Exception("Recruiter ID not found for job $jobId");
+        .collection('Recruiters')
+        .doc(recruiterId)
+        .collection('Jobs')
+        .doc(jobId)
+        .get();
+      if (!jobSnapshot.exists) throw const AuthException("Job not found");
+      final jobData = jobSnapshot.data()!;
       final jobTitle = jobData['title'] as String? ?? 'Untitled';
 
       // Ensure parent document exists
@@ -202,11 +217,18 @@ class AuthService {
         ..['appliedAt'] = FieldValue.serverTimestamp()
         ..['status'] = 'Applied';
 
+      // Write to both recruiter-centric and seeker-centric paths
       await _firestore
           .collection('Applications')
           .doc(jobId)
           .collection('AppliedJobs')
           .doc(uid)
+          .set(normalizedApplicationData);
+      await _firestore
+          .collection('Applications')
+          .doc(uid)
+          .collection('AppliedJobs')
+          .doc(jobId)
           .set(normalizedApplicationData);
 
       // Fetch seeker profile for notification
@@ -217,26 +239,27 @@ class AuthService {
       dev.log("Application submitted for job $jobId by $uid", name: 'AuthService');
     } catch (e) {
       dev.log("applyToJob ERROR: $e", name: 'AuthService', error: e);
+      if (e is FirebaseException) {
+        throw AuthException("Application failed: ${e.message}");
+      }
       rethrow;
     }
   }
 
   Future<List<Map<String, dynamic>>> fetchAppliedSeekers() async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) throw Exception("User not logged in");
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) throw const AuthException("User not logged in");
 
     try {
-      final appsSnapshot = await FirebaseFirestore.instance
+      final appsSnapshot = await _firestore
           .collectionGroup('AppliedJobs')
-          .where('recruiterId', isEqualTo: uid)
           .orderBy('appliedAt', descending: true)
           .get();
-      dev.log('Fetched ${appsSnapshot.docs.length} applications for $uid with query: recruiterId=$uid, orderBy=appliedAt', name: 'AuthService');
+      dev.log('Fetched ${appsSnapshot.docs.length} applications with query: orderBy=appliedAt', name: 'AuthService');
 
       final List<Map<String, dynamic>> seekers = [];
       for (final app in appsSnapshot.docs) {
         final data = app.data();
-        // Fetch seeker name from Seekers collection
         final seekerId = app.id;
         final seekerProfile = await _firestore.collection('Seekers').doc(seekerId).get();
         final name = seekerProfile.exists ? (seekerProfile.data()?['name'] ?? seekerId) : seekerId;
@@ -252,9 +275,55 @@ class AuthService {
           'name': name,
         });
       }
+      dev.log('Returning ${seekers.length} seekers for $uid', name: 'AuthService');
       return seekers;
     } catch (e) {
-      dev.log('fetchAppliedSeekers ERROR: $e', name: 'AuthService', error: e);
+      dev.log('fetchAppliedSeekers ERROR for $uid: $e', name: 'AuthService', error: e);
+      if (e is FirebaseException) {
+        dev.log('Possible cause: Missing "role: recruiter" claim, incorrect Firestore rules, or insufficient permissions.', name: 'AuthService');
+        throw AuthException("Failed to fetch seekers: ${e.message} (Check role claim, rules, and permissions)");
+      }
+      rethrow;
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> fetchScheduledCalls() async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) throw const AuthException("User not logged in");
+
+    try {
+      final callsSnapshot = await _firestore
+          .collectionGroup('AppliedJobs')
+          .where('recruiterId', isEqualTo: uid)
+          .where('status', isEqualTo: 'Interview Scheduled')
+          .orderBy('interviewDate', descending: false)
+          .get();
+      dev.log('Fetched ${callsSnapshot.docs.length} scheduled calls for $uid with query: recruiterId=$uid, status=Interview Scheduled, orderBy=interviewDate', name: 'AuthService');
+
+      final List<Map<String, dynamic>> calls = [];
+      for (final call in callsSnapshot.docs) {
+        final data = call.data();
+        final seekerId = call.id;
+        final seekerProfile = await _firestore.collection('Seekers').doc(seekerId).get();
+        final name = seekerProfile.exists ? (seekerProfile.data()?['name'] ?? seekerId) : seekerId;
+
+        calls.add({
+          'seekerId': seekerId,
+          'jobId': data['jobId'] as String? ?? '',
+          'jobTitle': data['jobTitle'] as String? ?? '',
+          'interviewDate': data['interviewDate'],
+          'resume': data['resume'] as Map<String, dynamic>? ?? {},
+          'status': data['status'] as String? ?? 'Interview Scheduled',
+          'name': name,
+        });
+      }
+      return calls;
+    } catch (e) {
+      dev.log('fetchScheduledCalls ERROR: $e', name: 'AuthService', error: e);
+      if (e is FirebaseException) {
+        dev.log('Possible cause: Missing "role: recruiter" claim or incorrect Firestore rules.', name: 'AuthService');
+        throw AuthException("Failed to fetch scheduled calls: ${e.message} (Check role claim and rules)");
+      }
       rethrow;
     }
   }
@@ -276,10 +345,25 @@ class AuthService {
         });
         dev.log("Notification sent to $recipientId for job $jobId", name: 'AuthService');
       } else {
-        dev.log("No FCM token found for $recipientId", name: 'AuthService');
+        dev.log("No FCM token found for $recipientId, falling back to profile check", name: 'AuthService');
+        final profile = await fetchProfileData(isRecruiter: true);
+        if (profile != null) {
+          await _firestore.collection('SeekerNotifications').doc(recipientId).collection('Notifications').add({
+            'to': recipientId,
+            'from': _auth.currentUser?.uid,
+            'message': 'New application for "$jobTitle" from $seekerName',
+            'timestamp': FieldValue.serverTimestamp(),
+            'type': 'application',
+            'jobId': jobId,
+            'read': false,
+          });
+        }
       }
     } catch (e) {
       dev.log("sendApplicationNotification ERROR: $e", name: 'AuthService', error: e);
+      if (e is FirebaseException) {
+        throw AuthException("Notification failed: ${e.message}");
+      }
       rethrow;
     }
   }
@@ -317,4 +401,9 @@ class AuthService {
       return null;
     }
   }
+}
+
+class AuthException implements Exception {
+  final String message;
+  const AuthException(this.message);
 }

@@ -236,7 +236,7 @@ class UnifiedScreenState extends State<UnifiedScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(_currentState == ScreenState.roleSelection
-            ? "Select Your Role"
+            ? "Welcome to Naukariwala"
             : _currentState == ScreenState.login
                 ? "Login"
                 : _selectedRole == 'seeker'
@@ -265,19 +265,20 @@ class UnifiedScreenState extends State<UnifiedScreen> {
                         ),
                         const SizedBox(height: 20),
                         Text(
-                          'Naukariwala',
+                          'A hiring and seeking platform for the future of work',
                           style: TextStyle(
-                            fontSize: 32,
+                            fontSize: 12,
                             fontWeight: FontWeight.bold,
                             color: Colors.blue[800],
                           ),
                         ),
                         const SizedBox(height: 12),
                         Text(
-                          'Find Jobs or Hire Talent Easily',
+                          'Where Talents Meet Opportunity',
                           style: TextStyle(
-                            fontSize: 16,
-                            color: Colors.grey[600],
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blue[800],
                           ),
                         ),
                         const SizedBox(height: 20),

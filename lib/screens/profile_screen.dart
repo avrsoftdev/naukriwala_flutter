@@ -236,7 +236,7 @@ class ProfileScreenState extends State<ProfileScreen> {
       setState(() => isLoading = true); // Show loading state
       await AuthService().signOut(); // Use the provided AuthService signOut
       if (mounted) {
-        Navigator.pushReplacementNamed(context, '/login'); // Navigate to login screen
+        Navigator.pushReplacementNamed(context, '/'); // Navigate to main.dart's initial route
       }
     } catch (e) {
       dev.log('Logout error: $e', name: 'ProfileScreen');
