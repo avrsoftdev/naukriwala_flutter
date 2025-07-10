@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'post_job_screen.dart';
 import 'package:intl/intl.dart';
+import 'dart:developer' as dev;
 
 class PostedJobsScreen extends StatefulWidget {
   const PostedJobsScreen({super.key});
@@ -22,7 +23,7 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
       );
     }
 
-    debugPrint('Current user UID: ${user!.uid}');
+    dev.log('Current user UID: ${user!.uid}', name: 'PostedJobsScreen');
 
     final jobsQuery = FirebaseFirestore.instance
         .collection('Recruiters')
@@ -43,7 +44,7 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
           }
 
           if (snapshot.hasError) {
-            debugPrint('Stream error for user ${user!.uid}: ${snapshot.error}');
+            dev.log('Stream error for user ${user!.uid}: ${snapshot.error}', name: 'PostedJobsScreen', error: snapshot.error);
             return Center(child: Text('Error loading jobs: ${snapshot.error}'));
           }
 
@@ -58,7 +59,7 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
             itemBuilder: (context, index) {
               final job = jobs[index].data() as Map<String, dynamic>;
               final jobId = jobs[index].id;
-              debugPrint('Job $jobId data for user ${user!.uid}: $job');
+              dev.log('Job $jobId data for user ${user!.uid}: $job', name: 'PostedJobsScreen');
 
               final title = job['title'] ?? 'Untitled Job';
               final company = job['company'] ?? 'Unknown Company';
@@ -77,8 +78,10 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
                   final applicantNames = applicantSnapshot.data?['names'] ?? [];
 
                   if (applicantSnapshot.hasError) {
-                    debugPrint(
-                        'Applicant data error for job $jobId (user ${user!.uid}): ${applicantSnapshot.error}');
+                    dev.log(
+                        'Applicant data error for job $jobId (user ${user!.uid}): ${applicantSnapshot.error}',
+                        name: 'PostedJobsScreen',
+                        error: applicantSnapshot.error);
                     return Card(
                       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       child: ExpansionTile(
@@ -216,25 +219,34 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
 
   Future<Map<String, dynamic>> _getApplicantData(String jobId) async {
     try {
+      // Query direct path instead of collection group
       final snapshot = await FirebaseFirestore.instance
-          .collectionGroup('AppliedJobs')
-          .where('jobId', isEqualTo: jobId)
+          .collection('Applications')
+          .doc(jobId)
+          .collection('AppliedJobs')
           .where('recruiterId', isEqualTo: user!.uid)
           .get();
 
-      debugPrint('Fetched ${snapshot.docs.length} applicants for job $jobId by user ${user!.uid}');
+      dev.log('Fetched ${snapshot.docs.length} applicants for job $jobId by user ${user!.uid}', name: 'PostedJobsScreen');
 
       final names = snapshot.docs.map((doc) {
-        final data = doc.data() as Map<String, dynamic>? ?? {};
-        // Check resume.name or fallback to 'Unknown Seeker'
-        return (data['resume']?['name'] as String?) ?? data['name'] ?? 'Unknown Seeker';
+        final data = doc.data();
+        // Fetch seeker profile to ensure accurate name
+        return FirebaseFirestore.instance
+            .collection('Seekers')
+            .doc(doc.id)
+            .get()
+            .then((seekerDoc) => (seekerDoc.data()?['name'] as String?) ?? 'Unknown Seeker');
       }).toList();
 
-      return {'count': snapshot.docs.length, 'names': names};
+      // Resolve all seeker profile queries
+      final resolvedNames = await Future.wait(names);
+
+      return {'count': snapshot.docs.length, 'names': resolvedNames};
     } catch (e) {
-      debugPrint('Error fetching applicant data for job $jobId by user ${user!.uid}: $e');
+      dev.log('Error fetching applicant data for job $jobId by user ${user!.uid}: $e', name: 'PostedJobsScreen', error: e);
       if (e is FirebaseException) {
-        debugPrint('Firebase error details: ${e.code} - ${e.message}');
+        dev.log('Firebase error details: ${e.code} - ${e.message}', name: 'PostedJobsScreen');
       }
       return {'count': 0, 'names': []};
     }
@@ -261,11 +273,17 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
                     .collection('Jobs')
                     .doc(jobId)
                     .delete();
+                // Also delete Applications/{jobId} to clean up
+                await FirebaseFirestore.instance
+                    .collection('Applications')
+                    .doc(jobId)
+                    .delete();
                 if (!context.mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Job deleted')),
                 );
               } catch (e) {
+                dev.log('Error deleting job $jobId: $e', name: 'PostedJobsScreen', error: e);
                 if (!context.mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(content: Text('Failed to delete job: $e')),

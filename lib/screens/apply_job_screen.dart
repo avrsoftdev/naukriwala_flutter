@@ -52,7 +52,7 @@ class ApplyJobScreenState extends State<ApplyJobScreen> {
         _showSnackBar('Please complete your profile before applying');
       }
     } catch (e) {
-      dev.log('Error fetching seeker profile: $e', name: 'ApplyJobScreen');
+      dev.log('Error fetching seeker profile: $e', name: 'ApplyJobScreen', error: e);
       _showSnackBar('Error loading profile');
     }
   }
@@ -95,7 +95,7 @@ class ApplyJobScreenState extends State<ApplyJobScreen> {
 
       return true;
     } catch (e) {
-      dev.log('Error checking job eligibility: $e', name: 'ApplyJobScreen');
+      dev.log('Error checking job eligibility: $e', name: 'ApplyJobScreen', error: e);
       _showSnackBar('Error checking eligibility');
       return false;
     }
@@ -136,7 +136,7 @@ class ApplyJobScreenState extends State<ApplyJobScreen> {
         'seekerId': user.uid,
         'recruiterId': widget.recruiterId,
         'coverLetter': _coverLetterController.text.trim(),
-        'status': 'applied',
+        'status': 'Applied',
         'appliedAt': FieldValue.serverTimestamp(),
         'resume': {
           'name': _seekerProfile!['name'],
@@ -176,25 +176,38 @@ class ApplyJobScreenState extends State<ApplyJobScreen> {
           .set({'status': 'active'}, SetOptions(merge: true));
 
       // Notification
+      final notificationId = FirebaseFirestore.instance
+          .collection('SeekerNotifications')
+          .doc(widget.recruiterId)
+          .collection('Notifications')
+          .doc()
+          .id;
       await FirebaseFirestore.instance
           .collection('SeekerNotifications')
           .doc(widget.recruiterId)
           .collection('Notifications')
-          .add({
+          .doc(notificationId)
+          .set({
             'to': widget.recruiterId,
             'from': user.uid,
-            'message': 'New application for ${widget.jobTitle} from ${_seekerProfile!['name']}',
+            'message': 'New application for "${widget.jobTitle}" from ${_seekerProfile!['name']}',
             'timestamp': FieldValue.serverTimestamp(),
             'type': 'application',
             'jobId': widget.jobId,
             'read': false,
+            'notificationId': notificationId,
           });
 
+      dev.log("Application and notification $notificationId submitted for job ${widget.jobId} by ${user.uid}", name: 'ApplyJobScreen');
       _showSnackBar('Application submitted successfully');
       if (mounted) Navigator.pop(context);
     } catch (e) {
-      dev.log('Error applying for job: $e', name: 'ApplyJobScreen');
-      _showSnackBar('Failed to apply');
+      dev.log('Error applying for job ${widget.jobId}: $e', name: 'ApplyJobScreen', error: e);
+      if (e is FirebaseException) {
+        _showSnackBar('Failed to apply: ${e.code} - ${e.message}');
+      } else {
+        _showSnackBar('Failed to apply');
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

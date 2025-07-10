@@ -28,7 +28,7 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
   final FirebaseMessaging _messaging = FirebaseMessaging.instance;
   final String? recruiterId = FirebaseAuth.instance.currentUser?.uid;
   final AuthService _authService = AuthService();
-  String _searchQuery = ''; // Retained for _buildCallsTab
+  String _searchQuery = '';
 
   @override
   void initState() {
@@ -39,27 +39,41 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
       dev.log('Recruiter ID: $recruiterId', name: 'RecruiterDashboard');
     }
     _requestNotificationPermissions();
+    _checkRoleClaim();
   }
 
   void _requestNotificationPermissions() async {
     await _messaging.requestPermission();
   }
 
+  Future<void> _checkRoleClaim() async {
+    final idTokenResult = await FirebaseAuth.instance.currentUser!.getIdTokenResult();
+    dev.log('Token claims for UID ${FirebaseAuth.instance.currentUser!.uid}: ${idTokenResult.claims}', name: 'RecruiterDashboard');
+  }
+
   Future<void> _sendNotification(String seekerId, String message) async {
     try {
-      final profile = await _authService.fetchProfileData(isRecruiter: false); // Removed ?.then
+      final profile = await _authService.fetchProfileData(isRecruiter: false);
       final token = profile?['fcmToken'] as String? ??
           (await _firestore.collection('UsersIndex').doc(seekerId).get())
               .data()?['fcmToken'] as String?;
       if (token != null) {
-        await _firestore.collection('Notifications').add({
-          'to': seekerId,
-          'message': message,
-          'timestamp': FieldValue.serverTimestamp(),
-          'read': false,
-          'type': 'application',
-        });
-        dev.log('Notification sent to $seekerId with message: $message', name: 'RecruiterDashboard');
+        final notificationId = _firestore.collection('SeekerNotifications').doc(seekerId).collection('Notifications').doc().id;
+        await _firestore
+            .collection('SeekerNotifications')
+            .doc(seekerId)
+            .collection('Notifications')
+            .doc(notificationId)
+            .set({
+              'to': seekerId,
+              'from': recruiterId,
+              'message': message,
+              'timestamp': FieldValue.serverTimestamp(),
+              'read': false,
+              'type': 'application',
+              'notificationId': notificationId,
+            });
+        dev.log('Notification $notificationId sent to $seekerId with message: $message', name: 'RecruiterDashboard');
       } else {
         dev.log('No FCM token found for $seekerId', name: 'RecruiterDashboard');
       }
@@ -165,7 +179,7 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
                     final applicants = await _authService.fetchAppliedSeekers();
                     await _exportToExcel(applicants);
                   } catch (e) {
-                    dev.log('Error exporting applicants for recruiter $recruiterId: $e', name: 'RecruiterDashboard');
+                    dev.log('Error exporting applicants for recruiter $recruiterId: $e', name: 'RecruiterDashboard', error: e);
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Error exporting applicants. Check logs.')));
                     }
@@ -190,10 +204,13 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
                   String errorMessage = 'Error loading applied seekers. Please check Firestore permissions or contact support.';
                   if (error is AuthException) {
                     errorMessage = error.message;
-                  } else if (error != null && error.toString().contains('FAILED_PRECONDITION')) {
-                    errorMessage = 'Error loading applied seekers: Missing index required. Create it here: https://console.firebase.google.com/v1/r/project/naukriwala-455909/firestore/indexes';
+                  } else if (error is FirebaseException) {
+                    errorMessage = 'Firebase error: ${error.code} - ${error.message}';
+                    if (error.code == 'FAILED_PRECONDITION') {
+                      errorMessage += '\nCreate index at: https://console.firebase.google.com/v1/r/project/naukriwala-455909/firestore/indexes';
+                    }
                   }
-                  dev.log('Error loading applied seekers for recruiter $recruiterId: $error (Query: recruiterId=$recruiterId, orderBy=appliedAt)', name: 'RecruiterDashboard');
+                  dev.log('Error loading applied seekers for recruiter $recruiterId: $error', name: 'RecruiterDashboard', error: error, stackTrace: snapshot.stackTrace);
                   return Center(child: Text(errorMessage));
                 }
                 final applicants = snapshot.data ?? [];
@@ -336,8 +353,10 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
 
   Widget _buildNotificationsTab() {
     return StreamBuilder<QuerySnapshot>(
-      stream: _firestore.collection('Notifications')
-          .where('to', isEqualTo: recruiterId)
+      stream: _firestore
+          .collection('SeekerNotifications')
+          .doc(recruiterId)
+          .collection('Notifications')
           .where('type', isEqualTo: 'application')
           .orderBy('timestamp', descending: true)
           .snapshots(),
@@ -354,7 +373,7 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
         }
         final docs = snapshot.data?.docs ?? [];
         if (docs.isEmpty) {
-          return const Center(child: Text('No notifications found. Check Notifications collection.'));
+          return const Center(child: Text('No notifications found. Check SeekerNotifications collection.'));
         }
 
         return ListView.builder(
@@ -376,7 +395,12 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
                     : const Icon(Icons.circle, color: Colors.grey),
                 onTap: () async {
                   try {
-                    await _firestore.collection('Notifications').doc(docs[index].id).update({'read': true});
+                    await _firestore
+                        .collection('SeekerNotifications')
+                        .doc(recruiterId)
+                        .collection('Notifications')
+                        .doc(docs[index].id)
+                        .update({'read': true});
                     dev.log('Marked notification ${docs[index].id} as read for recruiter $recruiterId', name: 'RecruiterDashboard');
                   } catch (e) {
                     dev.log('Error marking notification as read: $e', name: 'RecruiterDashboard');
@@ -411,7 +435,7 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
     }
 
     return DefaultTabController(
-      length: 6, // Increased to 6 tabs
+      length: 6,
       child: Scaffold(
         appBar: AppBar(
           backgroundColor: Colors.deepPurple,
@@ -427,12 +451,12 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
             unselectedLabelColor: Colors.white70,
             indicatorColor: Colors.white,
             tabs: [
-              Tab(icon: Icon(Icons.person)),         // Profile
-              Tab(icon: Icon(Icons.work)),           // Posted Jobs
-              Tab(icon: Icon(Icons.group_add)),      // Applied Seekers
-              Tab(icon: Icon(Icons.call)),           // Calls
-              Tab(icon: Icon(Icons.post_add)),       // Post Job
-              Tab(icon: Icon(Icons.notifications)),  // Notifications
+              Tab(icon: Icon(Icons.person)),
+              Tab(icon: Icon(Icons.work)),
+              Tab(icon: Icon(Icons.group_add)),
+              Tab(icon: Icon(Icons.call)),
+              Tab(icon: Icon(Icons.post_add)),
+              Tab(icon: Icon(Icons.notifications)),
             ],
           ),
         ),
