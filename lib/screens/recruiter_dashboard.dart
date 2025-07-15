@@ -44,41 +44,73 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
 
   void _requestNotificationPermissions() async {
     await _messaging.requestPermission();
+    final token = await _messaging.getToken();
+    if (token != null && recruiterId != null) {
+      await _firestore.collection('UsersIndex').doc(recruiterId).set({
+        'fcmToken': token,
+      }, SetOptions(merge: true));
+      dev.log('FCM token updated for $recruiterId: $token', name: 'RecruiterDashboard');
+    } else {
+      dev.log('Failed to retrieve FCM token for $recruiterId', name: 'RecruiterDashboard');
+    }
   }
 
   Future<void> _checkRoleClaim() async {
-    final idTokenResult = await FirebaseAuth.instance.currentUser!.getIdTokenResult();
-    dev.log('Token claims for UID ${FirebaseAuth.instance.currentUser!.uid}: ${idTokenResult.claims}', name: 'RecruiterDashboard');
-  }
-
-  Future<void> _sendNotification(String seekerId, String message) async {
     try {
-      final profile = await _authService.fetchProfileData(isRecruiter: false);
-      final token = profile?['fcmToken'] as String? ??
-          (await _firestore.collection('UsersIndex').doc(seekerId).get())
-              .data()?['fcmToken'] as String?;
-      if (token != null) {
-        final notificationId = _firestore.collection('SeekerNotifications').doc(seekerId).collection('Notifications').doc().id;
-        await _firestore
-            .collection('SeekerNotifications')
-            .doc(seekerId)
-            .collection('Notifications')
-            .doc(notificationId)
-            .set({
-              'to': seekerId,
-              'from': recruiterId,
-              'message': message,
-              'timestamp': FieldValue.serverTimestamp(),
-              'read': false,
-              'type': 'application',
-              'notificationId': notificationId,
-            });
-        dev.log('Notification $notificationId sent to $seekerId with message: $message', name: 'RecruiterDashboard');
-      } else {
-        dev.log('No FCM token found for $seekerId', name: 'RecruiterDashboard');
+      final idTokenResult = await FirebaseAuth.instance.currentUser!.getIdTokenResult();
+      final role = idTokenResult.claims?['role'];
+      dev.log('Token claims for UID ${FirebaseAuth.instance.currentUser!.uid}: role=$role', name: 'RecruiterDashboard');
+      if (role != 'recruiter') {
+        dev.log('WARNING: User ${FirebaseAuth.instance.currentUser!.uid} does not have recruiter role', name: 'RecruiterDashboard');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Invalid role. Please contact support to set recruiter role.')),
+          );
+        }
       }
     } catch (e) {
-      dev.log('Error sending notification to $seekerId: $e', name: 'RecruiterDashboard', error: e);
+      dev.log('Error checking role claim: $e', name: 'RecruiterDashboard', error: e);
+    }
+  }
+
+  Future<void> _sendNotification(String seekerId, String message, String jobId, String jobTitle) async {
+    final notificationId = _firestore.collection('SeekerNotifications').doc(seekerId).collection('Notifications').doc().id;
+    try {
+      dev.log('Generated notificationId: $notificationId for seeker $seekerId, job $jobId', name: 'RecruiterDashboard');
+      final batch = _firestore.batch();
+      final notifRef = _firestore
+          .collection('SeekerNotifications')
+          .doc(seekerId)
+          .collection('Notifications')
+          .doc(notificationId);
+
+      batch.set(notifRef, {
+        'to': seekerId,
+        'from': recruiterId,
+        'message': message,
+        'timestamp': FieldValue.serverTimestamp(),
+        'read': false,
+        'type': 'application',
+        'jobId': jobId,
+        'jobTitle': jobTitle,
+        'notificationId': notificationId,
+      });
+      await batch.commit();
+      dev.log('Notification $notificationId sent to $seekerId for job $jobId: $message', name: 'RecruiterDashboard');
+
+      final tokenSnapshot = await _firestore.collection('UsersIndex').doc(seekerId).get();
+      final token = tokenSnapshot.data()?['fcmToken'] as String?;
+      if (token != null) {
+        dev.log('FCM token found for $seekerId: $token', name: 'RecruiterDashboard');
+        // Add FCM logic here if implemented
+      } else {
+        dev.log('No FCM token found for $seekerId, notification stored in Firestore only', name: 'RecruiterDashboard');
+      }
+    } catch (e) {
+      dev.log('Error sending notification to $seekerId for job $jobId: $e', name: 'RecruiterDashboard', error: e);
+      if (e is FirebaseException && e.code == 'permission-denied') {
+        dev.log('Permission denied writing to SeekerNotifications/$seekerId/Notifications/$notificationId', name: 'RecruiterDashboard');
+      }
     }
   }
 
@@ -91,78 +123,145 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
       endDate: date.add(const Duration(hours: 1)),
     );
     Add2Calendar.addEvent2Cal(event);
+    dev.log('Added calendar event: $title on ${DateFormat('dd MMM yyyy').format(date)}', name: 'RecruiterDashboard');
   }
 
   Future<void> _handleAction(String action, String jobId, String seekerId, Map<String, dynamic>? data) async {
-    if (data == null) return;
+    if (data == null) {
+      dev.log('No data provided for action $action on job $jobId, seeker $seekerId', name: 'RecruiterDashboard');
+      return;
+    }
     final resume = data['resume'] as Map<String, dynamic>? ?? {};
     final seeker = {
       ...data,
       'name': resume['name'] ?? data['name'] ?? seekerId,
       'cvUrl': resume['cvUrl'] ?? data['cvUrl'] ?? '',
     };
+    final jobTitle = data['jobTitle'] as String? ?? 'Unknown';
 
-    switch (action) {
-      case 'shortlist':
-        await _firestore.collection('Shortlisted').doc(jobId).collection('Seekers').doc(seekerId).set({});
-        await _firestore.collection('Applications').doc(jobId).collection('AppliedJobs').doc(seekerId).update({'status': 'Shortlisted'});
-        await _sendNotification(seekerId, 'You have been shortlisted for the job!');
-        break;
-      case 'reject':
-        await _firestore.collection('Applications').doc(jobId).collection('AppliedJobs').doc(seekerId).update({'status': 'Rejected'});
-        await _sendNotification(seekerId, 'Your application has been rejected.');
-        break;
-      case 'schedule':
-        _showDatePicker(jobId, seekerId, seeker);
-        break;
-      case 'download_cv':
-        final url = seeker['cvUrl'] as String? ?? '';
-        if (url.isNotEmpty && await canLaunchUrl(Uri.parse(url))) {
-          await launchUrl(Uri.parse(url));
-        } else {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No CV available')));
+    try {
+      switch (action) {
+        case 'shortlist':
+          final batch = _firestore.batch();
+          batch.set(
+            _firestore.collection('Shortlisted').doc(jobId).collection('Seekers').doc(seekerId),
+            {'timestamp': FieldValue.serverTimestamp()},
+          );
+          batch.update(
+            _firestore.collection('Applications').doc(jobId).collection('AppliedJobs').doc(seekerId),
+            {'status': 'Shortlisted'},
+          );
+          await batch.commit();
+          await _sendNotification(seekerId, 'You have been shortlisted for the job "$jobTitle"!', jobId, jobTitle);
+          dev.log('Shortlisted seeker $seekerId for job $jobId', name: 'RecruiterDashboard');
+          break;
+        case 'reject':
+          await _firestore
+              .collection('Applications')
+              .doc(jobId)
+              .collection('AppliedJobs')
+              .doc(seekerId)
+              .update({'status': 'Rejected'});
+          await _sendNotification(seekerId, 'Your application for "$jobTitle" has been rejected.', jobId, jobTitle);
+          dev.log('Rejected seeker $seekerId for job $jobId', name: 'RecruiterDashboard');
+          break;
+        case 'schedule':
+          _showDatePicker(jobId, seekerId, seeker, jobTitle);
+          break;
+        case 'download_cv':
+          final url = seeker['cvUrl'] as String? ?? '';
+          if (url.isNotEmpty && await canLaunchUrl(Uri.parse(url))) {
+            await launchUrl(Uri.parse(url));
+            dev.log('Downloaded CV for seeker $seekerId: $url', name: 'RecruiterDashboard');
+          } else {
+            dev.log('No CV available for seeker $seekerId', name: 'RecruiterDashboard');
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No CV available')));
+            }
           }
-        }
-        break;
-      case 'chat':
-        if (!mounted) return;
-        Navigator.push(context, MaterialPageRoute(builder: (_) => ChatScreen(seekerId: seekerId)));
-        break;
+          break;
+        case 'chat':
+          if (!mounted) return;
+          Navigator.push(context, MaterialPageRoute(builder: (_) => ChatScreen(seekerId: seekerId)));
+          dev.log('Navigated to chat with seeker $seekerId', name: 'RecruiterDashboard');
+          break;
+      }
+    } catch (e) {
+      dev.log('Error handling action $action for seeker $seekerId, job $jobId: $e', name: 'RecruiterDashboard', error: e);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Action failed: ${e.toString()}')),
+        );
+      }
     }
   }
 
-  void _showDatePicker(String jobId, String seekerId, Map<String, dynamic> seeker) async {
+  void _showDatePicker(String jobId, String seekerId, Map<String, dynamic> seeker, String jobTitle) async {
     final pickedDate = await showDatePicker(
       context: context,
       initialDate: DateTime.now().add(const Duration(days: 1)),
       firstDate: DateTime.now(),
       lastDate: DateTime.now().add(const Duration(days: 365)),
     );
-    if (pickedDate != null) {
-      await _firestore.collection('Applications').doc(jobId).collection('AppliedJobs').doc(seekerId).update({
-        'status': 'Interview Scheduled',
-        'interviewDate': Timestamp.fromDate(pickedDate),
-      });
-      await _sendNotification(seekerId, 'Interview scheduled on ${DateFormat('dd MMM yyyy').format(pickedDate)}');
-      _addToCalendar('Interview with ${seeker['name']}', pickedDate);
+    if (pickedDate != null && mounted) {
+      try {
+        final batch = _firestore.batch();
+        batch.update(
+          _firestore.collection('Applications').doc(jobId).collection('AppliedJobs').doc(seekerId),
+          {
+            'status': 'Interview Scheduled',
+            'interviewDate': Timestamp.fromDate(pickedDate),
+          },
+        );
+        await batch.commit();
+        await _sendNotification(
+          seekerId,
+          'Interview for "$jobTitle" scheduled on ${DateFormat('dd MMM yyyy').format(pickedDate)}',
+          jobId,
+          jobTitle,
+        );
+        _addToCalendar('Interview with ${seeker['name']}', pickedDate);
+        dev.log('Scheduled interview for seeker $seekerId on job $jobId at ${DateFormat('dd MMM yyyy').format(pickedDate)}', name: 'RecruiterDashboard');
+      } catch (e) {
+        dev.log('Error scheduling interview for seeker $seekerId, job $jobId: $e', name: 'RecruiterDashboard', error: e);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to schedule interview: ${e.toString()}')),
+          );
+        }
+      }
     }
   }
 
   Future<void> _exportToExcel(List<Map<String, dynamic>> applicants) async {
-    var excel = Excel.createExcel();
-    Sheet sheet = excel['Applicants'];
-    sheet.appendRow(['Name', 'Mobile', 'Specialization', 'Experience', 'Status']);
-    for (var a in applicants) {
-      sheet.appendRow([a['name'] ?? '', a['mobile'] ?? '', a['specialization'] ?? a['resume']?['specialization'] ?? '', a['experience'] ?? a['resume']?['experience'] ?? '', a['status'] ?? '']);
+    try {
+      var excel = Excel.createExcel();
+      Sheet sheet = excel['Applicants'];
+      sheet.appendRow(['Name', 'Mobile', 'Specialization', 'Experience', 'Status', 'Job Title']);
+      for (var a in applicants) {
+        sheet.appendRow([
+          a['name'] ?? '',
+          a['mobile'] ?? a['resume']?['mobileNumber'] ?? '',
+          a['specialization'] ?? a['resume']?['specialization'] ?? '',
+          a['experience'] ?? a['resume']?['experience'] ?? '',
+          a['status'] ?? '',
+          a['jobTitle'] ?? '',
+        ]);
+      }
+      final bytes = excel.encode();
+      final dir = await getApplicationDocumentsDirectory();
+      final path = '${dir.path}/applicants_export_${DateTime.now().millisecondsSinceEpoch}.xlsx';
+      final file = File(path);
+      await file.writeAsBytes(Uint8List.fromList(bytes!));
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Exported to $path')));
+      dev.log('Exported applicants to $path', name: 'RecruiterDashboard');
+    } catch (e) {
+      dev.log('Error exporting to Excel: $e', name: 'RecruiterDashboard', error: e);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Error exporting applicants. Check logs.')));
+      }
     }
-    final bytes = excel.encode();
-    final dir = await getApplicationDocumentsDirectory();
-    final path = '${dir.path}/applicants_export.xlsx';
-    final file = File(path);
-    await file.writeAsBytes(Uint8List.fromList(bytes!));
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Exported to $path')));
   }
 
   Widget _buildAppliedSeekersTab() {
@@ -172,16 +271,41 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
         children: [
           Row(
             children: [
+              Expanded(
+                child: TextField(
+                  decoration: const InputDecoration(
+                    labelText: 'Search applicants...',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.search),
+                  ),
+                  onChanged: (value) {
+                    setState(() {
+                      _searchQuery = value.toLowerCase();
+                    });
+                  },
+                ),
+              ),
               const SizedBox(width: 10),
               ElevatedButton.icon(
                 onPressed: () async {
                   try {
                     final applicants = await _authService.fetchAppliedSeekers();
+                    if (applicants.isEmpty) {
+                      dev.log('No applicants to export for recruiter $recruiterId', name: 'RecruiterDashboard');
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('No applicants available to export.')),
+                        );
+                      }
+                      return;
+                    }
                     await _exportToExcel(applicants);
                   } catch (e) {
                     dev.log('Error exporting applicants for recruiter $recruiterId: $e', name: 'RecruiterDashboard', error: e);
                     if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Error exporting applicants. Check logs.')));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Error exporting applicants. Check logs.')),
+                      );
                     }
                   }
                 },
@@ -201,31 +325,47 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
                 }
                 if (snapshot.hasError) {
                   final error = snapshot.error;
-                  String errorMessage = 'Error loading applied seekers. Please check Firestore permissions or contact support.';
+                  String errorMessage = 'Error loading applied seekers. Please verify Firestore permissions or contact support.';
                   if (error is AuthException) {
                     errorMessage = error.message;
                   } else if (error is FirebaseException) {
                     errorMessage = 'Firebase error: ${error.code} - ${error.message}';
-                    if (error.code == 'FAILED_PRECONDITION') {
+                    if (error.code == 'permission-denied') {
+                      errorMessage +=
+                          '\nVerify /Applications/{jobId} exists with recruiterId=$recruiterId and /ApplicationsIndex/${recruiterId}_<seekerId> is present.';
+                      dev.log('Permission denied in fetchAppliedSeekers. Check /Applications and /ApplicationsIndex for recruiter $recruiterId', name: 'RecruiterDashboard');
+                    } else if (error.code == 'failed-precondition') {
                       errorMessage += '\nCreate index at: https://console.firebase.google.com/v1/r/project/naukriwala-455909/firestore/indexes';
                     }
                   }
                   dev.log('Error loading applied seekers for recruiter $recruiterId: $error', name: 'RecruiterDashboard', error: error, stackTrace: snapshot.stackTrace);
-                  return Center(child: Text(errorMessage));
+                  return Center(child: Text(errorMessage, textAlign: TextAlign.center));
                 }
                 final applicants = snapshot.data ?? [];
 
                 if (applicants.isEmpty) {
-                  return const Center(child: Text('No applied seekers found. Check if applications exist in Firestore or if permissions are set correctly.'));
+                  dev.log('No applicants found for recruiter $recruiterId. Verify /Applications/{jobId} and /ApplicationsIndex', name: 'RecruiterDashboard');
+                  return const Center(
+                    child: Text(
+                      'No applied seekers found. Ensure /Applications/{jobId} exists with correct recruiterId and /ApplicationsIndex/{recruiterId_seekerId} is present.',
+                      textAlign: TextAlign.center,
+                    ),
+                  );
                 }
 
+                final filteredApplicants = applicants.where((applicant) {
+                  final name = (applicant['name'] ?? applicant['resume']?['name'] ?? '').toLowerCase();
+                  final jobTitle = (applicant['jobTitle'] ?? '').toLowerCase();
+                  return name.contains(_searchQuery) || jobTitle.contains(_searchQuery);
+                }).toList();
+
                 return ListView.builder(
-                  itemCount: applicants.length,
+                  itemCount: filteredApplicants.length,
                   itemBuilder: (_, index) {
-                    final applicant = applicants[index];
+                    final applicant = filteredApplicants[index];
                     final seekerId = applicant['seekerId'] as String? ?? 'Unknown';
                     final jobId = applicant['jobId'] as String? ?? 'Unknown';
-                    final resume = applicant['resume'] as Map<String, dynamic>? ?? {};
+                    final resume = applicant['resize'] as Map<String, dynamic>? ?? {};
 
                     return Card(
                       elevation: 2,
@@ -235,6 +375,7 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
                         subtitle: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
+                            Text('Job: ${applicant['jobTitle'] ?? jobId}'),
                             Text('Specialization: ${resume['specialization'] ?? applicant['specialization'] ?? ''}'),
                             Text('Experience: ${resume['experience'] ?? applicant['experience'] ?? ''}'),
                             Text('Status: ${applicant['status'] ?? ''}'),
@@ -268,10 +409,10 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
       child: Column(
         children: [
           TextField(
-            decoration: InputDecoration(
+            decoration: const InputDecoration(
               labelText: 'Search by name or date...',
               border: OutlineInputBorder(),
-              prefixIcon: const Icon(Icons.search),
+              prefixIcon: Icon(Icons.search),
             ),
             onChanged: (value) {
               setState(() {
@@ -294,10 +435,19 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
                 }
                 if (snapshot.hasError) {
                   dev.log('Error loading calls for recruiter $recruiterId: ${snapshot.error}', name: 'RecruiterDashboard');
-                  return Center(child: Text('Error loading calls: ${snapshot.error}'));
+                  if (snapshot.error.toString().contains('FAILED_PRECONDITION')) {
+                    return const Center(
+                      child: Text(
+                        'Error loading calls: Index required. Create it here: https://console.firebase.google.com/v1/r/project/naukriwala-455909/firestore/indexes',
+                        textAlign: TextAlign.center,
+                      ),
+                    );
+                  }
+                  return Center(child: Text('Error loading calls: ${snapshot.error}. Contact support.'));
                 }
                 final calls = snapshot.data?.docs ?? [];
                 if (calls.isEmpty) {
+                  dev.log('No scheduled calls found for recruiter $recruiterId', name: 'RecruiterDashboard');
                   return const Center(child: Text('No scheduled calls found.'));
                 }
 
@@ -354,7 +504,7 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
   Widget _buildNotificationsTab() {
     return StreamBuilder<QuerySnapshot>(
       stream: _firestore
-          .collection('SeekerNotifications')
+          .collection('RecruiterNotifications')
           .doc(recruiterId)
           .collection('Notifications')
           .where('type', isEqualTo: 'application')
@@ -367,13 +517,24 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
         if (snapshot.hasError) {
           dev.log('Error loading notifications for recruiter $recruiterId: ${snapshot.error}', name: 'RecruiterDashboard');
           if (snapshot.error.toString().contains('FAILED_PRECONDITION')) {
-            return Center(child: Text('Error loading notifications: Index required. Create it here: https://console.firebase.google.com/v1/r/project/naukriwala-455909/firestore/indexes'));
+            return const Center(
+              child: Text(
+                'Error loading notifications: Index required. Create it here: https://console.firebase.google.com/v1/r/project/naukriwala-455909/firestore/indexes',
+                textAlign: TextAlign.center,
+              ),
+            );
           }
-          return Center(child: Text('Error loading notifications: ${snapshot.error}. Contact support.'));
+          return Center(child: Text('Error loading notifications: ${snapshot.error}. Verify RecruiterNotifications collection permissions.'));
         }
         final docs = snapshot.data?.docs ?? [];
         if (docs.isEmpty) {
-          return const Center(child: Text('No notifications found. Check SeekerNotifications collection.'));
+          dev.log('No notifications found for recruiter $recruiterId in RecruiterNotifications/$recruiterId/Notifications', name: 'RecruiterDashboard');
+          return const Center(
+            child: Text(
+              'No notifications found. Ensure /RecruiterNotifications/{recruiterId}/Notifications contains data or verify applyToJob execution.',
+              textAlign: TextAlign.center,
+            ),
+          );
         }
 
         return ListView.builder(
@@ -383,27 +544,37 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
             final message = data['message'] ?? 'N/A';
             final timestamp = data['timestamp'] as Timestamp?;
             final read = data['read'] ?? false;
+            final jobId = data['jobId'] as String? ?? 'Unknown';
 
             return Card(
               elevation: 2,
               margin: const EdgeInsets.symmetric(vertical: 5),
               child: ListTile(
                 title: Text(message),
-                subtitle: timestamp != null ? Text(_formatTimestamp(timestamp)) : null,
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (timestamp != null) Text(_formatTimestamp(timestamp)),
+                    Text('Job ID: $jobId'),
+                  ],
+                ),
                 trailing: read
                     ? const Icon(Icons.check_circle, color: Colors.green)
                     : const Icon(Icons.circle, color: Colors.grey),
                 onTap: () async {
                   try {
                     await _firestore
-                        .collection('SeekerNotifications')
+                        .collection('RecruiterNotifications')
                         .doc(recruiterId)
                         .collection('Notifications')
                         .doc(docs[index].id)
                         .update({'read': true});
                     dev.log('Marked notification ${docs[index].id} as read for recruiter $recruiterId', name: 'RecruiterDashboard');
                   } catch (e) {
-                    dev.log('Error marking notification as read: $e', name: 'RecruiterDashboard');
+                    dev.log('Error marking notification ${docs[index].id} as read: $e', name: 'RecruiterDashboard');
+                    if (e is FirebaseException && e.code == 'permission-denied') {
+                      dev.log('Permission denied updating RecruiterNotifications/$recruiterId/Notifications/${docs[index].id}', name: 'RecruiterDashboard');
+                    }
                   }
                 },
               ),

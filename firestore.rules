@@ -2,82 +2,152 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // 🔐 Helper: Admin check
+    // 🔐 Admin check
     function isAdmin() {
-      return request.auth != null && request.auth.token.admin == true;
+      return request.auth.token.admin == true;
     }
 
-    // 🔐 Helper: Recruiter check
-    function isRecruiter() {
-      return request.auth != null && request.auth.token.role == "recruiter";
-    }
-
-    // 🔐 Helper: Seeker check
-    function isSeeker() {
-      return request.auth != null && request.auth.token.role == "seeker";
-    }
-
-    // ✅ Recruiter can view a seeker if ApplicationsIndex entry exists
+    // ✅ Recruiter can view seeker only if helper index document exists or application exists
     function canRecruiterViewSeeker(seekerId) {
-      return isRecruiter() &&
-             exists(/databases/$(database)/documents/ApplicationsIndex/$(request.auth.uid + "_" + seekerId));
+      return request.auth != null &&
+             request.auth.token.role == "recruiter" &&
+             (
+               exists(/databases/$(database)/documents/ApplicationsIndex/$(request.auth.uid + "_" + seekerId)) ||
+               exists(/databases/$(database)/documents/Applications/{jobId}/AppliedJobs/$(seekerId))
+             );
+    }
+
+    // 👤 Recruiter Profiles
+    match /Recruiters/{uid} {
+      allow read, write: if request.auth.uid == uid || isAdmin();
     }
 
     // 👤 Seeker Profiles
     match /Seekers/{uid} {
-      allow read: if request.auth != null && (
-        request.auth.uid == uid || 
-        isAdmin() ||
-        canRecruiterViewSeeker(uid)
-      );
-      allow write: if request.auth != null && (
-        request.auth.uid == uid || isAdmin()
-      );
+      allow read: if request.auth.uid == uid || isAdmin() || canRecruiterViewSeeker(uid);
+      allow write: if request.auth.uid == uid || isAdmin();
     }
 
-    // 🧑‍💼 Recruiter Profiles
-    match /Recruiters/{uid} {
-      allow read, write: if request.auth != null && (
-        request.auth.uid == uid || isAdmin()
-      );
+    // 🔍 Users Index (used for global search or push tokens)
+    match /UsersIndex/{uid} {
+      allow read: if request.auth != null;
+      allow write: if request.auth.uid == uid || isAdmin();
     }
 
-    // 💼 Jobs Collection (Created by Recruiters)
-    match /Jobs/{jobId} {
-      allow read: if request.auth != null; // All authenticated users can see jobs
-      allow write: if request.auth != null && (
-        isRecruiter() || isAdmin()
-      );
+    // 📄 Jobs posted by Recruiters
+    match /Recruiters/{recruiterId}/Jobs/{jobId} {
+      allow read: if true; // Anyone can browse jobs
+      allow create: if request.auth != null &&
+                    (request.auth.token.role == 'recruiter' || isAdmin()) &&
+                    request.resource.data.recruiterId == request.auth.uid;
+      allow update: if request.auth != null &&
+                    (request.auth.token.role == 'recruiter' || isAdmin()) &&
+                    request.auth.uid == resource.data.recruiterId;
+      allow delete: if false; // Disable deleting posted jobs
     }
 
-    // 📄 Job Applications
-    match /Applications/{applicationId} {
-      allow create: if request.auth != null && isSeeker();
-      allow read: if request.auth != null && (
-        isAdmin() ||
-        // seeker can view their own application
-        resource.data.seekerId == request.auth.uid ||
-        // recruiter can view if it's their job
-        resource.data.recruiterId == request.auth.uid
-      );
-      allow update, delete: if isAdmin();
+    // 🌐 Job collection group query support (only open jobs)
+    match /{any=**}/Jobs/{jobId} {
+      allow read: if resource.data.status == "open" && request.auth != null;
     }
 
-    // 🔍 ApplicationsIndex: Recruiter ↔ Seeker View Auth
+    // 📄 Applications parent document (metadata)
+    match /Applications/{jobId} {
+      allow read: if request.auth != null &&
+                  (
+                    (exists(/databases/$(database)/documents/Recruiters/$(request.auth.uid)/Jobs/$(jobId)) &&
+                     get(/databases/$(database)/documents/Recruiters/$(request.auth.uid)/Jobs/$(jobId)).data.recruiterId == request.auth.uid)
+                    || isAdmin()
+                  );
+      allow create: if request.auth != null &&
+                    (
+                      (request.auth.token.role == "recruiter" &&
+                       exists(/databases/$(database)/documents/Recruiters/$(request.auth.uid)/Jobs/$(jobId)) &&
+                       request.resource.data.recruiterId == request.auth.uid)
+                      ||
+                      (request.auth.token.role == "seeker" &&
+                       exists(/databases/$(database)/documents/Recruiters/$(request.resource.data.recruiterId)/Jobs/$(jobId)))
+                    );
+      allow update: if false; // Prevent updates to maintain consistency
+    }
+
+    // 📝 Recruiter-facing AppliedJobs subcollection
+    match /Applications/{jobId}/AppliedJobs/{seekerId} {
+      allow read: if request.auth != null &&
+                  request.auth.token.role == "recruiter" &&
+                  get(/databases/$(database)/documents/Applications/$(jobId)).data.recruiterId == request.auth.uid;
+      allow write: if request.auth != null &&
+                   (
+                     (request.auth.uid == seekerId &&
+                      request.resource.data.seekerId == seekerId &&
+                      request.resource.data.jobId == jobId &&
+                      exists(/databases/$(database)/documents/Recruiters/$(request.resource.data.recruiterId)/Jobs/$(jobId)))
+                     ||
+                     (request.auth.token.role == "recruiter" &&
+                      request.auth.uid == resource.data.recruiterId)
+                   );
+    }
+
+    // ✅ Seeker-facing AppliedJobs (for seeker dashboard)
+    match /Applications/{seekerUid}/AppliedJobs/{jobId} {
+      allow read, write: if request.auth.uid == seekerUid;
+    }
+
+    // 🧭 Collection Group support for AppliedJobs
+    match /{path=**}/AppliedJobs/{docId} {
+      allow read: if request.auth != null &&
+                  request.auth.token.role == "recruiter" &&
+                  resource.data.recruiterId == request.auth.uid;
+      allow write: if request.auth != null &&
+                   (
+                     request.auth.uid == request.resource.data.seekerId ||
+                     (request.auth.token.role == "recruiter" && request.auth.uid == resource.data.recruiterId)
+                   );
+    }
+
+    // 📑 Applications Index
     match /ApplicationsIndex/{docId} {
-      allow read, write: if isRecruiter() || isAdmin();
+      allow read: if request.auth != null &&
+                   (request.auth.token.role == "recruiter" || isAdmin());
+      allow write: if request.auth != null &&
+                   request.auth.token.role == "seeker" &&
+                   exists(/databases/$(database)/documents/Applications/$(request.resource.data.jobId)) &&
+                   exists(/databases/$(database)/documents/Recruiters/$(request.resource.data.recruiterId)/Jobs/$(request.resource.data.jobId));
     }
 
-    // 📦 Optional: Notifications or Chat
-    match /Notifications/{notificationId} {
-      allow read, write: if request.auth != null;
+    // 🔔 Recruiter-specific notification subcollection
+    match /RecruiterNotifications/{recruiterId}/Notifications/{notifId} {
+      allow read: if request.auth.uid == recruiterId || isAdmin();
+      allow write: if request.auth != null &&
+                   request.auth.token.role == "seeker" &&
+                   request.resource.data.to == recruiterId &&
+                   request.resource.data.from == request.auth.uid;
     }
 
-    match /Chats/{chatId} {
-      allow read, write: if request.auth != null;
+    // 🔔 Seeker-specific notification subcollection
+    match /SeekerNotifications/{seekerId}/Notifications/{notifId} {
+      allow read: if request.auth.uid == seekerId || isAdmin();
+      allow write: if request.auth != null &&
+                   request.auth.token.role == "recruiter" &&
+                   request.resource.data.to == seekerId &&
+                   request.resource.data.from == request.auth.uid;
     }
 
-    // 🚫 Default fallback — deny everything
+    // 🔔 Generic notifications (top-level, if used)
+    match /Notifications/{notifId} {
+      allow read, delete: if request.auth.uid == resource.data.to || isAdmin();
+      allow create: if request.auth != null &&
+                    request.resource.data.to != null &&
+                    request.resource.data.from == request.auth.uid;
+      allow update: if request.auth.uid == resource.data.to || isAdmin();
+    }
+
+    // ⭐ Job bookmarks
+    match /Bookmarks/{uid}/SavedJobs/{jobId} {
+      allow read, write: if request.auth.uid == uid || isAdmin();
+    }
+
+    // 🚫 Catch-all fallback rule
     match /{document=**} {
       allow read, write: if false;
     }
