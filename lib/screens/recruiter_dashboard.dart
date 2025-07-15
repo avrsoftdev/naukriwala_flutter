@@ -64,7 +64,7 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
         dev.log('WARNING: User ${FirebaseAuth.instance.currentUser!.uid} does not have recruiter role', name: 'RecruiterDashboard');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Invalid role. Please contact support to set recruiter role.')),
+            const SnackBar(content: Text('Invalid role. Please run set_roles.dart or contact support.')),
           );
         }
       }
@@ -109,8 +109,14 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
     } catch (e) {
       dev.log('Error sending notification to $seekerId for job $jobId: $e', name: 'RecruiterDashboard', error: e);
       if (e is FirebaseException && e.code == 'permission-denied') {
-        dev.log('Permission denied writing to SeekerNotifications/$seekerId/Notifications/$notificationId', name: 'RecruiterDashboard');
+        dev.log('Permission denied writing to SeekerNotifications/$seekerId/Notifications/$notificationId. Check role claim and Firestore rules.', name: 'RecruiterDashboard');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Permission denied sending notification. Ensure recruiter role is set.')),
+          );
+        }
       }
+      throw e;
     }
   }
 
@@ -127,8 +133,13 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
   }
 
   Future<void> _handleAction(String action, String jobId, String seekerId, Map<String, dynamic>? data) async {
-    if (data == null) {
-      dev.log('No data provided for action $action on job $jobId, seeker $seekerId', name: 'RecruiterDashboard');
+    if (data == null || jobId == 'Unknown' || seekerId == 'Unknown') {
+      dev.log('Invalid data for action $action: jobId=$jobId, seekerId=$seekerId, data=$data', name: 'RecruiterDashboard');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Invalid applicant or job data')),
+        );
+      }
       return;
     }
     final resume = data['resume'] as Map<String, dynamic>? ?? {};
@@ -140,35 +151,90 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
     final jobTitle = data['jobTitle'] as String? ?? 'Unknown';
 
     try {
+      dev.log('Handling action: $action for seeker $seekerId, job $jobId', name: 'RecruiterDashboard');
       switch (action) {
         case 'shortlist':
+          dev.log('Attempting to shortlist seeker $seekerId for job $jobId', name: 'RecruiterDashboard');
+          // Verify application exists
+          final applicationDoc = await _firestore.collection('Applications').doc(jobId).collection('AppliedJobs').doc(seekerId).get();
+          if (!applicationDoc.exists) {
+            dev.log('Application not found for job $jobId, seeker $seekerId', name: 'RecruiterDashboard');
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Application not found')),
+              );
+            }
+            return;
+          }
+          // Verify job ownership
+          final jobDoc = await _firestore.collection('Jobs').doc(jobId).get();
+          if (!jobDoc.exists || jobDoc.data()?['recruiterId'] != recruiterId) {
+            dev.log('Job $jobId not found or does not belong to recruiter $recruiterId', name: 'RecruiterDashboard');
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Cannot shortlist: Job not found or unauthorized')),
+              );
+            }
+            return;
+          }
           final batch = _firestore.batch();
-          batch.set(
-            _firestore.collection('Shortlisted').doc(jobId).collection('Seekers').doc(seekerId),
-            {'timestamp': FieldValue.serverTimestamp()},
-          );
-          batch.update(
-            _firestore.collection('Applications').doc(jobId).collection('AppliedJobs').doc(seekerId),
-            {'status': 'Shortlisted'},
-          );
+          final shortlistRef = _firestore.collection('Shortlisted').doc(jobId).collection('Seekers').doc(seekerId);
+          final applicationRef = _firestore.collection('Applications').doc(jobId).collection('AppliedJobs').doc(seekerId);
+          batch.set(shortlistRef, {'timestamp': FieldValue.serverTimestamp()});
+          batch.update(applicationRef, {'status': 'Shortlisted'});
           await batch.commit();
           await _sendNotification(seekerId, 'You have been shortlisted for the job "$jobTitle"!', jobId, jobTitle);
-          dev.log('Shortlisted seeker $seekerId for job $jobId', name: 'RecruiterDashboard');
+          dev.log('Successfully shortlisted seeker $seekerId for job $jobId', name: 'RecruiterDashboard');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Applicant shortlisted successfully')),
+            );
+            setState(() {}); // Refresh UI
+          }
           break;
+
         case 'reject':
-          await _firestore
-              .collection('Applications')
-              .doc(jobId)
-              .collection('AppliedJobs')
-              .doc(seekerId)
-              .update({'status': 'Rejected'});
+          dev.log('Attempting to reject seeker $seekerId for job $jobId', name: 'RecruiterDashboard');
+          // Verify application exists
+          final applicationDocReject = await _firestore.collection('Applications').doc(jobId).collection('AppliedJobs').doc(seekerId).get();
+          if (!applicationDocReject.exists) {
+            dev.log('Application not found for job $jobId, seeker $seekerId', name: 'RecruiterDashboard');
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Application not found')),
+              );
+            }
+            return;
+          }
+          // Verify job ownership
+          final jobDocReject = await _firestore.collection('Jobs').doc(jobId).get();
+          if (!jobDocReject.exists || jobDocReject.data()?['recruiterId'] != recruiterId) {
+            dev.log('Job $jobId not found or does not belong to recruiter $recruiterId', name: 'RecruiterDashboard');
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Cannot reject: Job not found or unauthorized')),
+              );
+            }
+            return;
+          }
+          await _firestore.collection('Applications').doc(jobId).collection('AppliedJobs').doc(seekerId).update({'status': 'Rejected'});
           await _sendNotification(seekerId, 'Your application for "$jobTitle" has been rejected.', jobId, jobTitle);
-          dev.log('Rejected seeker $seekerId for job $jobId', name: 'RecruiterDashboard');
+          dev.log('Successfully rejected seeker $seekerId for job $jobId', name: 'RecruiterDashboard');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Applicant rejected successfully')),
+            );
+            setState(() {}); // Refresh UI
+          }
           break;
+
         case 'schedule':
+          dev.log('Attempting to schedule interview for seeker $seekerId, job $jobId', name: 'RecruiterDashboard');
           _showDatePicker(jobId, seekerId, seeker, jobTitle);
           break;
+
         case 'download_cv':
+          dev.log('Attempting to download CV for seeker $seekerId, job $jobId', name: 'RecruiterDashboard');
           final url = seeker['cvUrl'] as String? ?? '';
           if (url.isNotEmpty && await canLaunchUrl(Uri.parse(url))) {
             await launchUrl(Uri.parse(url));
@@ -180,18 +246,55 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
             }
           }
           break;
+
         case 'chat':
-          if (!mounted) return;
-          Navigator.push(context, MaterialPageRoute(builder: (_) => ChatScreen(seekerId: seekerId)));
-          dev.log('Navigated to chat with seeker $seekerId', name: 'RecruiterDashboard');
+          dev.log('Attempting to navigate to ChatScreen for seeker $seekerId', name: 'RecruiterDashboard');
+          if (!mounted) {
+            dev.log('Widget not mounted, cannot navigate to ChatScreen', name: 'RecruiterDashboard');
+            return;
+          }
+          // Verify seeker exists
+          final seekerDoc = await _firestore.collection('Seekers').doc(seekerId).get();
+          if (!seekerDoc.exists) {
+            dev.log('Seeker $seekerId not found in /Seekers', name: 'RecruiterDashboard');
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Seeker not found')),
+              );
+            }
+            return;
+          }
+          try {
+            await Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => ChatScreen(seekerId: seekerId)),
+            );
+            dev.log('Successfully navigated to ChatScreen for seeker $seekerId', name: 'RecruiterDashboard');
+          } catch (e) {
+            dev.log('Error navigating to ChatScreen for seeker $seekerId: $e', name: 'RecruiterDashboard', error: e);
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Failed to open chat: $e')),
+              );
+            }
+          }
           break;
       }
     } catch (e) {
       dev.log('Error handling action $action for seeker $seekerId, job $jobId: $e', name: 'RecruiterDashboard', error: e);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Action failed: ${e.toString()}')),
-        );
+      if (e is FirebaseException && e.code == 'permission-denied') {
+        dev.log('Permission denied for action $action. Check Firestore rules for /Applications, /Shortlisted, and /SeekerNotifications.', name: 'RecruiterDashboard');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Permission denied. Ensure recruiter role is set and job ownership is correct. Run set_roles.dart.')),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Action failed: $e')),
+          );
+        }
       }
     }
   }
@@ -205,6 +308,7 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
     );
     if (pickedDate != null && mounted) {
       try {
+        dev.log('Scheduling interview for seeker $seekerId on job $jobId at ${DateFormat('dd MMM yyyy').format(pickedDate)}', name: 'RecruiterDashboard');
         final batch = _firestore.batch();
         batch.update(
           _firestore.collection('Applications').doc(jobId).collection('AppliedJobs').doc(seekerId),
@@ -221,12 +325,18 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
           jobTitle,
         );
         _addToCalendar('Interview with ${seeker['name']}', pickedDate);
-        dev.log('Scheduled interview for seeker $seekerId on job $jobId at ${DateFormat('dd MMM yyyy').format(pickedDate)}', name: 'RecruiterDashboard');
+        dev.log('Successfully scheduled interview for seeker $seekerId on job $jobId', name: 'RecruiterDashboard');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Interview scheduled successfully')),
+          );
+          setState(() {}); // Refresh UI
+        }
       } catch (e) {
         dev.log('Error scheduling interview for seeker $seekerId, job $jobId: $e', name: 'RecruiterDashboard', error: e);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to schedule interview: ${e.toString()}')),
+            SnackBar(content: Text('Failed to schedule interview: $e')),
           );
         }
       }
@@ -354,7 +464,7 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
                 }
 
                 final filteredApplicants = applicants.where((applicant) {
-                  final name = (applicant['name'] ?? applicant['resume']?['name'] ?? '').toLowerCase();
+                  final name = (applicant['resume']?['name'] ?? applicant['name'] ?? '').toLowerCase();
                   final jobTitle = (applicant['jobTitle'] ?? '').toLowerCase();
                   return name.contains(_searchQuery) || jobTitle.contains(_searchQuery);
                 }).toList();
@@ -365,7 +475,7 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
                     final applicant = filteredApplicants[index];
                     final seekerId = applicant['seekerId'] as String? ?? 'Unknown';
                     final jobId = applicant['jobId'] as String? ?? 'Unknown';
-                    final resume = applicant['resize'] as Map<String, dynamic>? ?? {};
+                    final resume = applicant['resume'] as Map<String, dynamic>? ?? {};
 
                     return Card(
                       elevation: 2,
@@ -376,9 +486,12 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text('Job: ${applicant['jobTitle'] ?? jobId}'),
-                            Text('Specialization: ${resume['specialization'] ?? applicant['specialization'] ?? ''}'),
-                            Text('Experience: ${resume['experience'] ?? applicant['experience'] ?? ''}'),
-                            Text('Status: ${applicant['status'] ?? ''}'),
+                            Text('Name: ${resume['name'] ?? 'N/A'}'),
+                            Text('Email: ${resume['email'] ?? 'N/A'}'),
+                            Text('Skills: ${(resume['skills'] as List<dynamic>?)?.join(', ') ?? 'N/A'}'),
+                            Text('Specialization: ${resume['specialization'] ?? applicant['specialization'] ?? 'N/A'}'),
+                            Text('Experience: ${resume['experience'] ?? applicant['experience'] ?? 'N/A'}'),
+                            Text('Status: ${applicant['status'] ?? 'N/A'}'),
                           ],
                         ),
                         trailing: PopupMenuButton<String>(
