@@ -267,21 +267,50 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
             onPressed: () async {
               Navigator.pop(context);
               try {
-                await FirebaseFirestore.instance
-                    .collection('Recruiters')
-                    .doc(user!.uid)
-                    .collection('Jobs')
-                    .doc(jobId)
-                    .delete();
-                // Also delete Applications/{jobId} to clean up
-                await FirebaseFirestore.instance
+                final batch = FirebaseFirestore.instance.batch();
+                // Delete job
+                batch.delete(
+                  FirebaseFirestore.instance
+                      .collection('Recruiters')
+                      .doc(user!.uid)
+                      .collection('Jobs')
+                      .doc(jobId),
+                );
+                // Delete Applications/{jobId}
+                batch.delete(
+                  FirebaseFirestore.instance.collection('Applications').doc(jobId),
+                );
+                // Delete ApplicationsIndex entries
+                final indexSnapshot = await FirebaseFirestore.instance
+                    .collection('ApplicationsIndex')
+                    .where('jobId', isEqualTo: jobId)
+                    .where('recruiterId', isEqualTo: user!.uid)
+                    .get();
+                for (var doc in indexSnapshot.docs) {
+                  batch.delete(doc.reference);
+                }
+                // Delete seeker-centric Applications
+                final appsSnapshot = await FirebaseFirestore.instance
                     .collection('Applications')
                     .doc(jobId)
-                    .delete();
+                    .collection('AppliedJobs')
+                    .get();
+                for (var doc in appsSnapshot.docs) {
+                  final seekerId = doc.id;
+                  batch.delete(
+                    FirebaseFirestore.instance
+                        .collection('Applications')
+                        .doc(seekerId)
+                        .collection('AppliedJobs')
+                        .doc(jobId),
+                  );
+                }
+                await batch.commit();
                 if (!context.mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Job deleted')),
                 );
+                dev.log('Job $jobId and related data deleted by user ${user!.uid}', name: 'PostedJobsScreen');
               } catch (e) {
                 dev.log('Error deleting job $jobId: $e', name: 'PostedJobsScreen', error: e);
                 if (!context.mounted) return;

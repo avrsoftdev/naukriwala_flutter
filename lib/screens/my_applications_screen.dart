@@ -48,12 +48,32 @@ class _MyApplicationsScreenState extends State<MyApplicationsScreen> {
   }
 
   Future<void> _openResume(String url) async {
-    if (await canLaunchUrl(Uri.parse(url))) {
-      await launchUrl(Uri.parse(url));
-    } else {
+    if (url.isEmpty) {
+      dev.log('No resume URL provided for seeker ${widget.seekerId}', name: 'MyApplicationsScreen');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not open resume')),
+          const SnackBar(content: Text('No resume available')),
+        );
+      }
+      return;
+    }
+    try {
+      if (await canLaunchUrl(Uri.parse(url))) {
+        await launchUrl(Uri.parse(url));
+        dev.log('Opened resume for seeker ${widget.seekerId}: $url', name: 'MyApplicationsScreen');
+      } else {
+        dev.log('Could not launch resume URL: $url', name: 'MyApplicationsScreen');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Could not open resume')),
+          );
+        }
+      }
+    } catch (e) {
+      dev.log('Error opening resume URL $url: $e', name: 'MyApplicationsScreen', error: e);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error opening resume')),
         );
       }
     }
@@ -81,6 +101,14 @@ class _MyApplicationsScreenState extends State<MyApplicationsScreen> {
         builder: (context, snapshot) {
           if (snapshot.hasError) {
             dev.log('Error loading applications for seekerId ${widget.seekerId}: ${snapshot.error}', name: 'MyApplicationsScreen');
+            if (snapshot.error.toString().contains('FAILED_PRECONDITION')) {
+              return const Center(
+                child: Text(
+                  'Error loading applications: Index required. Create it here: https://console.firebase.google.com/v1/r/project/naukriwala-455909/firestore/indexes',
+                  textAlign: TextAlign.center,
+                ),
+              );
+            }
             return Center(child: Text('Error loading applications: ${snapshot.error}'));
           }
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -103,7 +131,7 @@ class _MyApplicationsScreenState extends State<MyApplicationsScreen> {
               final appliedAt = data['appliedAt'] as Timestamp?;
               final status = data['status'] ?? 'Pending';
               final resumeData = data['resume'] as Map<String, dynamic>?;
-              final resumeUrl = resumeData?['url'] ?? data['cvUrl'] ?? data['resumeUrl'] ?? '';
+              final resumeUrl = resumeData?['cvUrl'] ?? '';
 
               return Card(
                 margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),

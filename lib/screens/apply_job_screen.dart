@@ -1,3 +1,4 @@
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -88,6 +89,12 @@ class ApplyJobScreenState extends State<ApplyJobScreen> {
 
   Future<bool> _checkJobEligibility() async {
     try {
+      // Check if application already exists to allow recruiter profile read
+      final applicationIndexDoc = await FirebaseFirestore.instance
+          .collection('ApplicationsIndex')
+          .doc('${widget.recruiterId}_${FirebaseAuth.instance.currentUser!.uid}')
+          .get();
+
       final jobDoc = await FirebaseFirestore.instance
           .collection('Recruiters')
           .doc(widget.recruiterId)
@@ -138,9 +145,11 @@ class ApplyJobScreenState extends State<ApplyJobScreen> {
     } catch (e) {
       dev.log('Error checking job eligibility for ${widget.jobId}: $e', name: 'ApplyJobScreen', error: e);
       if (e is FirebaseException && e.code == 'permission-denied') {
-        dev.log('Permission denied reading Recruiters/${widget.recruiterId}/Jobs/${widget.jobId}', name: 'ApplyJobScreen');
+        dev.log('Permission denied reading Recruiters/${widget.recruiterId}/Jobs/${widget.jobId}. Verify ApplicationsIndex/${widget.recruiterId}_${FirebaseAuth.instance.currentUser!.uid} exists.', name: 'ApplyJobScreen');
+        _showSnackBar('Permission denied: Cannot access job details. Apply first or contact support.');
+      } else {
+        _showSnackBar('Error checking eligibility: $e');
       }
-      _showSnackBar('Error checking eligibility: $e');
       return false;
     }
   }
@@ -152,6 +161,14 @@ class ApplyJobScreenState extends State<ApplyJobScreen> {
     } catch (_) {
       return 0;
     }
+  }
+
+  Future<bool> _checkRole() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return false;
+    final role = await _authService.getUserRole();
+    dev.log('User ${user.uid} role: $role', name: 'ApplyJobScreen');
+    return role == 'seeker';
   }
 
   Future<void> _applyForJob() async {
@@ -176,6 +193,12 @@ class ApplyJobScreenState extends State<ApplyJobScreen> {
     if (_seekerProfile == null) {
       dev.log('Seeker profile is null before applying', name: 'ApplyJobScreen');
       _showSnackBar('Profile data not available');
+      return;
+    }
+
+    if (!await _checkRole()) {
+      dev.log('User ${user.uid} does not have seeker role', name: 'ApplyJobScreen');
+      _showSnackBar('You must be a seeker to apply for jobs. Please update your role.');
       return;
     }
 
@@ -219,10 +242,12 @@ class ApplyJobScreenState extends State<ApplyJobScreen> {
     } catch (e) {
       dev.log('Error applying for job ${widget.jobId}: $e', name: 'ApplyJobScreen', error: e);
       if (e is FirebaseException) {
-        _showSnackBar('Failed to apply: ${e.code} - ${e.message}');
+        dev.log('Firebase error details: ${e.code} - ${e.message}', name: 'ApplyJobScreen');
         if (e.code == 'permission-denied') {
-          dev.log('Permission denied details: Check role claim or Firestore rules for Applications, ApplicationsIndex, and RecruiterNotifications', name: 'ApplyJobScreen');
+          dev.log('Permission denied details: Check Firestore rules for Applications, ApplicationsIndex, and RecruiterNotifications', name: 'ApplyJobScreen');
           _showSnackBar('Permission denied: Ensure seeker role is set and Firestore rules allow write to Applications and ApplicationsIndex');
+        } else {
+          _showSnackBar('Failed to apply: ${e.code} - ${e.message}');
         }
       } else if (e is AuthException) {
         _showSnackBar(e.message);
@@ -308,7 +333,6 @@ class ApplyJobScreenState extends State<ApplyJobScreen> {
 class AuthException implements Exception {
   final String message;
   const AuthException(this.message);
-
   @override
   String toString() => 'AuthException: $message';
 }

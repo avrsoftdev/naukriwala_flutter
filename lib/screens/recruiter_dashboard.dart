@@ -39,7 +39,7 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
       dev.log('Recruiter ID: $recruiterId', name: 'RecruiterDashboard');
     }
     _requestNotificationPermissions();
-    _checkRoleClaim();
+    _checkRole();
   }
 
   void _requestNotificationPermissions() async {
@@ -55,21 +55,20 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
     }
   }
 
-  Future<void> _checkRoleClaim() async {
+  Future<void> _checkRole() async {
     try {
-      final idTokenResult = await FirebaseAuth.instance.currentUser!.getIdTokenResult();
-      final role = idTokenResult.claims?['role'];
-      dev.log('Token claims for UID ${FirebaseAuth.instance.currentUser!.uid}: role=$role', name: 'RecruiterDashboard');
+      final role = await _authService.getUserRole();
+      dev.log('Role for UID ${FirebaseAuth.instance.currentUser!.uid}: $role', name: 'RecruiterDashboard');
       if (role != 'recruiter') {
         dev.log('WARNING: User ${FirebaseAuth.instance.currentUser!.uid} does not have recruiter role', name: 'RecruiterDashboard');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Invalid role. Please run set_roles.dart or contact support.')),
+            const SnackBar(content: Text('Invalid role. Please ensure your account is set as a recruiter.')),
           );
         }
       }
     } catch (e) {
-      dev.log('Error checking role claim: $e', name: 'RecruiterDashboard', error: e);
+      dev.log('Error checking role: $e', name: 'RecruiterDashboard', error: e);
     }
   }
 
@@ -109,10 +108,10 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
     } catch (e) {
       dev.log('Error sending notification to $seekerId for job $jobId: $e', name: 'RecruiterDashboard', error: e);
       if (e is FirebaseException && e.code == 'permission-denied') {
-        dev.log('Permission denied writing to SeekerNotifications/$seekerId/Notifications/$notificationId. Check role claim and Firestore rules.', name: 'RecruiterDashboard');
+        dev.log('Permission denied writing to SeekerNotifications/$seekerId/Notifications/$notificationId. Check Firestore rules.', name: 'RecruiterDashboard');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Permission denied sending notification. Ensure recruiter role is set.')),
+            const SnackBar(content: Text('Permission denied sending notification. Verify Firestore rules.')),
           );
         }
       }
@@ -167,7 +166,7 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
             return;
           }
           // Verify job ownership
-          final jobDoc = await _firestore.collection('Jobs').doc(jobId).get();
+          final jobDoc = await _firestore.collection('Recruiters').doc(recruiterId).collection('Jobs').doc(jobId).get();
           if (!jobDoc.exists || jobDoc.data()?['recruiterId'] != recruiterId) {
             dev.log('Job $jobId not found or does not belong to recruiter $recruiterId', name: 'RecruiterDashboard');
             if (mounted) {
@@ -207,7 +206,7 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
             return;
           }
           // Verify job ownership
-          final jobDocReject = await _firestore.collection('Jobs').doc(jobId).get();
+          final jobDocReject = await _firestore.collection('Recruiters').doc(recruiterId).collection('Jobs').doc(jobId).get();
           if (!jobDocReject.exists || jobDocReject.data()?['recruiterId'] != recruiterId) {
             dev.log('Job $jobId not found or does not belong to recruiter $recruiterId', name: 'RecruiterDashboard');
             if (mounted) {
@@ -253,13 +252,13 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
             dev.log('Widget not mounted, cannot navigate to ChatScreen', name: 'RecruiterDashboard');
             return;
           }
-          // Verify seeker exists
-          final seekerDoc = await _firestore.collection('Seekers').doc(seekerId).get();
-          if (!seekerDoc.exists) {
-            dev.log('Seeker $seekerId not found in /Seekers', name: 'RecruiterDashboard');
+          // Verify application exists
+          final indexDoc = await _firestore.collection('ApplicationsIndex').doc('${recruiterId}_$seekerId').get();
+          if (!indexDoc.exists) {
+            dev.log('No application found for seeker $seekerId with recruiter $recruiterId', name: 'RecruiterDashboard');
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Seeker not found')),
+                const SnackBar(content: Text('Cannot chat: No application found')),
               );
             }
             return;
@@ -286,7 +285,7 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
         dev.log('Permission denied for action $action. Check Firestore rules for /Applications, /Shortlisted, and /SeekerNotifications.', name: 'RecruiterDashboard');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Permission denied. Ensure recruiter role is set and job ownership is correct. Run set_roles.dart.')),
+            const SnackBar(content: Text('Permission denied. Verify Firestore rules and job ownership.')),
           );
         }
       } else {
