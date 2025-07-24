@@ -115,7 +115,7 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
           );
         }
       }
-      throw e;
+      rethrow; // Replace throw with rethrow
     }
   }
 
@@ -154,7 +154,6 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
       switch (action) {
         case 'shortlist':
           dev.log('Attempting to shortlist seeker $seekerId for job $jobId', name: 'RecruiterDashboard');
-          // Verify application exists
           final applicationDoc = await _firestore.collection('Applications').doc(jobId).collection('AppliedJobs').doc(seekerId).get();
           if (!applicationDoc.exists) {
             dev.log('Application not found for job $jobId, seeker $seekerId', name: 'RecruiterDashboard');
@@ -165,7 +164,6 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
             }
             return;
           }
-          // Verify job ownership
           final jobDoc = await _firestore.collection('Recruiters').doc(recruiterId).collection('Jobs').doc(jobId).get();
           if (!jobDoc.exists || jobDoc.data()?['recruiterId'] != recruiterId) {
             dev.log('Job $jobId not found or does not belong to recruiter $recruiterId', name: 'RecruiterDashboard');
@@ -194,7 +192,6 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
 
         case 'reject':
           dev.log('Attempting to reject seeker $seekerId for job $jobId', name: 'RecruiterDashboard');
-          // Verify application exists
           final applicationDocReject = await _firestore.collection('Applications').doc(jobId).collection('AppliedJobs').doc(seekerId).get();
           if (!applicationDocReject.exists) {
             dev.log('Application not found for job $jobId, seeker $seekerId', name: 'RecruiterDashboard');
@@ -205,7 +202,6 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
             }
             return;
           }
-          // Verify job ownership
           final jobDocReject = await _firestore.collection('Recruiters').doc(recruiterId).collection('Jobs').doc(jobId).get();
           if (!jobDocReject.exists || jobDocReject.data()?['recruiterId'] != recruiterId) {
             dev.log('Job $jobId not found or does not belong to recruiter $recruiterId', name: 'RecruiterDashboard');
@@ -252,23 +248,19 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
             dev.log('Widget not mounted, cannot navigate to ChatScreen', name: 'RecruiterDashboard');
             return;
           }
-          // Verify application exists
-          final indexDoc = await _firestore.collection('ApplicationsIndex').doc('${recruiterId}_$seekerId').get();
-          if (!indexDoc.exists) {
-            dev.log('No application found for seeker $seekerId with recruiter $recruiterId', name: 'RecruiterDashboard');
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Cannot chat: No application found')),
-              );
-            }
-            return;
-          }
+          final chatId = [recruiterId!, seekerId].join('_').split('_')..sort();
+          final normalizedChatId = '${chatId[0]}_${chatId[1]}';
           try {
-            await Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => ChatScreen(seekerId: seekerId)),
-            );
-            dev.log('Successfully navigated to ChatScreen for seeker $seekerId', name: 'RecruiterDashboard');
+            await _authService.sendMessage(seekerId, jobId, 'Hello, let’s discuss your application!');
+            if (mounted) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ChatScreen(chatId: normalizedChatId, recipientId: seekerId, jobId: jobId),
+                ),
+              );
+              dev.log('Successfully navigated to ChatScreen for seeker $seekerId', name: 'RecruiterDashboard');
+            }
           } catch (e) {
             dev.log('Error navigating to ChatScreen for seeker $seekerId: $e', name: 'RecruiterDashboard', error: e);
             if (mounted) {
@@ -716,40 +708,145 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
       return const SizedBox.shrink();
     }
 
-    return DefaultTabController(
-      length: 6,
-      child: Scaffold(
-        appBar: AppBar(
-          backgroundColor: Colors.deepPurple,
-          title: const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 8.0),
-            child: Text(
-              'Recruiter Dashboard',
-              style: TextStyle(color: Colors.white),
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        title: const Text(''), // Empty title to avoid overlap
+        leading: Builder(
+          builder: (context) => IconButton(
+            icon: const Icon(Icons.menu, color: Colors.white),
+            onPressed: () => Scaffold.of(context).openDrawer(),
+          ),
+        ),
+      ),
+      drawer: Drawer(
+        child: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF6A1B9A), Color(0xFF00695C)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
           ),
-          bottom: const TabBar(
-            labelColor: Colors.white,
-            unselectedLabelColor: Colors.white70,
-            indicatorColor: Colors.white,
-            tabs: [
-              Tab(icon: Icon(Icons.person)),
-              Tab(icon: Icon(Icons.work)),
-              Tab(icon: Icon(Icons.group_add)),
-              Tab(icon: Icon(Icons.call)),
-              Tab(icon: Icon(Icons.post_add)),
-              Tab(icon: Icon(Icons.notifications)),
+          child: ListView(
+            padding: EdgeInsets.zero,
+            children: [
+              const DrawerHeader(
+                decoration: BoxDecoration(
+                  color: Colors.transparent,
+                ),
+                child: CircleAvatar(
+                  radius: 50,
+                  backgroundColor: Colors.white24,
+                  child: Icon(Icons.person, size: 50, color: Colors.white),
+                ),
+              ),
+              ListTile(
+                leading: const Icon(Icons.person, color: Colors.white),
+                title: const Text('Profile', style: TextStyle(color: Colors.white)),
+                onTap: () {
+                  Navigator.pop(context);
+                  DefaultTabController.of(context).animateTo(0);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.work, color: Colors.white),
+                title: const Text('Posted Jobs', style: TextStyle(color: Colors.white)),
+                onTap: () {
+                  Navigator.pop(context);
+                  DefaultTabController.of(context).animateTo(1);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.group_add, color: Colors.white),
+                title: const Text('Applied Seekers', style: TextStyle(color: Colors.white)),
+                onTap: () {
+                  Navigator.pop(context);
+                  DefaultTabController.of(context).animateTo(2);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.call, color: Colors.white),
+                title: const Text('Calls', style: TextStyle(color: Colors.white)),
+                onTap: () {
+                  Navigator.pop(context);
+                  DefaultTabController.of(context).animateTo(3);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.post_add, color: Colors.white),
+                title: const Text('Post Job', style: TextStyle(color: Colors.white)),
+                onTap: () {
+                  Navigator.pop(context);
+                  DefaultTabController.of(context).animateTo(4);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.notifications, color: Colors.white),
+                title: const Text('Notifications', style: TextStyle(color: Colors.white)),
+                onTap: () {
+                  Navigator.pop(context);
+                  DefaultTabController.of(context).animateTo(5);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.logout, color: Colors.white),
+                title: const Text('Logout', style: TextStyle(color: Colors.white)),
+                onTap: () async {
+                  Navigator.pop(context); // Close drawer
+                  await _authService.signOut();
+                  if (mounted) {
+                    Navigator.pushReplacementNamed(context, '/login');
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Logged out successfully')),
+                    );
+                  }
+                },
+              ),
             ],
           ),
         ),
-        body: TabBarView(
+      ),
+      body: DefaultTabController(
+        length: 6,
+        child: Column(
           children: [
-            ProfileScreen(isRecruiter: true),
-            PostedJobsScreen(),
-            _buildAppliedSeekersTab(),
-            _buildCallsTab(),
-            PostJobScreen(),
-            _buildNotificationsTab(),
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFF6A1B9A), Color(0xFF00695C)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+              child: const TabBar(
+                labelColor: Colors.white,
+                unselectedLabelColor: Colors.white70,
+                indicatorColor: Colors.white,
+                tabs: [
+                  Tab(icon: Icon(Icons.person)),
+                  Tab(icon: Icon(Icons.work)),
+                  Tab(icon: Icon(Icons.group_add)),
+                  Tab(icon: Icon(Icons.call)),
+                  Tab(icon: Icon(Icons.post_add)),
+                  Tab(icon: Icon(Icons.notifications)),
+                ],
+              ),
+            ),
+            Expanded(
+              child: TabBarView(
+                children: [
+                  ProfileScreen(isRecruiter: true),
+                  PostedJobsScreen(),
+                  _buildAppliedSeekersTab(),
+                  _buildCallsTab(),
+                  PostJobScreen(),
+                  _buildNotificationsTab(),
+                ],
+              ),
+            ),
           ],
         ),
       ),

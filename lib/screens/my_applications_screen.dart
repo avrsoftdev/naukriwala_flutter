@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'dart:developer' as dev;
 import 'package:firebase_auth/firebase_auth.dart';
+import '../services/auth_service.dart';
 
 class MyApplicationsScreen extends StatefulWidget {
   final String seekerId;
@@ -79,6 +80,30 @@ class _MyApplicationsScreenState extends State<MyApplicationsScreen> {
     }
   }
 
+  void _startChat(String jobId, String recruiterId) async {
+    try {
+      final authService = AuthService(); // Instantiate AuthService
+      final chatId = [widget.seekerId, recruiterId].join('_').split('_')..sort();
+      final normalizedChatId = '${chatId[0]}_${chatId[1]}';
+      await authService.sendMessage(recruiterId, jobId, 'Hello, I’d like to discuss my application!');
+
+      // Navigate to ChatScreen
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ChatScreen(chatId: normalizedChatId, recipientId: recruiterId, jobId: jobId),
+        ),
+      );
+    } catch (e) {
+      dev.log('Error starting chat: $e', name: 'MyApplicationsScreen', error: e);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to start chat')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (currentUserId == null) {
@@ -126,6 +151,8 @@ class _MyApplicationsScreenState extends State<MyApplicationsScreen> {
             itemCount: docs.length,
             itemBuilder: (context, index) {
               final data = docs[index].data() as Map<String, dynamic>;
+              final jobId = docs[index].reference.parent.parent?.id ?? 'N/A'; // Get jobId from parent path
+              final recruiterId = data['recruiterId'] ?? 'N/A';
               final jobTitle = data['jobTitle'] ?? 'N/A';
               final company = data['company'] ?? 'N/A';
               final appliedAt = data['appliedAt'] as Timestamp?;
@@ -145,18 +172,48 @@ class _MyApplicationsScreenState extends State<MyApplicationsScreen> {
                       Text('Status: $status'),
                     ],
                   ),
-                  trailing: resumeUrl.isNotEmpty
-                      ? IconButton(
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (resumeUrl.isNotEmpty)
+                        IconButton(
                           icon: const Icon(Icons.picture_as_pdf),
                           tooltip: 'View Resume',
                           onPressed: () => _openResume(resumeUrl),
-                        )
-                      : null,
+                        ),
+                      IconButton(
+                        icon: const Icon(Icons.chat),
+                        tooltip: 'Start Chat',
+                        onPressed: () => _startChat(jobId, recruiterId),
+                      ),
+                    ],
+                  ),
                 ),
               );
             },
           );
         },
+      ),
+    );
+  }
+}
+
+// Placeholder ChatScreen (to be implemented)
+class ChatScreen extends StatelessWidget {
+  final String chatId;
+  final String recipientId;
+  final String jobId;
+
+  const ChatScreen({super.key, required this.chatId, required this.recipientId, required this.jobId});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Chat'),
+      ),
+      body: Center(
+        child: Text('Chat with $recipientId for job $jobId (Chat ID: $chatId)\nImplement message list and input here.'),
       ),
     );
   }

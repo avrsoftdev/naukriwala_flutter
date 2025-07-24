@@ -1,8 +1,8 @@
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
+import 'auth_middleware.dart';
 import 'dart:developer' as dev;
 import '../../services/auth_service.dart';
 
@@ -36,7 +36,7 @@ class ApplyJobScreenState extends State<ApplyJobScreen> {
   void initState() {
     super.initState();
     _seekerProfile = widget.seekerProfile;
-    if (_seekerProfile == null) _fetchSeekerProfile();
+    if (_seekerProfile == null) _fetchOrCreateSeekerProfile();
     _updateFcmToken();
     dev.log('ApplyJobScreen initialized: jobId=${widget.jobId}, recruiterId=${widget.recruiterId}, jobTitle=${widget.jobTitle}', name: 'ApplyJobScreen');
   }
@@ -62,7 +62,7 @@ class ApplyJobScreenState extends State<ApplyJobScreen> {
     }
   }
 
-  Future<void> _fetchSeekerProfile() async {
+  Future<void> _fetchOrCreateSeekerProfile() async {
     final currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser == null) {
       dev.log('No authenticated user found', name: 'ApplyJobScreen');
@@ -78,23 +78,39 @@ class ApplyJobScreenState extends State<ApplyJobScreen> {
         });
         dev.log('Fetched seeker profile for ${currentUser.uid}: $_seekerProfile', name: 'ApplyJobScreen');
       } else {
-        dev.log('No profile found for ${currentUser.uid}', name: 'ApplyJobScreen');
-        _showSnackBar('Please complete your profile before applying');
+        // Attempt to create a minimal seeker profile if missing
+        dev.log('No profile found for ${currentUser.uid}, attempting to create', name: 'ApplyJobScreen');
+        await _authService.storeSignupData(
+          isRecruiter: false,
+          data: {
+            'name': currentUser.displayName ?? 'Unknown Seeker',
+            'email': currentUser.email ?? '',
+            'mobileNumber': '',
+            'skills': [],
+            'education': '',
+            'experience': '0',
+            'specialization': '',
+          },
+        );
+        final newProfile = await _authService.fetchProfileData(isRecruiter: false);
+        if (newProfile != null && mounted) {
+          setState(() {
+            _seekerProfile = newProfile;
+          });
+          dev.log('Created and fetched seeker profile for ${currentUser.uid}: $_seekerProfile', name: 'ApplyJobScreen');
+        } else {
+          dev.log('Failed to create or fetch profile for ${currentUser.uid}', name: 'ApplyJobScreen');
+          _showSnackBar('Please complete your profile before applying');
+        }
       }
     } catch (e) {
-      dev.log('Error fetching seeker profile: $e', name: 'ApplyJobScreen', error: e);
+      dev.log('Error fetching or creating seeker profile: $e', name: 'ApplyJobScreen', error: e);
       _showSnackBar('Error loading profile: $e');
     }
   }
 
   Future<bool> _checkJobEligibility() async {
     try {
-      // Check if application already exists to allow recruiter profile read
-      final applicationIndexDoc = await FirebaseFirestore.instance
-          .collection('ApplicationsIndex')
-          .doc('${widget.recruiterId}_${FirebaseAuth.instance.currentUser!.uid}')
-          .get();
-
       final jobDoc = await FirebaseFirestore.instance
           .collection('Recruiters')
           .doc(widget.recruiterId)
@@ -145,8 +161,8 @@ class ApplyJobScreenState extends State<ApplyJobScreen> {
     } catch (e) {
       dev.log('Error checking job eligibility for ${widget.jobId}: $e', name: 'ApplyJobScreen', error: e);
       if (e is FirebaseException && e.code == 'permission-denied') {
-        dev.log('Permission denied reading Recruiters/${widget.recruiterId}/Jobs/${widget.jobId}. Verify ApplicationsIndex/${widget.recruiterId}_${FirebaseAuth.instance.currentUser!.uid} exists.', name: 'ApplyJobScreen');
-        _showSnackBar('Permission denied: Cannot access job details. Apply first or contact support.');
+        dev.log('Permission denied reading Recruiters/${widget.recruiterId}/Jobs/${widget.jobId}. Verify job exists and is open.', name: 'ApplyJobScreen');
+        _showSnackBar('Permission denied: Cannot access job details. Contact support.');
       } else {
         _showSnackBar('Error checking eligibility: $e');
       }
@@ -166,9 +182,16 @@ class ApplyJobScreenState extends State<ApplyJobScreen> {
   Future<bool> _checkRole() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return false;
-    final role = await _authService.getUserRole();
-    dev.log('User ${user.uid} role: $role', name: 'ApplyJobScreen');
-    return role == 'seeker';
+    try {
+      await AuthMiddleware.requireRole('seeker'); // Explicitly validate role
+      final role = await _authService.getUserRole();
+      dev.log('User ${user.uid} role: $role', name: 'ApplyJobScreen');
+      return role == 'seeker';
+    } catch (e) {
+      dev.log('Role check failed for ${user.uid}: $e', name: 'ApplyJobScreen', error: e);
+      _showSnackBar('Role validation failed: $e');
+      return false;
+    }
   }
 
   Future<void> _applyForJob() async {
@@ -244,8 +267,8 @@ class ApplyJobScreenState extends State<ApplyJobScreen> {
       if (e is FirebaseException) {
         dev.log('Firebase error details: ${e.code} - ${e.message}', name: 'ApplyJobScreen');
         if (e.code == 'permission-denied') {
-          dev.log('Permission denied details: Check Firestore rules for Applications, ApplicationsIndex, and RecruiterNotifications', name: 'ApplyJobScreen');
-          _showSnackBar('Permission denied: Ensure seeker role is set and Firestore rules allow write to Applications and ApplicationsIndex');
+          dev.log('Permission denied details: Check Firestore rules for Applications, ApplicationsIndex, and RecruiterNotifications. Ensure Seekers/${user.uid} exists.', name: 'ApplyJobScreen');
+          _showSnackBar('Permission denied: Ensure seeker role is set and Firestore rules allow write access');
         } else {
           _showSnackBar('Failed to apply: ${e.code} - ${e.message}');
         }
