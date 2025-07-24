@@ -24,7 +24,8 @@ dependencies:
   url_launcher: ^6.2.5
   firebase_messaging: ^15.2.7
   firebase_app_check: ^0.3.2+7
-  i: ^1.0.1
+  flutter_localizations: 
+    sdk: flutter
   google_sign_in: ^6.2.1
   add_2_calendar: ^3.0.1
   excel: ^2.0.5

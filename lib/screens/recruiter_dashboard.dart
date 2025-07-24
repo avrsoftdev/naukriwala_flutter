@@ -499,7 +499,6 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
                             PopupMenuItem(value: 'shortlist', child: Text('Shortlist')),
                             PopupMenuItem(value: 'reject', child: Text('Reject')),
                             PopupMenuItem(value: 'schedule', child: Text('Schedule Interview')),
-                            PopupMenuItem(value: 'download_cv', child: Text('Download CV')),
                             PopupMenuItem(value: 'chat', child: Text('Chat')),
                           ],
                         ),

@@ -366,6 +366,11 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "6.0.0"
+  flutter_localizations:
+    dependency: "direct main"
+    description: flutter
+    source: sdk
+    version: "0.0.0"
   flutter_plugin_android_lifecycle:
     dependency: transitive
     description:
@@ -448,14 +453,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "4.1.2"
-  i:
-    dependency: "direct main"
-    description:
-      name: i
-      sha256: "189f16a1bee8e732b3f61bf23dd3ce22774c6b039e2879bfe36e4924d913c7fa"
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.0.1"
   image_picker:
     dependency: "direct main"
     description:
