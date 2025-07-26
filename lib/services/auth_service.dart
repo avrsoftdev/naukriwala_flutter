@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'dart:developer' as dev;
 import 'dart:io';
+import 'auth_middleware.dart'; // Import AuthMiddleware
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -20,7 +21,7 @@ class AuthService {
     final collection = isRecruiter ? 'Recruiters' : 'Seekers';
 
     try {
-      dev.log("Writing to $collection/$uid", name: 'AuthService');
+      dev.log("Writing to $collection/$uid with data: $data", name: 'AuthService');
       final normalizedData = Map<String, dynamic>.from(data)
         ..remove('UID')
         ..['mobileNumber'] = data['Mobile Number'] ?? data['mobileNumber'] ?? ''
@@ -43,7 +44,7 @@ class AuthService {
       dev.log("UsersIndex updated for $uid", name: 'AuthService');
 
       if (isRecruiter) {
-        await initializeRecruiterRole(uid); // Initialize recruiter role if not exists
+        await initializeRecruiterRole(uid);
       }
     } catch (e) {
       dev.log("storeSignupData ERROR: $e", name: 'AuthService', error: e);
@@ -134,12 +135,8 @@ class AuthService {
     if (uid == null) throw const AuthException("User not logged in");
 
     try {
-      // Verify recruiter role via document existence
-      final recruiterDoc = await _firestore.collection('Recruiters').doc(uid).get();
-      if (!recruiterDoc.exists) {
-        dev.log('User $uid is not a recruiter or document missing', name: 'AuthService');
-        throw const AuthException('User is not a recruiter');
-      }
+      await AuthMiddleware.requireRole('recruiter');
+      dev.log('Recruiter role verified for $uid', name: 'AuthService');
 
       final doc = _firestore.collection('Recruiters').doc(uid).collection('Jobs').doc();
       final normalizedJobData = Map<String, dynamic>.from(jobData)
@@ -174,11 +171,8 @@ class AuthService {
     if (uid == null) throw const AuthException("User not logged in");
 
     try {
-      final recruiterDoc = await _firestore.collection('Recruiters').doc(uid).get();
-      if (!recruiterDoc.exists) {
-        dev.log('User $uid is not a recruiter', name: 'AuthService');
-        throw const AuthException('User is not a recruiter');
-      }
+      await AuthMiddleware.requireRole('recruiter');
+      dev.log('Recruiter role verified for $uid', name: 'AuthService');
 
       final jobsSnapshot = await _firestore
           .collection('Recruiters')
@@ -215,58 +209,32 @@ class AuthService {
     }
   }
 
-  
 Future<void> applyToJob(
   String jobId,
   String recruiterId,
   Map<String, dynamic> applicationData,
 ) async {
   final uid = _auth.currentUser?.uid;
-  if (uid == null) throw const AuthException("User not logged in");
-
-  // Validate and log input parameters
-  dev.log('Received jobId: $jobId, recruiterId: $recruiterId, seekerUid: $uid', name: 'AuthService');
-  if (jobId == uid) {
-    dev.log('Invalid jobId: matches seeker uid $uid', name: 'AuthService');
-    throw const AuthException("Invalid job ID provided; it matches seeker UID");
-  }
-  if (jobId.isEmpty || recruiterId.isEmpty) {
-    dev.log('Invalid input: jobId or recruiterId is empty', name: 'AuthService');
-    throw const AuthException("Invalid job or recruiter ID");
+  if (uid == null) {
+    dev.log('No authenticated user', name: 'AuthService');
+    throw const AuthException("User not logged in");
   }
 
   try {
-    // Validate applicationData for encodable types
-    for (var value in applicationData.values) {
-      if (value is Timestamp) {
-        dev.log('Invalid Timestamp found in applicationData for key ${applicationData.keys.elementAt(applicationData.values.toList().indexOf(value))}', name: 'AuthService');
-        throw const AuthException("Application data contains unencodable Timestamp objects");
-      }
+    await AuthMiddleware.requireRole('seeker');
+    dev.log('Seeker role verified for $uid', name: 'AuthService');
+
+    dev.log('Applying to jobId: $jobId, recruiterId: $recruiterId, seekerId: $uid', name: 'AuthService');
+    if (jobId == uid) {
+      dev.log('Invalid jobId: matches seeker uid $uid', name: 'AuthService');
+      throw const AuthException("Invalid job ID provided; it matches seeker UID");
+    }
+    if (jobId.isEmpty || recruiterId.isEmpty) {
+      dev.log('Invalid input: jobId or recruiterId is empty', name: 'AuthService');
+      throw const AuthException("Invalid job or recruiter ID");
     }
 
-    // Verify seeker role
-    final seekerRef = _firestore.collection('Seekers').doc(uid);
-    final seekerDoc = await seekerRef.get();
-    if (!seekerDoc.exists) {
-      dev.log('User $uid is not a seeker or document missing, initializing', name: 'AuthService');
-      await seekerRef.set({
-        'role': 'seeker',
-        'createdAt': FieldValue.serverTimestamp(),
-        'email': _auth.currentUser?.email ?? '',
-      }, SetOptions(merge: true));
-      await Future.delayed(const Duration(milliseconds: 500));
-      final updatedSeekerDoc = await seekerRef.get();
-      if (!updatedSeekerDoc.exists) {
-        dev.log('Failed to initialize seeker document for $uid after attempt', name: 'AuthService');
-        throw const AuthException("Failed to initialize seeker profile");
-      }
-      dev.log('Initialized and confirmed seeker document for $uid: ${updatedSeekerDoc.data()}', name: 'AuthService');
-    } else {
-      dev.log('Seeker document exists for $uid: ${seekerDoc.data()}', name: 'AuthService');
-    }
-
-    // Fetch and validate job data
-    dev.log('Checking job existence: Recruiters/$recruiterId/Jobs/$jobId', name: 'AuthService');
+    // Pre-validate job
     final jobSnapshot = await _firestore
         .collection('Recruiters')
         .doc(recruiterId)
@@ -282,105 +250,120 @@ Future<void> applyToJob(
       dev.log('Job $jobId recruiterId mismatch: expected $recruiterId, got ${jobData['recruiterId']}', name: 'AuthService');
       throw const AuthException("Invalid recruiter for this job");
     }
-    dev.log('Job $jobId found: recruiterId=${jobData['recruiterId']}, status=${jobData['status']}', name: 'AuthService');
+    if (jobData['status'] != 'open') {
+      dev.log('Job $jobId is not open: status=${jobData['status']}', name: 'AuthService');
+      throw const AuthException("Job is not open for applications");
+    }
+    final jobTitle = jobData['title'] as String? ?? 'Untitled';
+    final company = jobData['company'] as String? ?? 'Unknown';
+    dev.log('Job $jobId validated: title=$jobTitle, status=${jobData['status']}, company=$company', name: 'AuthService');
 
-    // Fetch seeker profile for notification
+    // Check prior application using seeker-side path
+    final seekerAppDoc = await _firestore
+        .collection('Applications')
+        .doc(uid)
+        .collection('AppliedJobs')
+        .doc(jobId)
+        .get();
+    if (seekerAppDoc.exists) {
+      dev.log('Seeker $uid already applied to job $jobId', name: 'AuthService');
+      throw const AuthException("You have already applied to this job");
+    }
+
+    final recruiterDoc = await _firestore.collection('Recruiters').doc(recruiterId).get();
+    final companyName = recruiterDoc.exists ? (recruiterDoc.data()?['company'] as String? ?? 'Unknown') : 'Unknown';
+
     final seekerProfile = await fetchProfileData(isRecruiter: false);
     final seekerName = seekerProfile?['name'] as String? ?? uid;
-
-    // Normalize application data with required fields
     final normalizedApplicationData = Map<String, dynamic>.from(applicationData)
       ..['seekerId'] = uid
       ..['jobId'] = jobId
       ..['recruiterId'] = recruiterId
-      ..['jobTitle'] = jobData['title'] as String? ?? 'Untitled'
-      ..['company'] = jobData['company'] as String? ?? 'Unknown'
+      ..['jobTitle'] = jobTitle
+      ..['company'] = companyName
       ..['appliedAt'] = FieldValue.serverTimestamp()
       ..['status'] = 'Applied';
+    dev.log('Normalized application data: $normalizedApplicationData', name: 'AuthService');
 
-    // Use batched write for atomicity
+    // Create parent document if it doesn't exist
+    final appRef = _firestore.collection('Applications').doc(jobId);
+    final appDoc = await appRef.get();
+    if (!appDoc.exists) {
+      try {
+        await appRef.set({
+          'recruiterId': recruiterId,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+        dev.log('Created Applications/$jobId with recruiterId: $recruiterId', name: 'AuthService');
+      } catch (e) {
+        dev.log('Failed to create Applications/$jobId: $e', name: 'AuthService', error: e);
+        throw AuthException("Failed to initialize application: ${e is FirebaseException ? '${e.code} - ${e.message}' : e}");
+      }
+    } else {
+      dev.log('Applications/$jobId already exists, skipping parent write', name: 'AuthService');
+    }
+
+    // Batch write for subcollections and index
     final batch = _firestore.batch();
 
-    // Create /Applications/{jobId}
-    final appRef = _firestore.collection('Applications').doc(jobId);
-    batch.set(appRef, {
-      'recruiterId': recruiterId,
-      'createdAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
-    dev.log('Batched write to Applications/$jobId with recruiterId: $recruiterId', name: 'AuthService');
-
-    // Write to recruiter-centric path
     final recruiterAppRef = appRef.collection('AppliedJobs').doc(uid);
     batch.set(recruiterAppRef, normalizedApplicationData);
-    dev.log('Batched write to Applications/$jobId/AppliedJobs/$uid with data keys: ${normalizedApplicationData.keys.join(', ')}', name: 'AuthService');
+    dev.log('Batched write to Applications/$jobId/AppliedJobs/$uid', name: 'AuthService');
 
-    // Write to seeker-centric path
     final seekerAppRef = _firestore.collection('Applications').doc(uid).collection('AppliedJobs').doc(jobId);
     batch.set(seekerAppRef, normalizedApplicationData);
-    dev.log('Batched write to Applications/$uid/AppliedJobs/$jobId with data keys: ${normalizedApplicationData.keys.join(', ')}', name: 'AuthService');
+    dev.log('Batched write to Applications/$uid/AppliedJobs/$jobId', name: 'AuthService');
 
-    // Create ApplicationsIndex document
     final indexRef = _firestore.collection('ApplicationsIndex').doc('${recruiterId}_$uid');
-    batch.set(indexRef, {
+    final indexData = {
       'status': 'active',
       'jobId': jobId,
       'recruiterId': recruiterId,
       'seekerId': uid,
       'createdAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
-    dev.log('Batched write to ApplicationsIndex/${recruiterId}_$uid', name: 'AuthService');
+    };
+    batch.set(indexRef, indexData);
+    dev.log('Batched write to ApplicationsIndex/${recruiterId}_$uid: $indexData', name: 'AuthService');
 
-    // Create notification
     final notificationId = _firestore.collection('RecruiterNotifications').doc(recruiterId).collection('Notifications').doc().id;
     final notifRef = _firestore.collection('RecruiterNotifications').doc(recruiterId).collection('Notifications').doc(notificationId);
-    batch.set(notifRef, {
+    final notifData = {
       'to': recruiterId,
       'from': uid,
-      'message': 'New application for "${jobData['title'] ?? 'Untitled'}" from $seekerName',
+      'message': 'New application for "$jobTitle" from $seekerName',
       'timestamp': FieldValue.serverTimestamp(),
       'type': 'application',
       'jobId': jobId,
       'read': false,
-      'notificationId': notificationId,
-    });
-    dev.log('Batched notification $notificationId to RecruiterNotifications/$recruiterId', name: 'AuthService');
+    };
+    batch.set(notifRef, notifData);
+    dev.log('Batched notification $notificationId to RecruiterNotifications/$recruiterId: $notifData', name: 'AuthService');
 
-    // Commit batch
     try {
       await batch.commit();
       dev.log('Batch commit successful for job $jobId by $uid', name: 'AuthService');
     } catch (e) {
       dev.log('Batch commit failed for job $jobId: $e', name: 'AuthService', error: e);
-      if (e is FirebaseException) {
-        dev.log('Batch paths: Applications/$jobId, Applications/$jobId/AppliedJobs/$uid, Applications/$uid/AppliedJobs/$jobId, ApplicationsIndex/${recruiterId}_$uid, RecruiterNotifications/$recruiterId/Notifications/$notificationId', name: 'AuthService');
-        dev.log('Job data: ${jsonEncode(jobData)}', name: 'AuthService');
-        dev.log('Seeker document: ${await seekerRef.get()}', name: 'AuthService');
-        dev.log('Input parameters: jobId=$jobId, recruiterId=$recruiterId, uid=$uid', name: 'AuthService');
-      }
-      rethrow;
+      dev.log('Batch paths: Applications/$jobId/AppliedJobs/$uid, Applications/$uid/AppliedJobs/$jobId, ApplicationsIndex/${recruiterId}_$uid, RecruiterNotifications/$recruiterId/Notifications/$notificationId', name: 'AuthService');
+      dev.log('Application data: $normalizedApplicationData', name: 'AuthService');
+      dev.log('Index data: $indexData', name: 'AuthService');
+      dev.log('Notification data: $notifData', name: 'AuthService');
+      throw AuthException("Application failed: ${e is FirebaseException ? '${e.code} - ${e.message}' : e}");
     }
 
     dev.log("Application submitted for job $jobId by $uid", name: 'AuthService');
   } catch (e) {
     dev.log("applyToJob ERROR for job $jobId: $e", name: 'AuthService', error: e);
-    if (e is FirebaseException) {
-      throw AuthException("Application failed: ${e.code} - ${e.message}");
-    }
-    rethrow;
+    throw AuthException("Application failed: ${e is FirebaseException ? '${e.code} - ${e.message}' : e}");
   }
 }
-
-
   Future<List<Map<String, dynamic>>> fetchAppliedSeekers() async {
     final uid = _auth.currentUser?.uid;
     if (uid == null) throw const AuthException("User not logged in");
 
     try {
-      final recruiterDoc = await _firestore.collection('Recruiters').doc(uid).get();
-      if (!recruiterDoc.exists) {
-        dev.log('User $uid is not a recruiter', name: 'AuthService');
-        throw const AuthException('User is not a recruiter');
-      }
+      await AuthMiddleware.requireRole('recruiter');
+      dev.log('Recruiter role verified for $uid', name: 'AuthService');
 
       final jobsSnapshot = await _firestore
           .collection('Recruiters')
@@ -420,14 +403,12 @@ Future<void> applyToJob(
           final seekerId = app.id;
           dev.log('Processing application for seeker $seekerId in job $jobId', name: 'AuthService');
 
-          // Check ApplicationsIndex
           final indexDoc = await _firestore
               .collection('ApplicationsIndex')
               .doc('${uid}_$seekerId')
               .get();
           if (!indexDoc.exists) {
             dev.log('ApplicationsIndex/${uid}_$seekerId missing for job $jobId', name: 'AuthService');
-            // Still include application with fallback name
             seekers.add({
               'seekerId': seekerId,
               'jobId': jobId,
@@ -436,7 +417,7 @@ Future<void> applyToJob(
               'resume': data['resume'] as Map<String, dynamic>? ?? {},
               'coverLetter': data['coverLetter'] as String? ?? '',
               'status': data['status'] as String? ?? 'Applied',
-              'name': seekerId, // Fallback to seekerId
+              'name': seekerId,
             });
             continue;
           }
@@ -465,7 +446,7 @@ Future<void> applyToJob(
                   .get();
               dev.log('Applications/$jobId/AppliedJobs/$seekerId exists: ${appliedJobDoc.exists}, data: ${jsonEncode(appliedJobDoc.data() ?? {})}', name: 'AuthService');
             }
-            name = seekerId; // Fallback to seekerId
+            name = seekerId;
           }
 
           seekers.add({
@@ -526,14 +507,9 @@ Future<void> applyToJob(
     if (uid == null) throw const AuthException("User not logged in");
 
     try {
-      // Verify recruiter role
-      final recruiterDoc = await _firestore.collection('Recruiters').doc(uid).get();
-      if (!recruiterDoc.exists) {
-        dev.log('User $uid is not a recruiter', name: 'AuthService');
-        throw const AuthException('User is not a recruiter');
-      }
+      await AuthMiddleware.requireRole('recruiter');
+      dev.log('Recruiter role verified for $uid', name: 'AuthService');
 
-      // Verify job ownership
       final jobDoc = await _firestore.collection('Recruiters').doc(uid).collection('Jobs').doc(jobId).get();
       if (!jobDoc.exists || jobDoc.data()?['recruiterId'] != uid) {
         dev.log('Job $jobId not found or does not belong to recruiter $uid', name: 'AuthService');
@@ -621,7 +597,6 @@ Future<void> applyToJob(
         'type': 'application',
         'jobId': jobId,
         'jobTitle': jobTitle,
-        'notificationId': notificationId,
       });
       dev.log('Notification $notificationId sent to $seekerId for job $jobId: $message', name: 'AuthService');
 
@@ -647,11 +622,8 @@ Future<void> applyToJob(
     if (uid == null) throw const AuthException("User not logged in");
 
     try {
-      final recruiterDoc = await _firestore.collection('Recruiters').doc(uid).get();
-      if (!recruiterDoc.exists) {
-        dev.log('User $uid is not a recruiter', name: 'AuthService');
-        throw const AuthException('User is not a recruiter');
-      }
+      await AuthMiddleware.requireRole('recruiter');
+      dev.log('Recruiter role verified for $uid', name: 'AuthService');
 
       final callsSnapshot = await _firestore
           .collectionGroup('AppliedJobs')

@@ -61,36 +61,40 @@ service cloud.firestore {
     }
 
     // 📄 Jobs posted by Recruiters
-match /Recruiters/{recruiterId}/Jobs/{jobId} {
-  allow read: if true; // Anyone can browse jobs
-  allow create: if isRecruiter() &&
-                request.auth.uid == recruiterId &&
-                request.resource.data.recruiterId == request.auth.uid;
-  allow update: if isRecruiter() &&
-                request.auth.uid == recruiterId &&
-                request.auth.uid == resource.data.recruiterId;
-  allow delete: if isRecruiter() &&
-                request.auth.uid == recruiterId &&
-                request.auth.uid == resource.data.recruiterId; // Allow deletion
-}
+    match /Recruiters/{recruiterId}/Jobs/{jobId} {
+      allow read: if true; // Anyone can browse jobs
+      allow create: if isRecruiter() &&
+                    request.auth.uid == recruiterId &&
+                    request.resource.data.recruiterId == request.auth.uid;
+      allow update: if isRecruiter() &&
+                    request.auth.uid == recruiterId &&
+                    request.auth.uid == resource.data.recruiterId;
+      allow delete: if isRecruiter() &&
+                    request.auth.uid == recruiterId &&
+                    request.auth.uid == resource.data.recruiterId;
+    }
 
     // 🌐 Job collection group query support (only open jobs)
     match /{any=**}/Jobs/{jobId} {
       allow read: if request.auth != null && resource.data.status == "open";
     }
 
-    // 📄 Applications parent document (metadata)
     match /Applications/{jobId} {
-      allow read: if request.auth != null &&
-                  (
-                    (isRecruiter() &&
-                     exists(/databases/$(database)/documents/Recruiters/$(request.auth.uid)/Jobs/$(jobId)) &&
-                     get(/databases/$(database)/documents/Recruiters/$(request.auth.uid)/Jobs/$(jobId)).data.recruiterId == request.auth.uid) ||
-                    isAdmin()
-                  );
-      allow create: if isSeeker() &&
-                    exists(/databases/$(database)/documents/Recruiters/$(request.resource.data.recruiterId)/Jobs/$(jobId));
-      allow update: if false; // Prevent updates to maintain consistency
+      allow read: if request.auth != null && (
+        isRecruiterJob(jobId) ||
+        isAdmin() ||
+        (isSeeker() &&
+         exists(/databases/$(database)/documents/Applications/$(jobId)/AppliedJobs/$(request.auth.uid))) ||
+        (isSeeker() && get(/databases/$(database)/documents/Recruiters/$(get(/databases/$(database)/documents/Applications/$(jobId)).data.recruiterId)/Jobs/$(jobId)).data.status == "open")
+      );
+
+      allow write: if request.auth != null &&
+        isSeeker() &&
+        request.resource.data.recruiterId == get(/databases/$(database)/documents/Recruiters/$(request.resource.data.recruiterId)/Jobs/$(jobId)).data.recruiterId &&
+        get(/databases/$(database)/documents/Recruiters/$(request.resource.data.recruiterId)/Jobs/$(jobId)).data.status == 'open' &&
+        request.resource.data.keys().hasOnly(['recruiterId', 'createdAt']);
+
+      allow update: if false;
     }
 
     // 📝 Recruiter-facing AppliedJobs subcollection
@@ -98,8 +102,7 @@ match /Recruiters/{recruiterId}/Jobs/{jobId} {
       allow read: if request.auth != null &&
                   (
                     request.auth.uid == seekerId ||
-                    (isRecruiter() &&
-                     get(/databases/$(database)/documents/Applications/$(jobId)).data.recruiterId == request.auth.uid)
+                    (isRecruiterJob(jobId))
                   );
       allow create: if isSeeker() &&
                     request.auth.uid == seekerId &&
@@ -113,44 +116,45 @@ match /Recruiters/{recruiterId}/Jobs/{jobId} {
                     );
     }
 
-    // ✅ Seeker-facing AppliedJobs (for seeker dashboard)
+    // ✅ Seeker-facing AppliedJobs
     match /Applications/{seekerUid}/AppliedJobs/{jobId} {
       allow read, create: if request.auth != null &&
                           request.auth.uid == seekerUid &&
                           isSeeker();
       allow update: if request.auth != null &&
-                    (
-                      (request.auth.uid == seekerUid && isSeeker()) ||
-                      (isRecruiter() &&
-                       request.auth.uid == resource.data.recruiterId &&
-                       request.resource.data.keys().hasOnly(['status', 'interviewDate']))
-                    );
+                   (
+                     (request.auth.uid == seekerUid && isSeeker()) ||
+                     (isRecruiter() &&
+                      request.auth.uid == resource.data.recruiterId &&
+                      request.resource.data.keys().hasOnly(['status', 'interviewDate']))
+                   );
     }
 
-    // 🌐 AppliedJobs collection group query support
+    // 🌐 AppliedJobs collection group support
     match /{any=**}/AppliedJobs/{docId} {
       allow read: if request.auth != null &&
-                   (
-                     request.auth.uid == resource.data.seekerId ||
-                     (isRecruiter() && request.auth.uid == resource.data.recruiterId)
-                   );
+                  (
+                    request.auth.uid == resource.data.seekerId ||
+                    request.auth.uid == resource.data.recruiterId
+
+                  );
     }
 
     // 📑 Applications Index
     match /ApplicationsIndex/{docId} {
       allow read: if request.auth != null &&
-                   (
-                     isSeeker() ||
-                     isRecruiter() ||
-                     isAdmin()
-                   );
+                  (
+                    isSeeker() ||
+                    isRecruiter() ||
+                    isAdmin()
+                  );
       allow create: if isSeeker() &&
                     request.auth.uid == request.resource.data.seekerId &&
                     exists(/databases/$(database)/documents/Recruiters/$(request.resource.data.recruiterId)/Jobs/$(request.resource.data.jobId));
-      allow update: if false; // Prevent updates for simplicity
+      allow update: if false;
     }
 
-    // 🔔 Recruiter-specific notification subcollection
+    // 🔔 Recruiter-specific notifications
     match /RecruiterNotifications/{recruiterId}/Notifications/{notifId} {
       allow read: if request.auth != null && (request.auth.uid == recruiterId || isAdmin());
       allow create: if isSeeker() &&
@@ -158,7 +162,7 @@ match /Recruiters/{recruiterId}/Jobs/{jobId} {
       allow update: if request.auth != null && (request.auth.uid == recruiterId || isAdmin());
     }
 
-    // 🔔 Seeker-specific notification subcollection
+    // 🔔 Seeker-specific notifications
     match /SeekerNotifications/{seekerId}/Notifications/{notifId} {
       allow read: if request.auth != null && (request.auth.uid == seekerId || isAdmin());
       allow create: if isRecruiter() &&
@@ -166,7 +170,7 @@ match /Recruiters/{recruiterId}/Jobs/{jobId} {
       allow update: if request.auth != null && (request.auth.uid == seekerId || isAdmin());
     }
 
-    // 🔔 Generic notifications (top-level, if used)
+    // 🔔 Generic notifications
     match /Notifications/{notifId} {
       allow read, delete: if request.auth != null && (request.auth.uid == resource.data.to || isAdmin());
       allow create: if request.auth != null &&
@@ -175,7 +179,7 @@ match /Recruiters/{recruiterId}/Jobs/{jobId} {
       allow update: if request.auth != null && (request.auth.uid == resource.data.to || isAdmin());
     }
 
-    // ⭐ Shortlisted seekers by job
+    // ⭐ Shortlisted seekers
     match /Shortlisted/{jobId}/Seekers/{seekerId} {
       allow read: if request.auth != null && isRecruiterJob(jobId);
       allow create: if isRecruiterJob(jobId);
@@ -183,13 +187,13 @@ match /Recruiters/{recruiterId}/Jobs/{jobId} {
       allow delete: if isRecruiterJob(jobId);
     }
 
-    // 💬 Messages for chat between recruiter and seeker
+    // 💬 Messages
     match /Messages/{chatId} {
       allow read: if request.auth != null && chatId.split('_').hasAny([request.auth.uid]);
       allow create: if request.auth != null &&
                     chatId.split('_').hasAny([request.auth.uid]) &&
                     request.resource.data.senderId == request.auth.uid;
-      allow update: if false; // Prevent updates for message integrity
+      allow update: if false;
     }
 
     match /Messages/{chatId}/Messages/{messageId} {
@@ -197,10 +201,10 @@ match /Recruiters/{recruiterId}/Jobs/{jobId} {
       allow create: if request.auth != null &&
                     chatId.split('_').hasAny([request.auth.uid]) &&
                     request.resource.data.senderId == request.auth.uid;
-      allow update: if false; // Prevent updates for message integrity
+      allow update: if false;
     }
 
-    // 🚫 Catch-all fallback rule
+    // 🚫 Catch-all
     match /{document=**} {
       allow read, write: if false;
     }

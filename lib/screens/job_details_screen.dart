@@ -111,21 +111,27 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> {
   }
 
   Future<bool> _checkApplicationStatus() async {
-    final currentUser = FirebaseAuth.instance.currentUser;
-    if (currentUser == null) return false;
-    try {
-      final doc = await FirebaseFirestore.instance
-          .collection('Applications')
-          .doc(widget.job['jobId']?.toString())
-          .collection('AppliedJobs')
-          .doc(currentUser.uid)
-          .get();
-      return doc.exists;
-    } catch (e) {
-      dev.log('Error checking application status: $e', name: 'JobDetailsScreen');
-      return false;
-    }
+  final currentUser = FirebaseAuth.instance.currentUser;
+  if (currentUser == null) {
+    dev.log('No authenticated user for application status check', name: 'JobDetailsScreen');
+    return false;
   }
+  try {
+    dev.log('Checking application status for job ${widget.job['jobId']} and seeker ${currentUser.uid} using seeker-side path', name: 'JobDetailsScreen');
+    final doc = await FirebaseFirestore.instance
+        .collection('Applications')
+        .doc(currentUser.uid) // Seeker-side path
+        .collection('AppliedJobs')
+        .doc(widget.job['jobId']?.toString())
+        .get();
+    final exists = doc.exists;
+    dev.log('Application status for job ${widget.job['jobId']}: exists=$exists', name: 'JobDetailsScreen');
+    return exists;
+  } catch (e) {
+    dev.log('Error checking application status for job ${widget.job['jobId']}: $e', name: 'JobDetailsScreen', error: e);
+    return false;
+  }
+}
 
   Future<void> _fetchApplicants() async {
     final currentUser = FirebaseAuth.instance.currentUser;

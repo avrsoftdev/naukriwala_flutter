@@ -36,6 +36,16 @@
       ]
     },
     {
+      "collectionGroup": "AppliedJobs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "__name__",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "Messages",
       "queryScope": "COLLECTION",
       "fields": [
