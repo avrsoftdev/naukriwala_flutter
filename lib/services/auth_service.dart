@@ -4,7 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'dart:developer' as dev;
 import 'dart:io';
-
+import 'auth_middleware.dart';
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -194,126 +194,143 @@ class AuthService {
     }
   }
 
-  Future<void> applyToJob(
-    String jobId,
-    String recruiterId,
-    Map<String, dynamic> applicationData,
-  ) async {
-    final uid = _auth.currentUser?.uid;
-    if (uid == null) throw const AuthException("User not logged in");
 
-    try {
-      // Verify seeker role
-      final seekerDoc = await _firestore.collection('Seekers').doc(uid).get();
-      if (!seekerDoc.exists) {
-        dev.log('User $uid is not a seeker', name: 'AuthService');
-        throw const AuthException('User is not a seeker');
-      }
+Future<void> applyToJob(
+  String jobId,
+  String recruiterId,
+  Map<String, dynamic> applicationData,
+) async {
+  final uid = _auth.currentUser?.uid;
+  if (uid == null) throw const AuthException("User not logged in");
 
-      // Fetch job data
-      dev.log('Checking job existence: Recruiters/$recruiterId/Jobs/$jobId', name: 'AuthService');
-      final jobSnapshot = await _firestore
-          .collection('Recruiters')
-          .doc(recruiterId)
-          .collection('Jobs')
-          .doc(jobId)
-          .get();
-      if (!jobSnapshot.exists) {
-        dev.log('Job $jobId does not exist', name: 'AuthService');
-        throw const AuthException("Job not found");
-      }
-      final jobData = jobSnapshot.data()!;
-      final jobTitle = jobData['title'] as String? ?? 'Untitled';
-      final company = jobData['company'] as String? ?? 'Unknown';
-      dev.log('Job $jobId found: title=$jobTitle, status=${jobData['status']}, company=$company', name: 'AuthService');
-
-      // Fetch recruiter profile for company name
-      final recruiterDoc = await _firestore.collection('Recruiters').doc(recruiterId).get();
-      final companyName = recruiterDoc.exists ? (recruiterDoc.data()?['company'] as String? ?? 'Unknown') : 'Unknown';
-
-      // Normalize application data
-      final normalizedApplicationData = Map<String, dynamic>.from(applicationData)
-        ..['seekerId'] = uid
-        ..['jobId'] = jobId
-        ..['recruiterId'] = recruiterId
-        ..['jobTitle'] = jobTitle
-        ..['company'] = companyName
-        ..['appliedAt'] = FieldValue.serverTimestamp()
-        ..['status'] = 'Applied';
-
-      // Use batched write for atomicity
-      final batch = _firestore.batch();
-
-      // Create /Applications/{jobId}
-      final appRef = _firestore.collection('Applications').doc(jobId);
-      batch.set(appRef, {
-        'recruiterId': recruiterId,
-        'createdAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
-      dev.log('Batched write to Applications/$jobId', name: 'AuthService');
-
-      // Write to recruiter-centric path
-      final recruiterAppRef = appRef.collection('AppliedJobs').doc(uid);
-      batch.set(recruiterAppRef, normalizedApplicationData);
-      dev.log('Batched write to Applications/$jobId/AppliedJobs/$uid', name: 'AuthService');
-
-      // Write to seeker-centric path
-      final seekerAppRef = _firestore.collection('Applications').doc(uid).collection('AppliedJobs').doc(jobId);
-      batch.set(seekerAppRef, normalizedApplicationData);
-      dev.log('Batched write to Applications/$uid/AppliedJobs/$jobId', name: 'AuthService');
-
-      // Create ApplicationsIndex document
-      final indexRef = _firestore.collection('ApplicationsIndex').doc('${recruiterId}_$uid');
-      batch.set(indexRef, {
-        'status': 'active',
-        'jobId': jobId,
-        'recruiterId': recruiterId,
-        'seekerId': uid,
-        'createdAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
-      dev.log('Batched write to ApplicationsIndex/${recruiterId}_$uid', name: 'AuthService');
-
-      // Create notification
-      final notificationId = _firestore.collection('RecruiterNotifications').doc(recruiterId).collection('Notifications').doc().id;
-      final notifRef = _firestore.collection('RecruiterNotifications').doc(recruiterId).collection('Notifications').doc(notificationId);
-      final seekerProfile = await fetchProfileData(isRecruiter: false);
-      final seekerName = seekerProfile?['name'] as String? ?? uid;
-      batch.set(notifRef, {
-        'to': recruiterId,
-        'from': uid,
-        'message': 'New application for "$jobTitle" from $seekerName',
-        'timestamp': FieldValue.serverTimestamp(),
-        'type': 'application',
-        'jobId': jobId,
-        'read': false,
-        'notificationId': notificationId,
-      });
-      dev.log('Batched notification $notificationId to RecruiterNotifications/$recruiterId: $jobTitle from $seekerName', name: 'AuthService');
-
-      // Commit batch
-      try {
-        await batch.commit();
-        dev.log('Batch commit successful for job $jobId by $uid', name: 'AuthService');
-      } catch (e) {
-        dev.log('Batch commit failed for job $jobId: $e', name: 'AuthService', error: e);
-        if (e is FirebaseException) {
-          dev.log('Batch paths: Applications/$jobId, Applications/$jobId/AppliedJobs/$uid, Applications/$uid/AppliedJobs/$jobId, ApplicationsIndex/${recruiterId}_$uid, RecruiterNotifications/$recruiterId/Notifications/$notificationId', name: 'AuthService');
-          dev.log('Application data: $normalizedApplicationData', name: 'AuthService');
-          dev.log('Index data: {status: active, jobId: $jobId, recruiterId: $recruiterId, seekerId: $uid}', name: 'AuthService');
-          dev.log('Notification data: {to: $recruiterId, from: $uid, message: New application for "$jobTitle" from $seekerName}', name: 'AuthService');
-        }
-        rethrow;
-      }
-
-      dev.log("Application submitted for job $jobId by $uid", name: 'AuthService');
-    } catch (e) {
-      dev.log("applyToJob ERROR for job $jobId: $e", name: 'AuthService', error: e);
-      if (e is FirebaseException) {
-        throw AuthException("Application failed: ${e.code} - ${e.message}");
-      }
-      rethrow;
+  try {
+    // Verify seeker role
+    final seekerDoc = await _firestore.collection('Seekers').doc(uid).get();
+    if (!seekerDoc.exists) {
+      dev.log('User $uid is not a seeker', name: 'AuthService');
+      throw const AuthException('User is not a seeker');
     }
+    dev.log('Seeker role verified for $uid', name: 'AuthService');
+
+    // Fetch job data
+    dev.log('Checking job existence: Recruiters/$recruiterId/Jobs/$jobId', name: 'AuthService');
+    final jobSnapshot = await _firestore
+        .collection('Recruiters')
+        .doc(recruiterId)
+        .collection('Jobs')
+        .doc(jobId)
+        .get();
+    if (!jobSnapshot.exists) {
+      dev.log('Job $jobId does not exist', name: 'AuthService');
+      throw const AuthException("Job not found");
+    }
+    final jobData = jobSnapshot.data()!;
+    final jobTitle = jobData['title'] as String? ?? 'Untitled';
+    final company = jobData['company'] as String? ?? 'Unknown';
+    dev.log('Job $jobId found: title=$jobTitle, status=${jobData['status']}, company=$company', name: 'AuthService');
+
+    // Fetch recruiter profile for company name
+    final recruiterDoc = await _firestore.collection('Recruiters').doc(recruiterId).get();
+    if (!recruiterDoc.exists) {
+      dev.log('Recruiter $recruiterId does not exist', name: 'AuthService');
+      throw const AuthException("Recruiter not found");
+    }
+    final companyName = recruiterDoc.data()?['company'] as String? ?? 'Unknown';
+    dev.log('Recruiter $recruiterId found: company=$companyName', name: 'AuthService');
+
+    // Check for existing application to prevent duplicates
+    final indexDocId = '${uid}_${jobId}';
+    final indexDoc = await _firestore.collection('ApplicationsIndex').doc(indexDocId).get();
+    if (indexDoc.exists) {
+      dev.log('Application already exists for seeker $uid and job $jobId', name: 'AuthService');
+      throw const AuthException('You have already applied to this job');
+    }
+
+    // Normalize application data
+    final normalizedApplicationData = Map<String, dynamic>.from(applicationData)
+      ..['seekerId'] = uid
+      ..['jobId'] = jobId
+      ..['recruiterId'] = recruiterId
+      ..['jobTitle'] = jobTitle
+      ..['company'] = companyName
+      ..['appliedAt'] = FieldValue.serverTimestamp()
+      ..['status'] = 'Applied';
+    dev.log('Normalized application data: $normalizedApplicationData', name: 'AuthService');
+
+    // Use batched write for atomicity
+    final batch = _firestore.batch();
+
+    // Create /Applications/{jobId}
+    final appRef = _firestore.collection('Applications').doc(jobId);
+    batch.set(appRef, {
+      'recruiterId': recruiterId,
+      'createdAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+    dev.log('Batched write to Applications/$jobId', name: 'AuthService');
+
+    // Write to recruiter-centric path
+    final recruiterAppRef = appRef.collection('AppliedJobs').doc(uid);
+    batch.set(recruiterAppRef, normalizedApplicationData);
+    dev.log('Batched write to Applications/$jobId/AppliedJobs/$uid', name: 'AuthService');
+
+    // Write to seeker-centric path
+    final seekerAppRef = _firestore.collection('Applications').doc(uid).collection('AppliedJobs').doc(jobId);
+    batch.set(seekerAppRef, normalizedApplicationData);
+    dev.log('Batched write to Applications/$uid/AppliedJobs/$jobId', name: 'AuthService');
+
+    // Create ApplicationsIndex document with unique seekerId_jobId
+    final indexRef = _firestore.collection('ApplicationsIndex').doc(indexDocId);
+    batch.set(indexRef, {
+      'seekerId': uid,
+      'jobId': jobId,
+      'recruiterId': recruiterId,
+      'status': 'Applied',
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+    dev.log('Batched write to ApplicationsIndex/$indexDocId', name: 'AuthService');
+
+    // Create notification
+    final notificationId = _firestore.collection('RecruiterNotifications').doc(recruiterId).collection('Notifications').doc().id;
+    final notifRef = _firestore.collection('RecruiterNotifications').doc(recruiterId).collection('Notifications').doc(notificationId);
+    final seekerProfile = await fetchProfileData(isRecruiter: false);
+    final seekerName = seekerProfile?['name'] as String? ?? uid;
+    batch.set(notifRef, {
+      'to': recruiterId,
+      'from': uid,
+      'message': 'New application for "$jobTitle" from $seekerName',
+      'timestamp': FieldValue.serverTimestamp(),
+      'type': 'application',
+      'jobId': jobId,
+      'read': false,
+      'notificationId': notificationId,
+    });
+    dev.log('Batched notification $notificationId to RecruiterNotifications/$recruiterId: $jobTitle from $seekerName', name: 'AuthService');
+
+    // Commit batch
+    try {
+      await batch.commit();
+      dev.log('Batch commit successful for job $jobId by $uid', name: 'AuthService');
+    } catch (e) {
+      dev.log('Batch commit failed for job $jobId: $e', name: 'AuthService', error: e);
+      if (e is FirebaseException) {
+        dev.log('Batch paths: Applications/$jobId, Applications/$jobId/AppliedJobs/$uid, Applications/$uid/AppliedJobs/$jobId, ApplicationsIndex/$indexDocId, RecruiterNotifications/$recruiterId/Notifications/$notificationId', name: 'AuthService');
+        dev.log('Application data: $normalizedApplicationData', name: 'AuthService');
+        dev.log('Index data: {seekerId: $uid, jobId: $jobId, recruiterId: $recruiterId, status: Applied}', name: 'AuthService');
+        dev.log('Notification data: {to: $recruiterId, from: $uid, message: New application for "$jobTitle" from $seekerName}', name: 'AuthService');
+      }
+      throw AuthException('Application failed: ${e.toString()}');
+    }
+
+    dev.log("Application submitted for job $jobId by $uid", name: 'AuthService');
+  } catch (e) {
+    dev.log("applyToJob ERROR for job $jobId: $e", name: 'AuthService', error: e);
+    if (e is FirebaseException) {
+      throw AuthException("Application failed: ${e.code} - ${e.message}");
+    }
+    rethrow;
   }
+}
+
 
   Future<List<Map<String, dynamic>>> fetchAppliedSeekers() async {
     final uid = _auth.currentUser?.uid;
@@ -434,7 +451,149 @@ class AuthService {
       rethrow;
     }
   }
+Future<void> sendMessage(String recipientId, String jobId, String message) async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) throw const AuthException("User not logged in");
 
+    try {
+      final chatId = [uid, recipientId].join('_').split('_')..sort();
+      final normalizedChatId = '${chatId[0]}_${chatId[1]}';
+      final messageRef = _firestore.collection('Messages').doc(normalizedChatId).collection('Messages').doc();
+      await messageRef.set({
+        'senderId': uid,
+        'recipientId': recipientId,
+        'message': message,
+        'timestamp': FieldValue.serverTimestamp(),
+        'jobId': jobId,
+      });
+      dev.log('Message sent to $normalizedChatId for job $jobId', name: 'AuthService');
+    } catch (e) {
+      dev.log('sendMessage ERROR: $e', name: 'AuthService', error: e);
+      if (e is FirebaseException) {
+        throw const AuthException("Failed to send message: Check permissions");
+      }
+      rethrow;
+    }
+  }
+
+  Future<void> handleAction({
+    required String action,
+    required String jobId,
+    required String seekerId,
+    Map<String, dynamic>? additionalData,
+  }) async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) throw const AuthException("User not logged in");
+
+    try {
+      await AuthMiddleware.requireRole('recruiter');
+      dev.log('Recruiter role verified for $uid', name: 'AuthService');
+
+      final jobDoc = await _firestore.collection('Recruiters').doc(uid).collection('Jobs').doc(jobId).get();
+      if (!jobDoc.exists || jobDoc.data()?['recruiterId'] != uid) {
+        dev.log('Job $jobId not found or does not belong to recruiter $uid', name: 'AuthService');
+        throw const AuthException('Unauthorized job access');
+      }
+
+      final applicationDoc = await _firestore.collection('Applications').doc(jobId).collection('AppliedJobs').doc(seekerId).get();
+      if (!applicationDoc.exists) {
+        dev.log('Application not found for job $jobId, seeker $seekerId', name: 'AuthService');
+        throw const AuthException('Application not found');
+      }
+
+      final jobTitle = jobDoc.data()?['title'] as String? ?? 'Untitled';
+      final notificationId = _firestore.collection('SeekerNotifications').doc(seekerId).collection('Notifications').doc().id;
+
+      final batch = _firestore.batch();
+      final applicationRef = _firestore.collection('Applications').doc(jobId).collection('AppliedJobs').doc(seekerId);
+
+      switch (action.toLowerCase()) {
+        case 'shortlist':
+          dev.log('Shortlisting seeker $seekerId for job $jobId', name: 'AuthService');
+          batch.set(_firestore.collection('Shortlisted').doc(jobId).collection('Seekers').doc(seekerId), {
+            'timestamp': FieldValue.serverTimestamp(),
+          });
+          batch.update(applicationRef, {'status': 'Shortlisted'});
+          await _sendNotification(seekerId, 'You have been shortlisted for "$jobTitle"!', jobId, jobTitle, notificationId);
+          dev.log('Seeker $seekerId shortlisted for job $jobId', name: 'AuthService');
+          break;
+
+        case 'reject':
+          dev.log('Rejecting seeker $seekerId for job $jobId', name: 'AuthService');
+          batch.update(applicationRef, {'status': 'Rejected'});
+          await _sendNotification(seekerId, 'Your application for "$jobTitle" has been rejected.', jobId, jobTitle, notificationId);
+          dev.log('Seeker $seekerId rejected for job $jobId', name: 'AuthService');
+          break;
+
+        case 'schedule':
+          dev.log('Scheduling interview for seeker $seekerId, job $jobId', name: 'AuthService');
+          final interviewDate = additionalData?['interviewDate'] as Timestamp?;
+          if (interviewDate == null) {
+            throw const AuthException('Interview date is required for scheduling');
+          }
+          batch.update(applicationRef, {
+            'status': 'Interview Scheduled',
+            'interviewDate': interviewDate,
+          });
+          await _sendNotification(seekerId, 'Interview for "$jobTitle" scheduled on ${interviewDate.toDate()}', jobId, jobTitle, notificationId);
+          dev.log('Interview scheduled for seeker $seekerId, job $jobId', name: 'AuthService');
+          break;
+
+        case 'chat':
+          dev.log('Initiating chat with seeker $seekerId for job $jobId', name: 'AuthService');
+          await sendMessage(seekerId, jobId, 'Hello, let’s discuss your application for "$jobTitle"!');
+          dev.log('Chat initiated with seeker $seekerId for job $jobId', name: 'AuthService');
+          break;
+
+        default:
+          throw const AuthException('Invalid action');
+      }
+
+      await batch.commit();
+      dev.log('Action $action completed for seeker $seekerId, job $jobId', name: 'AuthService');
+    } catch (e) {
+      dev.log('handleAction ERROR for action $action, job $jobId, seeker $seekerId: $e', name: 'AuthService', error: e);
+      if (e is FirebaseException) {
+        throw AuthException("Action failed: ${e.code} - ${e.message}");
+      }
+      rethrow;
+    }
+  }
+  Future<void> _sendNotification(String seekerId, String message, String jobId, String jobTitle, String notificationId) async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) throw const AuthException("User not logged in");
+
+    try {
+      final notifRef = _firestore.collection('SeekerNotifications').doc(seekerId).collection('Notifications').doc(notificationId);
+
+      await notifRef.set({
+        'to': seekerId,
+        'from': uid,
+        'message': message,
+        'timestamp': FieldValue.serverTimestamp(),
+        'read': false,
+        'type': 'application',
+        'jobId': jobId,
+        'jobTitle': jobTitle,
+      });
+      dev.log('Notification $notificationId sent to $seekerId for job $jobId: $message', name: 'AuthService');
+
+      final tokenSnapshot = await _firestore.collection('UsersIndex').doc(seekerId).get();
+      final token = tokenSnapshot.data()?['fcmToken'] as String?;
+      if (token != null) {
+        dev.log('FCM token found for $seekerId: $token', name: 'AuthService');
+        // Add FCM logic here if implemented
+      } else {
+        dev.log('No FCM token found for $seekerId, notification stored in Firestore only', name: 'AuthService');
+      }
+    } catch (e) {
+      dev.log('Error sending notification to $seekerId for job $jobId: $e', name: 'AuthService', error: e);
+      if (e is FirebaseException && e.code == 'permission-denied') {
+        dev.log('Permission denied writing to SeekerNotifications/$seekerId/Notifications/$notificationId. Check Firestore rules.', name: 'AuthService');
+      }
+      rethrow;
+    }
+  }
   Future<List<Map<String, dynamic>>> fetchScheduledCalls() async {
     final uid = _auth.currentUser?.uid;
     if (uid == null) throw const AuthException("User not logged in");

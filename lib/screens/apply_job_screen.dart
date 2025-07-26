@@ -1,4 +1,3 @@
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -89,11 +88,23 @@ class ApplyJobScreenState extends State<ApplyJobScreen> {
 
   Future<bool> _checkJobEligibility() async {
     try {
-      // Check if application already exists to allow recruiter profile read
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        dev.log('No authenticated user for eligibility check', name: 'ApplyJobScreen');
+        _showSnackBar('Please log in to apply');
+        return false;
+      }
+
+      // Check if application already exists using seekerId_jobId
       final applicationIndexDoc = await FirebaseFirestore.instance
           .collection('ApplicationsIndex')
-          .doc('${widget.recruiterId}_${FirebaseAuth.instance.currentUser!.uid}')
+          .doc('${user.uid}_${widget.jobId}')
           .get();
+      if (applicationIndexDoc.exists) {
+        dev.log('Application already exists for seeker ${user.uid} and job ${widget.jobId}', name: 'ApplyJobScreen');
+        _showSnackBar('You have already applied to this job');
+        return false;
+      }
 
       final jobDoc = await FirebaseFirestore.instance
           .collection('Recruiters')
@@ -145,8 +156,8 @@ class ApplyJobScreenState extends State<ApplyJobScreen> {
     } catch (e) {
       dev.log('Error checking job eligibility for ${widget.jobId}: $e', name: 'ApplyJobScreen', error: e);
       if (e is FirebaseException && e.code == 'permission-denied') {
-        dev.log('Permission denied reading Recruiters/${widget.recruiterId}/Jobs/${widget.jobId}. Verify ApplicationsIndex/${widget.recruiterId}_${FirebaseAuth.instance.currentUser!.uid} exists.', name: 'ApplyJobScreen');
-        _showSnackBar('Permission denied: Cannot access job details. Apply first or contact support.');
+        dev.log('Permission denied reading Recruiters/${widget.recruiterId}/Jobs/${widget.jobId}.', name: 'ApplyJobScreen');
+        _showSnackBar('Permission denied: Cannot access job details. Contact support.');
       } else {
         _showSnackBar('Error checking eligibility: $e');
       }
@@ -212,13 +223,7 @@ class ApplyJobScreenState extends State<ApplyJobScreen> {
 
     try {
       final applicationData = {
-        'jobId': widget.jobId,
-        'jobTitle': widget.jobTitle,
-        'seekerId': user.uid,
-        'recruiterId': widget.recruiterId,
         'coverLetter': _coverLetterController.text.trim(),
-        'status': 'Applied',
-        'appliedAt': FieldValue.serverTimestamp(),
         'resume': {
           'name': _seekerProfile!['name'] ?? '',
           'email': _seekerProfile!['email'] ?? '',

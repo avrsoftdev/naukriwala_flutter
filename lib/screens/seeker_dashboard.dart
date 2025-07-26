@@ -5,6 +5,8 @@ import 'package:intl/intl.dart';
 import 'package:naukariwala/screens/profile_screen.dart';
 import 'package:naukariwala/screens/search_job_screen.dart';
 import 'package:naukariwala/screens/chat_screen.dart';
+import '../../services/auth_service.dart';
+import 'dart:developer' as dev; // Added import for dev
 
 class SeekerDashboard extends StatefulWidget {
   final String? seekerName;
@@ -20,48 +22,128 @@ class _SeekerDashboardState extends State<SeekerDashboard> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   String _searchQuery = '';
+  final AuthService _authService = AuthService();
 
   @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 4,
-      child: Scaffold(
-        appBar: AppBar(
-          backgroundColor: Colors.deepPurple,
-          title: Row(
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Please log in to access the dashboard.')),
+          );
+          Navigator.pushReplacementNamed(context, '/login');
+        }
+      });
+      return const SizedBox.shrink();
+    }
+
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        title: const Text(''), // Empty title to avoid overlap
+        leading: Builder(
+          builder: (context) => IconButton(
+            icon: const Icon(Icons.menu, color: Colors.white),
+            onPressed: () => Scaffold.of(context).openDrawer(),
+          ),
+        ),
+      ),
+      drawer: Drawer(
+        child: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF6A1B9A), Color(0xFF00695C)], // Deep Purple to Teal gradient
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+          child: ListView(
+            padding: EdgeInsets.zero,
             children: [
-              CircleAvatar(
-                radius: 18,
-                backgroundImage: widget.photoUrl != null ? NetworkImage(widget.photoUrl!) : null,
-                child: widget.photoUrl == null ? const Icon(Icons.person, size: 20) : null,
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  'Welcome, ${widget.seekerName ?? "Seeker"}',
-                  overflow: TextOverflow.ellipsis,
+              DrawerHeader(
+                decoration: const BoxDecoration(
+                  color: Colors.transparent,
+                ),
+                child: CircleAvatar(
+                  radius: 50,
+                  backgroundImage: widget.photoUrl != null ? NetworkImage(widget.photoUrl!) : null,
+                  child: widget.photoUrl == null ? const Icon(Icons.person, size: 50, color: Colors.white) : null,
                 ),
               ),
-            ],
-          ),
-          bottom: const TabBar(
-            labelColor: Colors.white,
-            unselectedLabelColor: Colors.white70,
-            indicatorColor: Colors.white,
-            tabs: [
-              Tab(icon: Icon(Icons.person)),
-              Tab(icon: Icon(Icons.work)),
-              Tab(icon: Icon(Icons.work_history_rounded)),
-              Tab(icon: Icon(Icons.notification_add)),
+              ListTile(
+                leading: const Icon(Icons.person, color: Colors.white),
+                title: const Text('Profile', style: TextStyle(color: Colors.white)),
+                onTap: () {
+                  Navigator.pop(context);
+                  DefaultTabController.of(context).animateTo(0);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.work, color: Colors.white),
+                title: const Text('Search Jobs', style: TextStyle(color: Colors.white)),
+                onTap: () {
+                  Navigator.pop(context);
+                  DefaultTabController.of(context).animateTo(1);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.work_history_rounded, color: Colors.white),
+                title: const Text('Applied Jobs', style: TextStyle(color: Colors.white)),
+                onTap: () {
+                  Navigator.pop(context);
+                  DefaultTabController.of(context).animateTo(2);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.notification_add, color: Colors.white),
+                title: const Text('Notifications', style: TextStyle(color: Colors.white)),
+                onTap: () {
+                  Navigator.pop(context);
+                  DefaultTabController.of(context).animateTo(3);
+                },
+              ),
             ],
           ),
         ),
-        body: TabBarView(
+      ),
+      body: DefaultTabController(
+        length: 4,
+        child: Column(
           children: [
-            const ProfileScreen(isRecruiter: false),
-            const SearchJobScreen(isSeekerProfileView: true),
-            _buildAppliedJobsTab(),
-            _buildNotificationsTab(),
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFF6A1B9A), Color(0xFF00695C)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+              child: const TabBar(
+                labelColor: Colors.white,
+                unselectedLabelColor: Colors.white70,
+                indicatorColor: Colors.white,
+                tabs: [
+                  Tab(icon: Icon(Icons.person)),
+                  Tab(icon: Icon(Icons.work)),
+                  Tab(icon: Icon(Icons.work_history_rounded)),
+                  Tab(icon: Icon(Icons.notification_add)),
+                ],
+              ),
+            ),
+            Expanded(
+              child: TabBarView(
+                children: [
+                  const ProfileScreen(isRecruiter: false),
+                  const SearchJobScreen(isSeekerProfileView: true),
+                  _buildAppliedJobsTab(),
+                  _buildNotificationsTab(),
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -133,6 +215,8 @@ class _SeekerDashboardState extends State<SeekerDashboard> {
                   final interviewDateStr = interviewDate != null
                       ? DateFormat('dd MMM yyyy').format(interviewDate)
                       : null;
+                  final jobId = job['jobId'] as String? ?? 'Unknown';
+                  final recruiterId = job['recruiterId'] as String? ?? 'Unknown';
 
                   return FutureBuilder<DocumentSnapshot>(
                     future: _firestore
@@ -164,12 +248,27 @@ class _SeekerDashboardState extends State<SeekerDashboard> {
                           trailing: IconButton(
                             icon: const Icon(Icons.chat),
                             onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => ChatScreen(seekerId: uid),
-                                ),
-                              );
+                              if (!mounted) return;
+                              final chatId = [uid, recruiterId].join('_').split('_')..sort();
+                              final normalizedChatId = '${chatId[0]}_${chatId[1]}';
+                              _authService.sendMessage(recruiterId, jobId, 'Hello, I’d like to discuss my application!')
+                                  .then((_) {
+                                if (mounted) {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => ChatScreen(chatId: normalizedChatId, recipientId: recruiterId, jobId: jobId),
+                                    ),
+                                  );
+                                }
+                              }).catchError((e) {
+                                dev.log('Error starting chat: $e', name: 'SeekerDashboard', error: e);
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Failed to start chat')),
+                                  );
+                                }
+                              });
                             },
                           ),
                         ),

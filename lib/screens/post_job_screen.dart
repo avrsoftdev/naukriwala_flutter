@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'auth_middleware.dart';
+import '../services/auth_middleware.dart';
 import 'preview_job_screen.dart';
 import 'posted_jobs_screen.dart'; // Import PostedJobsScreen (adjust path as needed)
 import 'dart:developer' as dev;

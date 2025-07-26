@@ -15,6 +15,14 @@
       ]
     },
     {
+  "collectionGroup": "ApplicationsIndex",
+  "queryScope": "COLLECTION",
+  "fields": [
+    { "fieldPath": "jobId", "order": "ASCENDING" },
+    { "fieldPath": "createdAt", "order": "DESCENDING" }
+  ]
+}
+    {
       "collectionGroup": "AppliedJobs",
       "queryScope": "COLLECTION_GROUP",
       "fields": [
