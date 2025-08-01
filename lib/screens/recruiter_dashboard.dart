@@ -715,7 +715,7 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
         title: const Text(''), // Empty title to avoid overlap
         leading: Builder(
           builder: (context) => IconButton(
-            icon: const Icon(Icons.menu, color: Colors.white),
+            icon: const Icon(Icons.menu, color: Colors.black),
             onPressed: () => Scaffold.of(context).openDrawer(),
           ),
         ),
@@ -751,13 +751,18 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.work, color: Colors.white),
-                title: const Text('Posted Jobs', style: TextStyle(color: Colors.white)),
-                onTap: () {
-                  Navigator.pop(context);
-                  DefaultTabController.of(context).animateTo(1);
-                },
-              ),
+  leading: const Icon(Icons.work, color: Colors.white),
+  title: const Text('Posted Jobs', style: TextStyle(color: Colors.white)),
+  onTap: () {
+    Navigator.pop(context); // Close the drawer
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const PostedJobsScreen(),
+      ),
+    );
+  },
+),
               ListTile(
                 leading: const Icon(Icons.group_add, color: Colors.white),
                 title: const Text('Applied Seekers', style: TextStyle(color: Colors.white)),
@@ -775,13 +780,18 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.post_add, color: Colors.white),
-                title: const Text('Post Job', style: TextStyle(color: Colors.white)),
-                onTap: () {
-                  Navigator.pop(context);
-                  DefaultTabController.of(context).animateTo(4);
-                },
-              ),
+  leading: const Icon(Icons.work, color: Colors.white),
+  title: const Text('Post a Job', style: TextStyle(color: Colors.white)),
+  onTap: () {
+    Navigator.pop(context); // Close the drawer
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const PostJobScreen(),
+      ),
+    );
+  },
+),
               ListTile(
                 leading: const Icon(Icons.notifications, color: Colors.white),
                 title: const Text('Notifications', style: TextStyle(color: Colors.white)),
