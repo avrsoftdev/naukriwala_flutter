@@ -91,19 +91,20 @@ class ApplyJobScreenState extends State<ApplyJobScreen> {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) {
         dev.log('No authenticated user for eligibility check', name: 'ApplyJobScreen');
-        _showSnackBar('Please log in to apply');
         return false;
       }
 
-      // Check if application already exists using seekerId_jobId
+      // Check if application already exists
       final applicationIndexDoc = await FirebaseFirestore.instance
           .collection('ApplicationsIndex')
-          .doc('${user.uid}_${widget.jobId}')
+          .doc('${widget.recruiterId}_${user.uid}')
           .get();
       if (applicationIndexDoc.exists) {
-        dev.log('Application already exists for seeker ${user.uid} and job ${widget.jobId}', name: 'ApplyJobScreen');
-        _showSnackBar('You have already applied to this job');
+        dev.log('ApplicationsIndex/${widget.recruiterId}_${user.uid} already exists', name: 'ApplyJobScreen');
+        _showSnackBar('You have already applied for this job');
         return false;
+      } else {
+        dev.log('ApplicationsIndex/${widget.recruiterId}_${user.uid} does not exist', name: 'ApplyJobScreen');
       }
 
       final jobDoc = await FirebaseFirestore.instance
@@ -156,8 +157,8 @@ class ApplyJobScreenState extends State<ApplyJobScreen> {
     } catch (e) {
       dev.log('Error checking job eligibility for ${widget.jobId}: $e', name: 'ApplyJobScreen', error: e);
       if (e is FirebaseException && e.code == 'permission-denied') {
-        dev.log('Permission denied reading Recruiters/${widget.recruiterId}/Jobs/${widget.jobId}.', name: 'ApplyJobScreen');
-        _showSnackBar('Permission denied: Cannot access job details. Contact support.');
+        dev.log('Permission denied reading Recruiters/${widget.recruiterId}/Jobs/${widget.jobId}. Verify ApplicationsIndex/${widget.recruiterId}_${FirebaseAuth.instance.currentUser!.uid} or Seeker profile.', name: 'ApplyJobScreen');
+        _showSnackBar('Permission denied: Cannot access job details. Ensure your profile is complete or contact support.');
       } else {
         _showSnackBar('Error checking eligibility: $e');
       }
@@ -223,7 +224,13 @@ class ApplyJobScreenState extends State<ApplyJobScreen> {
 
     try {
       final applicationData = {
+        'jobId': widget.jobId,
+        'jobTitle': widget.jobTitle,
+        'seekerId': user.uid,
+        'recruiterId': widget.recruiterId,
         'coverLetter': _coverLetterController.text.trim(),
+        'status': 'Applied',
+        'appliedAt': FieldValue.serverTimestamp(),
         'resume': {
           'name': _seekerProfile!['name'] ?? '',
           'email': _seekerProfile!['email'] ?? '',
@@ -247,10 +254,9 @@ class ApplyJobScreenState extends State<ApplyJobScreen> {
     } catch (e) {
       dev.log('Error applying for job ${widget.jobId}: $e', name: 'ApplyJobScreen', error: e);
       if (e is FirebaseException) {
-        dev.log('Firebase error details: ${e.code} - ${e.message}', name: 'ApplyJobScreen');
+        dev.log('Firebase error details: code=${e.code}, message=${e.message}, path=Applications/${widget.jobId}/AppliedJobs or ApplicationsIndex/${widget.recruiterId}_${user.uid}', name: 'ApplyJobScreen');
         if (e.code == 'permission-denied') {
-          dev.log('Permission denied details: Check Firestore rules for Applications, ApplicationsIndex, and RecruiterNotifications', name: 'ApplyJobScreen');
-          _showSnackBar('Permission denied: Ensure seeker role is set and Firestore rules allow write to Applications and ApplicationsIndex');
+          _showSnackBar('Permission denied: Ensure seeker role is set and profile is complete. Contact support if issue persists.');
         } else {
           _showSnackBar('Failed to apply: ${e.code} - ${e.message}');
         }
@@ -266,7 +272,21 @@ class ApplyJobScreenState extends State<ApplyJobScreen> {
 
   void _showSnackBar(String message) {
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          duration: const Duration(seconds: 5),
+          action: message.contains('Permission denied')
+              ? SnackBarAction(
+                  label: 'Contact Support',
+                  onPressed: () {
+                    dev.log('User clicked Contact Support', name: 'ApplyJobScreen');
+                    // Add support contact logic here
+                  },
+                )
+              : null,
+        ),
+      );
     }
   }
 

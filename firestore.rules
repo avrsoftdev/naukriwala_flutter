@@ -19,7 +19,7 @@ service cloud.firestore {
              exists(/databases/$(database)/documents/Seekers/$(request.auth.uid));
     }
 
-    /// ✅ Recruiter can view seeker if ApplicationsIndex or application exists
+    // ✅ Recruiter can view seeker if ApplicationsIndex or application exists
     function canRecruiterViewSeeker(seekerId) {
       return isRecruiter() &&
              (
@@ -51,7 +51,11 @@ service cloud.firestore {
     // 👤 Seeker Profiles
     match /Seekers/{uid} {
       allow read: if request.auth != null && (request.auth.uid == uid || isAdmin() || canRecruiterViewSeeker(uid));
-      allow write: if request.auth != null && (request.auth.uid == uid || isAdmin());
+      allow create: if request.auth != null &&
+                    request.auth.uid == uid &&
+                    request.resource.data.uid == uid &&
+                    request.resource.data.role == 'seeker';
+      allow update: if request.auth != null && (request.auth.uid == uid || isAdmin());
     }
 
     // 🔍 Users Index (used for global search or push tokens)
@@ -77,80 +81,91 @@ service cloud.firestore {
       allow read: if request.auth != null && resource.data.status == "open";
     }
 
+    // 📄 Applications parent document (recruiter-facing metadata)
+    match /Applications/{jobId} {
+      allow read: if request.auth != null &&
+                  (
+                    isSeeker() ||
+                    (isRecruiter() &&
+                     exists(/databases/$(database)/documents/Recruiters/$(request.auth.uid)/Jobs/$(jobId)) &&
+                     get(/databases/$(database)/documents/Recruiters/$(request.auth.uid)/Jobs/$(jobId)).data.recruiterId == request.auth.uid) ||
+                    isAdmin()
+                  );
+      allow create: if request.auth != null &&
+                    isSeeker() &&
+                    request.resource.data.keys().hasOnly(['recruiterId', 'createdAt']);
+      allow update: if request.auth != null &&
+                    isSeeker() &&
+                    request.resource.data.keys().hasOnly(['recruiterId', 'createdAt']);
+    }
 
-// 📄 Applications parent document (metadata)
-match /Applications/{jobId} {
-  allow read: if request.auth != null &&
-              (
-                (isRecruiter() &&
-                 exists(/databases/$(database)/documents/Recruiters/$(request.auth.uid)/Jobs/$(jobId)) &&
-                 get(/databases/$(database)/documents/Recruiters/$(request.auth.uid)/Jobs/$(jobId)).data.recruiterId == request.auth.uid) ||
-                isAdmin()
-              );
-  allow create: if isSeeker() &&
-                exists(/databases/$(database)/documents/Recruiters/$(request.resource.data.recruiterId)/Jobs/$(jobId));
-  allow update: if false; // Prevent updates to maintain consistency
-}
+    // 📄 Applications parent document (seeker-facing metadata)
+    match /Applications/{seekerUid} {
+      allow create: if isSeeker() &&
+                    request.auth.uid == seekerUid &&
+                    request.resource.data.keys().hasOnly(['seekerId', 'createdAt']) &&
+                    request.resource.data.seekerId == seekerUid;
+      allow read: if request.auth != null &&
+                  (request.auth.uid == seekerUid || isAdmin());
+      allow update: if false;
+    }
 
-// 📝 Recruiter-facing AppliedJobs subcollection
-match /Applications/{jobId}/AppliedJobs/{seekerId} {
-  allow read: if request.auth != null &&
-              (
-                request.auth.uid == seekerId ||
-                (isRecruiter() &&
-                 get(/databases/$(database)/documents/Applications/$(jobId)).data.recruiterId == request.auth.uid)
-              );
-  allow create: if isSeeker() &&
-                request.auth.uid == seekerId &&
-                request.resource.data.seekerId == seekerId &&
-                request.resource.data.jobId == jobId &&
-                exists(/databases/$(database)/documents/Recruiters/$(request.resource.data.recruiterId)/Jobs/$(jobId));
-  allow update: if isRecruiter() &&
-                get(/databases/$(database)/documents/Applications/$(jobId)).data.recruiterId == request.auth.uid &&
-                request.resource.data.keys().hasOnly(['status', 'interviewDate']);
-}
+    // 📝 Recruiter-facing AppliedJobs subcollection
+    match /Applications/{jobId}/AppliedJobs/{docId} {
+      allow create: if isSeeker() &&
+                    request.auth.uid == request.resource.data.seekerId &&
+                    request.resource.data.jobId == jobId &&
+                    docId == request.auth.uid;
+      allow read: if request.auth != null &&
+                   (request.auth.uid == resource.data.seekerId ||
+                    (isRecruiter() &&
+                     get(/databases/$(database)/documents/Applications/$(jobId)).data.recruiterId == request.auth.uid));
+      allow update: if isRecruiter() &&
+                    request.auth.uid == resource.data.recruiterId &&
+                    request.resource.data.keys().hasOnly(['status', 'interviewDate']);
+    }
 
-// ✅ Seeker-facing AppliedJobs (for seeker dashboard)
-match /Applications/{seekerUid}/AppliedJobs/{jobId} {
-  allow read: if request.auth != null &&
-               request.auth.uid == seekerUid &&
-               isSeeker();
-  allow create: if isSeeker() &&
-                request.auth.uid == seekerUid &&
-                request.resource.data.seekerId == seekerUid &&
-                request.resource.data.jobId == jobId &&
-                exists(/databases/$(database)/documents/Recruiters/$(request.resource.data.recruiterId)/Jobs/$(jobId));
-  allow update: if request.auth != null &&
-                (
-                  (request.auth.uid == seekerUid && isSeeker()) ||
-                  (isRecruiter() &&
-                   request.auth.uid == resource.data.recruiterId &&
-                   request.resource.data.keys().hasOnly(['status', 'interviewDate']))
-                );
-}
+    // ✅ Seeker-facing AppliedJobs (for seeker dashboard)
+    match /Applications/{seekerUid}/AppliedJobs/{jobId} {
+      allow read: if request.auth != null &&
+                   request.auth.uid == seekerUid &&
+                   isSeeker();
+      allow create: if isSeeker() &&
+                    request.auth.uid == seekerUid &&
+                    request.resource.data.seekerId == seekerUid &&
+                    request.resource.data.jobId == jobId;
+      allow update: if request.auth != null &&
+                    (
+                      (request.auth.uid == seekerUid && isSeeker()) ||
+                      (isRecruiter() &&
+                       request.auth.uid == resource.data.recruiterId &&
+                       request.resource.data.keys().hasOnly(['status', 'interviewDate']))
+                    );
+    }
 
-// 🌐 AppliedJobs collection group query support
-match /{any=**}/AppliedJobs/{docId} {
-  allow read: if request.auth != null &&
-               (
-                 request.auth.uid == resource.data.seekerId ||
-                 (isRecruiter() && request.auth.uid == resource.data.recruiterId)
-               );
-}
+    // 🌐 AppliedJobs collection group query support
+    match /{any=**}/AppliedJobs/{docId} {
+      allow read: if request.auth != null &&
+                   (
+                     request.auth.uid == resource.data.seekerId ||
+                     (isRecruiter() && request.auth.uid == resource.data.recruiterId)
+                   );
+    }
 
-// 📑 Applications Index
-match /ApplicationsIndex/{docId} {
-  allow read: if request.auth != null &&
-               (
-                 isSeeker() ||
-                 isRecruiter() ||
-                 isAdmin()
-               );
-  allow create: if isSeeker() &&
-                request.auth.uid == request.resource.data.seekerId &&
-                exists(/databases/$(database)/documents/Recruiters/$(request.resource.data.recruiterId)/Jobs/$(request.resource.data.jobId));
-  allow update: if false; // Prevent updates for simplicity
-}
+    // 📑 Applications Index
+    match /ApplicationsIndex/{docId} {
+      allow read: if request.auth != null &&
+                   (
+                     isSeeker() ||
+                     isRecruiter() ||
+                     isAdmin()
+                   );
+      allow create: if isSeeker() &&
+                    request.auth.uid == request.resource.data.seekerId &&
+                    request.resource.data.jobId != null;
+      allow update: if false;
+    }
+
     // 🔔 Recruiter-specific notifications
     match /RecruiterNotifications/{recruiterId}/Notifications/{notifId} {
       allow read: if request.auth != null && (request.auth.uid == recruiterId || isAdmin());
