@@ -191,6 +191,7 @@ class _SeekerDashboardState extends State<SeekerDashboard> {
               if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                 return const Center(child: Text('No jobs applied yet.'));
               }
+              //////
 
               final docs = snapshot.data!.docs.where((doc) {
                 final data = doc.data() as Map<String, dynamic>;
