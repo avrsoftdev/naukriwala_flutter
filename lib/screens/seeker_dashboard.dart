@@ -46,7 +46,7 @@ class _SeekerDashboardState extends State<SeekerDashboard> {
         title: const Text(''), // Empty title to avoid overlap
         leading: Builder(
           builder: (context) => IconButton(
-            icon: const Icon(Icons.menu, color: Colors.white),
+            icon: const Icon(Icons.menu, color: Colors.black),
             onPressed: () => Scaffold.of(context).openDrawer(),
           ),
         ),
@@ -103,6 +103,14 @@ class _SeekerDashboardState extends State<SeekerDashboard> {
                 onTap: () {
                   Navigator.pop(context);
                   DefaultTabController.of(context).animateTo(3);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.logout, color: Colors.white),
+                title: const Text('Logout', style: TextStyle(color: Colors.white)),
+                onTap: () {
+                  Navigator.pop(context);
+                  DefaultTabController.of(context).animateTo(4);
                 },
               ),
             ],
@@ -230,7 +238,7 @@ class _SeekerDashboardState extends State<SeekerDashboard> {
                       String companyName = 'Unknown Company';
                       if (jobSnapshot.hasData && jobSnapshot.data!.exists) {
                         final jobData = jobSnapshot.data!.data() as Map<String, dynamic>;
-                        companyName = jobData['Company Name'] ?? 'Unknown Company';
+                        companyName = jobData['company'] ?? 'Unknown Company';
                       }
 
                       return Card(

@@ -314,6 +314,7 @@ class AuthService {
       batch.set(indexRef, {
         'seekerId': uid,
         'jobId': jobId,
+        'company' : jobData['company'],
         'recruiterId': recruiterId,
         'status': 'Applied',
         'createdAt': FieldValue.serverTimestamp(),
