@@ -2,7 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:naukariwala/screens/chat_screen.dart';
+import 'package:naukariwala/services/auth_service.dart';
 import 'dart:developer' as dev;
 
 class MyApplicationsScreen extends StatefulWidget {
@@ -14,79 +15,20 @@ class MyApplicationsScreen extends StatefulWidget {
 }
 
 class _MyApplicationsScreenState extends State<MyApplicationsScreen> {
-  late Stream<QuerySnapshot> _applicationsStream;
-  String? currentUserId;
-
-  void _initStream() {
-    if (currentUserId != null && currentUserId == widget.seekerId) {
-      _applicationsStream = FirebaseFirestore.instance
-          .collectionGroup('AppliedJobs')
-          .where('seekerId', isEqualTo: widget.seekerId)
-          .orderBy('appliedAt', descending: true)
-          .snapshots();
-    } else {
-      _applicationsStream = const Stream.empty();
-    }
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    currentUserId = FirebaseAuth.instance.currentUser?.uid;
-    _initStream();
-    FirebaseAuth.instance.authStateChanges().listen((user) {
-      setState(() {
-        currentUserId = user?.uid;
-        _initStream();
-      });
-    });
-  }
-
-  String _formatTimestamp(Timestamp ts) {
-    final dt = ts.toDate();
-    return DateFormat('dd MMM yyyy, hh:mm a').format(dt);
-  }
-
-  Future<void> _openResume(String url) async {
-    if (url.isEmpty) {
-      dev.log('No resume URL provided for seeker ${widget.seekerId}', name: 'MyApplicationsScreen');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No resume available')),
-        );
-      }
-      return;
-    }
-    try {
-      if (await canLaunchUrl(Uri.parse(url))) {
-        await launchUrl(Uri.parse(url));
-        dev.log('Opened resume for seeker ${widget.seekerId}: $url', name: 'MyApplicationsScreen');
-      } else {
-        dev.log('Could not launch resume URL: $url', name: 'MyApplicationsScreen');
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Could not open resume')),
-          );
-        }
-      }
-    } catch (e) {
-      dev.log('Error opening resume URL $url: $e', name: 'MyApplicationsScreen', error: e);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Error opening resume')),
-        );
-      }
-    }
-  }
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final AuthService _authService = AuthService();
+  String _searchQuery = '';
 
   @override
   Widget build(BuildContext context) {
-    if (currentUserId == null) {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) {
       return const Scaffold(
         body: Center(child: Text('Please log in to view your applications.')),
       );
     }
-    if (currentUserId != widget.seekerId) {
+    if (uid != widget.seekerId) {
       return const Scaffold(
         body: Center(child: Text('Unauthorized access. Seeker ID mismatch.')),
       );
@@ -95,68 +37,141 @@ class _MyApplicationsScreenState extends State<MyApplicationsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('My Applications'),
+        backgroundColor: Colors.deepPurple,
       ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: _applicationsStream,
-        builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            dev.log('Error loading applications for seekerId ${widget.seekerId}: ${snapshot.error}', name: 'MyApplicationsScreen');
-            if (snapshot.error.toString().contains('FAILED_PRECONDITION')) {
-              return const Center(
-                child: Text(
-                  'Error loading applications: Index required. Create it here: https://console.firebase.google.com/v1/r/project/naukriwala-455909/firestore/indexes',
-                  textAlign: TextAlign.center,
-                ),
-              );
-            }
-            return Center(child: Text('Error loading applications: ${snapshot.error}'));
-          }
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: TextField(
+              decoration: const InputDecoration(
+                labelText: 'Search by title...',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.search),
+              ),
+              onChanged: (val) {
+                setState(() {
+                  _searchQuery = val.toLowerCase();
+                });
+              },
+            ),
+          ),
+          Expanded(
+            child: StreamBuilder<QuerySnapshot>(
+              stream: _firestore
+                  .collection('Applications')
+                  .doc(uid)
+                  .collection('AppliedJobs')
+                  .orderBy('appliedAt', descending: true)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (snapshot.hasError) {
+                  dev.log('Error loading applications for seekerId $uid: ${snapshot.error}', name: 'MyApplicationsScreen');
+                  return Center(child: Text('Error: ${snapshot.error}'));
+                }
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  dev.log('No applications found for seekerId: $uid', name: 'MyApplicationsScreen');
+                  return const Center(child: Text('No jobs applied yet.'));
+                }
 
-          final docs = snapshot.data?.docs ?? [];
-          if (docs.isEmpty) {
-            dev.log('No applications found for seekerId: ${widget.seekerId}', name: 'MyApplicationsScreen');
-            return const Center(child: Text('No applications found.'));
-          }
+                final docs = snapshot.data!.docs.where((doc) {
+                  final data = doc.data() as Map<String, dynamic>;
+                  final title = (data['jobTitle'] ?? '').toLowerCase();
+                  return title.contains(_searchQuery);
+                }).toList();
 
-          dev.log('Loaded ${docs.length} applications for seekerId: ${widget.seekerId}', name: 'MyApplicationsScreen');
-          return ListView.builder(
-            itemCount: docs.length,
-            itemBuilder: (context, index) {
-              final data = docs[index].data() as Map<String, dynamic>;
-              final jobTitle = data['jobTitle'] ?? 'N/A';
-              final company = data['company'] ?? 'N/A';
-              final appliedAt = data['appliedAt'] as Timestamp?;
-              final status = data['status'] ?? 'Pending';
-              final resumeData = data['resume'] as Map<String, dynamic>?;
-              final resumeUrl = resumeData?['cvUrl'] ?? '';
+                return ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: docs.length,
+                  itemBuilder: (context, index) {
+                    final job = docs[index].data() as Map<String, dynamic>;
+                    final appliedAt = job['appliedAt'] != null
+                        ? (job['appliedAt'] as Timestamp).toDate()
+                        : null;
+                    final interviewDate = job['interviewDate'] != null
+                        ? (job['interviewDate'] as Timestamp).toDate()
+                        : null;
+                    final appliedDate = appliedAt != null
+                        ? DateFormat('dd MMM yyyy').format(appliedAt)
+                        : 'N/A';
+                    final interviewDateStr = interviewDate != null
+                        ? DateFormat('dd MMM yyyy').format(interviewDate)
+                        : null;
+                    final jobId = job['jobId'] as String? ?? 'Unknown';
+                    final recruiterId = job['recruiterId'] as String? ?? 'Unknown';
 
-              return Card(
-                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: ListTile(
-                  title: Text(jobTitle),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Company: $company'),
-                      if (appliedAt != null) Text('Applied on: ${_formatTimestamp(appliedAt)}'),
-                      Text('Status: $status'),
-                    ],
-                  ),
-                  trailing: resumeUrl.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.picture_as_pdf),
-                          tooltip: 'View Resume',
-                          onPressed: () => _openResume(resumeUrl),
-                        )
-                      : null,
-                ),
-              );
-            },
-          );
-        },
+                    return FutureBuilder<DocumentSnapshot>(
+                      future: _firestore
+                          .collection('Recruiters')
+                          .doc(job['recruiterId'])
+                          .collection('Jobs')
+                          .doc(job['jobId'])
+                          .get(),
+                      builder: (context, jobSnapshot) {
+                        String companyName = 'Unknown Company';
+                        if (jobSnapshot.hasData && jobSnapshot.data!.exists) {
+                          final jobData = jobSnapshot.data!.data() as Map<String, dynamic>;
+                          companyName = jobData['company'] ?? 'Unknown Company';
+                        }
+
+                        return Card(
+                          child: ListTile(
+                            leading: const Icon(Icons.work_outline, color: Colors.blue),
+                            title: Text('${job['jobTitle']} - $companyName'),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Applied on: $appliedDate'),
+                                Text('Status: ${job['status'] ?? 'Applied'}'),
+                                if (interviewDateStr != null)
+                                  Text('Interview: $interviewDateStr'),
+                              ],
+                            ),
+                            trailing: IconButton(
+                              icon: const Icon(Icons.chat),
+                              onPressed: () {
+                                if (!mounted) return;
+                                final scaffoldMessenger = ScaffoldMessenger.of(context);
+                                final navigator = Navigator.of(context); // Capture NavigatorState
+                                final chatId = [uid, recruiterId].join('_').split('_')..sort();
+                                final normalizedChatId = '${chatId[0]}_${chatId[1]}';
+                                _authService
+                                    .sendMessage(recruiterId, jobId, 'Hello, I’d like to discuss my application!')
+                                    .then((_) {
+                                  if (mounted) {
+                                    navigator.push(
+                                      MaterialPageRoute(
+                                        builder: (_) => ChatScreen(
+                                          chatId: normalizedChatId,
+                                          recipientId: recruiterId,
+                                          jobId: jobId,
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                }).catchError((e) {
+                                  dev.log('Error starting chat: $e', name: 'MyApplicationsScreen', error: e);
+                                  if (mounted) {
+                                    scaffoldMessenger.showSnackBar(
+                                      const SnackBar(content: Text('Failed to start chat')),
+                                    );
+                                  }
+                                });
+                              },
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
