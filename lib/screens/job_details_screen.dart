@@ -115,10 +115,8 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> {
     if (currentUser == null) return false;
     try {
       final doc = await FirebaseFirestore.instance
-          .collection('Applications')
-          .doc(widget.job['jobId']?.toString())
-          .collection('AppliedJobs')
-          .doc(currentUser.uid)
+          .collection('ApplicationsIndex')
+          .doc('${currentUser.uid}_${widget.job['jobId']}')
           .get();
       return doc.exists;
     } catch (e) {

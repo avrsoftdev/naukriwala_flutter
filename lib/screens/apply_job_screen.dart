@@ -87,24 +87,25 @@ class ApplyJobScreenState extends State<ApplyJobScreen> {
   }
 
   Future<bool> _checkJobEligibility() async {
-    try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) {
-        dev.log('No authenticated user for eligibility check', name: 'ApplyJobScreen');
-        return false;
-      }
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) {
+      dev.log('No authenticated user for eligibility check', name: 'ApplyJobScreen');
+      _showSnackBar('Please log in to apply');
+      return false;
+    }
 
-      // Check if application already exists
+    try {
+      // Check if application already exists using seekerId_jobId
       final applicationIndexDoc = await FirebaseFirestore.instance
           .collection('ApplicationsIndex')
-          .doc('${widget.recruiterId}_${user.uid}')
+          .doc('${currentUser.uid}_${widget.jobId}')
           .get();
       if (applicationIndexDoc.exists) {
-        dev.log('ApplicationsIndex/${widget.recruiterId}_${user.uid} already exists', name: 'ApplyJobScreen');
+        dev.log('ApplicationsIndex/${currentUser.uid}_${widget.jobId} already exists', name: 'ApplyJobScreen');
         _showSnackBar('You have already applied for this job');
         return false;
       } else {
-        dev.log('ApplicationsIndex/${widget.recruiterId}_${user.uid} does not exist', name: 'ApplyJobScreen');
+        dev.log('ApplicationsIndex/${currentUser.uid}_${widget.jobId} does not exist', name: 'ApplyJobScreen');
       }
 
       final jobDoc = await FirebaseFirestore.instance
@@ -157,7 +158,7 @@ class ApplyJobScreenState extends State<ApplyJobScreen> {
     } catch (e) {
       dev.log('Error checking job eligibility for ${widget.jobId}: $e', name: 'ApplyJobScreen', error: e);
       if (e is FirebaseException && e.code == 'permission-denied') {
-        dev.log('Permission denied reading Recruiters/${widget.recruiterId}/Jobs/${widget.jobId}. Verify ApplicationsIndex/${widget.recruiterId}_${FirebaseAuth.instance.currentUser!.uid} or Seeker profile.', name: 'ApplyJobScreen');
+        dev.log('Permission denied reading Recruiters/${widget.recruiterId}/Jobs/${widget.jobId}. Verify ApplicationsIndex/${currentUser.uid}_${widget.jobId} or Seeker profile.', name: 'ApplyJobScreen');
         _showSnackBar('Permission denied: Cannot access job details. Ensure your profile is complete or contact support.');
       } else {
         _showSnackBar('Error checking eligibility: $e');
@@ -254,7 +255,7 @@ class ApplyJobScreenState extends State<ApplyJobScreen> {
     } catch (e) {
       dev.log('Error applying for job ${widget.jobId}: $e', name: 'ApplyJobScreen', error: e);
       if (e is FirebaseException) {
-        dev.log('Firebase error details: code=${e.code}, message=${e.message}, path=Applications/${widget.jobId}/AppliedJobs or ApplicationsIndex/${widget.recruiterId}_${user.uid}', name: 'ApplyJobScreen');
+        dev.log('Firebase error details: code=${e.code}, message=${e.message}, path=Applications/${widget.jobId}/AppliedJobs or ApplicationsIndex/${user.uid}_${widget.jobId}', name: 'ApplyJobScreen');
         if (e.code == 'permission-denied') {
           _showSnackBar('Permission denied: Ensure seeker role is set and profile is complete. Contact support if issue persists.');
         } else {

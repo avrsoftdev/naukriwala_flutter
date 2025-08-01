@@ -1,3 +1,4 @@
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -219,7 +220,7 @@ class AuthService {
     }
   }
 
- Future<void> applyToJob(
+  Future<void> applyToJob(
     String jobId,
     String recruiterId,
     Map<String, dynamic> applicationData,
@@ -284,27 +285,6 @@ class AuthService {
         'status': 'Applied'
       };
 
-      // 🗂 Create Applications parent documents
-      final appRef = _firestore.collection('Applications').doc(jobId);
-      dev.log('Setting Applications/$jobId with recruiterId: $recruiterId', name: 'AuthService');
-      await appRef.set({
-        'recruiterId': recruiterId,
-        'createdAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true)).catchError((e) {
-        dev.log('Error setting Applications/$jobId: $e', name: 'AuthService', error: e);
-        throw AuthException('Failed to set job application parent document: $e');
-      });
-
-      final seekerAppRef = _firestore.collection('Applications').doc(uid);
-      dev.log('Setting Applications/$uid with seekerId: $uid', name: 'AuthService');
-      await seekerAppRef.set({
-        'seekerId': uid,
-        'createdAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true)).catchError((e) {
-        dev.log('Error setting Applications/$uid: $e', name: 'AuthService', error: e);
-        throw AuthException('Failed to set seeker application parent document: $e');
-      });
-
       // ✅ Seeker-facing AppliedJobs
       dev.log('Writing seeker-facing application to Applications/$uid/AppliedJobs/$jobId', name: 'AuthService');
       await _firestore
@@ -322,7 +302,7 @@ class AuthService {
       final batch = _firestore.batch();
 
       // 💬 Recruiter-facing AppliedJobs with seekerId as document ID
-      final recruiterAppsCollection = appRef.collection('AppliedJobs');
+      final recruiterAppsCollection = _firestore.collection('Applications').doc(jobId).collection('AppliedJobs');
       final recruiterAppRef = recruiterAppsCollection.doc(uid);
       batch.set(recruiterAppRef, {
         ...normalizedData,

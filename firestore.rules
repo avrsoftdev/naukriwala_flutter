@@ -23,7 +23,7 @@ service cloud.firestore {
     function canRecruiterViewSeeker(seekerId) {
       return isRecruiter() &&
              (
-               exists(/databases/$(database)/documents/ApplicationsIndex/$(request.auth.uid + "_" + seekerId)) ||
+               exists(/databases/$(database)/documents/ApplicationsIndex/$(seekerId + "_" + request.resource.data.jobId)) ||
                exists(/databases/$(database)/documents/Applications/{jobId}/AppliedJobs/$(seekerId))
              );
     }
@@ -101,13 +101,12 @@ service cloud.firestore {
 
     // 📄 Applications parent document (seeker-facing metadata)
     match /Applications/{seekerUid} {
-      allow create: if isSeeker() &&
-                    request.auth.uid == seekerUid &&
-                    request.resource.data.keys().hasOnly(['seekerId', 'createdAt']) &&
-                    request.resource.data.seekerId == seekerUid;
       allow read: if request.auth != null &&
                   (request.auth.uid == seekerUid || isAdmin());
-      allow update: if false;
+      allow create, update: if isSeeker() &&
+                            request.auth.uid == seekerUid &&
+                            request.resource.data.keys().hasOnly(['seekerId', 'createdAt']) &&
+                            request.resource.data.seekerId == seekerUid;
     }
 
     // 📝 Recruiter-facing AppliedJobs subcollection
@@ -162,7 +161,8 @@ service cloud.firestore {
                    );
       allow create: if isSeeker() &&
                     request.auth.uid == request.resource.data.seekerId &&
-                    request.resource.data.jobId != null;
+                    request.resource.data.jobId != null &&
+                    docId == request.resource.data.seekerId + "_" + request.resource.data.jobId;
       allow update: if false;
     }
 
