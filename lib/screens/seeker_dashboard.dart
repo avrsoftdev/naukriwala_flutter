@@ -1,7 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:naukariwala/screens/profile_screen.dart';
 import 'package:naukariwala/screens/search_job_screen.dart';
 import 'package:naukariwala/screens/my_applications_screen.dart';
@@ -29,6 +28,7 @@ class _SeekerDashboardState extends State<SeekerDashboard> {
     if (uid == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
+          dev.log('No user logged in, redirecting to login', name: 'SeekerDashboard');
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: const Text('Please log in to access the dashboard.'),
@@ -45,25 +45,21 @@ class _SeekerDashboardState extends State<SeekerDashboard> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 2,
-        title: const Text(
-          'Seeker Dashboard',
-          style: TextStyle(
-            color: Colors.black87,
-            fontWeight: FontWeight.bold,
-            fontSize: 22,
-          ),
-        ),
+        title: null, // Removed Text widget
         centerTitle: true,
         leading: Builder(
           builder: (context) => IconButton(
-            icon: const Icon(Icons.menu, color: Colors.black87, size: 28),
+            icon: const Icon(Icons.menu, color: Colors.black87, size: 22),
+            padding: const EdgeInsets.all(2),
             onPressed: () => Scaffold.of(context).openDrawer(),
           ),
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.notifications, color: Colors.black87, size: 28),
+            icon: const Icon(Icons.notifications, color: Colors.black87, size: 22),
+            padding: const EdgeInsets.all(2),
             onPressed: () {
+              dev.log('Navigating to NotificationsScreen', name: 'SeekerDashboard');
               Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -96,16 +92,23 @@ class _SeekerDashboardState extends State<SeekerDashboard> {
                     CircleAvatar(
                       radius: 40,
                       backgroundImage: widget.photoUrl != null ? NetworkImage(widget.photoUrl!) : null,
-                      backgroundColor: Colors.white.withOpacity(0.2),
-                      child: widget.photoUrl == null ? const Icon(Icons.person, size: 50, color: Colors.white) : null,
+                      backgroundColor: Colors.grey.withOpacity(0.2),
+                      child: widget.photoUrl == null
+                          ? const Icon(Icons.person, size: 50, color: Colors.white)
+                          : null,
                     ),
                     const SizedBox(height: 10),
-                    Text(
-                      widget.seekerName ?? 'Seeker',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
+                    Container(
+                      constraints: const BoxConstraints(maxWidth: 200),
+                      child: Text(
+                        widget.seekerName ?? 'Seeker',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
                       ),
                     ),
                   ],
@@ -115,6 +118,7 @@ class _SeekerDashboardState extends State<SeekerDashboard> {
                 icon: Icons.person,
                 title: 'Profile',
                 onTap: () {
+                  dev.log('Navigating to ProfileScreen', name: 'SeekerDashboard');
                   Navigator.pop(context);
                   Navigator.push(
                     context,
@@ -128,6 +132,7 @@ class _SeekerDashboardState extends State<SeekerDashboard> {
                 icon: Icons.work,
                 title: 'Search Jobs',
                 onTap: () {
+                  dev.log('Navigating to SearchJobScreen', name: 'SeekerDashboard');
                   Navigator.pop(context);
                   Navigator.push(
                     context,
@@ -139,26 +144,19 @@ class _SeekerDashboardState extends State<SeekerDashboard> {
                 icon: Icons.work_history_rounded,
                 title: 'Applied Jobs',
                 onTap: () {
+                  dev.log('Navigating to MyApplicationsScreen', name: 'SeekerDashboard');
                   Navigator.pop(context);
-                  if (uid != null) {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => MyApplicationsScreen(seekerId: uid)),
-                    );
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: const Text('Please log in to view applications'),
-                        backgroundColor: Colors.redAccent,
-                      ),
-                    );
-                  }
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => MyApplicationsScreen(seekerId: uid)),
+                  );
                 },
               ),
               _buildDrawerItem(
                 icon: Icons.notification_add,
                 title: 'Notifications',
                 onTap: () {
+                  dev.log('Navigating to NotificationsScreen', name: 'SeekerDashboard');
                   Navigator.pop(context);
                   Navigator.push(
                     context,
@@ -172,6 +170,7 @@ class _SeekerDashboardState extends State<SeekerDashboard> {
                 icon: Icons.logout,
                 title: 'Logout',
                 onTap: () async {
+                  dev.log('Logging out', name: 'SeekerDashboard');
                   Navigator.pop(context);
                   await _authService.signOut();
                   if (mounted) {
@@ -194,7 +193,7 @@ class _SeekerDashboardState extends State<SeekerDashboard> {
         child: Column(
           children: [
             Container(
-              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
                   colors: [Color(0xFF00B4DB), Color(0xFF0083B0)],
@@ -210,6 +209,7 @@ class _SeekerDashboardState extends State<SeekerDashboard> {
                 ],
               ),
               child: TabBar(
+                isScrollable: true,
                 labelColor: Colors.white,
                 unselectedLabelColor: Colors.white70,
                 indicator: const BoxDecoration(
@@ -249,17 +249,22 @@ class _SeekerDashboardState extends State<SeekerDashboard> {
     required VoidCallback onTap,
   }) {
     return ListTile(
-      leading: Icon(icon, color: Colors.white, size: 28),
-      title: Text(
-        title,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 16,
-          fontWeight: FontWeight.w500,
+      leading: Icon(icon, color: Colors.white, size: 24),
+      title: Container(
+        constraints: const BoxConstraints(maxWidth: 180),
+        child: Text(
+          title,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
+          overflow: TextOverflow.ellipsis,
+          maxLines: 1,
         ),
       ),
       onTap: onTap,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 5),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       tileColor: Colors.transparent,
       hoverColor: Colors.white12,
       shape: RoundedRectangleBorder(
@@ -269,23 +274,15 @@ class _SeekerDashboardState extends State<SeekerDashboard> {
   }
 
   Widget _buildTab(IconData icon, String label) {
+    dev.log('Building tab: $label', name: 'SeekerDashboard');
     return Tab(
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+        constraints: const BoxConstraints(maxWidth: 40), // Reduced for icon-only
+        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 20),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-            ),
-          ],
-        ),
+        child: Icon(icon, size: 16), // Icon-only tab
       ),
     );
   }

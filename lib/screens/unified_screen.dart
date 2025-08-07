@@ -32,7 +32,15 @@ class UnifiedScreenState extends State<UnifiedScreen> {
   List<String> _selectedSkills = [];
 
   final AuthService _authService = AuthService();
-
+  final List<String> educationOptions = [
+  'High School',
+  'Associate Degree',
+  'Bachelor’s Degree',
+  'Master’s Degree',
+  'Doctorate/PhD',
+  'Diploma',
+  'Other',
+  ];
   // Specialization options (same as AuthService)
   final List<String> specializationOptions = [
     'Computer Science / IT',
@@ -350,7 +358,41 @@ class UnifiedScreenState extends State<UnifiedScreen> {
       ),
     );
   }
-
+  Widget _buildEducationDropdown() {
+  return Padding(
+    padding: const EdgeInsets.symmetric(vertical: 8.0),
+    child: DropdownButtonFormField<String>(
+      decoration: InputDecoration(
+        labelText: 'Education',
+        labelStyle: TextStyle(color: Colors.grey.shade600),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey.shade400),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.teal, width: 2),
+        ),
+        filled: true,
+        fillColor: Colors.white,
+      ),
+      value: _formData['Education'] ?? educationOptions.first, // Default to first option
+      items: educationOptions.map((edu) {
+        return DropdownMenuItem(
+          value: edu,
+          child: Text(edu, style: const TextStyle(color: Colors.black87)),
+        );
+      }).toList(),
+      onChanged: (value) {
+        setState(() {
+          _formData['Education'] = value!;
+        });
+      },
+      validator: (value) => value == null ? 'Please select an education level' : null,
+      onSaved: (value) => _formData['Education'] = value!,
+    ),
+  );
+ }
   Widget _buildSpecializationDropdown() {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -815,9 +857,9 @@ class UnifiedScreenState extends State<UnifiedScreen> {
                               children: [
                                 _buildTextField('Name'),
                                 _buildTextField(
-                                  'Mobile Number',
-                                  controller: _phoneController,
-                                  keyboardType: TextInputType.phone,
+                                   'Mobile Number (+91xxxxxxxxxx)',
+                                controller: _phoneController,
+                                keyboardType: TextInputType.phone,
                                 ),
                                 _buildTextField(
                                   'Email Id',
@@ -832,7 +874,7 @@ class UnifiedScreenState extends State<UnifiedScreen> {
                                 if (_currentState == ScreenState.recruiterSignup)
                                   _buildTextField('Company Name'),
                                 if (_currentState == ScreenState.seekerSignup) ...[
-                                  _buildTextField('Education'),
+                                  _buildEducationDropdown(),
                                   _buildSpecializationDropdown(),
                                   _buildSkillsMultiSelect(),
                                 ],

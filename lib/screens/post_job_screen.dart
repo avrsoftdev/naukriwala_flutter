@@ -352,7 +352,7 @@ class PostJobScreenState extends State<PostJobScreen> {
                     ),
                     _buildTextField(
                       controller: _locationController,
-                      labelText: 'Location (Remote, On-site, Hybrid)',
+                      labelText: 'Location (City,State)',
                     ),
                     _buildTextField(
                       controller: _experienceController,

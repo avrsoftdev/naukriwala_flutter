@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:naukariwala/services/auth_service.dart';
@@ -18,8 +17,6 @@ class ProfileScreen extends StatefulWidget {
 
 class ProfileScreenState extends State<ProfileScreen> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseStorage _storage = FirebaseStorage.instance;
   final ImagePicker _picker = ImagePicker();
   final AuthService _authService = AuthService();
 
@@ -29,7 +26,6 @@ class ProfileScreenState extends State<ProfileScreen> {
   final TextEditingController _companyProfileController = TextEditingController();
   final TextEditingController _designationController = TextEditingController();
   final TextEditingController _experienceController = TextEditingController();
-  final TextEditingController _educationController = TextEditingController();
   final TextEditingController _currentCompanyController = TextEditingController();
   final TextEditingController _currentCtcController = TextEditingController();
   final TextEditingController _expectedCtcController = TextEditingController();
@@ -40,9 +36,10 @@ class ProfileScreenState extends State<ProfileScreen> {
 
   // Dropdown and multi-select fields for seekers
   String? _selectedSpecialization;
+  String? _selectedEducation;
   List<String> _selectedSkills = [];
 
-  // Specialization options (same as PostJobScreen, ApplyJobScreen, JobDetailsScreen)
+  // Specialization options
   final List<String> specializationOptions = [
     'Computer Science / IT',
     'Electronics / Electrical / Robotics',
@@ -57,7 +54,19 @@ class ProfileScreenState extends State<ProfileScreen> {
     'Others',
   ];
 
-  // Skills by specialization (same as PostJobScreen, ApplyJobScreen, JobDetailsScreen)
+  // Education options
+  final List<String> educationOptions = [
+    'High School / 10th',
+    'Higher Secondary / 12th',
+    'Diploma',
+    'Bachelor\'s Degree',
+    'Master\'s Degree',
+    'Doctorate / PhD',
+    'Professional Certification',
+    'Other',
+  ];
+
+  // Skills by specialization
   final Map<String, List<String>> skillsBySpecialization = {
     'Computer Science / IT': [
       'Java', 'Python', 'C++', 'C#', 'Dart', 'Flutter', 'Android Development',
@@ -146,31 +155,40 @@ class ProfileScreenState extends State<ProfileScreen> {
       if (data != null && mounted) {
         dev.log('Firestore data: $data', name: 'ProfileScreen');
         setState(() {
-          _nameController.text = data['name'] ?? '';
-          _mobileNumber = data['mobileNumber'] ?? data['mobile'] ?? data['Mobile Number'] ?? '';
-          _email = user.email ?? '';
+          _nameController.text = data['name']?.toString().trim() ?? '';
+          _mobileNumber = data['mobileNumber']?.toString().trim() ??
+              data['mobile']?.toString().trim() ??
+              data['Mobile Number']?.toString().trim() ??
+              '';
+          _email = user.email?.trim() ?? '';
           _imageUrl = widget.isRecruiter ? data['companyLogo'] : data['photoUrl'];
           if (widget.isRecruiter) {
-            _companyNameController.text = data['companyName'] ?? '';
-            _companyProfileController.text = data['companyProfile'] ?? '';
-            _designationController.text = data['designation'] ?? '';
+            _companyNameController.text = data['companyName']?.toString().trim() ?? '';
+            _companyProfileController.text = data['companyProfile']?.toString().trim() ?? '';
+            _designationController.text = data['designation']?.toString().trim() ?? '';
           } else {
-            _experienceController.text = data['experience'] ?? '';
-            _educationController.text = data['education'] ?? '';
+            _experienceController.text = data['experience']?.toString().trim() ?? '';
+            final education = data['education']?.toString().trim();
+            _selectedEducation = education != null && educationOptions.contains(education)
+                ? education
+                : education != null && education.isNotEmpty
+                    ? 'Other'
+                    : null;
             _selectedSkills = (data['skills'] as List<dynamic>?)?.cast<String>() ?? [];
             _selectedSpecialization = specializationOptions.contains(data['specialization'])
                 ? data['specialization']
                 : 'Others';
-            _currentCompanyController.text = data['currentCompany'] ?? '';
-            _currentCtcController.text = data['currentCtc'] ?? '';
-            _expectedCtcController.text = data['expectedCtc'] ?? '';
+            _currentCompanyController.text = data['currentCompany']?.toString().trim() ?? '';
+            _currentCtcController.text = data['currentCtc']?.toString().trim() ?? '';
+            _expectedCtcController.text = data['expectedCtc']?.toString().trim() ?? '';
           }
         });
       } else if (mounted) {
         setState(() => errorMessage = 'Profile not found');
+        dev.log('No profile data found for UID: ${user.uid}', name: 'ProfileScreen');
       }
     } catch (e) {
-      dev.log('Error loading profile: $e', name: 'ProfileScreen');
+      dev.log('Error loading profile: $e', name: 'ProfileScreen', error: e);
       if (mounted) {
         setState(() => errorMessage = 'Error loading profile: $e');
       }
@@ -198,7 +216,7 @@ class ProfileScreenState extends State<ProfileScreen> {
           : await _authService.uploadSeekerPhoto(_imageFile!);
       return url;
     } catch (e) {
-      dev.log('Error uploading image: $e', name: 'ProfileScreen');
+      dev.log('Error uploading image: $e', name: 'ProfileScreen', error: e);
       if (mounted) {
         setState(() => errorMessage = 'Error uploading image: $e');
       }
@@ -213,7 +231,7 @@ class ProfileScreenState extends State<ProfileScreen> {
       'email': _email ?? '',
       'mobileNumber': _mobileNumber ?? '',
       'skills': _selectedSkills,
-      'education': _educationController.text.trim(),
+      'education': _selectedEducation ?? 'Other',
       'experience': _experienceController.text.trim(),
       'specialization': _selectedSpecialization ?? 'Others',
       'currentCompany': _currentCompanyController.text.trim(),
@@ -236,6 +254,10 @@ class ProfileScreenState extends State<ProfileScreen> {
       setState(() => errorMessage = 'Name is required');
       return;
     }
+    if (_mobileNumber == null || _mobileNumber!.trim().isEmpty) {
+      setState(() => errorMessage = 'Mobile number is required');
+      return;
+    }
     if (widget.isRecruiter) {
       if (_companyNameController.text.trim().isEmpty) {
         setState(() => errorMessage = 'Company Name is required');
@@ -246,7 +268,7 @@ class ProfileScreenState extends State<ProfileScreen> {
         setState(() => errorMessage = 'At least one skill is required');
         return;
       }
-      if (_educationController.text.trim().isEmpty) {
+      if (_selectedEducation == null) {
         setState(() => errorMessage = 'Education is required');
         return;
       }
@@ -279,8 +301,9 @@ class ProfileScreenState extends State<ProfileScreen> {
             }
           : {
               'name': _nameController.text.trim(),
+              'mobileNumber': _mobileNumber!.trim(), // Added mobileNumber
               'skills': _selectedSkills,
-              'education': _educationController.text.trim(),
+              'education': _selectedEducation,
               'experience': _experienceController.text.trim(),
               'specialization': _selectedSpecialization,
               'currentCompany': _currentCompanyController.text.trim(),
@@ -307,7 +330,7 @@ class ProfileScreenState extends State<ProfileScreen> {
         setState(() => errorMessage = null);
       }
     } catch (e) {
-      dev.log('Error updating profile: $e', name: 'ProfileScreen');
+      dev.log('Error updating profile: $e', name: 'ProfileScreen', error: e);
       if (mounted) {
         setState(() => errorMessage = 'Error updating profile: $e');
       }
@@ -326,7 +349,7 @@ class ProfileScreenState extends State<ProfileScreen> {
         Navigator.pushReplacementNamed(context, '/');
       }
     } catch (e) {
-      dev.log('Logout error: $e', name: 'ProfileScreen');
+      dev.log('Logout error: $e', name: 'ProfileScreen', error: e);
       if (e is FirebaseAuthException) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -359,40 +382,46 @@ class ProfileScreenState extends State<ProfileScreen> {
       TextEditingController? controller,
       String? Function(String?)? validator}) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10.0),
-      child: TextFormField(
-        controller: controller,
-        obscureText: isPassword,
-        maxLines: multiline ? 4 : 1,
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: const TextStyle(color: Colors.grey),
-          enabledBorder: const UnderlineInputBorder(
-            borderSide: BorderSide(color: Colors.grey),
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 300),
+        child: TextFormField(
+          controller: controller,
+          obscureText: isPassword,
+          maxLines: multiline ? 4 : 1,
+          maxLength: multiline ? 500 : 100,
+          decoration: InputDecoration(
+            labelText: label,
+            labelStyle: const TextStyle(color: Colors.grey, fontSize: 12),
+            enabledBorder: const UnderlineInputBorder(
+              borderSide: BorderSide(color: Colors.grey),
+            ),
+            focusedBorder: UnderlineInputBorder(
+              borderSide: BorderSide(color: Colors.teal, width: 2),
+            ),
+            filled: true,
+            fillColor: Colors.white,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            counterText: multiline ? null : '',
           ),
-          focusedBorder: UnderlineInputBorder(
-            borderSide: BorderSide(color: Colors.teal, width: 2),
-          ),
-          filled: true,
-          fillColor: Colors.white,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          validator: validator,
+          onChanged: (value) {
+            if (mounted) setState(() => errorMessage = null);
+          },
         ),
-        validator: validator,
-        onChanged: (value) {
-          if (mounted) setState(() => errorMessage = null);
-        },
       ),
     );
   }
 
   Widget _buildNonEditableField(String label, String? value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10.0),
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Card(
         elevation: 2,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         child: Container(
-          padding: const EdgeInsets.all(16.0),
+          constraints: const BoxConstraints(maxWidth: 300),
+          padding: const EdgeInsets.all(12.0),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [Colors.blue.shade50, Colors.blue.shade100],
@@ -406,12 +435,16 @@ class ProfileScreenState extends State<ProfileScreen> {
             children: [
               Text(
                 label,
-                style: TextStyle(fontSize: 14, color: Colors.blue.shade800, fontWeight: FontWeight.w600),
+                style: TextStyle(fontSize: 12, color: Colors.blue.shade800, fontWeight: FontWeight.w600),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
               Text(
                 value ?? 'N/A',
-                style: const TextStyle(fontSize: 16, color: Colors.black87),
+                style: const TextStyle(fontSize: 14, color: Colors.black87),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
               ),
             ],
           ),
@@ -422,40 +455,103 @@ class ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildSpecializationDropdown() {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10.0),
-      child: DropdownButtonFormField<String>(
-        value: _selectedSpecialization,
-        decoration: InputDecoration(
-          labelText: 'Specialization',
-          labelStyle: const TextStyle(color: Colors.grey),
-          enabledBorder: OutlineInputBorder(
-            borderSide: BorderSide(color: Colors.grey.shade400),
-            borderRadius: BorderRadius.circular(12),
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 300),
+        child: DropdownButtonFormField<String>(
+          value: _selectedSpecialization,
+          decoration: InputDecoration(
+            labelText: 'Specialization',
+            labelStyle: const TextStyle(color: Colors.grey, fontSize: 12),
+            enabledBorder: OutlineInputBorder(
+              borderSide: BorderSide(color: Colors.grey.shade400),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderSide: const BorderSide(color: Colors.teal, width: 2),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            filled: true,
+            fillColor: Colors.white,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           ),
-          focusedBorder: OutlineInputBorder(
-            borderSide: const BorderSide(color: Colors.teal, width: 2),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          filled: true,
-          fillColor: Colors.white,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          isExpanded: true,
+          menuMaxHeight: 300,
+          items: specializationOptions.map((String specialization) {
+            return DropdownMenuItem<String>(
+              value: specialization,
+              child: Container(
+                constraints: const BoxConstraints(maxWidth: 250),
+                child: Text(
+                  specialization,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: Colors.black87, fontSize: 12),
+                ),
+              ),
+            );
+          }).toList(),
+          onChanged: (value) {
+            if (mounted) {
+              setState(() {
+                _selectedSpecialization = value;
+                _selectedSkills = [];
+                errorMessage = null;
+              });
+            }
+          },
+          validator: (value) => value == null ? 'Specialization is required' : null,
         ),
-        items: specializationOptions.map((String specialization) {
-          return DropdownMenuItem<String>(
-            value: specialization,
-            child: Text(specialization, style: const TextStyle(color: Colors.black87)),
-          );
-        }).toList(),
-        onChanged: (value) {
-          if (mounted) {
-            setState(() {
-              _selectedSpecialization = value;
-              _selectedSkills = []; // Reset skills when specialization changes
-              errorMessage = null;
-            });
-          }
-        },
-        validator: (value) => value == null ? 'Specialization is required' : null,
+      ),
+    );
+  }
+
+  Widget _buildEducationDropdown() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 300),
+        child: DropdownButtonFormField<String>(
+          value: _selectedEducation,
+          decoration: InputDecoration(
+            labelText: 'Education',
+            labelStyle: const TextStyle(color: Colors.grey, fontSize: 12),
+            enabledBorder: OutlineInputBorder(
+              borderSide: BorderSide(color: Colors.grey.shade400),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderSide: const BorderSide(color: Colors.teal, width: 2),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            filled: true,
+            fillColor: Colors.white,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          ),
+          isExpanded: true,
+          menuMaxHeight: 300,
+          items: educationOptions.map((String education) {
+            return DropdownMenuItem<String>(
+              value: education,
+              child: Container(
+                constraints: const BoxConstraints(maxWidth: 250),
+                child: Text(
+                  education,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: Colors.black87, fontSize: 12),
+                ),
+              ),
+            );
+          }).toList(),
+          onChanged: (value) {
+            if (mounted) {
+              setState(() {
+                _selectedEducation = value;
+                errorMessage = null;
+              });
+            }
+          },
+          validator: (value) => value == null ? 'Education is required' : null,
+        ),
       ),
     );
   }
@@ -463,57 +559,65 @@ class ProfileScreenState extends State<ProfileScreen> {
   Widget _buildSkillsMultiSelect() {
     final availableSkills = skillsBySpecialization[_selectedSpecialization ?? 'Others'] ?? [];
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10.0),
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Card(
         elevation: 2,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        child: GestureDetector(
-          onTap: () async {
-            final selected = await showDialog<List<String>>(
-              context: context,
-              builder: (context) => MultiSelectDialog(
-                items: availableSkills,
-                selectedItems: _selectedSkills,
-              ),
-            );
-            if (selected != null && mounted) {
-              setState(() {
-                _selectedSkills = selected;
-                errorMessage = null;
-              });
-            }
-          },
-          child: Container(
-            padding: const EdgeInsets.all(16.0),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Colors.blue.shade50, Colors.blue.shade100],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(12),
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 300),
+          padding: const EdgeInsets.all(12.0),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.blue.shade50, Colors.blue.shade100],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: GestureDetector(
+            onTap: () async {
+              final selected = await showDialog<List<String>>(
+                context: context,
+                builder: (context) => MultiSelectDialog(
+                  items: availableSkills,
+                  selectedItems: _selectedSkills,
+                ),
+              );
+              if (selected != null && mounted) {
+                setState(() {
+                  _selectedSkills = selected;
+                  errorMessage = null;
+                });
+              }
+            },
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'Skills',
-                  style: TextStyle(fontSize: 14, color: Colors.blue.shade800, fontWeight: FontWeight.w600),
+                  style: TextStyle(fontSize: 12, color: Colors.blue.shade800, fontWeight: FontWeight.w600),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  _selectedSkills.isEmpty ? 'Select skills' : _selectedSkills.join(', '),
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: _selectedSkills.isEmpty ? Colors.grey : Colors.black87,
+                const SizedBox(height: 6),
+                Container(
+                  constraints: const BoxConstraints(maxWidth: 250),
+                  child: Text(
+                    _selectedSkills.isEmpty ? 'Select skills' : _selectedSkills.join(', '),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 2,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: _selectedSkills.isEmpty ? Colors.grey : Colors.black87,
+                    ),
                   ),
                 ),
                 if (_selectedSkills.isEmpty)
                   Padding(
-                    padding: const EdgeInsets.only(top: 8.0),
+                    padding: const EdgeInsets.only(top: 6.0),
                     child: Text(
                       'At least one skill is required',
-                      style: TextStyle(fontSize: 12, color: Colors.red.shade700),
+                      style: TextStyle(fontSize: 10, color: Colors.red.shade700),
                     ),
                   ),
               ],
@@ -531,7 +635,6 @@ class ProfileScreenState extends State<ProfileScreen> {
     _companyProfileController.dispose();
     _designationController.dispose();
     _experienceController.dispose();
-    _educationController.dispose();
     _currentCompanyController.dispose();
     _currentCtcController.dispose();
     _expectedCtcController.dispose();
@@ -544,7 +647,7 @@ class ProfileScreenState extends State<ProfileScreen> {
       appBar: AppBar(
         title: Text(
           widget.isRecruiter ? 'Recruiter Profile' : 'Seeker Profile',
-          style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+          style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 18),
         ),
         flexibleSpace: Container(
           decoration: BoxDecoration(
@@ -559,15 +662,17 @@ class ProfileScreenState extends State<ProfileScreen> {
         actions: [
           if (!widget.isRecruiter)
             IconButton(
-              icon: const Icon(Icons.description, color: Colors.white),
+              icon: const Icon(Icons.description, color: Colors.white, size: 22),
+              padding: const EdgeInsets.all(2),
               onPressed: () {
+                dev.log('Opening resume preview', name: 'ProfileScreen');
                 final resumeData = _generateResumeData();
                 showDialog(
                   context: context,
                   builder: (context) => AlertDialog(
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                     title: Container(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: [Colors.blue.shade700, Colors.blue.shade900],
@@ -578,47 +683,52 @@ class ProfileScreenState extends State<ProfileScreen> {
                       ),
                       child: const Text(
                         'Resume Preview',
-                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
                       ),
                     ),
                     content: SingleChildScrollView(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Name: ${resumeData['name'] ?? 'N/A'}', style: const TextStyle(fontSize: 16)),
-                          Text('Email: ${resumeData['email'] ?? 'N/A'}', style: const TextStyle(fontSize: 16)),
-                          Text('Mobile: ${resumeData['mobileNumber'] ?? 'N/A'}', style: const TextStyle(fontSize: 16)),
-                          const SizedBox(height: 8),
-                          Text('Skills:', style: TextStyle(fontSize: 14, color: Colors.blue.shade800)),
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 4,
-                            children: (resumeData['skills'] as List<dynamic>?)
-                                    ?.cast<String>()
-                                    .map((skill) => Chip(
-                                          label: Text(skill),
-                                          backgroundColor: Colors.teal.shade100,
-                                          labelStyle: TextStyle(color: Colors.teal.shade900),
-                                        ))
-                                    .toList() ??
-                                [Chip(
-                                  label: const Text('N/A'),
-                                  backgroundColor: Colors.grey.shade200,
-                                )],
-                          ),
-                          Text('Education: ${resumeData['education'] ?? 'N/A'}', style: const TextStyle(fontSize: 16)),
-                          Text('Experience: ${resumeData['experience'] ?? 'N/A'}', style: const TextStyle(fontSize: 16)),
-                          Text('Specialization: ${resumeData['specialization'] ?? 'N/A'}', style: const TextStyle(fontSize: 16)),
-                          Text('Current Company: ${resumeData['currentCompany'] ?? 'N/A'}', style: const TextStyle(fontSize: 16)),
-                          Text('Current CTC: ${resumeData['currentCtc'] ?? 'N/A'}', style: const TextStyle(fontSize: 16)),
-                          Text('Expected CTC: ${resumeData['expectedCtc'] ?? 'N/A'}', style: const TextStyle(fontSize: 16)),
-                        ],
+                      child: Container(
+                        constraints: const BoxConstraints(maxWidth: 300),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Name: ${resumeData['name'] ?? 'N/A'}', style: const TextStyle(fontSize: 14)),
+                            Text('Email: ${resumeData['email'] ?? 'N/A'}', style: const TextStyle(fontSize: 14)),
+                            Text('Mobile: ${resumeData['mobileNumber'] ?? 'N/A'}', style: const TextStyle(fontSize: 14)),
+                            const SizedBox(height: 6),
+                            Text('Skills:', style: TextStyle(fontSize: 12, color: Colors.blue.shade800)),
+                            Wrap(
+                              spacing: 6,
+                              runSpacing: 4,
+                              children: (resumeData['skills'] as List<dynamic>?)
+                                      ?.cast<String>()
+                                      .map((skill) => Chip(
+                                            label: Text(skill, style: const TextStyle(fontSize: 12)),
+                                            backgroundColor: Colors.teal.shade100,
+                                            labelStyle: TextStyle(color: Colors.teal.shade900),
+                                          ))
+                                      .toList() ??
+                                  [
+                                    Chip(
+                                      label: const Text('N/A', style: TextStyle(fontSize: 12)),
+                                      backgroundColor: Colors.grey.shade200,
+                                    )
+                                  ],
+                            ),
+                            Text('Education: ${resumeData['education'] ?? 'N/A'}', style: const TextStyle(fontSize: 14)),
+                            Text('Experience: ${resumeData['experience'] ?? 'N/A'}', style: const TextStyle(fontSize: 14)),
+                            Text('Specialization: ${resumeData['specialization'] ?? 'N/A'}', style: const TextStyle(fontSize: 14)),
+                            Text('Current Company: ${resumeData['currentCompany'] ?? 'N/A'}', style: const TextStyle(fontSize: 14)),
+                            Text('Current CTC: ${resumeData['currentCtc'] ?? 'N/A'}', style: const TextStyle(fontSize: 14)),
+                            Text('Expected CTC: ${resumeData['expectedCtc'] ?? 'N/A'}', style: const TextStyle(fontSize: 14)),
+                          ],
+                        ),
                       ),
                     ),
                     actions: [
                       TextButton(
                         onPressed: () => Navigator.pop(context),
-                        child: const Text('Close', style: TextStyle(color: Colors.teal)),
+                        child: const Text('Close', style: TextStyle(color: Colors.teal, fontSize: 12)),
                       ),
                     ],
                   ),
@@ -639,21 +749,21 @@ class ProfileScreenState extends State<ProfileScreen> {
                     elevation: 4,
                     color: Colors.red.shade50,
                     child: Padding(
-                      padding: const EdgeInsets.all(16.0),
+                      padding: const EdgeInsets.all(12.0),
                       child: Text(
                         errorMessage!,
-                        style: TextStyle(color: Colors.red.shade700, fontSize: 16),
+                        style: TextStyle(color: Colors.red.shade700, fontSize: 14),
                       ),
                     ),
                   ),
                 )
               : SingleChildScrollView(
-                  padding: const EdgeInsets.all(24.0),
+                  padding: const EdgeInsets.all(16.0),
                   child: Card(
                     elevation: 4,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     child: Padding(
-                      padding: const EdgeInsets.all(16.0),
+                      padding: const EdgeInsets.all(12.0),
                       child: Form(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -680,15 +790,15 @@ class ProfileScreenState extends State<ProfileScreen> {
                                     ),
                                     padding: const EdgeInsets.all(4),
                                     child: CircleAvatar(
-                                      radius: 70,
+                                      radius: 60,
                                       backgroundImage: _imageFile != null
                                           ? FileImage(_imageFile!)
                                           : _imageUrl != null
                                               ? NetworkImage(_imageUrl!)
                                               : null,
-                                      backgroundColor: Colors.grey.shade200,
+                                      backgroundColor: Colors.grey.withOpacity(0.2),
                                       child: _imageFile == null && _imageUrl == null
-                                          ? const Icon(Icons.person, size: 70, color: Colors.grey)
+                                          ? const Icon(Icons.person, size: 60, color: Colors.grey)
                                           : null,
                                     ),
                                   ),
@@ -698,7 +808,7 @@ class ProfileScreenState extends State<ProfileScreen> {
                                     child: GestureDetector(
                                       onTap: _pickImage,
                                       child: Container(
-                                        padding: const EdgeInsets.all(8),
+                                        padding: const EdgeInsets.all(6),
                                         decoration: BoxDecoration(
                                           shape: BoxShape.circle,
                                           color: Colors.teal,
@@ -710,24 +820,25 @@ class ProfileScreenState extends State<ProfileScreen> {
                                             ),
                                           ],
                                         ),
-                                        child: const Icon(Icons.camera_alt, color: Colors.white, size: 24),
+                                        child: const Icon(Icons.camera_alt, color: Colors.white, size: 20),
                                       ),
                                     ),
                                   ),
                                 ],
                               ),
                             ),
-                            const SizedBox(height: 16),
+                            const SizedBox(height: 12),
                             Text(
                               widget.isRecruiter ? 'Company Logo' : 'Profile Photo',
                               style: TextStyle(
-                                fontSize: 18,
+                                fontSize: 16,
                                 fontWeight: FontWeight.bold,
                                 color: Colors.blue.shade900,
                               ),
                               textAlign: TextAlign.center,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            const SizedBox(height: 24),
+                            const SizedBox(height: 16),
                             // Common Fields
                             _buildTextField(
                               'Name',
@@ -735,7 +846,7 @@ class ProfileScreenState extends State<ProfileScreen> {
                               validator: (value) => value == null || value.trim().isEmpty ? 'Name is required' : null,
                             ),
                             _buildNonEditableField('Mobile Number', _mobileNumber),
-                            _buildNonEditableField('Email Id', _email),
+                            _buildNonEditableField('Email', _email),
                             // Recruiter-Specific Fields
                             if (widget.isRecruiter) ...[
                               _buildTextField(
@@ -750,11 +861,7 @@ class ProfileScreenState extends State<ProfileScreen> {
                             else ...[
                               _buildSpecializationDropdown(),
                               _buildSkillsMultiSelect(),
-                              _buildTextField(
-                                'Education (e.g., Bachelor\'s in Computer Science)',
-                                controller: _educationController,
-                                validator: (value) => value == null || value.trim().isEmpty ? 'Education is required' : null,
-                              ),
+                              _buildEducationDropdown(),
                               _buildTextField(
                                 'Experience (e.g., 2 years)',
                                 controller: _experienceController,
@@ -773,12 +880,13 @@ class ProfileScreenState extends State<ProfileScreen> {
                               _buildTextField('Current CTC', controller: _currentCtcController),
                               _buildTextField('Expected CTC', controller: _expectedCtcController),
                             ],
-                            const SizedBox(height: 24),
+                            const SizedBox(height: 16),
                             Center(
                               child: AnimatedScaleButton(
                                 onPressed: _updateProfile,
                                 child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                                  constraints: const BoxConstraints(maxWidth: 200),
+                                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
                                   decoration: BoxDecoration(
                                     gradient: LinearGradient(
                                       colors: [Colors.blue.shade700, Colors.teal.shade400],
@@ -798,19 +906,21 @@ class ProfileScreenState extends State<ProfileScreen> {
                                     'Update Profile',
                                     style: TextStyle(
                                       color: Colors.white,
-                                      fontSize: 16,
+                                      fontSize: 14,
                                       fontWeight: FontWeight.bold,
                                     ),
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
                               ),
                             ),
-                            const SizedBox(height: 16),
+                            const SizedBox(height: 12),
                             Center(
                               child: AnimatedScaleButton(
                                 onPressed: _logout,
                                 child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                                  constraints: const BoxConstraints(maxWidth: 200),
+                                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
                                   decoration: BoxDecoration(
                                     gradient: LinearGradient(
                                       colors: [Colors.red.shade600, Colors.red.shade800],
@@ -830,9 +940,10 @@ class ProfileScreenState extends State<ProfileScreen> {
                                     'Logout',
                                     style: TextStyle(
                                       color: Colors.white,
-                                      fontSize: 16,
+                                      fontSize: 14,
                                       fontWeight: FontWeight.bold,
                                     ),
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
                               ),
@@ -920,7 +1031,7 @@ class MultiSelectDialogState extends State<MultiSelectDialog> {
     return AlertDialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       title: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [Colors.blue.shade700, Colors.blue.shade900],
@@ -931,40 +1042,49 @@ class MultiSelectDialogState extends State<MultiSelectDialog> {
         ),
         child: const Text(
           'Select Skills',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
         ),
       ),
       content: SingleChildScrollView(
-        child: Column(
-          children: widget.items.map((item) {
-            return CheckboxListTile(
-              title: Text(item, style: const TextStyle(color: Colors.black87)),
-              value: _tempSelectedItems.contains(item),
-              activeColor: Colors.teal,
-              checkColor: Colors.white,
-              onChanged: (value) {
-                setState(() {
-                  if (value == true) {
-                    _tempSelectedItems.add(item);
-                  } else {
-                    _tempSelectedItems.remove(item);
-                  }
-                });
-              },
-            );
-          }).toList(),
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 300),
+          child: Column(
+            children: widget.items.map((item) {
+              return CheckboxListTile(
+                title: Text(
+                  item,
+                  style: const TextStyle(color: Colors.black87, fontSize: 12),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                ),
+                value: _tempSelectedItems.contains(item),
+                activeColor: Colors.teal,
+                checkColor: Colors.white,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                onChanged: (value) {
+                  setState(() {
+                    if (value == true) {
+                      _tempSelectedItems.add(item);
+                    } else {
+                      _tempSelectedItems.remove(item);
+                    }
+                  });
+                },
+              );
+            }).toList(),
+          ),
         ),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+          child: const Text('Cancel', style: TextStyle(color: Colors.grey, fontSize: 12)),
         ),
         TextButton(
           onPressed: () {
             Navigator.pop(context, _tempSelectedItems);
           },
-          child: const Text('OK', style: TextStyle(color: Colors.teal)),
+          child: const Text('OK', style: TextStyle(color: Colors.teal, fontSize: 12)),
         ),
       ],
     );
