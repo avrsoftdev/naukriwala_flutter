@@ -224,9 +224,9 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
                 ),
               ),
               child: const TabBar(
-                labelColor: Colors.white,
-                unselectedLabelColor: Colors.white70,
-                indicatorColor: Colors.white,
+                labelColor: Colors.transparent,
+                unselectedLabelColor: Colors.transparent,
+                indicatorColor: Colors.transparent,
                 tabs: [
                   Tab(icon: Icon(Icons.person)),
                   Tab(icon: Icon(Icons.work)),

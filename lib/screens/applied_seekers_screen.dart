@@ -414,10 +414,8 @@ class _AppliedSeekersScreenState extends State<AppliedSeekersScreen> {
                       errorMessage = 'Firebase error: ${error.code} - ${error.message}';
                       if (error.code == 'permission-denied') {
                         errorMessage +=
-                            '\nVerify /Applications/{jobId} exists with recruiterId=$recruiterId and /ApplicationsIndex/${recruiterId}_<seekerId> is present.';
-                        dev.log('Permission denied in fetchAppliedSeekers. Check /Applications and /ApplicationsIndex for recruiter $recruiterId', name: 'AppliedSeekersScreen');
-                      } else if (error.code == 'failed-precondition') {
-                        errorMessage += '\nCreate index at: https://console.firebase.google.com/v1/r/project/naukriwala-455909/firestore/indexes';
+                            '\nEnsure /Applications/{jobId} exists with recruiterId=$recruiterId and job exists in /Recruiters/$recruiterId/Jobs/{jobId}.';
+                        dev.log('Permission denied in fetchAppliedSeekers. Check /Applications/{jobId} and /Recruiters/$recruiterId/Jobs for recruiter $recruiterId', name: 'AppliedSeekersScreen');
                       }
                     }
                     dev.log('Error loading applied seekers for recruiter $recruiterId: $error', name: 'AppliedSeekersScreen', error: error, stackTrace: snapshot.stackTrace);
@@ -426,10 +424,10 @@ class _AppliedSeekersScreenState extends State<AppliedSeekersScreen> {
                   final applicants = snapshot.data ?? [];
 
                   if (applicants.isEmpty) {
-                    dev.log('No applicants found for recruiter $recruiterId. Verify /Applications/{jobId} and /ApplicationsIndex', name: 'AppliedSeekersScreen');
+                    dev.log('No applicants found for recruiter $recruiterId. Verify /Applications/{jobId} exists with correct recruiterId.', name: 'AppliedSeekersScreen');
                     return const Center(
                       child: Text(
-                        'No applied seekers found. Ensure /Applications/{jobId} exists with correct recruiterId and /ApplicationsIndex/{recruiterId_seekerId} is present.',
+                        'No applied seekers found. Ensure /Applications/{jobId} exists with correct recruiterId and jobs are posted in /Recruiters/{recruiterId}/Jobs.',
                         textAlign: TextAlign.center,
                       ),
                     );

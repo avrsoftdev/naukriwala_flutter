@@ -1,7 +1,7 @@
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/foundation.dart';
 import 'dart:developer' as dev;
 import 'dart:io';
 import 'auth_middleware.dart';
@@ -31,7 +31,7 @@ class AuthService {
     try {
       dev.log("Writing to $collection/$uid", name: 'AuthService');
 
-      // 🔄 Normalize incoming data
+      // Normalize incoming data
       final normalizedData = {
         'uid': uid,
         'email': data['Email Id'] ?? data['email'] ?? _auth.currentUser?.email ?? '',
@@ -40,12 +40,12 @@ class AuthService {
         ...data,
       };
 
-      // 🧼 Remove legacy or conflicting keys
+      // Remove legacy or conflicting keys
       normalizedData.remove('UID');
       normalizedData.remove('Email Id');
       normalizedData.remove('Mobile Number');
 
-      // 🧠 Parse skills if string
+      // Parse skills if string
       if (!isRecruiter && normalizedData['skills'] is String) {
         normalizedData['skills'] = (normalizedData['skills'] as String)
             .split(',')
@@ -56,11 +56,11 @@ class AuthService {
 
       dev.log("Final normalizedData: $normalizedData", name: 'AuthService');
 
-      // 📝 Write to role-specific collection
+      // Write to role-specific collection
       await _firestore.collection(collection).doc(uid).set(normalizedData, SetOptions(merge: true));
       dev.log("Write successful to $collection/$uid", name: 'AuthService');
 
-      // 📁 Update index for global user lookup
+      // Update index for global user lookup
       await _firestore.collection('UsersIndex').doc(uid).set({
         'email': normalizedData['email'],
         'mobileNumber': normalizedData['mobileNumber'],
@@ -70,7 +70,7 @@ class AuthService {
     } catch (e) {
       dev.log("storeSignupData ERROR: $e", name: 'AuthService', error: e);
       if (e is FirebaseException) {
-        throw const AuthException("Firebase error: Check Firestore permissions or data format");
+        throw AuthException("Firebase error: ${e.code} - ${e.message}. Check Firestore permissions or data format.");
       }
       rethrow;
     }
@@ -109,7 +109,7 @@ class AuthService {
     } catch (e) {
       dev.log("uploadCompanyLogo ERROR: $e", name: 'AuthService', error: e);
       if (e is FirebaseException) {
-        throw const AuthException("Upload failed: Check storage permissions or file format");
+        throw AuthException("Upload failed: ${e.code} - ${e.message}. Check storage permissions or file format.");
       }
       rethrow;
     }
@@ -128,7 +128,7 @@ class AuthService {
     } catch (e) {
       dev.log("uploadSeekerPhoto ERROR: $e", name: 'AuthService', error: e);
       if (e is FirebaseException) {
-        throw const AuthException("Upload failed: Check storage permissions or file format");
+        throw AuthException("Upload failed: ${e.code} - ${e.message}. Check storage permissions or file format.");
       }
       rethrow;
     }
@@ -168,7 +168,7 @@ class AuthService {
     } catch (e) {
       dev.log("postJob ERROR: $e", name: 'AuthService', error: e);
       if (e is FirebaseException) {
-        throw const AuthException("Job posting failed: Check Firestore permissions or data format");
+        throw AuthException("Job posting failed: ${e.code} - ${e.message}. Check Firestore permissions or data format.");
       }
       rethrow;
     }
@@ -214,7 +214,7 @@ class AuthService {
     } catch (e) {
       dev.log("fetchJobsWithApplicationCounts ERROR: $e", name: 'AuthService', error: e);
       if (e is FirebaseException) {
-        throw const AuthException("Failed to fetch jobs: Check Firestore permissions or data");
+        throw AuthException("Failed to fetch jobs: ${e.code} - ${e.message}. Check Firestore permissions or data.");
       }
       rethrow;
     }
@@ -232,14 +232,14 @@ class AuthService {
     }
 
     try {
-      // 🔒 Verify seeker role early
-      final seekerDoc = await _firestore.collection('Seekers').doc(uid).get();
-      if (!seekerDoc.exists || seekerDoc.data()?['role'] != 'seeker') {
-        dev.log('User $uid does not have seeker role, data: ${seekerDoc.data()}', name: 'AuthService');
+      // Verify seeker role via UsersIndex
+      final userDoc = await _firestore.collection('UsersIndex').doc(uid).get();
+      if (!userDoc.exists || userDoc.data()?['role'] != 'seeker') {
+        dev.log('User $uid does not have seeker role, data: ${userDoc.data()}', name: 'AuthService');
         throw const AuthException('User does not have seeker role');
       }
 
-      // 📄 Validate job and recruiter
+      // Validate job and recruiter
       final jobSnapshot = await _firestore
           .collection('Recruiters')
           .doc(recruiterId)
@@ -263,16 +263,16 @@ class AuthService {
         throw const AuthException("Job is not open for applications");
       }
 
-      // 🔍 Check for duplicate application
+      // Check for duplicate application
       final indexDocId = '${uid}_$jobId';
       if ((await _firestore.collection('ApplicationsIndex').doc(indexDocId).get()).exists) {
         dev.log('Duplicate application detected for $indexDocId', name: 'AuthService');
         throw const AuthException('Already applied');
       }
 
-      // 🧪 Normalize application data
-      final seekerProfile = await fetchProfileData(isRecruiter: false);
-      final seekerName = seekerProfile?['name'] as String? ?? uid;
+      // Normalize application data
+      final userIndex = await _firestore.collection('UsersIndex').doc(uid).get();
+      final seekerName = userIndex.data()?['name']?.toString() ?? uid;
 
       final normalizedData = {
         ...applicationData,
@@ -285,46 +285,35 @@ class AuthService {
         'status': 'Applied'
       };
 
-      // ✅ Seeker-facing AppliedJobs
-      dev.log('Writing seeker-facing application to Applications/$uid/AppliedJobs/$jobId', name: 'AuthService');
-      await _firestore
-          .collection('Applications')
-          .doc(uid)
-          .collection('AppliedJobs')
-          .doc(jobId)
-          .set(normalizedData)
-          .catchError((e) {
-        dev.log('Error writing Applications/$uid/AppliedJobs/$jobId: $e', name: 'AuthService', error: e);
-        throw AuthException('Failed to write seeker-facing application: $e');
-      });
-
-      // 📦 Batch recruiter-facing AppliedJobs + Index + Notification
+      // Batch all writes
       final batch = _firestore.batch();
 
-      // 💬 Recruiter-facing AppliedJobs with seekerId as document ID
-      final recruiterAppsCollection = _firestore.collection('Applications').doc(jobId).collection('AppliedJobs');
-      final recruiterAppRef = recruiterAppsCollection.doc(uid);
+      // Seeker-facing AppliedJobs
+      final seekerAppRef = _firestore.collection('Applications').doc(uid).collection('AppliedJobs').doc(jobId);
+      batch.set(seekerAppRef, normalizedData);
+      dev.log('Writing seeker-facing application to Applications/$uid/AppliedJobs/$jobId', name: 'AuthService');
+
+      // Recruiter-facing AppliedJobs
+      final recruiterAppRef = _firestore.collection('Applications').doc(jobId).collection('AppliedJobs').doc(uid);
       batch.set(recruiterAppRef, {
         ...normalizedData,
         'seekerId': uid,
       });
 
-      // 📁 ApplicationsIndex
+      // ApplicationsIndex
       final indexRef = _firestore.collection('ApplicationsIndex').doc(indexDocId);
       batch.set(indexRef, {
         'seekerId': uid,
         'jobId': jobId,
-      
         'recruiterId': recruiterId,
         'status': 'Applied',
         'createdAt': FieldValue.serverTimestamp(),
       });
 
-      // 🔔 Recruiter Notification
+      // Recruiter Notification
       final notifCollection = _firestore.collection('RecruiterNotifications').doc(recruiterId).collection('Notifications');
       final notificationId = notifCollection.doc().id;
       final notifRef = notifCollection.doc(notificationId);
-
       batch.set(notifRef, {
         'to': recruiterId,
         'from': uid,
@@ -336,28 +325,26 @@ class AuthService {
         'notificationId': notificationId,
       });
 
-      // 📝 Commit batch
-      await batch.commit().catchError((e) {
-        dev.log('Batch commit failed for job $jobId, seeker $uid: $e', name: 'AuthService', error: e);
-        throw AuthException('Batch commit failed: $e');
-      });
+      // Commit batch
+      await batch.commit();
       dev.log('Application submitted for job $jobId by $uid', name: 'AuthService');
-    } catch (e) {
-      dev.log('applyToJob ERROR: $e', name: 'AuthService', error: e);
+    } catch (e, stackTrace) {
+      dev.log('applyToJob ERROR: $e', name: 'AuthService', error: e, stackTrace: stackTrace);
       if (e is FirebaseException) {
         dev.log('Firebase error details: code=${e.code}, message=${e.message}, path=Applications/$jobId or Applications/$uid/AppliedJobs/$jobId or ApplicationsIndex/${uid}_$jobId or RecruiterNotifications/$recruiterId/Notifications', name: 'AuthService');
-        throw AuthException('Application failed: ${e.code} - ${e.message}');
+        throw AuthException('Application failed: ${e.code} - ${e.message}. Check Firestore rules or data.');
       }
       rethrow;
     }
   }
 
-Future<List<Map<String, dynamic>>> fetchAppliedSeekers() async {
+  Future<List<Map<String, dynamic>>> fetchAppliedSeekers() async {
     final uid = _auth.currentUser?.uid;
     if (uid == null) {
       dev.log('No authenticated user found', name: 'AuthService');
       throw const AuthException("User not logged in");
     }
+    dev.log('Authenticated UID: $uid', name: 'AuthService');
 
     try {
       final recruiterDoc = await _firestore.collection('Recruiters').doc(uid).get();
@@ -366,109 +353,87 @@ Future<List<Map<String, dynamic>>> fetchAppliedSeekers() async {
         throw const AuthException('User is not a recruiter');
       }
 
-      // Fetch ApplicationsIndex entries for this recruiter
-      final indexSnapshot = await _firestore
-          .collection('ApplicationsIndex')
+      final appsSnapshot = await _firestore
+          .collectionGroup('AppliedJobs')
           .where('recruiterId', isEqualTo: uid)
-          .orderBy('createdAt', descending: true)
+          .orderBy('appliedAt', descending: true)
           .get();
-
-      dev.log('Fetched ${indexSnapshot.docs.length} ApplicationsIndex entries for recruiter $uid', name: 'AuthService');
+      dev.log('Found ${appsSnapshot.docs.length} applications in collectionGroup query for $uid', name: 'AuthService');
 
       final List<Map<String, dynamic>> seekers = [];
-      final Map<String, Map<String, dynamic>> seekerProfileCache = {};
+      final Set<String> processedApplications = {};
 
-      if (indexSnapshot.docs.isEmpty) {
-        dev.log('No ApplicationsIndex entries found for recruiter $uid', name: 'AuthService');
-        return seekers;
-      }
+      for (final app in appsSnapshot.docs) {
+        final data = app.data();
+        final seekerId = app.id;
+        final jobId = data['jobId'] as String? ?? '';
+        final parentPath = app.reference.parent.parent!.path;
+        final uniqueKey = '$jobId-$seekerId';
 
-      // Iterate over ApplicationsIndex entries
-      for (final indexDoc in indexSnapshot.docs) {
-        final indexData = indexDoc.data();
-        final seekerId = indexData['seekerId'] as String? ?? '';
-        final jobId = indexData['jobId'] as String? ?? '';
-        final status = indexData['status'] as String? ?? 'Applied';
-
-        if (seekerId.isEmpty || jobId.isEmpty) {
-          dev.log('Invalid ApplicationsIndex entry ${indexDoc.id}: missing seekerId or jobId', name: 'AuthService');
+        // Skip seeker-facing data
+        if (!parentPath.startsWith('Applications/$jobId')) {
+          dev.log('Skipping seeker-facing application for job $jobId, seeker $seekerId at $parentPath', name: 'AuthService');
           continue;
         }
 
-        // Verify /Applications/{jobId} exists with correct recruiterId
+        if (jobId.isEmpty) {
+          dev.log('Skipping application for seeker $seekerId: missing jobId', name: 'AuthService');
+          continue;
+        }
+
+        if (processedApplications.contains(uniqueKey)) {
+          dev.log('Skipping duplicate application for job $jobId, seeker $seekerId', name: 'AuthService');
+          continue;
+        }
+        processedApplications.add(uniqueKey);
+        dev.log('Processing application for job $jobId, seeker $seekerId at $parentPath', name: 'AuthService');
+
         final applicationParentDoc = await _firestore.collection('Applications').doc(jobId).get();
         if (!applicationParentDoc.exists) {
-          dev.log('Skipping job $jobId: Applications parent document /Applications/$jobId does not exist', name: 'AuthService');
-          continue;
+          dev.log('Creating missing /Applications/$jobId for recruiter $uid', name: 'AuthService');
+          await _firestore.collection('Applications').doc(jobId).set({
+            'recruiterId': uid,
+            'createdAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
         }
-        final parentRecruiterId = applicationParentDoc.data()?['recruiterId'];
-        if (parentRecruiterId != uid) {
-          dev.log('Skipping job $jobId: recruiterId mismatch in /Applications/$jobId (expected $uid, found $parentRecruiterId)', name: 'AuthService');
+
+        String jobTitle = data['jobTitle'] as String? ?? 'Untitled';
+        final jobDoc = await _firestore.collection('Recruiters').doc(uid).collection('Jobs').doc(jobId).get();
+        if (jobDoc.exists) {
+          jobTitle = jobDoc.data()?['title'] as String? ?? jobTitle;
+          dev.log('Job $jobId found in /Recruiters/$uid/Jobs, title: $jobTitle', name: 'AuthService');
+        } else {
+          dev.log('Job $jobId not found in /Recruiters/$uid/Jobs, using jobTitle from AppliedJobs: $jobTitle', name: 'AuthService');
+        }
+
+        final resume = data['resume'] as Map<String, dynamic>? ?? {};
+        if (resume['name'] == null || resume['name'] == 'Unknown' || resume['email'] == null) {
+          dev.log('Skipping application for seeker $seekerId: incomplete resume data', name: 'AuthService');
           continue;
         }
 
-        // Fetch job title
-        final jobDoc = await _firestore
-            .collection('Recruiters')
-            .doc(uid)
-            .collection('Jobs')
-            .doc(jobId)
-            .get();
-        if (!jobDoc.exists) {
-          dev.log('Skipping job $jobId: Job does not exist in /Recruiters/$uid/Jobs', name: 'AuthService');
-          continue;
-        }
-        final jobTitle = jobDoc.data()?['title'] as String? ?? 'Untitled';
-
-        // Fetch seeker profile and resume
-        if (!seekerProfileCache.containsKey(seekerId)) {
-          try {
-            final seekerDoc = await _firestore.collection('Seekers').doc(seekerId).get();
-            final resumeDoc = await _firestore
-                .collection('Seekers')
-                .doc(seekerId)
-                .collection('Resumes')
-                .doc(seekerId)
-                .get();
-            seekerProfileCache[seekerId] = {
-              ...?seekerDoc.data(),
-              'resume': resumeDoc.exists ? resumeDoc.data() : {},
-            };
-            if (!seekerDoc.exists) {
-              dev.log('Seeker/$seekerId profile missing', name: 'AuthService');
-            }
-            if (!resumeDoc.exists) {
-              dev.log('Seeker/$seekerId/Resumes/$seekerId missing', name: 'AuthService');
-            }
-          } catch (e) {
-            dev.log('Error reading Seeker/$seekerId or resume: $e', name: 'AuthService', error: e);
-            seekerProfileCache[seekerId] = {};
-          }
-        }
-
-        final seekerData = seekerProfileCache[seekerId]!;
-        final resume = seekerData['resume'] as Map<String, dynamic>? ?? {};
-        final resumeUrl = resume['cvUrl'] ?? indexData['cvUrl'] ?? '';
-        final resumeName = resume['name'] ?? 'Unnamed';
-        final resumeVersion = resume['version'] ?? '';
+        final resumeUrl = resume['cvUrl']?.toString() ?? '';
+        final resumeName = resume['name']?.toString() ?? 'Unnamed';
+        final resumeVersion = resume['version']?.toString() ?? '';
 
         seekers.add({
           'seekerId': seekerId,
           'jobId': jobId,
           'jobTitle': jobTitle,
-          'appliedAt': indexData['createdAt'],
+          'appliedAt': data['appliedAt'],
           'resumeUrl': resumeUrl,
           'resumeName': resumeName,
           'resumeVersion': resumeVersion,
-          'coverLetter': indexData['coverLetter'] as String? ?? '',
-          'status': status,
-          'name': seekerData['name']?.toString().trim() ?? indexData['name']?.toString().trim() ?? seekerId,
+          'coverLetter': data['coverLetter']?.toString() ?? '',
+          'status': data['status']?.toString() ?? 'Applied',
+          'name': resume['name']?.toString().trim() ?? seekerId,
           'resume': resume,
-          'specialization': resume['specialization'] ?? indexData['specialization'] ?? 'N/A',
-          'experience': resume['experience'] ?? indexData['experience'] ?? 'N/A',
-          'email': resume['email'] ?? seekerData['email'] ?? 'N/A',
-          'skills': (resume['skills'] as List<dynamic>?)?.join(', ') ?? 'N/A',
+          'specialization': resume['specialization']?.toString() ?? data['specialization']?.toString() ?? 'N/A',
+          'experience': resume['experience']?.toString() ?? data['experience']?.toString() ?? 'N/A',
+          'email': resume['email']?.toString() ?? 'N/A',
+          'skills': (resume['skills'] as List<dynamic>?)?.join(', ') ?? data['skills']?.join(', ') ?? 'N/A',
         });
+        dev.log('Added seeker $seekerId for job $jobId to result', name: 'AuthService');
       }
 
       dev.log('Returning ${seekers.length} seekers for $uid', name: 'AuthService');
@@ -476,13 +441,23 @@ Future<List<Map<String, dynamic>>> fetchAppliedSeekers() async {
     } catch (e, stackTrace) {
       dev.log('fetchAppliedSeekers ERROR for $uid: $e', name: 'AuthService', error: e, stackTrace: stackTrace);
       if (e is FirebaseException) {
-        throw AuthException(
-            "Failed to fetch seekers: ${e.code} - ${e.message}. Verify /Applications/{jobId} exists with recruiterId=$uid and /ApplicationsIndex entries are accessible.");
+        if (e.code == 'permission-denied') {
+          throw AuthException(
+              'Permission denied: ${e.message}. Ensure /Applications/{jobId}/AppliedJobs/{seekerId} has recruiterId=$uid and Firestore rules allow access.');
+        } else if (e.code == 'failed-precondition') {
+          throw AuthException(
+              'Failed to fetch seekers: ${e.message}. Create index at: https://console.firebase.google.com/v1/r/project/naukriwala-455909/firestore/indexes');
+        }
+        throw AuthException('Failed to fetch seekers: ${e.code} - ${e.message}.');
       }
       rethrow;
     }
   }
-  
+
+  Future<List<Map<String, dynamic>>> fetchAppliedSeekersAsync() async {
+    return await compute((_) => fetchAppliedSeekers(), null);
+  }
+
   Future<void> sendMessage(String recipientId, String jobId, String message) async {
     final uid = _auth.currentUser?.uid;
     if (uid == null) throw const AuthException("User not logged in");
@@ -490,6 +465,17 @@ Future<List<Map<String, dynamic>>> fetchAppliedSeekers() async {
     try {
       final chatId = [uid, recipientId].join('_').split('_')..sort();
       final normalizedChatId = '${chatId[0]}_${chatId[1]}';
+      dev.log('Initiating chat with ID $normalizedChatId for job $jobId', name: 'AuthService');
+
+      // Create parent Messages document
+      await _firestore.collection('Messages').doc(normalizedChatId).set({
+        'senderId': uid,
+        'recipientId': recipientId,
+        'jobId': jobId,
+        'createdAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
+      // Add message
       final messageRef = _firestore.collection('Messages').doc(normalizedChatId).collection('Messages').doc();
       await messageRef.set({
         'senderId': uid,
@@ -499,10 +485,10 @@ Future<List<Map<String, dynamic>>> fetchAppliedSeekers() async {
         'jobId': jobId,
       });
       dev.log('Message sent to $normalizedChatId for job $jobId', name: 'AuthService');
-    } catch (e) {
-      dev.log('sendMessage ERROR: $e', name: 'AuthService', error: e);
+    } catch (e, stackTrace) {
+      dev.log('sendMessage ERROR for $uid to $recipientId: $e', name: 'AuthService', error: e, stackTrace: stackTrace);
       if (e is FirebaseException) {
-        throw const AuthException("Failed to send message: Check permissions");
+        throw AuthException("Failed to send message: ${e.code} - ${e.message}. Check Firestore rules for Messages/$recipientId.");
       }
       rethrow;
     }
@@ -534,27 +520,48 @@ Future<List<Map<String, dynamic>>> fetchAppliedSeekers() async {
       }
 
       final jobTitle = jobDoc.data()?['title'] as String? ?? 'Untitled';
-      final notificationId = _firestore.collection('SeekerNotifications').doc(seekerId).collection('Notifications').doc().id;
-
       final batch = _firestore.batch();
       final applicationRef = _firestore.collection('Applications').doc(jobId).collection('AppliedJobs').doc(seekerId);
+      final notificationId = _firestore.collection('SeekerNotifications').doc(seekerId).collection('Notifications').doc().id;
+      final notifRef = _firestore.collection('SeekerNotifications').doc(seekerId).collection('Notifications').doc(notificationId);
 
       switch (action.toLowerCase()) {
         case 'shortlist':
           dev.log('Shortlisting seeker $seekerId for job $jobId', name: 'AuthService');
           batch.set(_firestore.collection('Shortlisted').doc(jobId).collection('Seekers').doc(seekerId), {
+            'seekerId': seekerId,
+            'jobId': jobId,
+            'recruiterId': uid,
+            'createdAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
+          batch.update(applicationRef, {'status': 'Shortlisted', 'interviewDate': null});
+          batch.set(notifRef, {
+            'to': seekerId,
+            'from': uid,
+            'message': 'You have been shortlisted for "$jobTitle"!',
             'timestamp': FieldValue.serverTimestamp(),
+            'read': false,
+            'type': 'application',
+            'jobId': jobId,
+            'jobTitle': jobTitle,
+            'notificationId': notificationId,
           });
-          batch.update(applicationRef, {'status': 'Shortlisted'});
-          await _sendNotification(seekerId, 'You have been shortlisted for "$jobTitle"!', jobId, jobTitle, notificationId);
-          dev.log('Seeker $seekerId shortlisted for job $jobId', name: 'AuthService');
           break;
 
         case 'reject':
           dev.log('Rejecting seeker $seekerId for job $jobId', name: 'AuthService');
-          batch.update(applicationRef, {'status': 'Rejected'});
-          await _sendNotification(seekerId, 'Your application for "$jobTitle" has been rejected.', jobId, jobTitle, notificationId);
-          dev.log('Seeker $seekerId rejected for job $jobId', name: 'AuthService');
+          batch.update(applicationRef, {'status': 'Rejected', 'interviewDate': null});
+          batch.set(notifRef, {
+            'to': seekerId,
+            'from': uid,
+            'message': 'Your application for "$jobTitle" has been rejected.',
+            'timestamp': FieldValue.serverTimestamp(),
+            'read': false,
+            'type': 'application',
+            'jobId': jobId,
+            'jobTitle': jobTitle,
+            'notificationId': notificationId,
+          });
           break;
 
         case 'schedule':
@@ -567,14 +574,36 @@ Future<List<Map<String, dynamic>>> fetchAppliedSeekers() async {
             'status': 'Interview Scheduled',
             'interviewDate': interviewDate,
           });
-          await _sendNotification(seekerId, 'Interview for "$jobTitle" scheduled on ${interviewDate.toDate()}', jobId, jobTitle, notificationId);
-          dev.log('Interview scheduled for seeker $seekerId, job $jobId', name: 'AuthService');
+          batch.set(notifRef, {
+            'to': seekerId,
+            'from': uid,
+            'message': 'Interview for "$jobTitle" scheduled on ${interviewDate.toDate()}',
+            'timestamp': FieldValue.serverTimestamp(),
+            'read': false,
+            'type': 'application',
+            'jobId': jobId,
+            'jobTitle': jobTitle,
+            'notificationId': notificationId,
+          });
           break;
 
         case 'chat':
           dev.log('Initiating chat with seeker $seekerId for job $jobId', name: 'AuthService');
-          await sendMessage(seekerId, jobId, 'Hello, let’s discuss your application for "$jobTitle"!');
-          dev.log('Chat initiated with seeker $seekerId for job $jobId', name: 'AuthService');
+          final chatId = [uid, seekerId].join('_').split('_')..sort();
+          final normalizedChatId = '${chatId[0]}_${chatId[1]}';
+          batch.set(_firestore.collection('Messages').doc(normalizedChatId), {
+            'senderId': uid,
+            'recipientId': seekerId,
+            'jobId': jobId,
+            'createdAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
+          batch.set(_firestore.collection('Messages').doc(normalizedChatId).collection('Messages').doc(), {
+            'senderId': uid,
+            'recipientId': seekerId,
+            'message': 'Hello, let’s discuss your application for "$jobTitle"!',
+            'timestamp': FieldValue.serverTimestamp(),
+            'jobId': jobId,
+          });
           break;
 
         default:
@@ -583,46 +612,10 @@ Future<List<Map<String, dynamic>>> fetchAppliedSeekers() async {
 
       await batch.commit();
       dev.log('Action $action completed for seeker $seekerId, job $jobId', name: 'AuthService');
-    } catch (e) {
-      dev.log('handleAction ERROR for action $action, job $jobId, seeker $seekerId: $e', name: 'AuthService', error: e);
+    } catch (e, stackTrace) {
+      dev.log('handleAction ERROR for action $action, job $jobId, seeker $seekerId: $e', name: 'AuthService', error: e, stackTrace: stackTrace);
       if (e is FirebaseException) {
-        throw AuthException("Action failed: ${e.code} - ${e.message}");
-      }
-      rethrow;
-    }
-  }
-
-  Future<void> _sendNotification(String seekerId, String message, String jobId, String jobTitle, String notificationId) async {
-    final uid = _auth.currentUser?.uid;
-    if (uid == null) throw const AuthException("User not logged in");
-
-    try {
-      final notifRef = _firestore.collection('SeekerNotifications').doc(seekerId).collection('Notifications').doc(notificationId);
-
-      await notifRef.set({
-        'to': seekerId,
-        'from': uid,
-        'message': message,
-        'timestamp': FieldValue.serverTimestamp(),
-        'read': false,
-        'type': 'application',
-        'jobId': jobId,
-        'jobTitle': jobTitle,
-      });
-      dev.log('Notification $notificationId sent to $seekerId for job $jobId: $message', name: 'AuthService');
-
-      final tokenSnapshot = await _firestore.collection('UsersIndex').doc(seekerId).get();
-      final token = tokenSnapshot.data()?['fcmToken'] as String?;
-      if (token != null) {
-        dev.log('FCM token found for $seekerId: $token', name: 'AuthService');
-        // Add FCM logic here if implemented
-      } else {
-        dev.log('No FCM token found for $seekerId, notification stored in Firestore only', name: 'AuthService');
-      }
-    } catch (e) {
-      dev.log('Error sending notification to $seekerId for job $jobId: $e', name: 'AuthService', error: e);
-      if (e is FirebaseException && e.code == 'permission-denied') {
-        dev.log('Permission denied writing to SeekerNotifications/$seekerId/Notifications/$notificationId. Check Firestore rules.', name: 'AuthService');
+        throw AuthException("Action failed: ${e.code} - ${e.message}. Check Firestore rules for Applications/$jobId/AppliedJobs/$seekerId or Shortlisted/$jobId/Seekers/$seekerId.");
       }
       rethrow;
     }
@@ -651,18 +644,13 @@ Future<List<Map<String, dynamic>>> fetchAppliedSeekers() async {
       for (final call in callsSnapshot.docs) {
         final data = call.data();
         final seekerId = call.id;
-        String? name;
-        try {
-          final seekerProfile = await _firestore.collection('Seekers').doc(seekerId).get();
-          name = seekerProfile.exists ? (seekerProfile.data()?['name'] ?? seekerId) : seekerId;
-        } catch (e) {
-          dev.log('Failed to read Seeker/$seekerId for scheduled call: $e', name: 'AuthService', error: e);
-          if (e is FirebaseException && e.code == 'permission-denied') {
-            dev.log('Permission denied for Seeker/$seekerId in fetchScheduledCalls', name: 'AuthService');
-          }
-          name = seekerId;
+        final parentPath = call.reference.parent.parent!.path;
+        if (!parentPath.startsWith('Applications/${data['jobId']}')) {
+          dev.log('Skipping seeker-facing scheduled call for job ${data['jobId']}, seeker $seekerId at $parentPath', name: 'AuthService');
+          continue;
         }
 
+        String? name = data['resume']?['name']?.toString() ?? seekerId;
         calls.add({
           'seekerId': seekerId,
           'jobId': data['jobId'] as String? ?? '',
@@ -675,10 +663,10 @@ Future<List<Map<String, dynamic>>> fetchAppliedSeekers() async {
       }
       dev.log('Returning ${calls.length} scheduled calls for $uid', name: 'AuthService');
       return calls;
-    } catch (e) {
-      dev.log('fetchScheduledCalls ERROR: $e', name: 'AuthService', error: e);
+    } catch (e, stackTrace) {
+      dev.log('fetchScheduledCalls ERROR: $e', name: 'AuthService', error: e, stackTrace: stackTrace);
       if (e is FirebaseException) {
-        throw const AuthException("Failed to fetch scheduled calls: Check Firestore permissions");
+        throw AuthException("Failed to fetch scheduled calls: ${e.code} - ${e.message}. Check Firestore permissions.");
       }
       rethrow;
     }
@@ -695,17 +683,13 @@ Future<List<Map<String, dynamic>>> fetchAppliedSeekers() async {
     if (uid == null) return null;
 
     try {
-      final seekerDoc = await _firestore.collection('Seekers').doc(uid).get();
-      if (seekerDoc.exists) {
-        dev.log("Role found for $uid: seeker", name: 'AuthService');
-        return 'seeker';
+      final userDoc = await _firestore.collection('UsersIndex').doc(uid).get();
+      if (userDoc.exists) {
+        final role = userDoc.data()?['role'] as String?;
+        dev.log("Role found for $uid: $role", name: 'AuthService');
+        return role;
       }
-      final recruiterDoc = await _firestore.collection('Recruiters').doc(uid).get();
-      if (recruiterDoc.exists) {
-        dev.log("Role found for $uid: recruiter", name: 'AuthService');
-        return 'recruiter';
-      }
-      dev.log("No role found for $uid", name: 'AuthService');
+      dev.log("No role found for $uid in UsersIndex", name: 'AuthService');
       return null;
     } catch (e) {
       dev.log("getUserRole ERROR: $e", name: 'AuthService', error: e);
