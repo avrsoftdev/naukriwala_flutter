@@ -68,7 +68,11 @@ class NotificationsScreenState extends State<NotificationsScreen> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Please log in to view notifications.')),
+            SnackBar(
+              content: const Text('Please log in to view notifications.'),
+              backgroundColor: Colors.red,
+              behavior: SnackBarBehavior.floating,
+            ),
           );
           Navigator.pushReplacementNamed(context, '/login');
         }
@@ -78,8 +82,20 @@ class NotificationsScreenState extends State<NotificationsScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Notifications'),
-        backgroundColor: Colors.deepPurple,
+        title: const Text(
+          'Notifications',
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+        ),
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.blue.shade700, Colors.blue.shade900],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
+        elevation: 4,
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: _notificationsStream,
@@ -92,10 +108,28 @@ class NotificationsScreenState extends State<NotificationsScreen> {
             } else if (snapshot.error.toString().contains('PERMISSION_DENIED')) {
               errorMessage = 'Permission denied: Verify role claim and Firestore rules for ${widget.isRecruiter ? 'RecruiterNotifications' : 'SeekerNotifications'}/$uid/Notifications';
             }
-            return Center(child: Text(errorMessage, textAlign: TextAlign.center));
+            return Center(
+              child: Card(
+                elevation: 4,
+                color: Colors.red.shade50,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Text(
+                    errorMessage,
+                    style: TextStyle(color: Colors.red.shade700, fontSize: 16),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+            );
           }
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return const Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.teal),
+              ),
+            );
           }
 
           final docs = snapshot.data?.docs ?? [];
@@ -103,13 +137,15 @@ class NotificationsScreenState extends State<NotificationsScreen> {
             dev.log('No notifications found for UID $uid in ${widget.isRecruiter ? 'RecruiterNotifications' : 'SeekerNotifications'}/$uid/Notifications', name: 'NotificationsScreen');
             return Center(
               child: Text(
-                'No notifications found. Ensure ${widget.isRecruiter ? 'RecruiterNotifications' : 'SeekerNotifications'}/$uid/Notifications contains data or verify applyToJob execution.',
+                'No notifications found.',
+                style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
                 textAlign: TextAlign.center,
               ),
             );
           }
 
           return ListView.builder(
+            padding: const EdgeInsets.all(16.0),
             itemCount: docs.length,
             itemBuilder: (context, index) {
               final data = docs[index].data() as Map<String, dynamic>;
@@ -119,31 +155,104 @@ class NotificationsScreenState extends State<NotificationsScreen> {
               final jobId = data['jobId'] as String? ?? 'Unknown';
               final notificationId = data['notificationId'] as String? ?? docs[index].id;
 
-              return Card(
-                elevation: 2,
-                margin: const EdgeInsets.symmetric(vertical: 5, horizontal: 8),
-                child: ListTile(
-                  title: Text(message),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (timestamp != null) Text(_formatTimestamp(timestamp)),
-                      Text('Job ID: $jobId'),
-                    ],
+              return AnimatedListItem(
+                child: Card(
+                  elevation: 3,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: read
+                            ? [Colors.grey.shade100, Colors.grey.shade200]
+                            : [Colors.blue.shade50, Colors.blue.shade100],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: ListTile(
+                      contentPadding: const EdgeInsets.all(16.0),
+                      title: Text(
+                        message,
+                        style: TextStyle(
+                          fontWeight: read ? FontWeight.normal : FontWeight.w600,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (timestamp != null)
+                            Text(
+                              _formatTimestamp(timestamp),
+                              style: TextStyle(color: Colors.grey.shade600),
+                            ),
+                          Text(
+                            'Job ID: $jobId',
+                            style: TextStyle(color: Colors.grey.shade600),
+                          ),
+                        ],
+                      ),
+                      trailing: read
+                          ? const Icon(Icons.check_circle, color: Colors.teal, size: 28)
+                          : const Icon(Icons.circle, color: Colors.grey, size: 28),
+                      onTap: () async {
+                        if (!read) {
+                          await _markAsRead(notificationId);
+                        }
+                      },
+                    ),
                   ),
-                  trailing: read
-                      ? const Icon(Icons.check_circle, color: Colors.green)
-                      : const Icon(Icons.circle, color: Colors.grey),
-                  onTap: () async {
-                    if (!read) {
-                      await _markAsRead(notificationId);
-                    }
-                  },
                 ),
               );
             },
           );
         },
+      ),
+    );
+  }
+}
+
+// Custom Animated List Item Widget
+class AnimatedListItem extends StatefulWidget {
+  final Widget child;
+
+  const AnimatedListItem({required this.child, super.key});
+
+  @override
+  AnimatedListItemState createState() => AnimatedListItemState();
+}
+
+class AnimatedListItemState extends State<AnimatedListItem> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 500),
+      vsync: this,
+    );
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(_controller);
+    _slideAnimation = Tween<Offset>(begin: const Offset(0.2, 0), end: Offset.zero).animate(_controller);
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _fadeAnimation,
+      child: SlideTransition(
+        position: _slideAnimation,
+        child: widget.child,
       ),
     );
   }

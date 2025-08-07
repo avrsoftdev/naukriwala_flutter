@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'post_job_screen.dart';
 import 'package:intl/intl.dart';
+import 'package:naukariwala/screens/post_job_screen.dart';
 import 'dart:developer' as dev;
 
 class PostedJobsScreen extends StatefulWidget {
@@ -18,8 +18,21 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
   @override
   Widget build(BuildContext context) {
     if (user == null) {
-      return const Scaffold(
-        body: Center(child: Text('User not logged in')),
+      return Scaffold(
+        body: Center(
+          child: Card(
+            elevation: 4,
+            color: Colors.red.shade50,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Text(
+                'User not logged in',
+                style: TextStyle(color: Colors.red.shade700, fontSize: 16),
+              ),
+            ),
+          ),
+        ),
       );
     }
 
@@ -33,25 +46,60 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('My Posted Jobs'),
-        backgroundColor: Colors.deepPurple,
+        title: const Text(
+          'My Posted Jobs',
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+        ),
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.blue.shade700, Colors.blue.shade900],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
+        elevation: 4,
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: jobsQuery.snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return const Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.teal),
+              ),
+            );
           }
 
           if (snapshot.hasError) {
             dev.log('Stream error for user ${user!.uid}: ${snapshot.error}', name: 'PostedJobsScreen', error: snapshot.error);
-            return Center(child: Text('Error loading jobs: ${snapshot.error}'));
+            return Center(
+              child: Card(
+                elevation: 4,
+                color: Colors.red.shade50,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Text(
+                    'Error loading jobs: ${snapshot.error}',
+                    style: TextStyle(color: Colors.red.shade700, fontSize: 16),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+            );
           }
 
           final jobs = snapshot.data?.docs ?? [];
 
           if (jobs.isEmpty) {
-            return const Center(child: Text('No jobs posted yet'));
+            return Center(
+              child: Text(
+                'No jobs posted yet',
+                style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
+              ),
+            );
           }
 
           return ListView.builder(
@@ -65,6 +113,9 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
               final company = job['company'] ?? 'Unknown Company';
               final location = job['location'] ?? 'Unspecified';
               final salary = job['salary'] ?? 'Not specified';
+              final skills = (job['skills'] as List<dynamic>?)?.join(', ') ?? 'N/A';
+              final education = job['education'] ?? 'N/A';
+              final specialization = job['specialization'] ?? 'N/A';
               final status = job['status'] ?? 'unknown';
               final timestamp = job['createdAt'] as Timestamp?;
               final postedDate = timestamp != null
@@ -77,134 +128,117 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
                   final applicantCount = applicantSnapshot.data?['count'] ?? 0;
                   final applicantNames = applicantSnapshot.data?['names'] ?? [];
 
-                  if (applicantSnapshot.hasError) {
-                    dev.log(
-                        'Applicant data error for job $jobId (user ${user!.uid}): ${applicantSnapshot.error}',
-                        name: 'PostedJobsScreen',
-                        error: applicantSnapshot.error);
-                    return Card(
-                      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      child: ExpansionTile(
-                        title: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(title,
-                                style: const TextStyle(fontWeight: FontWeight.bold)),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: status == 'open'
-                                    ? Colors.green[100]
-                                    : Colors.red[100],
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text(
-                                status.toUpperCase(),
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: status == 'open'
-                                      ? Colors.green
-                                      : Colors.red,
+                  return AnimatedListItem(
+                    child: Card(
+                      elevation: 3,
+                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [Colors.blue.shade50, Colors.blue.shade100],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: ExpansionTile(
+                          title: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  title,
+                                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 18, color: Colors.black87),
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Company: $company'),
-                            Text('Location: $location'),
-                            Text('Salary: $salary'),
-                            Text('Posted: $postedDate'),
-                            Text('Applicants: Error loading count'),
-                          ],
-                        ),
-                        children: [const ListTile(title: Text('Error loading applicants'))],
-                        trailing: PopupMenuButton<String>(
-                          onSelected: (value) {
-                            if (value == 'edit') {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) =>
-                                      PostJobScreen(editJobData: {...job, 'jobId': jobId}),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: status == 'open' ? Colors.green.shade100 : Colors.red.shade100,
+                                  borderRadius: BorderRadius.circular(12),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: 0.1),
+                                      blurRadius: 2,
+                                      offset: const Offset(0, 1),
+                                    ),
+                                  ],
                                 ),
-                              );
-                            } else if (value == 'delete') {
-                              _confirmDeleteJob(context, jobId);
-                            }
-                          },
-                          itemBuilder: (context) => [
-                            const PopupMenuItem(value: 'edit', child: Text('Edit')),
-                            const PopupMenuItem(value: 'delete', child: Text('Delete')),
-                          ],
-                        ),
-                      ),
-                    );
-                  }
-
-                  return Card(
-                    margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    child: ExpansionTile(
-                      title: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(title,
-                              style: const TextStyle(fontWeight: FontWeight.bold)),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: status == 'open'
-                                  ? Colors.green[100]
-                                  : Colors.red[100],
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              status.toUpperCase(),
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: status == 'open' ? Colors.green : Colors.red,
+                                child: Text(
+                                  status.toUpperCase(),
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: status == 'open' ? Colors.green.shade700 : Colors.red.shade700,
+                                  ),
+                                ),
                               ),
+                            ],
+                          ),
+                          subtitle: Padding(
+                            padding: const EdgeInsets.only(top: 8.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Company: $company', style: TextStyle(color: Colors.grey.shade700)),
+                                Text('Location: $location', style: TextStyle(color: Colors.grey.shade700)),
+                                Text('Salary: $salary', style: TextStyle(color: Colors.grey.shade700)),
+                                Text('Skills: $skills', style: TextStyle(color: Colors.grey.shade700)),
+                                Text('Education: $education', style: TextStyle(color: Colors.grey.shade700)),
+                                Text('Specialization: $specialization', style: TextStyle(color: Colors.grey.shade700)),
+                                Text('Posted: $postedDate', style: TextStyle(color: Colors.grey.shade700)),
+                                Text('Applicants: $applicantCount', style: TextStyle(color: Colors.grey.shade700)),
+                              ],
                             ),
                           ),
-                        ],
-                      ),
-                      subtitle: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Company: $company'),
-                          Text('Location: $location'),
-                          Text('Salary: $salary'),
-                          Text('Posted: $postedDate'),
-                          Text('Applicants: $applicantCount'),
-                        ],
-                      ),
-                      children: applicantNames.isNotEmpty
-                          ? applicantNames
-                              .map<Widget>((name) => ListTile(title: Text(name)))
-                              .toList()
-                          : [const ListTile(title: Text('No applicants yet'))],
-                      trailing: PopupMenuButton<String>(
-                        onSelected: (value) {
-                          if (value == 'edit') {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    PostJobScreen(editJobData: {...job, 'jobId': jobId}),
+                          children: applicantSnapshot.hasError
+                              ? [
+                                  ListTile(
+                                    title: Text(
+                                      'Error loading applicants',
+                                      style: TextStyle(color: Colors.red.shade700),
+                                    ),
+                                  ),
+                                ]
+                              : applicantNames.isNotEmpty
+                                  ? applicantNames
+                                      .map<Widget>((name) => ListTile(
+                                            title: Text(name, style: const TextStyle(color: Colors.black87)),
+                                          ))
+                                      .toList()
+                                  : [
+                                      const ListTile(
+                                        title: Text('No applicants yet', style: TextStyle(color: Colors.grey)),
+                                      ),
+                                    ],
+                          trailing: PopupMenuButton<String>(
+                            icon: const Icon(Icons.more_vert, color: Colors.teal),
+                            onSelected: (value) {
+                              if (value == 'edit') {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => PostJobScreen(editJobData: {...job, 'jobId': jobId}),
+                                  ),
+                                );
+                              } else if (value == 'delete') {
+                                _confirmDeleteJob(context, jobId);
+                              }
+                            },
+                            itemBuilder: (context) => [
+                              const PopupMenuItem(
+                                value: 'edit',
+                                child: Text('Edit', style: TextStyle(color: Colors.teal)),
                               ),
-                            );
-                          } else if (value == 'delete') {
-                            _confirmDeleteJob(context, jobId);
-                          }
-                        },
-                        itemBuilder: (context) => [
-                          const PopupMenuItem(value: 'edit', child: Text('Edit')),
-                          const PopupMenuItem(value: 'delete', child: Text('Delete')),
-                        ],
+                              const PopupMenuItem(
+                                value: 'delete',
+                                child: Text('Delete', style: TextStyle(color: Colors.red)),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
                   );
@@ -219,7 +253,6 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
 
   Future<Map<String, dynamic>> _getApplicantData(String jobId) async {
     try {
-      // Query direct path instead of collection group
       final snapshot = await FirebaseFirestore.instance
           .collection('Applications')
           .doc(jobId)
@@ -231,20 +264,12 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
 
       final names = snapshot.docs.map((doc) {
         final data = doc.data();
-        // Fetch seeker profile to ensure accurate name
-        return FirebaseFirestore.instance
-            .collection('Seekers')
-            .doc(doc.id)
-            .get()
-            .then((seekerDoc) => (seekerDoc.data()?['name'] as String?) ?? 'Unknown Seeker');
+        return data['resume']?['name']?.toString() ?? 'Unknown Seeker';
       }).toList();
 
-      // Resolve all seeker profile queries
-      final resolvedNames = await Future.wait(names);
-
-      return {'count': snapshot.docs.length, 'names': resolvedNames};
-    } catch (e) {
-      dev.log('Error fetching applicant data for job $jobId by user ${user!.uid}: $e', name: 'PostedJobsScreen', error: e);
+      return {'count': snapshot.docs.length, 'names': names};
+    } catch (e, stackTrace) {
+      dev.log('Error fetching applicant data for job $jobId by user ${user!.uid}: $e', name: 'PostedJobsScreen', error: e, stackTrace: stackTrace);
       if (e is FirebaseException) {
         dev.log('Firebase error details: ${e.code} - ${e.message}', name: 'PostedJobsScreen');
       }
@@ -256,19 +281,33 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete Job'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.blue.shade700, Colors.blue.shade900],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+          ),
+          child: const Text(
+            'Delete Job',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          ),
+        ),
         content: const Text('Are you sure you want to delete this job?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child: const Text('Cancel', style: TextStyle(color: Colors.teal)),
           ),
-          ElevatedButton(
+          AnimatedScaleButton(
             onPressed: () async {
               Navigator.pop(context);
               try {
                 final batch = FirebaseFirestore.instance.batch();
-                // Delete job
                 batch.delete(
                   FirebaseFirestore.instance
                       .collection('Recruiters')
@@ -276,11 +315,9 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
                       .collection('Jobs')
                       .doc(jobId),
                 );
-                // Delete Applications/{jobId}
                 batch.delete(
                   FirebaseFirestore.instance.collection('Applications').doc(jobId),
                 );
-                // Delete ApplicationsIndex entries
                 final indexSnapshot = await FirebaseFirestore.instance
                     .collection('ApplicationsIndex')
                     .where('jobId', isEqualTo: jobId)
@@ -289,7 +326,6 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
                 for (var doc in indexSnapshot.docs) {
                   batch.delete(doc.reference);
                 }
-                // Delete seeker-centric Applications
                 final appsSnapshot = await FirebaseFirestore.instance
                     .collection('Applications')
                     .doc(jobId)
@@ -308,20 +344,146 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
                 await batch.commit();
                 if (!context.mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Job deleted')),
+                  const SnackBar(
+                    content: Text('Job deleted'),
+                    backgroundColor: Colors.teal,
+                    behavior: SnackBarBehavior.floating,
+                  ),
                 );
                 dev.log('Job $jobId and related data deleted by user ${user!.uid}', name: 'PostedJobsScreen');
-              } catch (e) {
-                dev.log('Error deleting job $jobId: $e', name: 'PostedJobsScreen', error: e);
+              } catch (e, stackTrace) {
+                dev.log('Error deleting job $jobId: $e', name: 'PostedJobsScreen', error: e, stackTrace: stackTrace);
                 if (!context.mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Failed to delete job: $e')),
+                  SnackBar(
+                    content: Text('Failed to delete job: $e'),
+                    backgroundColor: Colors.red,
+                    behavior: SnackBarBehavior.floating,
+                  ),
                 );
               }
             },
-            child: const Text('Delete'),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.red.shade600, Colors.red.shade800],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(8),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.2),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: const Text(
+                'Delete',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
+            ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// Custom Animated Button Widget
+class AnimatedScaleButton extends StatefulWidget {
+  final VoidCallback onPressed;
+  final Widget child;
+
+  const AnimatedScaleButton({required this.onPressed, required this.child, super.key});
+
+  @override
+  AnimatedScaleButtonState createState() => AnimatedScaleButtonState();
+}
+
+class AnimatedScaleButtonState extends State<AnimatedScaleButton> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 100),
+      vsync: this,
+    );
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(_controller);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => _controller.forward(),
+      onTapUp: (_) {
+        _controller.reverse();
+        widget.onPressed();
+      },
+      onTapCancel: () => _controller.reverse(),
+      child: ScaleTransition(
+        scale: _scaleAnimation,
+        child: widget.child,
+      ),
+    );
+  }
+}
+
+// Custom Animated List Item Widget
+class AnimatedListItem extends StatefulWidget {
+  final Widget child;
+
+  const AnimatedListItem({required this.child, super.key});
+
+  @override
+  AnimatedListItemState createState() => AnimatedListItemState();
+}
+
+class AnimatedListItemState extends State<AnimatedListItem> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 500),
+      vsync: this,
+    );
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(_controller);
+    _slideAnimation = Tween<Offset>(begin: const Offset(0.2, 0), end: Offset.zero).animate(_controller);
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _fadeAnimation,
+      child: SlideTransition(
+        position: _slideAnimation,
+        child: widget.child,
       ),
     );
   }

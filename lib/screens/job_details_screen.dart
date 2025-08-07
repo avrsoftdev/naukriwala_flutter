@@ -24,6 +24,86 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> {
   String? _ineligibilityReason;
   bool _hasApplied = false;
 
+  // Specialization options (same as PostJobScreen)
+  final List<String> specializationOptions = [
+    'Computer Science / IT',
+    'Electronics / Electrical / Robotics',
+    'Mechanical / Civil / Architecture',
+    'Business / Finance / Management',
+    'Medicine / Healthcare / Pharma',
+    'Law / Political Science / Public Administration',
+    'Arts / Humanities / Education',
+    'Design / Media / Communication',
+    'Hotel / Travel / Event Management',
+    'Science / Research / Environment',
+    'Others',
+  ];
+
+  // Skills by specialization (same as PostJobScreen)
+  final Map<String, List<String>> skillsBySpecialization = {
+    'Computer Science / IT': [
+      'Java', 'Python', 'C++', 'C#', 'Dart', 'Flutter', 'Android Development',
+      'iOS Development', 'React', 'Angular', 'Vue.js', 'Node.js', 'Firebase',
+      'AWS', 'Docker', 'Kubernetes', 'SQL', 'MongoDB', 'REST APIs', 'GraphQL',
+      'Machine Learning', 'Data Structures & Algorithms', 'DevOps', 'Cybersecurity',
+      'System Design',
+    ],
+    'Electronics / Electrical / Robotics': [
+      'Embedded Systems', 'PCB Design', 'VLSI', 'MATLAB', 'Simulink', 'Verilog',
+      'FPGA Programming', 'Arduino', 'Raspberry Pi', 'IoT Development',
+      'Signal Processing', 'Power Systems', 'Automation', 'SCADA',
+    ],
+    'Mechanical / Civil / Architecture': [
+      'AutoCAD', 'SolidWorks', 'CATIA', 'ANSYS', 'STAAD Pro', 'Revit',
+      'Structural Analysis', 'Thermodynamics', 'Manufacturing Processes',
+      'Fluid Mechanics', 'Construction Management', 'Urban Planning',
+    ],
+    'Business / Finance / Management': [
+      'Financial Analysis', 'Accounting', 'MS Excel', 'Tally', 'Business Intelligence',
+      'SAP', 'QuickBooks', 'Digital Marketing', 'Google Ads', 'SEO',
+      'Social Media Marketing', 'Project Management', 'Agile', 'Scrum',
+      'Business Strategy', 'Market Research', 'Customer Relationship Management (CRM)',
+      'Salesforce',
+    ],
+    'Medicine / Healthcare / Pharma': [
+      'Clinical Research', 'Patient Care', 'Surgical Assistance', 'Nursing Procedures',
+      'Medical Coding', 'Public Health', 'Pharmacology', 'First Aid', 'CPR',
+      'Health Education', 'Lab Testing', 'Radiology', 'Therapeutic Skills',
+    ],
+    'Law / Political Science / Public Administration': [
+      'Legal Research', 'Case Analysis', 'Contract Drafting', 'Litigation',
+      'Legal Compliance', 'Constitutional Law', 'Criminal Law', 'International Law',
+      'Arbitration', 'Policy Analysis', 'Public Speaking',
+    ],
+    'Arts / Humanities / Education': [
+      'Creative Writing', 'Content Writing', 'Linguistics', 'Public Speaking',
+      'Editing & Proofreading', 'Critical Thinking', 'Classroom Management',
+      'Curriculum Development', 'E-Learning Tools', 'Art History', 'Philosophical Analysis',
+    ],
+    'Design / Media / Communication': [
+      'Adobe Photoshop', 'Adobe Illustrator', 'Adobe XD', 'Figma', 'Canva',
+      'UI/UX Design', 'Video Editing', '3D Modeling', 'Motion Graphics', 'Photography',
+      'Copywriting', 'Branding', 'Social Media Content Creation', 'Typography', 'Storyboarding',
+      'Final Cut Pro', 'Lightroom',
+    ],
+    'Hotel / Travel / Event Management': [
+      'Event Planning', 'Hospitality Management', 'Customer Service', 'Bartending',
+      'Housekeeping', 'Food & Beverage Service', 'Travel Planning', 'Ticketing & Reservations',
+      'Catering Services', 'Inventory Management', 'Public Relations', 'Vendor Management',
+    ],
+    'Science / Research / Environment': [
+      'Laboratory Techniques', 'Statistical Analysis', 'Research Writing', 'Data Collection',
+      'Environmental Impact Assessment', 'Geographic Information System (GIS)', 'Microscopy',
+      'Chemical Analysis', 'Climate Modeling', 'Bioinformatics',
+    ],
+    'Others': [
+      'Communication Skills', 'Problem Solving', 'Teamwork', 'Leadership', 'Time Management',
+      'Adaptability', 'Creativity', 'Conflict Resolution', 'Critical Thinking', 'Customer Support',
+      'Basic Computer Skills', 'Typing', 'Remote Work Tools (Zoom, Slack, Trello)', 'Virtual Assistant',
+      'Content Moderation',
+    ],
+  };
+
   @override
   void initState() {
     super.initState();
@@ -91,8 +171,14 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> {
         return;
       }
 
+      // Ensure specialization is valid
+      final seekerProfile = seekerDoc.data()!;
+      if (seekerProfile['specialization'] != null && !specializationOptions.contains(seekerProfile['specialization'])) {
+        seekerProfile['specialization'] = 'Others';
+      }
+
       setState(() {
-        _seekerProfile = seekerDoc.data();
+        _seekerProfile = seekerProfile;
         _isJobVisible = _checkJobCompatibility();
         _hasApplied = hasApplied;
         _isLoading = false;
@@ -155,17 +241,30 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> {
     final seekerSkills = (_seekerProfile!['skills'] as List<dynamic>?)?.cast<String>() ?? [];
     final jobEducation = _jobData!['education']?.toString().toLowerCase() ?? '';
     final seekerEducation = _seekerProfile!['education']?.toString().toLowerCase() ?? '';
+    final jobSpecialization = _jobData!['specialization']?.toString() ?? 'Others';
+    final seekerSpecialization = _seekerProfile!['specialization']?.toString() ?? 'Others';
     final jobExperience = _parseExperience(_jobData!['experience']?.toString() ?? '0');
     final seekerExperience = _parseExperience(_seekerProfile!['experience']?.toString() ?? '0');
+
+    // Check specialization compatibility
+    bool specializationMatch = jobSpecialization == 'Others' || seekerSpecialization == jobSpecialization;
+    if (!specializationMatch) {
+      final jobSkillsSet = skillsBySpecialization[jobSpecialization] ?? skillsBySpecialization['Others']!;
+      specializationMatch = seekerSkills.any((s) => jobSkillsSet.contains(s));
+    }
 
     bool skillsMatch = jobSkills.isEmpty || seekerSkills.any((skill) => jobSkills.contains(skill));
     bool educationMatch = jobEducation.isEmpty || seekerEducation.contains(jobEducation);
     bool experienceMatch = seekerExperience >= jobExperience;
 
-    dev.log('Skills match: $skillsMatch, Education match: $educationMatch, Experience match: $experienceMatch',
+    dev.log('Compatibility check for job ${widget.job['jobId']}: specializationMatch=$specializationMatch, skillsMatch=$skillsMatch, educationMatch=$educationMatch, experienceMatch=$experienceMatch',
         name: 'JobDetailsScreen');
+    dev.log('Job skills: $jobSkills, Seeker skills: $seekerSkills', name: 'JobDetailsScreen');
+    dev.log('Job education: $jobEducation, Seeker education: $seekerEducation', name: 'JobDetailsScreen');
+    dev.log('Job specialization: $jobSpecialization, Seeker specialization: $seekerSpecialization', name: 'JobDetailsScreen');
+    dev.log('Job experience: $jobExperience, Seeker experience: $seekerExperience', name: 'JobDetailsScreen');
 
-    return skillsMatch && educationMatch && experienceMatch;
+    return specializationMatch && skillsMatch && educationMatch && experienceMatch;
   }
 
   String _getIneligibilityReason() {
@@ -177,10 +276,18 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> {
     final seekerSkills = (_seekerProfile!['skills'] as List<dynamic>?)?.cast<String>() ?? [];
     final jobEducation = _jobData!['education']?.toString().toLowerCase() ?? '';
     final seekerEducation = _seekerProfile!['education']?.toString().toLowerCase() ?? '';
+    final jobSpecialization = _jobData!['specialization']?.toString() ?? 'Others';
+    final seekerSpecialization = _seekerProfile!['specialization']?.toString() ?? 'Others';
     final jobExperience = _parseExperience(_jobData!['experience']?.toString() ?? '0');
     final seekerExperience = _parseExperience(_seekerProfile!['experience']?.toString() ?? '0');
 
     List<String> reasons = [];
+    if (jobSpecialization != 'Others' && seekerSpecialization != jobSpecialization) {
+      final jobSkillsSet = skillsBySpecialization[jobSpecialization] ?? skillsBySpecialization['Others']!;
+      if (!seekerSkills.any((s) => jobSkillsSet.contains(s))) {
+        reasons.add('Your specialization ($seekerSpecialization) does not match the required specialization ($jobSpecialization).');
+      }
+    }
     if (jobSkills.isNotEmpty && !seekerSkills.any((skill) => jobSkills.contains(skill))) {
       reasons.add('Your skills do not match the required skills (${jobSkills.join(', ')}).');
     }
@@ -191,7 +298,7 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> {
       reasons.add('Your experience (${seekerExperience.toInt()} years) is less than required ($jobExperience years).');
     }
     return reasons.isEmpty
-        ? 'This job does not match your skills, education, or experience.'
+        ? 'This job does not match your specialization, skills, education, or experience.'
         : reasons.join(' ');
   }
 
@@ -209,7 +316,11 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> {
     if (currentUser == null) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please login to apply')),
+          SnackBar(
+            content: const Text('Please login to apply'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       }
       return;
@@ -217,7 +328,11 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> {
     if (currentUser.uid == widget.job['recruiterId']?.toString()) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Recruiters cannot apply to their own jobs')),
+          SnackBar(
+            content: const Text('Recruiters cannot apply to their own jobs'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       }
       return;
@@ -225,7 +340,11 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> {
     if (_hasApplied) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('You have already applied for this job')),
+          SnackBar(
+            content: const Text('You have already applied for this job'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       }
       return;
@@ -237,7 +356,7 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> {
           jobId: widget.job['jobId']?.toString() ?? '',
           jobTitle: widget.job['title']?.toString() ?? 'Unknown Job',
           recruiterId: widget.job['recruiterId']?.toString() ?? '',
-          seekerProfile: _seekerProfile, // Pass seeker profile
+          seekerProfile: _seekerProfile,
         ),
       ),
     );
@@ -256,14 +375,22 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> {
           .delete();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Job deleted successfully')),
+          SnackBar(
+            content: const Text('Job deleted successfully'),
+            backgroundColor: Colors.teal,
+            behavior: SnackBarBehavior.floating,
+          ),
         );
         Navigator.pop(context);
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to delete job: $e')),
+          SnackBar(
+            content: Text('Failed to delete job: $e'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       }
     }
@@ -279,218 +406,533 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> {
     final jobType = _jobData?['jobType']?.toString() ?? widget.job['jobType']?.toString() ?? 'Unknown Type';
     final salary = _jobData?['salary']?.toString() ?? widget.job['salary']?.toString() ?? 'Not specified';
     final experience = _jobData?['experience']?.toString() ?? widget.job['experience']?.toString() ?? 'N/A';
+    final skills = (_jobData?['skills'] as List<dynamic>?)?.cast<String>().join(', ') ?? widget.job['skills']?.toString() ?? 'N/A';
+    final education = _jobData?['education']?.toString() ?? widget.job['education']?.toString() ?? 'N/A';
+    final specialization = _jobData?['specialization']?.toString() ?? widget.job['specialization']?.toString() ?? 'N/A';
     final description = _jobData?['description']?.toString() ?? widget.job['description']?.toString() ?? 'No description provided';
     final currentUser = FirebaseAuth.instance.currentUser;
     final isRecruiter = currentUser != null && currentUser.uid == widget.job['recruiterId']?.toString();
 
     if (_isLoading) {
       return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+        body: Center(
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(Colors.teal),
+          ),
+        ),
       );
     }
 
     if (!_isJobVisible) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Job Not Available')),
+        appBar: AppBar(
+          title: const Text(
+            'Job Not Available',
+            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+          ),
+          flexibleSpace: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Colors.blue.shade700, Colors.blue.shade900],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+          ),
+          elevation: 4,
+        ),
         body: Center(
-          child: Text(
-            _ineligibilityReason ?? 'This job does not match your skills, education, or experience.',
-            style: const TextStyle(color: Colors.red),
-            textAlign: TextAlign.center,
+          child: Card(
+            elevation: 4,
+            color: Colors.red.shade50,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Text(
+                _ineligibilityReason ?? 'This job does not match your specialization, skills, education, or experience.',
+                style: TextStyle(color: Colors.red.shade700, fontSize: 16),
+                textAlign: TextAlign.center,
+              ),
+            ),
           ),
         ),
       );
     }
 
     return Scaffold(
-      appBar: AppBar(title: Text(jobTitle)),
+      appBar: AppBar(
+        title: Text(
+          jobTitle,
+          style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+        ),
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.blue.shade700, Colors.blue.shade900],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
+        elevation: 4,
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: ListView(
-          children: [
-            Text(
-              jobTitle,
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 10),
-            Text('$company • $location • $jobType'),
-            const SizedBox(height: 10),
-            Text('Salary: $salary'),
-            Text('Experience Required: $experience'),
-            const SizedBox(height: 20),
-            const Text(
-              'Job Description',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 6),
-            Text(description),
-            const SizedBox(height: 20),
-            if (!isRecruiter && currentUser != null)
-              FutureBuilder<bool>(
-                future: _checkApplicationStatus(),
-                builder: (BuildContext context, AsyncSnapshot<bool> snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator(strokeWidth: 2));
-                  }
-                  final hasApplied = snapshot.data ?? _hasApplied;
-                  return ElevatedButton.icon(
-                    onPressed: hasApplied ? null : _applyForJob,
-                    icon: const Icon(Icons.send),
-                    label: Text(hasApplied ? 'Applied' : 'Apply Now'),
-                  );
-                },
-              ),
-            if (isRecruiter)
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => EditJobScreen(
-                            jobId: widget.job['jobId']?.toString() ?? '',
-                            jobData: _jobData ?? widget.job,
+        child: Card(
+          elevation: 4,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: ListView(
+              children: [
+                Text(
+                  jobTitle,
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.blue.shade900),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  '$company • $location • $jobType',
+                  style: TextStyle(fontSize: 16, color: Colors.grey.shade700),
+                ),
+                const SizedBox(height: 12),
+                Text('Salary: $salary', style: const TextStyle(fontSize: 16)),
+                Text('Experience Required: $experience', style: const TextStyle(fontSize: 16)),
+                Text('Skills: $skills', style: const TextStyle(fontSize: 16)),
+                Text('Education: $education', style: const TextStyle(fontSize: 16)),
+                Text('Specialization: $specialization', style: const TextStyle(fontSize: 16)),
+                const SizedBox(height: 20),
+                Text(
+                  'Job Description',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blue.shade900),
+                ),
+                const SizedBox(height: 8),
+                Text(description, style: const TextStyle(fontSize: 16)),
+                const SizedBox(height: 20),
+                if (!isRecruiter && currentUser != null)
+                  FutureBuilder<bool>(
+                    future: _checkApplicationStatus(),
+                    builder: (BuildContext context, AsyncSnapshot<bool> snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(
+                          child: CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.teal),
+                            strokeWidth: 2,
+                          ),
+                        );
+                      }
+                      final hasApplied = snapshot.data ?? _hasApplied;
+                      return AnimatedScaleButton(
+                        onPressed:() {  if (!hasApplied) {    _applyForJob();  }},
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: hasApplied
+                                  ? [Colors.grey.shade400, Colors.grey.shade600]
+                                  : [Colors.blue.shade700, Colors.teal.shade400],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.2),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.send, color: Colors.white),
+                              const SizedBox(width: 8),
+                              Text(
+                                hasApplied ? 'Applied' : 'Apply Now',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       );
                     },
-                    icon: const Icon(Icons.edit),
-                    label: const Text('Edit'),
                   ),
-                  ElevatedButton.icon(
-                    onPressed: deleteJob,
-                    icon: const Icon(Icons.delete),
-                    label: const Text('Delete'),
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                  ),
-                ],
-              ),
-            const SizedBox(height: 20),
-            if (isRecruiter && _applicantsStream != null)
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Applicants',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 10),
-                  StreamBuilder<QuerySnapshot>(
-                    stream: _applicantsStream,
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Center(child: CircularProgressIndicator());
-                      }
-                      if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                        return const Text('No applicants yet.');
-                      }
-                      return ListView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: snapshot.data!.docs.length,
-                        itemBuilder: (context, index) {
-                          final applicant = snapshot.data!.docs[index].data() as Map<String, dynamic>;
-                          final resume = applicant['resume'] as Map<String, dynamic>? ?? {};
-                          return Card(
-                            margin: const EdgeInsets.symmetric(vertical: 4),
-                            child: ListTile(
-                              title: Text(resume['name'] ?? 'Unknown Applicant'),
-                              subtitle: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text('Job: ${applicant['jobTitle'] ?? 'Unknown Job'}'),
-                                  Text('Skills: ${(resume['skills'] as List<dynamic>?)?.join(', ') ?? 'N/A'}'),
-                                  Text('Education: ${resume['education'] ?? 'N/A'}'),
-                                  Text('Experience: ${resume['experience'] ?? 'N/A'}'),
-                                  Text('Email: ${resume['email'] ?? 'N/A'}'),
-                                  Text('Mobile: ${resume['mobileNumber'] ?? 'N/A'}'),
-                                  if (resume['specialization']?.isNotEmpty ?? false)
-                                    Text('Specialization: ${resume['specialization']}'),
-                                ],
+                if (isRecruiter)
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      AnimatedScaleButton(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => EditJobScreen(
+                                jobId: widget.job['jobId']?.toString() ?? '',
+                                jobData: _jobData ?? widget.job,
                               ),
-                              onTap: () {
-                                showDialog(
-                                  context: context,
-                                  builder: (context) => AlertDialog(
-                                    title: Text('Applicant: ${resume['name'] ?? 'Unknown'}'),
-                                    content: SingleChildScrollView(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text('Job: ${applicant['jobTitle'] ?? 'Unknown Job'}'),
-                                          Text('Skills: ${(resume['skills'] as List<dynamic>?)?.join(', ') ?? 'N/A'}'),
-                                          Text('Education: ${resume['education'] ?? 'N/A'}'),
-                                          Text('Experience: ${resume['experience'] ?? 'N/A'}'),
-                                          Text('Email: ${resume['email'] ?? 'N/A'}'),
-                                          Text('Mobile: ${resume['mobileNumber'] ?? 'N/A'}'),
-                                          Text('Specialization: ${resume['specialization'] ?? 'N/A'}'),
-                                          Text('Current Company: ${resume['currentCompany'] ?? 'N/A'}'),
-                                          Text('Current CTC: ${resume['currentCtc'] ?? 'N/A'}'),
-                                          Text('Expected CTC: ${resume['expectedCtc'] ?? 'N/A'}'),
-                                          Text('Cover Letter: ${applicant['coverLetter'] ?? 'N/A'}'),
-                                          if (resume['photoUrl']?.isNotEmpty ?? false)
-                                            Padding(
-                                              padding: const EdgeInsets.only(top: 8),
-                                              child: Image.network(resume['photoUrl'], height: 100, fit: BoxFit.cover),
-                                            ),
-                                        ],
-                                      ),
-                                    ),
-                                    actions: [
-                                      TextButton(
-                                        onPressed: () => Navigator.pop(context),
-                                        child: const Text('Close'),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              },
                             ),
                           );
                         },
-                      );
-                    },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [Colors.blue.shade700, Colors.teal.shade400],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.2),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.edit, color: Colors.white),
+                              const SizedBox(width: 8),
+                              const Text(
+                                'Edit',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      AnimatedScaleButton(
+                        onPressed: deleteJob,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [Colors.red.shade600, Colors.red.shade800],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.2),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.delete, color: Colors.white),
+                              const SizedBox(width: 8),
+                              const Text(
+                                'Delete',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            if (_notificationsStream != null)
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Notifications',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 10),
-                  StreamBuilder<QuerySnapshot>(
-                    stream: _notificationsStream,
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Center(child: CircularProgressIndicator());
-                      }
-                      if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                        return const Text('No notifications yet.');
-                      }
-                      return ListView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: snapshot.data!.docs.length,
-                        itemBuilder: (context, index) {
-                          final notification = snapshot.data!.docs[index].data() as Map<String, dynamic>;
-                          return ListTile(
-                            title: Text(notification['message'] ?? 'Unknown Message'),
-                            subtitle: Text('Time: ${notification['timestamp']?.toDate().toString() ?? 'N/A'}'),
+                const SizedBox(height: 20),
+                if (isRecruiter && _applicantsStream != null)
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Applicants',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blue.shade900),
+                      ),
+                      const SizedBox(height: 10),
+                      StreamBuilder<QuerySnapshot>(
+                        stream: _applicantsStream,
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState == ConnectionState.waiting) {
+                            return const Center(
+                              child: CircularProgressIndicator(
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.teal),
+                              ),
+                            );
+                          }
+                          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                            return const Text('No applicants yet.', style: TextStyle(fontSize: 16, color: Colors.grey));
+                          }
+                          return ListView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: snapshot.data!.docs.length,
+                            itemBuilder: (context, index) {
+                              final applicant = snapshot.data!.docs[index].data() as Map<String, dynamic>;
+                              final resume = applicant['resume'] as Map<String, dynamic>? ?? {};
+                              return AnimatedListItem(
+                                child: Card(
+                                  elevation: 3,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: [Colors.blue.shade50, Colors.blue.shade100],
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                      ),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: ListTile(
+                                      contentPadding: const EdgeInsets.all(16.0),
+                                      title: Text(
+                                        resume['name'] ?? 'Unknown Applicant',
+                                        style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.black87),
+                                      ),
+                                      subtitle: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text('Job: ${applicant['jobTitle'] ?? 'Unknown Job'}'),
+                                          Text('Skills: ${(resume['skills'] as List<dynamic>?)?.cast<String>().join(', ') ?? 'N/A'}'),
+                                          Text('Education: ${resume['education'] ?? 'N/A'}'),
+                                          Text('Experience: ${resume['experience'] ?? 'N/A'}'),
+                                          Text('Specialization: ${resume['specialization'] ?? 'N/A'}'),
+                                          Text('Email: ${resume['email'] ?? 'N/A'}'),
+                                          Text('Mobile: ${resume['mobileNumber'] ?? 'N/A'}'),
+                                        ],
+                                      ),
+                                      onTap: () {
+                                        showDialog(
+                                          context: context,
+                                          builder: (context) => AlertDialog(
+                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                            title: Container(
+                                              padding: const EdgeInsets.all(16),
+                                              decoration: BoxDecoration(
+                                                gradient: LinearGradient(
+                                                  colors: [Colors.blue.shade700, Colors.blue.shade900],
+                                                  begin: Alignment.topLeft,
+                                                  end: Alignment.bottomRight,
+                                                ),
+                                                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                                              ),
+                                              child: Text(
+                                                'Applicant: ${resume['name'] ?? 'Unknown'}',
+                                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                              ),
+                                            ),
+                                            content: SingleChildScrollView(
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Text('Job: ${applicant['jobTitle'] ?? 'Unknown Job'}'),
+                                                  Text('Skills: ${(resume['skills'] as List<dynamic>?)?.cast<String>().join(', ') ?? 'N/A'}'),
+                                                  Text('Education: ${resume['education'] ?? 'N/A'}'),
+                                                  Text('Experience: ${resume['experience'] ?? 'N/A'}'),
+                                                  Text('Specialization: ${resume['specialization'] ?? 'N/A'}'),
+                                                  Text('Email: ${resume['email'] ?? 'N/A'}'),
+                                                  Text('Mobile: ${resume['mobileNumber'] ?? 'N/A'}'),
+                                                  Text('Current Company: ${resume['currentCompany'] ?? 'N/A'}'),
+                                                  Text('Current CTC: ${resume['currentCtc'] ?? 'N/A'}'),
+                                                  Text('Expected CTC: ${resume['expectedCtc'] ?? 'N/A'}'),
+                                                  Text('Cover Letter: ${applicant['coverLetter'] ?? 'N/A'}'),
+                                                  if (resume['photoUrl']?.isNotEmpty ?? false)
+                                                    Padding(
+                                                      padding: const EdgeInsets.only(top: 8),
+                                                      child: ClipRRect(
+                                                        borderRadius: BorderRadius.circular(8),
+                                                        child: Image.network(resume['photoUrl'], height: 100, fit: BoxFit.cover),
+                                                      ),
+                                                    ),
+                                                ],
+                                              ),
+                                            ),
+                                            actions: [
+                                              TextButton(
+                                                onPressed: () => Navigator.pop(context),
+                                                child: const Text('Close', style: TextStyle(color: Colors.teal)),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
                           );
                         },
-                      );
-                    },
+                      ),
+                    ],
                   ),
-                ],
-              ),
-          ],
+                if (_notificationsStream != null)
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Notifications',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blue.shade900),
+                      ),
+                      const SizedBox(height: 10),
+                      StreamBuilder<QuerySnapshot>(
+                        stream: _notificationsStream,
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState == ConnectionState.waiting) {
+                            return const Center(
+                              child: CircularProgressIndicator(
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.teal),
+                              ),
+                            );
+                          }
+                          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                            return const Text('No notifications yet.', style: TextStyle(fontSize: 16, color: Colors.grey));
+                          }
+                          return ListView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: snapshot.data!.docs.length,
+                            itemBuilder: (context, index) {
+                              final notification = snapshot.data!.docs[index].data() as Map<String, dynamic>;
+                              return AnimatedListItem(
+                                child: Card(
+                                  elevation: 3,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: [Colors.blue.shade50, Colors.blue.shade100],
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                      ),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: ListTile(
+                                      contentPadding: const EdgeInsets.all(16.0),
+                                      title: Text(
+                                        notification['message'] ?? 'Unknown Message',
+                                        style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.black87),
+                                      ),
+                                      subtitle: Text(
+                                        'Time: ${notification['timestamp']?.toDate().toString() ?? 'N/A'}',
+                                        style: TextStyle(color: Colors.grey.shade600),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+              ],
+            ),
+          ),
         ),
+      ),
+    );
+  }
+}
+
+// Custom Animated Button Widget
+class AnimatedScaleButton extends StatefulWidget {
+  final VoidCallback onPressed;
+  final Widget child;
+
+  const AnimatedScaleButton({required this.onPressed, required this.child, super.key});
+
+  @override
+  AnimatedScaleButtonState createState() => AnimatedScaleButtonState();
+}
+
+class AnimatedScaleButtonState extends State<AnimatedScaleButton> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 100),
+      vsync: this,
+    );
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(_controller);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => _controller.forward(),
+      onTapUp: (_) {
+        _controller.reverse();
+        widget.onPressed();
+      },
+      onTapCancel: () => _controller.reverse(),
+      child: ScaleTransition(
+        scale: _scaleAnimation,
+        child: widget.child,
+      ),
+    );
+  }
+}
+
+// Custom Animated List Item Widget
+class AnimatedListItem extends StatefulWidget {
+  final Widget child;
+
+  const AnimatedListItem({required this.child, super.key});
+
+  @override
+  AnimatedListItemState createState() => AnimatedListItemState();
+}
+
+class AnimatedListItemState extends State<AnimatedListItem> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 500),
+      vsync: this,
+    );
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(_controller);
+    _slideAnimation = Tween<Offset>(begin: const Offset(0.2, 0), end: Offset.zero).animate(_controller);
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _fadeAnimation,
+      child: SlideTransition(
+        position: _slideAnimation,
+        child: widget.child,
       ),
     );
   }

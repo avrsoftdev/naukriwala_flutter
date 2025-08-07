@@ -30,7 +30,10 @@ class _SeekerDashboardState extends State<SeekerDashboard> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Please log in to access the dashboard.')),
+            SnackBar(
+              content: const Text('Please log in to access the dashboard.'),
+              backgroundColor: Colors.redAccent,
+            ),
           );
           Navigator.pushReplacementNamed(context, '/login');
         }
@@ -40,23 +43,44 @@ class _SeekerDashboardState extends State<SeekerDashboard> {
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        title: const Text(''),
+        backgroundColor: Colors.white,
+        elevation: 2,
+        title: const Text(
+          'Seeker Dashboard',
+          style: TextStyle(
+            color: Colors.black87,
+            fontWeight: FontWeight.bold,
+            fontSize: 22,
+          ),
+        ),
+        centerTitle: true,
         leading: Builder(
           builder: (context) => IconButton(
-            icon: const Icon(Icons.menu, color: Colors.black),
+            icon: const Icon(Icons.menu, color: Colors.black87, size: 28),
             onPressed: () => Scaffold.of(context).openDrawer(),
           ),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.notifications, color: Colors.black87, size: 28),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const NotificationsScreen(isRecruiter: false),
+                ),
+              );
+            },
+          ),
+        ],
       ),
       drawer: Drawer(
         child: Container(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
-              colors: [Color(0xFF6A1B9A), Color(0xFF00695C)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+              colors: [Color(0xFF00B4DB), Color(0xFF0083B0)],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
             ),
           ),
           child: ListView(
@@ -66,17 +90,32 @@ class _SeekerDashboardState extends State<SeekerDashboard> {
                 decoration: const BoxDecoration(
                   color: Colors.transparent,
                 ),
-                child: CircleAvatar(
-                  radius: 50,
-                  backgroundImage: widget.photoUrl != null ? NetworkImage(widget.photoUrl!) : null,
-                  child: widget.photoUrl == null ? const Icon(Icons.person, size: 50, color: Colors.white) : null,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircleAvatar(
+                      radius: 40,
+                      backgroundImage: widget.photoUrl != null ? NetworkImage(widget.photoUrl!) : null,
+                      backgroundColor: Colors.white.withOpacity(0.2),
+                      child: widget.photoUrl == null ? const Icon(Icons.person, size: 50, color: Colors.white) : null,
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      widget.seekerName ?? 'Seeker',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              ListTile(
-                leading: const Icon(Icons.person, color: Colors.white),
-                title: const Text('Profile', style: TextStyle(color: Colors.white)),
+              _buildDrawerItem(
+                icon: Icons.person,
+                title: 'Profile',
                 onTap: () {
-                  Navigator.pop(context); // Close the drawer
+                  Navigator.pop(context);
                   Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -85,9 +124,9 @@ class _SeekerDashboardState extends State<SeekerDashboard> {
                   );
                 },
               ),
-              ListTile(
-                leading: const Icon(Icons.work, color: Colors.white),
-                title: const Text('Search Jobs', style: TextStyle(color: Colors.white)),
+              _buildDrawerItem(
+                icon: Icons.work,
+                title: 'Search Jobs',
                 onTap: () {
                   Navigator.pop(context);
                   Navigator.push(
@@ -96,9 +135,9 @@ class _SeekerDashboardState extends State<SeekerDashboard> {
                   );
                 },
               ),
-              ListTile(
-                leading: const Icon(Icons.work_history_rounded, color: Colors.white),
-                title: const Text('Applied Jobs', style: TextStyle(color: Colors.white)),
+              _buildDrawerItem(
+                icon: Icons.work_history_rounded,
+                title: 'Applied Jobs',
                 onTap: () {
                   Navigator.pop(context);
                   if (uid != null) {
@@ -108,14 +147,17 @@ class _SeekerDashboardState extends State<SeekerDashboard> {
                     );
                   } else {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Please log in to view applications')),
+                      SnackBar(
+                        content: const Text('Please log in to view applications'),
+                        backgroundColor: Colors.redAccent,
+                      ),
                     );
                   }
                 },
               ),
-              ListTile(
-                leading: const Icon(Icons.notification_add, color: Colors.white),
-                title: const Text('Notifications', style: TextStyle(color: Colors.white)),
+              _buildDrawerItem(
+                icon: Icons.notification_add,
+                title: 'Notifications',
                 onTap: () {
                   Navigator.pop(context);
                   Navigator.push(
@@ -126,16 +168,19 @@ class _SeekerDashboardState extends State<SeekerDashboard> {
                   );
                 },
               ),
-                            ListTile(
-                leading: const Icon(Icons.logout, color: Colors.white),
-                title: const Text('Logout', style: TextStyle(color: Colors.white)),
+              _buildDrawerItem(
+                icon: Icons.logout,
+                title: 'Logout',
                 onTap: () async {
                   Navigator.pop(context);
                   await _authService.signOut();
                   if (mounted) {
                     Navigator.pushReplacementNamed(context, '/');
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Logged out successfully')),
+                      SnackBar(
+                        content: const Text('Logged out successfully'),
+                        backgroundColor: Colors.green,
+                      ),
                     );
                   }
                 },
@@ -149,35 +194,95 @@ class _SeekerDashboardState extends State<SeekerDashboard> {
         child: Column(
           children: [
             Container(
-              padding: const EdgeInsets.symmetric(vertical: 10),
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Color(0xFF6A1B9A), Color(0xFF00695C)],
+                  colors: [Color(0xFF00B4DB), Color(0xFF0083B0)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black12,
+                    blurRadius: 8,
+                    offset: Offset(0, 4),
+                  ),
+                ],
               ),
-              child: const TabBar(
+              child: TabBar(
                 labelColor: Colors.white,
                 unselectedLabelColor: Colors.white70,
-                indicatorColor: Colors.white,
+                indicator: const BoxDecoration(
+                  borderRadius: BorderRadius.all(Radius.circular(20)),
+                  color: Colors.white24,
+                ),
                 tabs: [
-                  Tab(icon: Icon(Icons.person)),
-                  Tab(icon: Icon(Icons.work)),
-                  Tab(icon: Icon(Icons.work_history_rounded)),
-                  Tab(icon: Icon(Icons.notification_add)),
+                  _buildTab(Icons.person, 'Profile'),
+                  _buildTab(Icons.work, 'Jobs'),
+                  _buildTab(Icons.work_history_rounded, 'Applications'),
+                  _buildTab(Icons.notification_add, 'Notifications'),
                 ],
               ),
             ),
             Expanded(
-              child: TabBarView(
-                children: [
-                  const ProfileScreen(isRecruiter: false),
-                  const SearchJobScreen(isSeekerProfileView: true),
-                  MyApplicationsScreen(seekerId: uid),
-                  const NotificationsScreen(isRecruiter: false),
-                ],
+              child: Container(
+                color: Colors.grey[100],
+                child: TabBarView(
+                  children: [
+                    const ProfileScreen(isRecruiter: false),
+                    const SearchJobScreen(isSeekerProfileView: true),
+                    MyApplicationsScreen(seekerId: uid),
+                    const NotificationsScreen(isRecruiter: false),
+                  ],
+                ),
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDrawerItem({
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    return ListTile(
+      leading: Icon(icon, color: Colors.white, size: 28),
+      title: Text(
+        title,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 16,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      onTap: onTap,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 5),
+      tileColor: Colors.transparent,
+      hoverColor: Colors.white12,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+      ),
+    );
+  }
+
+  Widget _buildTab(IconData icon, String label) {
+    return Tab(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 20),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
             ),
           ],
         ),

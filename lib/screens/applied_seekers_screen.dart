@@ -24,81 +24,85 @@ class _AppliedSeekersScreenState extends State<AppliedSeekersScreen> {
   final String? recruiterId = FirebaseAuth.instance.currentUser?.uid;
   String _searchQuery = '';
 
-  Future<void> _sendNotification(String seekerId, String message, String jobId, String jobTitle) async {
-    final notificationId = FirebaseFirestore.instance.collection('SeekerNotifications').doc(seekerId).collection('Notifications').doc().id;
-    try {
-      dev.log('Generated notificationId: $notificationId for seeker $seekerId, job $jobId', name: 'AppliedSeekersScreen');
-      final batch = FirebaseFirestore.instance.batch();
+  // Specialization options (same as ProfileScreen and AuthService)
+  final List<String> specializationOptions = [
+    'Computer Science / IT',
+    'Electronics / Electrical / Robotics',
+    'Mechanical / Civil / Architecture',
+    'Business / Finance / Management',
+    'Medicine / Healthcare / Pharma',
+    'Law / Political Science / Public Administration',
+    'Arts / Humanities / Education',
+    'Design / Media / Communication',
+    'Hotel / Travel / Event Management',
+    'Science / Research / Environment',
+    'Others',
+  ];
 
-      // Seeker notification
-      final seekerNotifRef = FirebaseFirestore.instance
-          .collection('SeekerNotifications')
-          .doc(seekerId)
-          .collection('Notifications')
-          .doc(notificationId);
-      batch.set(seekerNotifRef, {
-        'to': seekerId,
-        'from': recruiterId,
-        'message': message,
-        'timestamp': FieldValue.serverTimestamp(),
-        'read': false,
-        'type': 'application',
-        'jobId': jobId,
-        'jobTitle': jobTitle,
-        'notificationId': notificationId,
-      });
-
-      // Recruiter notification
-      if (recruiterId != null) {
-        final recruiterNotifId = FirebaseFirestore.instance.collection('RecruiterNotifications').doc(recruiterId).collection('Notifications').doc().id;
-        final recruiterNotifRef = FirebaseFirestore.instance
-            .collection('RecruiterNotifications')
-            .doc(recruiterId)
-            .collection('Notifications')
-            .doc(recruiterNotifId);
-        batch.set(recruiterNotifRef, {
-          'to': recruiterId,
-          'from': seekerId,
-          'message': 'Action taken: $message',
-          'timestamp': FieldValue.serverTimestamp(),
-          'read': false,
-          'type': 'application',
-          'jobId': jobId,
-          'jobTitle': jobTitle,
-          'notificationId': recruiterNotifId,
-        });
-      }
-
-      await batch.commit();
-      dev.log('Notifications sent: Seeker $seekerId ($notificationId), Recruiter $recruiterId for job $jobId', name: 'AppliedSeekersScreen');
-
-      final tokenSnapshot = await FirebaseFirestore.instance.collection('UsersIndex').doc(seekerId).get();
-      final token = tokenSnapshot.data()?['fcmToken'] as String?;
-      if (token != null) {
-        dev.log('FCM token found for $seekerId: $token', name: 'AppliedSeekersScreen');
-        // Add FCM logic here if implemented
-      } else {
-        dev.log('No FCM token found for $seekerId, notification stored in Firestore only', name: 'AppliedSeekersScreen');
-      }
-    } catch (e) {
-      dev.log('Error sending notification to $seekerId for job $jobId: $e', name: 'AppliedSeekersScreen', error: e);
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          if (e is FirebaseException && e.code == 'permission-denied') {
-            dev.log('Permission denied writing to SeekerNotifications/$seekerId/Notifications/$notificationId or RecruiterNotifications/$recruiterId/Notifications. Check Firestore rules.', name: 'AppliedSeekersScreen');
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Permission denied sending notification. Verify Firestore rules.')),
-            );
-          } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Failed to send notification: $e')),
-            );
-          }
-        }
-      });
-      rethrow;
-    }
-  }
+  // Skills by specialization (same as ProfileScreen and AuthService)
+  final Map<String, List<String>> skillsBySpecialization = {
+    'Computer Science / IT': [
+      'Java', 'Python', 'C++', 'C#', 'Dart', 'Flutter', 'Android Development',
+      'iOS Development', 'React', 'Angular', 'Vue.js', 'Node.js', 'Firebase',
+      'AWS', 'Docker', 'Kubernetes', 'SQL', 'MongoDB', 'REST APIs', 'GraphQL',
+      'Machine Learning', 'Data Structures & Algorithms', 'DevOps', 'Cybersecurity',
+      'System Design',
+    ],
+    'Electronics / Electrical / Robotics': [
+      'Embedded Systems', 'PCB Design', 'VLSI', 'MATLAB', 'Simulink', 'Verilog',
+      'FPGA Programming', 'Arduino', 'Raspberry Pi', 'IoT Development',
+      'Signal Processing', 'Power Systems', 'Automation', 'SCADA',
+    ],
+    'Mechanical / Civil / Architecture': [
+      'AutoCAD', 'SolidWorks', 'CATIA', 'ANSYS', 'STAAD Pro', 'Revit',
+      'Structural Analysis', 'Thermodynamics', 'Manufacturing Processes',
+      'Fluid Mechanics', 'Construction Management', 'Urban Planning',
+    ],
+    'Business / Finance / Management': [
+      'Financial Analysis', 'Accounting', 'MS Excel', 'Tally', 'Business Intelligence',
+      'SAP', 'QuickBooks', 'Digital Marketing', 'Google Ads', 'SEO',
+      'Social Media Marketing', 'Project Management', 'Agile', 'Scrum',
+      'Business Strategy', 'Market Research', 'Customer Relationship Management (CRM)',
+      'Salesforce',
+    ],
+    'Medicine / Healthcare / Pharma': [
+      'Clinical Research', 'Patient Care', 'Surgical Assistance', 'Nursing Procedures',
+      'Medical Coding', 'Public Health', 'Pharmacology', 'First Aid', 'CPR',
+      'Health Education', 'Lab Testing', 'Radiology', 'Therapeutic Skills',
+    ],
+    'Law / Political Science / Public Administration': [
+      'Legal Research', 'Case Analysis', 'Contract Drafting', 'Litigation',
+      'Legal Compliance', 'Constitutional Law', 'Criminal Law', 'International Law',
+      'Arbitration', 'Policy Analysis', 'Public Speaking',
+    ],
+    'Arts / Humanities / Education': [
+      'Creative Writing', 'Content Writing', 'Linguistics', 'Public Speaking',
+      'Editing & Proofreading', 'Critical Thinking', 'Classroom Management',
+      'Curriculum Development', 'E-Learning Tools', 'Art History', 'Philosophical Analysis',
+    ],
+    'Design / Media / Communication': [
+      'Adobe Photoshop', 'Adobe Illustrator', 'Adobe XD', 'Figma', 'Canva',
+      'UI/UX Design', 'Video Editing', '3D Modeling', 'Motion Graphics', 'Photography',
+      'Copywriting', 'Branding', 'Social Media Content Creation', 'Typography', 'Storyboarding',
+      'Final Cut Pro', 'Lightroom',
+    ],
+    'Hotel / Travel / Event Management': [
+      'Event Planning', 'Hospitality Management', 'Customer Service', 'Bartending',
+      'Housekeeping', 'Food & Beverage Service', 'Travel Planning', 'Ticketing & Reservations',
+      'Catering Services', 'Inventory Management', 'Public Relations', 'Vendor Management',
+    ],
+    'Science / Research / Environment': [
+      'Laboratory Techniques', 'Statistical Analysis', 'Research Writing', 'Data Collection',
+      'Environmental Impact Assessment', 'Geographic Information System (GIS)', 'Microscopy',
+      'Chemical Analysis', 'Climate Modeling', 'Bioinformatics',
+    ],
+    'Others': [
+      'Communication Skills', 'Problem Solving', 'Teamwork', 'Leadership', 'Time Management',
+      'Adaptability', 'Creativity', 'Conflict Resolution', 'Critical Thinking', 'Customer Support',
+      'Basic Computer Skills', 'Typing', 'Remote Work Tools (Zoom, Slack, Trello)', 'Virtual Assistant',
+      'Content Moderation',
+    ],
+  };
 
   void _addToCalendar(String title, DateTime date) {
     final event = Event(
@@ -123,46 +127,17 @@ class _AppliedSeekersScreenState extends State<AppliedSeekersScreen> {
       return;
     }
     final resume = data['resume'] as Map<String, dynamic>? ?? {};
-    final seeker = {
-      ...data,
-      'name': resume['name'] ?? data['name'] ?? seekerId,
-      'cvUrl': resume['cvUrl'] ?? data['cvUrl'] ?? '',
-    };
     final jobTitle = data['jobTitle'] as String? ?? 'Unknown';
 
     try {
       dev.log('Handling action: $action for seeker $seekerId, job $jobId', name: 'AppliedSeekersScreen');
       switch (action) {
         case 'shortlist':
-          dev.log('Attempting to shortlist seeker $seekerId for job $jobId', name: 'AppliedSeekersScreen');
-          final applicationDoc = await FirebaseFirestore.instance.collection('Applications').doc(jobId).collection('AppliedJobs').doc(seekerId).get();
-          if (!applicationDoc.exists) {
-            dev.log('Application not found for job $jobId, seeker $seekerId', name: 'AppliedSeekersScreen');
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Application not found')),
-              );
-            }
-            return;
-          }
-          final jobDoc = await FirebaseFirestore.instance.collection('Recruiters').doc(recruiterId).collection('Jobs').doc(jobId).get();
-          if (!jobDoc.exists || jobDoc.data()?['recruiterId'] != recruiterId) {
-            dev.log('Job $jobId not found or does not belong to recruiter $recruiterId', name: 'AppliedSeekersScreen');
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Cannot shortlist: Job not found or unauthorized')),
-              );
-            }
-            return;
-          }
-          final batch = FirebaseFirestore.instance.batch();
-          final shortlistRef = FirebaseFirestore.instance.collection('Shortlisted').doc(jobId).collection('Seekers').doc(seekerId);
-          final applicationRef = FirebaseFirestore.instance.collection('Applications').doc(jobId).collection('AppliedJobs').doc(seekerId);
-          batch.set(shortlistRef, {'timestamp': FieldValue.serverTimestamp()});
-          batch.update(applicationRef, {'status': 'Shortlisted'});
-          await batch.commit();
-          await _sendNotification(seekerId, 'You have been shortlisted for the job "$jobTitle"!', jobId, jobTitle);
-          dev.log('Successfully shortlisted seeker $seekerId for job $jobId', name: 'AppliedSeekersScreen');
+          await widget.authService.handleAction(
+            action: 'shortlist',
+            jobId: jobId,
+            seekerId: seekerId,
+          );
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Applicant shortlisted successfully')),
@@ -172,30 +147,11 @@ class _AppliedSeekersScreenState extends State<AppliedSeekersScreen> {
           break;
 
         case 'reject':
-          dev.log('Attempting to reject seeker $seekerId for job $jobId', name: 'AppliedSeekersScreen');
-          final applicationDocReject = await FirebaseFirestore.instance.collection('Applications').doc(jobId).collection('AppliedJobs').doc(seekerId).get();
-          if (!applicationDocReject.exists) {
-            dev.log('Application not found for job $jobId, seeker $seekerId', name: 'AppliedSeekersScreen');
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Application not found')),
-              );
-            }
-            return;
-          }
-          final jobDocReject = await FirebaseFirestore.instance.collection('Recruiters').doc(recruiterId).collection('Jobs').doc(jobId).get();
-          if (!jobDocReject.exists || jobDocReject.data()?['recruiterId'] != recruiterId) {
-            dev.log('Job $jobId not found or does not belong to recruiter $recruiterId', name: 'AppliedSeekersScreen');
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Cannot reject: Job not found or unauthorized')),
-              );
-            }
-            return;
-          }
-          await FirebaseFirestore.instance.collection('Applications').doc(jobId).collection('AppliedJobs').doc(seekerId).update({'status': 'Rejected'});
-          await _sendNotification(seekerId, 'Your application for "$jobTitle" has been rejected.', jobId, jobTitle);
-          dev.log('Successfully rejected seeker $seekerId for job $jobId', name: 'AppliedSeekersScreen');
+          await widget.authService.handleAction(
+            action: 'reject',
+            jobId: jobId,
+            seekerId: seekerId,
+          );
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Applicant rejected successfully')),
@@ -205,13 +161,34 @@ class _AppliedSeekersScreenState extends State<AppliedSeekersScreen> {
           break;
 
         case 'schedule':
-          dev.log('Attempting to schedule interview for seeker $seekerId, job $jobId', name: 'AppliedSeekersScreen');
-          _showDatePicker(jobId, seekerId, seeker, jobTitle);
+          final pickedDate = await showDatePicker(
+            context: context,
+            initialDate: DateTime.now().add(const Duration(days: 1)),
+            firstDate: DateTime.now(),
+            lastDate: DateTime.now().add(const Duration(days: 365)),
+          );
+          if (pickedDate != null && mounted) {
+            await widget.authService.handleAction(
+              action: 'schedule',
+              jobId: jobId,
+              seekerId: seekerId,
+              additionalData: {
+                'interviewDate': Timestamp.fromDate(pickedDate),
+              },
+            );
+            _addToCalendar('Interview with ${resume['name'] ?? data['name'] ?? seekerId}', pickedDate);
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Interview scheduled successfully')),
+              );
+              setState(() {}); // Refresh UI
+            }
+          }
           break;
 
         case 'download_cv':
           dev.log('Attempting to download CV for seeker $seekerId, job $jobId', name: 'AppliedSeekersScreen');
-          final url = seeker['cvUrl'] as String? ?? '';
+          final url = resume['cvUrl'] as String? ?? '';
           if (url.isNotEmpty && await canLaunchUrl(Uri.parse(url))) {
             await launchUrl(Uri.parse(url));
             dev.log('Downloaded CV for seeker $seekerId: $url', name: 'AppliedSeekersScreen');
@@ -231,24 +208,19 @@ class _AppliedSeekersScreenState extends State<AppliedSeekersScreen> {
           }
           final chatId = [recruiterId!, seekerId].join('_').split('_')..sort();
           final normalizedChatId = '${chatId[0]}_${chatId[1]}';
-          try {
-            await widget.authService.sendMessage(seekerId, jobId, 'Hello, let’s discuss your application!');
-            if (mounted) {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => ChatScreen(chatId: normalizedChatId, recipientId: seekerId, jobId: jobId),
-                ),
-              );
-              dev.log('Successfully navigated to ChatScreen for seeker $seekerId', name: 'AppliedSeekersScreen');
-            }
-          } catch (e) {
-            dev.log('Error navigating to ChatScreen for seeker $seekerId: $e', name: 'AppliedSeekersScreen', error: e);
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Failed to open chat: $e')),
-              );
-            }
+          await widget.authService.handleAction(
+            action: 'chat',
+            jobId: jobId,
+            seekerId: seekerId,
+          );
+          if (mounted) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => ChatScreen(chatId: normalizedChatId, recipientId: seekerId, jobId: jobId),
+              ),
+            );
+            dev.log('Successfully navigated to ChatScreen for seeker $seekerId', name: 'AppliedSeekersScreen');
           }
           break;
       }
@@ -257,7 +229,7 @@ class _AppliedSeekersScreenState extends State<AppliedSeekersScreen> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           if (e is FirebaseException && e.code == 'permission-denied') {
-            dev.log('Permission denied for action $action. Check Firestore rules for /Applications, /Shortlisted, and /SeekerNotifications.', name: 'AppliedSeekersScreen');
+            dev.log('Permission denied for action $action. Check Firestore rules for /Applications/$jobId/AppliedJobs/$seekerId or /Shortlisted/$jobId/Seekers/$seekerId.', name: 'AppliedSeekersScreen');
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Permission denied. Verify job ownership or application data.')),
             );
@@ -271,61 +243,26 @@ class _AppliedSeekersScreenState extends State<AppliedSeekersScreen> {
     }
   }
 
-  void _showDatePicker(String jobId, String seekerId, Map<String, dynamic> seeker, String jobTitle) async {
-    final pickedDate = await showDatePicker(
-      context: context,
-      initialDate: DateTime.now().add(const Duration(days: 1)),
-      firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
-    );
-    if (pickedDate != null && mounted) {
-      try {
-        dev.log('Scheduling interview for seeker $seekerId on job $jobId at ${DateFormat('dd MMM yyyy').format(pickedDate)}', name: 'AppliedSeekersScreen');
-        final batch = FirebaseFirestore.instance.batch();
-        batch.update(
-          FirebaseFirestore.instance.collection('Applications').doc(jobId).collection('AppliedJobs').doc(seekerId),
-          {
-            'status': 'Interview Scheduled',
-            'interviewDate': Timestamp.fromDate(pickedDate),
-          },
-        );
-        await batch.commit();
-        await _sendNotification(
-          seekerId,
-          'Interview for "$jobTitle" scheduled on ${DateFormat('dd MMM yyyy').format(pickedDate)}',
-          jobId,
-          jobTitle,
-        );
-        _addToCalendar('Interview with ${seeker['name']}', pickedDate);
-        dev.log('Successfully scheduled interview for seeker $seekerId on job $jobId', name: 'AppliedSeekersScreen');
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Interview scheduled successfully')),
-          );
-          setState(() {}); // Refresh UI
-        }
-      } catch (e) {
-        dev.log('Error scheduling interview for seeker $seekerId, job $jobId: $e', name: 'AppliedSeekersScreen', error: e);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to schedule interview: $e')),
-          );
-        }
-      }
-    }
-  }
-
   Future<void> _exportToExcel(List<Map<String, dynamic>> applicants) async {
     try {
       var excel = Excel.createExcel();
       Sheet sheet = excel['Applicants'];
-      sheet.appendRow(['Name', 'Mobile', 'Specialization', 'Experience', 'Status', 'Job Title']);
+      sheet.appendRow(['Name', 'Mobile', 'Specialization', 'Education', 'Experience', 'Skills', 'Status', 'Job Title']);
       for (var a in applicants) {
+        final resume = a['resume'] as Map<String, dynamic>? ?? {};
+        final specialization = specializationOptions.contains(resume['specialization'] ?? a['specialization'])
+            ? (resume['specialization'] ?? a['specialization'] ?? 'N/A')
+            : 'N/A';
+        final skillsList = (resume['skills'] as List<dynamic>?)?.cast<String>() ?? (a['skills'] is String ? a['skills'].split(', ') : a['skills'] ?? []);
+        final validSkills = skillsBySpecialization[specialization] ?? skillsBySpecialization['Others']!;
+        final filteredSkills = skillsList.where((skill) => validSkills.contains(skill)).join(', ');
         sheet.appendRow([
-          a['name'] ?? '',
-          a['mobile'] ?? a['resume']?['mobileNumber'] ?? '',
-          a['specialization'] ?? a['resume']?['specialization'] ?? '',
-          a['experience'] ?? a['resume']?['experience'] ?? '',
+          resume['name'] ?? a['name'] ?? '',
+          resume['mobileNumber'] ?? a['mobile'] ?? '',
+          specialization,
+          resume['education'] ?? a['education'] ?? '',
+          resume['experience'] ?? a['experience'] ?? '',
+          filteredSkills.isEmpty ? 'N/A' : filteredSkills,
           a['status'] ?? '',
           a['jobTitle'] ?? '',
         ]);
@@ -375,7 +312,7 @@ class _AppliedSeekersScreenState extends State<AppliedSeekersScreen> {
                     try {
                       final applicants = await widget.authService.fetchAppliedSeekers();
                       if (applicants.isEmpty) {
-                        dev.log('No applicants to export for recruiter $recruiterId', name: 'AppliedSeekersScreen');
+                        dev.log('No applicants to export for recruiter $recruiterId', name: 'scalerAppliedSeekersScreen');
                         if (mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(content: Text('No applicants available to export.')),
@@ -446,6 +383,12 @@ class _AppliedSeekersScreenState extends State<AppliedSeekersScreen> {
                       final seekerId = applicant['seekerId'] as String? ?? 'Unknown';
                       final jobId = applicant['jobId'] as String? ?? 'Unknown';
                       final resume = applicant['resume'] as Map<String, dynamic>? ?? {};
+                      final specialization = specializationOptions.contains(resume['specialization'] ?? applicant['specialization'])
+                          ? (resume['specialization'] ?? applicant['specialization'] ?? 'N/A')
+                          : 'N/A';
+                      final skillsList = (resume['skills'] as List<dynamic>?)?.cast<String>() ?? (applicant['skills'] is String ? applicant['skills'].split(', ') : applicant['skills'] ?? []);
+                      final validSkills = skillsBySpecialization[specialization] ?? skillsBySpecialization['Others']!;
+                      final filteredSkills = skillsList.where((skill) => validSkills.contains(skill)).join(', ');
 
                       return Card(
                         elevation: 2,
@@ -458,8 +401,9 @@ class _AppliedSeekersScreenState extends State<AppliedSeekersScreen> {
                               Text('Job: ${applicant['jobTitle'] ?? jobId}'),
                               Text('Name: ${resume['name'] ?? 'N/A'}'),
                               Text('Email: ${resume['email'] ?? 'N/A'}'),
-                              Text('Skills: ${(resume['skills'] as List<dynamic>?)?.join(', ') ?? 'N/A'}'),
-                              Text('Specialization: ${resume['specialization'] ?? applicant['specialization'] ?? 'N/A'}'),
+                              Text('Skills: ${filteredSkills.isEmpty ? 'N/A' : filteredSkills}'),
+                              Text('Specialization: $specialization'),
+                              Text('Education: ${resume['education'] ?? applicant['education'] ?? 'N/A'}'),
                               Text('Experience: ${resume['experience'] ?? applicant['experience'] ?? 'N/A'}'),
                               Text('Status: ${applicant['status'] ?? 'N/A'}'),
                             ],
@@ -467,10 +411,11 @@ class _AppliedSeekersScreenState extends State<AppliedSeekersScreen> {
                           trailing: PopupMenuButton<String>(
                             onSelected: (action) => _handleAction(action, jobId, seekerId, {'resume': resume, ...applicant}),
                             itemBuilder: (context) => [
-                              PopupMenuItem(value: 'shortlist', child: Text('Shortlist')),
-                              PopupMenuItem(value: 'reject', child: Text('Reject')),
-                              PopupMenuItem(value: 'schedule', child: Text('Schedule Interview')),
-                              PopupMenuItem(value: 'chat', child: Text('Chat')),
+                              const PopupMenuItem(value: 'shortlist', child: Text('Shortlist')),
+                              const PopupMenuItem(value: 'reject', child: Text('Reject')),
+                              const PopupMenuItem(value: 'schedule', child: Text('Schedule Interview')),
+                              const PopupMenuItem(value: 'download_cv', child: Text('Download CV')),
+                              const PopupMenuItem(value: 'chat', child: Text('Chat')),
                             ],
                           ),
                         ),

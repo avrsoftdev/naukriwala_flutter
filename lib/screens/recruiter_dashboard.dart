@@ -57,7 +57,10 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
         dev.log('WARNING: User ${FirebaseAuth.instance.currentUser!.uid} does not have recruiter role', name: 'RecruiterDashboard');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Invalid role. Please ensure your account is set as a recruiter.')),
+            SnackBar(
+              content: const Text('Invalid role. Please ensure your account is set as a recruiter.'),
+              backgroundColor: Colors.redAccent,
+            ),
           );
         }
       }
@@ -72,7 +75,10 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Please log in to access the dashboard.')),
+            SnackBar(
+              content: const Text('Please log in to access the dashboard.'),
+              backgroundColor: Colors.redAccent,
+            ),
           );
           Navigator.pushReplacementNamed(context, '/login');
         }
@@ -82,41 +88,76 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        title: const Text(''),
+        backgroundColor: Colors.white,
+        elevation: 2,
+        title: const Text(
+          'Recruiter Dashboard',
+          style: TextStyle(
+            color: Colors.black87,
+            fontWeight: FontWeight.bold,
+            fontSize: 22,
+          ),
+        ),
+        centerTitle: true,
         leading: Builder(
           builder: (context) => IconButton(
-            icon: const Icon(Icons.menu, color: Colors.black),
+            icon: const Icon(Icons.menu, color: Colors.black87, size: 28),
             onPressed: () => Scaffold.of(context).openDrawer(),
           ),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.notifications, color: Colors.black87, size: 28),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const NotificationsScreen(isRecruiter: true),
+                ),
+              );
+            },
+          ),
+        ],
       ),
       drawer: Drawer(
         child: Container(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
-              colors: [Color(0xFF6A1B9A), Color(0xFF00695C)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+              colors: [Color(0xFF4A00E0), Color(0xFF8E2DE2)],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
             ),
           ),
           child: ListView(
             padding: EdgeInsets.zero,
             children: [
-              const DrawerHeader(
-                decoration: BoxDecoration(
+              DrawerHeader(
+                decoration: const BoxDecoration(
                   color: Colors.transparent,
                 ),
-                child: CircleAvatar(
-                  radius: 50,
-                  backgroundColor: Colors.white24,
-                  child: Icon(Icons.person, size: 50, color: Colors.white),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircleAvatar(
+                      radius: 40,
+                      backgroundColor: Colors.white.withOpacity(0.2),
+                      child: const Icon(Icons.person, size: 50, color: Colors.white),
+                    ),
+                    const SizedBox(height: 10),
+                    const Text(
+                      'Recruiter',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              ListTile(
-                leading: const Icon(Icons.person, color: Colors.white),
-                title: const Text('Profile', style: TextStyle(color: Colors.white)),
+              _buildDrawerItem(
+                icon: Icons.person,
+                title: 'Profile',
                 onTap: () {
                   Navigator.pop(context);
                   Navigator.push(
@@ -127,9 +168,9 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
                   );
                 },
               ),
-              ListTile(
-                leading: const Icon(Icons.work, color: Colors.white),
-                title: const Text('Posted Jobs', style: TextStyle(color: Colors.white)),
+              _buildDrawerItem(
+                icon: Icons.work,
+                title: 'Posted Jobs',
                 onTap: () {
                   Navigator.pop(context);
                   Navigator.push(
@@ -140,9 +181,9 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
                   );
                 },
               ),
-              ListTile(
-                leading: const Icon(Icons.group_add, color: Colors.white),
-                title: const Text('Applied Seekers', style: TextStyle(color: Colors.white)),
+              _buildDrawerItem(
+                icon: Icons.group_add,
+                title: 'Applied Seekers',
                 onTap: () {
                   Navigator.pop(context);
                   Navigator.push(
@@ -153,9 +194,9 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
                   );
                 },
               ),
-              ListTile(
-                leading: const Icon(Icons.call, color: Colors.white),
-                title: const Text('Calls', style: TextStyle(color: Colors.white)),
+              _buildDrawerItem(
+                icon: Icons.call,
+                title: 'Calls',
                 onTap: () {
                   Navigator.pop(context);
                   Navigator.push(
@@ -166,9 +207,9 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
                   );
                 },
               ),
-              ListTile(
-                leading: const Icon(Icons.work, color: Colors.white),
-                title: const Text('Post a Job', style: TextStyle(color: Colors.white)),
+              _buildDrawerItem(
+                icon: Icons.work,
+                title: 'Post a Job',
                 onTap: () {
                   Navigator.pop(context);
                   Navigator.push(
@@ -179,9 +220,9 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
                   );
                 },
               ),
-              ListTile(
-                leading: const Icon(Icons.notifications, color: Colors.white),
-                title: const Text('Notifications', style: TextStyle(color: Colors.white)),
+              _buildDrawerItem(
+                icon: Icons.notifications,
+                title: 'Notifications',
                 onTap: () {
                   Navigator.pop(context);
                   Navigator.push(
@@ -192,16 +233,19 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
                   );
                 },
               ),
-              ListTile(
-                leading: const Icon(Icons.logout, color: Colors.white),
-                title: const Text('Logout', style: TextStyle(color: Colors.white)),
+              _buildDrawerItem(
+                icon: Icons.logout,
+                title: 'Logout',
                 onTap: () async {
                   Navigator.pop(context);
                   await _authService.signOut();
                   if (mounted) {
                     Navigator.pushReplacementNamed(context, '/');
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Logged out successfully')),
+                      SnackBar(
+                        content: const Text('Logged out successfully'),
+                        backgroundColor: Colors.green,
+                      ),
                     );
                   }
                 },
@@ -215,39 +259,99 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
         child: Column(
           children: [
             Container(
-              padding: const EdgeInsets.symmetric(vertical: 10),
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Color(0xFF6A1B9A), Color(0xFF00695C)],
+                  colors: [Color(0xFF4A00E0), Color(0xFF8E2DE2)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black12,
+                    blurRadius: 8,
+                    offset: Offset(0, 4),
+                  ),
+                ],
               ),
-              child: const TabBar(
-                labelColor: Colors.transparent,
-                unselectedLabelColor: Colors.transparent,
-                indicatorColor: Colors.transparent,
+              child: TabBar(
+                labelColor: Colors.white,
+                unselectedLabelColor: Colors.white70,
+                indicator: const BoxDecoration(
+                  borderRadius: BorderRadius.all(Radius.circular(20)),
+                  color: Colors.white24,
+                ),
                 tabs: [
-                  Tab(icon: Icon(Icons.person)),
-                  Tab(icon: Icon(Icons.work)),
-                  Tab(icon: Icon(Icons.group_add)),
-                  Tab(icon: Icon(Icons.call)),
-                  Tab(icon: Icon(Icons.post_add)),
-                  Tab(icon: Icon(Icons.notifications)),
+                  _buildTab(Icons.person, 'Profile'),
+                  _buildTab(Icons.work, 'Jobs'),
+                  _buildTab(Icons.group_add, 'Seekers'),
+                  _buildTab(Icons.call, 'Calls'),
+                  _buildTab(Icons.post_add, 'Post Job'),
+                  _buildTab(Icons.notifications, 'Notifications'),
                 ],
               ),
             ),
             Expanded(
-              child: TabBarView(
-                children: [
-                  ProfileScreen(isRecruiter: true),
-                  PostedJobsScreen(),
-                  AppliedSeekersScreen(authService: _authService),
-                  CallsScreen(),
-                  PostJobScreen(),
-                  NotificationsScreen(isRecruiter: true),
-                ],
+              child: Container(
+                color: Colors.grey[100],
+                child: TabBarView(
+                  children: [
+                    ProfileScreen(isRecruiter: true),
+                    PostedJobsScreen(),
+                    AppliedSeekersScreen(authService: _authService),
+                    CallsScreen(),
+                    PostJobScreen(),
+                    NotificationsScreen(isRecruiter: true),
+                  ],
+                ),
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDrawerItem({
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    return ListTile(
+      leading: Icon(icon, color: Colors.white, size: 28),
+      title: Text(
+        title,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 16,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      onTap: onTap,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 5),
+      tileColor: Colors.transparent,
+      hoverColor: Colors.white12,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+      ),
+    );
+  }
+
+  Widget _buildTab(IconData icon, String label) {
+    return Tab(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 20),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
             ),
           ],
         ),

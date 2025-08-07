@@ -4,6 +4,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:developer' as dev;
 import 'dart:io';
+import 'package:intl/intl.dart';
 import 'auth_middleware.dart';
 
 class AuthException implements Exception {
@@ -19,6 +20,100 @@ class AuthService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseStorage _storage = FirebaseStorage.instance;
 
+  // Specialization options (same as ProfileScreen)
+  final List<String> specializationOptions = [
+    'Computer Science / IT',
+    'Electronics / Electrical / Robotics',
+    'Mechanical / Civil / Architecture',
+    'Business / Finance / Management',
+    'Medicine / Healthcare / Pharma',
+    'Law / Political Science / Public Administration',
+    'Arts / Humanities / Education',
+    'Design / Media / Communication',
+    'Hotel / Travel / Event Management',
+    'Science / Research / Environment',
+    'Others',
+  ];
+
+  // Skills by specialization (same as ProfileScreen)
+  final Map<String, List<String>> skillsBySpecialization = {
+    'Computer Science / IT': [
+      'Java', 'Python', 'C++', 'C#', 'Dart', 'Flutter', 'Android Development',
+      'iOS Development', 'React', 'Angular', 'Vue.js', 'Node.js', 'Firebase',
+      'AWS', 'Docker', 'Kubernetes', 'SQL', 'MongoDB', 'REST APIs', 'GraphQL',
+      'Machine Learning', 'Data Structures & Algorithms', 'DevOps', 'Cybersecurity',
+      'System Design',
+    ],
+    'Electronics / Electrical / Robotics': [
+      'Embedded Systems', 'PCB Design', 'VLSI', 'MATLAB', 'Simulink', 'Verilog',
+      'FPGA Programming', 'Arduino', 'Raspberry Pi', 'IoT Development',
+      'Signal Processing', 'Power Systems', 'Automation', 'SCADA',
+    ],
+    'Mechanical / Civil / Architecture': [
+      'AutoCAD', 'SolidWorks', 'CATIA', 'ANSYS', 'STAAD Pro', 'Revit',
+      'Structural Analysis', 'Thermodynamics', 'Manufacturing Processes',
+      'Fluid Mechanics', 'Construction Management', 'Urban Planning',
+    ],
+    'Business / Finance / Management': [
+      'Financial Analysis', 'Accounting', 'MS Excel', 'Tally', 'Business Intelligence',
+      'SAP', 'QuickBooks', 'Digital Marketing', 'Google Ads', 'SEO',
+      'Social Media Marketing', 'Project Management', 'Agile', 'Scrum',
+      'Business Strategy', 'Market Research', 'Customer Relationship Management (CRM)',
+      'Salesforce',
+    ],
+    'Medicine / Healthcare / Pharma': [
+      'Clinical Research', 'Patient Care', 'Surgical Assistance', 'Nursing Procedures',
+      'Medical Coding', 'Public Health', 'Pharmacology', 'First Aid', 'CPR',
+      'Health Education', 'Lab Testing', 'Radiology', 'Therapeutic Skills',
+    ],
+    'Law / Political Science / Public Administration': [
+      'Legal Research', 'Case Analysis', 'Contract Drafting', 'Litigation',
+      'Legal Compliance', 'Constitutional Law', 'Criminal Law', 'International Law',
+      'Arbitration', 'Policy Analysis', 'Public Speaking',
+    ],
+    'Arts / Humanities / Education': [
+      'Creative Writing', 'Content Writing', 'Linguistics', 'Public Speaking',
+      'Editing & Proofreading', 'Critical Thinking', 'Classroom Management',
+      'Curriculum Development', 'E-Learning Tools', 'Art History', 'Philosophical Analysis',
+    ],
+    'Design / Media / Communication': [
+      'Adobe Photoshop', 'Adobe Illustrator', 'Adobe XD', 'Figma', 'Canva',
+      'UI/UX Design', 'Video Editing', '3D Modeling', 'Motion Graphics', 'Photography',
+      'Copywriting', 'Branding', 'Social Media Content Creation', 'Typography', 'Storyboarding',
+      'Final Cut Pro', 'Lightroom',
+    ],
+    'Hotel / Travel / Event Management': [
+      'Event Planning', 'Hospitality Management', 'Customer Service', 'Bartending',
+      'Housekeeping', 'Food & Beverage Service', 'Travel Planning', 'Ticketing & Reservations',
+      'Catering Services', 'Inventory Management', 'Public Relations', 'Vendor Management',
+    ],
+    'Science / Research / Environment': [
+      'Laboratory Techniques', 'Statistical Analysis', 'Research Writing', 'Data Collection',
+      'Environmental Impact Assessment', 'Geographic Information System (GIS)', 'Microscopy',
+      'Chemical Analysis', 'Climate Modeling', 'Bioinformatics',
+    ],
+    'Others': [
+      'Communication Skills', 'Problem Solving', 'Teamwork', 'Leadership', 'Time Management',
+      'Adaptability', 'Creativity', 'Conflict Resolution', 'Critical Thinking', 'Customer Support',
+      'Basic Computer Skills', 'Typing', 'Remote Work Tools (Zoom, Slack, Trello)', 'Virtual Assistant',
+      'Content Moderation',
+    ],
+  };
+
+  Future<void> signInWithPhoneCredential(PhoneAuthCredential credential) async {
+    try {
+      dev.log('Signing in with phone credential', name: 'AuthService');
+      await _auth.signInWithCredential(credential);
+      dev.log('Phone authentication successful for UID: ${_auth.currentUser?.uid}', name: 'AuthService');
+    } catch (e) {
+      dev.log('signInWithPhoneCredential ERROR: $e', name: 'AuthService', error: e);
+      if (e is FirebaseAuthException) {
+        throw AuthException('Phone authentication failed: ${e.code} - ${e.message}');
+      }
+      rethrow;
+    }
+  }
+
   Future<void> storeSignupData({
     required bool isRecruiter,
     required Map<String, dynamic> data,
@@ -32,10 +127,29 @@ class AuthService {
       dev.log("Writing to $collection/$uid", name: 'AuthService');
 
       // Normalize incoming data
+      String mobileNumber = data['Mobile Number']?.toString().trim() ??
+          data['mobileNumber']?.toString().trim() ??
+          _auth.currentUser?.phoneNumber?.toString().trim() ??
+          '';
+
+      // Validate mobile number
+      if (mobileNumber.isEmpty) {
+        dev.log("Mobile number is missing for UID: $uid. Input data: $data, FirebaseAuth phoneNumber: ${_auth.currentUser?.phoneNumber}", name: 'AuthService');
+        throw const AuthException("Mobile number is required");
+      }
+
+      // Basic mobile number format validation (e.g., starts with + and contains digits)
+      final mobileNumberRegex = RegExp(r'^\+\d{10,15}$');
+      if (!mobileNumberRegex.hasMatch(mobileNumber)) {
+        dev.log("Invalid mobile number format for UID: $uid, mobileNumber: $mobileNumber", name: 'AuthService');
+        throw const AuthException("Invalid mobile number format. Must start with '+' followed by 10-15 digits.");
+      }
+
       final normalizedData = {
         'uid': uid,
-        'email': data['Email Id'] ?? data['email'] ?? _auth.currentUser?.email ?? '',
-        'mobileNumber': data['Mobile Number'] ?? data['mobileNumber'] ?? '',
+        'email': data['Email Id']?.toString().trim() ?? data['email']?.toString().trim() ?? _auth.currentUser?.email?.toString().trim() ?? '',
+        'mobileNumber': mobileNumber,
+        'name': data['Name']?.toString().trim() ?? '',
         'role': isRecruiter ? 'recruiter' : 'seeker',
         ...data,
       };
@@ -44,14 +158,47 @@ class AuthService {
       normalizedData.remove('UID');
       normalizedData.remove('Email Id');
       normalizedData.remove('Mobile Number');
+      normalizedData.remove('Name');
 
-      // Parse skills if string
-      if (!isRecruiter && normalizedData['skills'] is String) {
-        normalizedData['skills'] = (normalizedData['skills'] as String)
-            .split(',')
-            .map((s) => s.trim())
-            .where((s) => s.isNotEmpty)
+      // For seekers: Validate specialization, skills, and education
+      if (!isRecruiter) {
+        // Normalize specialization
+        final specialization = normalizedData['specialization'] as String?;
+        if (specialization == null || !specializationOptions.contains(specialization)) {
+          normalizedData['specialization'] = 'Others';
+          dev.log("Invalid or missing specialization '$specialization', defaulting to 'Others'", name: 'AuthService');
+        }
+
+        // Normalize and validate skills
+        final skills = normalizedData['skills'] is String
+            ? (normalizedData['skills'] as String)
+                .split(',')
+                .map((s) => s.trim())
+                .where((s) => s.isNotEmpty)
+                .toList()
+            : normalizedData['skills'] as List<dynamic>? ?? [];
+        final validSkills = skillsBySpecialization[normalizedData['specialization']] ?? skillsBySpecialization['Others']!;
+        normalizedData['skills'] = skills
+            .cast<String>()
+            .where((skill) => validSkills.contains(skill))
             .toList();
+        if (normalizedData['skills'].isEmpty) {
+          dev.log("No valid skills provided for specialization '${normalizedData['specialization']}', skills set to empty list", name: 'AuthService');
+        } else {
+          dev.log("Validated skills: ${normalizedData['skills']}", name: 'AuthService');
+        }
+
+        // Ensure education is a string
+        normalizedData['education'] = normalizedData['education']?.toString().trim() ?? '';
+        if (normalizedData['education'].isEmpty) {
+          dev.log("Missing or empty education for $uid, setting to empty string", name: 'AuthService');
+        }
+      } else {
+        // For recruiters: Validate companyName
+        normalizedData['companyName'] = normalizedData['companyName']?.toString().trim() ?? '';
+        if (normalizedData['companyName'].isEmpty) {
+          dev.log("Missing or empty companyName for $uid, setting to empty string", name: 'AuthService');
+        }
       }
 
       dev.log("Final normalizedData: $normalizedData", name: 'AuthService');
@@ -64,9 +211,10 @@ class AuthService {
       await _firestore.collection('UsersIndex').doc(uid).set({
         'email': normalizedData['email'],
         'mobileNumber': normalizedData['mobileNumber'],
+        'name': normalizedData['name'],
         'role': normalizedData['role'],
       }, SetOptions(merge: true));
-      dev.log("UsersIndex updated for $uid", name: 'AuthService');
+      dev.log("UsersIndex updated for $uid with mobileNumber: ${normalizedData['mobileNumber']}", name: 'AuthService');
     } catch (e) {
       dev.log("storeSignupData ERROR: $e", name: 'AuthService', error: e);
       if (e is FirebaseException) {
@@ -85,6 +233,31 @@ class AuthService {
       final doc = await _firestore.collection(collection).doc(uid).get();
       if (doc.exists) {
         final data = doc.data()!;
+        // For seekers: Ensure specialization is valid
+        if (!isRecruiter) {
+          final specialization = data['specialization'] as String?;
+          if (specialization == null || !specializationOptions.contains(specialization)) {
+            data['specialization'] = 'Others';
+            dev.log("Invalid or missing specialization '$specialization' for $uid, defaulting to 'Others'", name: 'AuthService');
+          }
+          // Ensure skills is a list
+          if (data['skills'] is String) {
+            data['skills'] = (data['skills'] as String)
+                .split(',')
+                .map((s) => s.trim())
+                .where((s) => s.isNotEmpty)
+                .toList();
+          }
+          final skills = data['skills'] as List<dynamic>? ?? [];
+          final validSkills = skillsBySpecialization[data['specialization']] ?? skillsBySpecialization['Others']!;
+          data['skills'] = skills
+              .cast<String>()
+              .where((skill) => validSkills.contains(skill))
+              .toList();
+          // Ensure education is a string
+          data['education'] = data['education']?.toString().trim() ?? '';
+          dev.log("Validated skills for $uid: ${data['skills']}, education: ${data['education']}", name: 'AuthService');
+        }
         dev.log("Fetched profile data for $uid from $collection: $data", name: 'AuthService');
         return data;
       }
@@ -416,6 +589,15 @@ class AuthService {
         final resumeName = resume['name']?.toString() ?? 'Unnamed';
         final resumeVersion = resume['version']?.toString() ?? '';
 
+        // Normalize specialization and skills
+        final specialization = specializationOptions.contains(resume['specialization'] ?? data['specialization'])
+            ? (resume['specialization'] ?? data['specialization'] ?? 'N/A')
+            : 'N/A';
+        final skillsList = (resume['skills'] as List<dynamic>?)?.cast<String>() ??
+            (data['skills'] is String ? data['skills'].split(', ') : data['skills'] ?? []);
+        final validSkills = skillsBySpecialization[specialization] ?? skillsBySpecialization['Others']!;
+        final filteredSkills = skillsList.where((skill) => validSkills.contains(skill)).toList();
+
         seekers.add({
           'seekerId': seekerId,
           'jobId': jobId,
@@ -428,10 +610,11 @@ class AuthService {
           'status': data['status']?.toString() ?? 'Applied',
           'name': resume['name']?.toString().trim() ?? seekerId,
           'resume': resume,
-          'specialization': resume['specialization']?.toString() ?? data['specialization']?.toString() ?? 'N/A',
+          'specialization': specialization,
+          'education': resume['education']?.toString().trim() ?? data['education']?.toString().trim() ?? 'N/A',
           'experience': resume['experience']?.toString() ?? data['experience']?.toString() ?? 'N/A',
           'email': resume['email']?.toString() ?? 'N/A',
-          'skills': (resume['skills'] as List<dynamic>?)?.join(', ') ?? data['skills']?.join(', ') ?? 'N/A',
+          'skills': filteredSkills,
         });
         dev.log('Added seeker $seekerId for job $jobId to result', name: 'AuthService');
       }
@@ -501,27 +684,62 @@ class AuthService {
     Map<String, dynamic>? additionalData,
   }) async {
     final uid = _auth.currentUser?.uid;
-    if (uid == null) throw const AuthException("User not logged in");
+    if (uid == null) {
+      dev.log('No authenticated user found', name: 'AuthService');
+      throw const AuthException("User not logged in");
+    }
 
     try {
-      await AuthMiddleware.requireRole('recruiter');
+      // Verify recruiter role
+      final recruiterDoc = await _firestore.collection('Recruiters').doc(uid).get();
+      if (!recruiterDoc.exists) {
+        dev.log('User $uid is not a recruiter', name: 'AuthService');
+        throw const AuthException('User is not a recruiter');
+      }
       dev.log('Recruiter role verified for $uid', name: 'AuthService');
 
-      final jobDoc = await _firestore.collection('Recruiters').doc(uid).collection('Jobs').doc(jobId).get();
+      // Validate job
+      final jobRef = _firestore.collection('Recruiters').doc(uid).collection('Jobs').doc(jobId);
+      final jobDoc = await jobRef.get();
       if (!jobDoc.exists || jobDoc.data()?['recruiterId'] != uid) {
-        dev.log('Job $jobId not found or does not belong to recruiter $uid', name: 'AuthService');
+        dev.log('Job $jobId not found or does not belong to recruiter $uid: ${jobDoc.data()}', name: 'AuthService');
         throw const AuthException('Unauthorized job access');
       }
+      dev.log('Job data: ${jobDoc.data()}', name: 'AuthService');
+      final jobData = jobDoc.data()!;
+      final jobTitle = jobData['title'] as String? ?? 'Untitled';
 
-      final applicationDoc = await _firestore.collection('Applications').doc(jobId).collection('AppliedJobs').doc(seekerId).get();
+      // Validate application
+      final applicationRef = _firestore.collection('Applications').doc(jobId).collection('AppliedJobs').doc(seekerId);
+      final applicationDoc = await applicationRef.get();
       if (!applicationDoc.exists) {
-        dev.log('Application not found for job $jobId, seeker $seekerId', name: 'AuthService');
+        dev.log('Application not found for job $jobId, seeker $seekerId: ${applicationDoc.data()}', name: 'AuthService');
         throw const AuthException('Application not found');
       }
+      if (applicationDoc.data()!['recruiterId'] != uid) {
+        dev.log('Recruiter $uid does not match application recruiterId ${applicationDoc.data()!['recruiterId']}', name: 'AuthService');
+        throw const AuthException('Invalid application recruiter');
+      }
 
-      final jobTitle = jobDoc.data()?['title'] as String? ?? 'Untitled';
+      // Check if seeker-facing application exists, create if missing
+      final seekerAppRef = _firestore.collection('Applications').doc(seekerId).collection('AppliedJobs').doc(jobId);
+      final seekerAppDoc = await seekerAppRef.get();
+      if (!seekerAppDoc.exists) {
+        dev.log('Seeker-facing application not found for job $jobId, seeker $seekerId, creating it', name: 'AuthService');
+        await seekerAppRef.set({
+          'seekerId': seekerId,
+          'jobId': jobId,
+          'recruiterId': uid,
+          'jobTitle': jobTitle,
+          'company': jobData['company'] ?? 'Unknown',
+          'status': 'Applied',
+          'appliedAt': FieldValue.serverTimestamp(),
+          'resume': applicationDoc.data()?['resume'] ?? {},
+        });
+        dev.log('Created seeker-facing application for job $jobId, seeker $seekerId', name: 'AuthService');
+      }
+
       final batch = _firestore.batch();
-      final applicationRef = _firestore.collection('Applications').doc(jobId).collection('AppliedJobs').doc(seekerId);
       final notificationId = _firestore.collection('SeekerNotifications').doc(seekerId).collection('Notifications').doc().id;
       final notifRef = _firestore.collection('SeekerNotifications').doc(seekerId).collection('Notifications').doc(notificationId);
 
@@ -535,13 +753,14 @@ class AuthService {
             'createdAt': FieldValue.serverTimestamp(),
           }, SetOptions(merge: true));
           batch.update(applicationRef, {'status': 'Shortlisted', 'interviewDate': null});
+          batch.update(seekerAppRef, {'status': 'Shortlisted', 'interviewDate': null});
           batch.set(notifRef, {
             'to': seekerId,
             'from': uid,
             'message': 'You have been shortlisted for "$jobTitle"!',
             'timestamp': FieldValue.serverTimestamp(),
             'read': false,
-            'type': 'application',
+            'type': 'status_update',
             'jobId': jobId,
             'jobTitle': jobTitle,
             'notificationId': notificationId,
@@ -551,13 +770,14 @@ class AuthService {
         case 'reject':
           dev.log('Rejecting seeker $seekerId for job $jobId', name: 'AuthService');
           batch.update(applicationRef, {'status': 'Rejected', 'interviewDate': null});
+          batch.update(seekerAppRef, {'status': 'Rejected', 'interviewDate': null});
           batch.set(notifRef, {
             'to': seekerId,
             'from': uid,
             'message': 'Your application for "$jobTitle" has been rejected.',
             'timestamp': FieldValue.serverTimestamp(),
             'read': false,
-            'type': 'application',
+            'type': 'status_update',
             'jobId': jobId,
             'jobTitle': jobTitle,
             'notificationId': notificationId,
@@ -568,19 +788,24 @@ class AuthService {
           dev.log('Scheduling interview for seeker $seekerId, job $jobId', name: 'AuthService');
           final interviewDate = additionalData?['interviewDate'] as Timestamp?;
           if (interviewDate == null) {
+            dev.log('Missing interviewDate for schedule action', name: 'AuthService');
             throw const AuthException('Interview date is required for scheduling');
           }
           batch.update(applicationRef, {
             'status': 'Interview Scheduled',
             'interviewDate': interviewDate,
           });
+          batch.update(seekerAppRef, {
+            'status': 'Interview Scheduled',
+            'interviewDate': interviewDate,
+          });
           batch.set(notifRef, {
             'to': seekerId,
             'from': uid,
-            'message': 'Interview for "$jobTitle" scheduled on ${interviewDate.toDate()}',
+            'message': 'Interview for "$jobTitle" scheduled on ${DateFormat('dd MMM yyyy').format(interviewDate.toDate())}',
             'timestamp': FieldValue.serverTimestamp(),
             'read': false,
-            'type': 'application',
+            'type': 'interview_scheduled',
             'jobId': jobId,
             'jobTitle': jobTitle,
             'notificationId': notificationId,
@@ -604,9 +829,21 @@ class AuthService {
             'timestamp': FieldValue.serverTimestamp(),
             'jobId': jobId,
           });
+          batch.set(notifRef, {
+            'to': seekerId,
+            'from': uid,
+            'message': 'New message regarding "$jobTitle" from recruiter',
+            'timestamp': FieldValue.serverTimestamp(),
+            'read': false,
+            'type': 'status_update',
+            'jobId': jobId,
+            'jobTitle': jobTitle,
+            'notificationId': notificationId,
+          });
           break;
 
         default:
+          dev.log('Invalid action: $action', name: 'AuthService');
           throw const AuthException('Invalid action');
       }
 
@@ -615,7 +852,8 @@ class AuthService {
     } catch (e, stackTrace) {
       dev.log('handleAction ERROR for action $action, job $jobId, seeker $seekerId: $e', name: 'AuthService', error: e, stackTrace: stackTrace);
       if (e is FirebaseException) {
-        throw AuthException("Action failed: ${e.code} - ${e.message}. Check Firestore rules for Applications/$jobId/AppliedJobs/$seekerId or Shortlisted/$jobId/Seekers/$seekerId.");
+        dev.log('Firebase error details: code=${e.code}, message=${e.message}, path=Applications/$jobId/AppliedJobs/$seekerId or Shortlisted/$jobId/Seekers/$seekerId or Messages', name: 'AuthService');
+        throw AuthException('Action failed: ${e.code} - ${e.message}. Check Firestore rules for Applications/$jobId/AppliedJobs/$seekerId or Shortlisted/$jobId/Seekers/$seekerId or Messages.');
       }
       rethrow;
     }
