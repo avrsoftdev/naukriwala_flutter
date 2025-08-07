@@ -49,14 +49,14 @@ class _SeekerDashboardState extends State<SeekerDashboard> {
         centerTitle: true,
         leading: Builder(
           builder: (context) => IconButton(
-            icon: const Icon(Icons.menu, color: Colors.black87, size: 22),
+            icon: const Icon(Icons.menu, color: Colors.black87, size: 28),
             padding: const EdgeInsets.all(2),
             onPressed: () => Scaffold.of(context).openDrawer(),
           ),
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.notifications, color: Colors.black87, size: 22),
+            icon: const Icon(Icons.notifications, color: Colors.black87, size: 28),
             padding: const EdgeInsets.all(2),
             onPressed: () {
               dev.log('Navigating to NotificationsScreen', name: 'SeekerDashboard');
@@ -249,7 +249,7 @@ class _SeekerDashboardState extends State<SeekerDashboard> {
     required VoidCallback onTap,
   }) {
     return ListTile(
-      leading: Icon(icon, color: Colors.white, size: 24),
+      leading: Icon(icon, color: Colors.white, size: 28),
       title: Container(
         constraints: const BoxConstraints(maxWidth: 180),
         child: Text(

@@ -1,3 +1,4 @@
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -24,6 +25,7 @@ class _MyApplicationsScreenState extends State<MyApplicationsScreen> {
   Widget build(BuildContext context) {
     final uid = _auth.currentUser?.uid;
     if (uid == null) {
+      dev.log('[2025-08-07 23:13 IST] No authenticated user', name: 'MyApplicationsScreen');
       return Scaffold(
         body: Center(
           child: Card(
@@ -42,6 +44,7 @@ class _MyApplicationsScreenState extends State<MyApplicationsScreen> {
       );
     }
     if (uid != widget.seekerId) {
+      dev.log('[2025-08-07 23:13 IST] Unauthorized access: seekerId $uid does not match widget.seekerId ${widget.seekerId}', name: 'MyApplicationsScreen');
       return Scaffold(
         body: Center(
           child: Card(
@@ -122,7 +125,7 @@ class _MyApplicationsScreenState extends State<MyApplicationsScreen> {
                   );
                 }
                 if (snapshot.hasError) {
-                  dev.log('Error loading applications for seekerId $uid: ${snapshot.error}', name: 'MyApplicationsScreen');
+                  dev.log('[2025-08-07 23:13 IST] Error loading applications for seekerId $uid: ${snapshot.error}', name: 'MyApplicationsScreen');
                   return Center(
                     child: Card(
                       elevation: 4,
@@ -139,7 +142,7 @@ class _MyApplicationsScreenState extends State<MyApplicationsScreen> {
                   );
                 }
                 if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  dev.log('No applications found for seekerId: $uid', name: 'MyApplicationsScreen');
+                  dev.log('[2025-08-07 23:13 IST] No applications found for seekerId: $uid', name: 'MyApplicationsScreen');
                   return const Center(
                     child: Text(
                       'No jobs applied yet.',
@@ -219,11 +222,15 @@ class _MyApplicationsScreenState extends State<MyApplicationsScreen> {
                                 ),
                                 trailing: AnimatedScaleButton(
                                   onPressed: () {
-                                    if (!mounted) return;
+                                    if (!mounted) {
+                                      dev.log('[2025-08-07 23:13 IST] Widget not mounted, cannot start chat', name: 'MyApplicationsScreen');
+                                      return;
+                                    }
                                     final scaffoldMessenger = ScaffoldMessenger.of(context);
                                     final navigator = Navigator.of(context);
                                     final chatId = [uid, recruiterId].join('_').split('_')..sort();
                                     final normalizedChatId = '${chatId[0]}_${chatId[1]}';
+                                    dev.log('[2025-08-07 23:13 IST] Initiating chat with chatId $normalizedChatId for job $jobId', name: 'MyApplicationsScreen');
                                     _authService
                                         .sendMessage(recruiterId, jobId, 'Hello, I’d like to discuss my application!')
                                         .then((_) {
@@ -237,9 +244,10 @@ class _MyApplicationsScreenState extends State<MyApplicationsScreen> {
                                             ),
                                           ),
                                         );
+                                        dev.log('[2025-08-07 23:13 IST] Navigated to ChatScreen for job $jobId', name: 'MyApplicationsScreen');
                                       }
                                     }).catchError((e) {
-                                      dev.log('Error starting chat: $e', name: 'MyApplicationsScreen', error: e);
+                                      dev.log('[2025-08-07 23:13 IST] Error starting chat for job $jobId: $e', name: 'MyApplicationsScreen', error: e);
                                       if (mounted) {
                                         scaffoldMessenger.showSnackBar(
                                           SnackBar(
@@ -258,7 +266,7 @@ class _MyApplicationsScreenState extends State<MyApplicationsScreen> {
                                       color: Colors.teal,
                                       boxShadow: [
                                         BoxShadow(
-                                          color: Colors.black.withOpacity(0.2),
+                                          color: Colors.black.withValues(alpha: 0.2),
                                           blurRadius: 4,
                                           offset: const Offset(0, 2),
                                         ),

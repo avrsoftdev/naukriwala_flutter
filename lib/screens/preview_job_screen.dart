@@ -24,7 +24,7 @@ class PreviewJobScreen extends StatelessWidget {
         ),
         elevation: 4,
       ),
-      body: Padding(
+      body: SingleChildScrollView( // Added SingleChildScrollView
         padding: const EdgeInsets.all(16.0),
         child: Card(
           elevation: 4,
@@ -41,6 +41,7 @@ class PreviewJobScreen extends StatelessWidget {
             padding: const EdgeInsets.all(16.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min, // Minimize Column height
               children: [
                 _buildField('Job Title', jobData['title']?.toString() ?? 'N/A'),
                 _buildField('Company Name', jobData['company']?.toString() ?? 'N/A'),
@@ -52,7 +53,7 @@ class PreviewJobScreen extends StatelessWidget {
                 _buildField('Education Required', jobData['education']?.toString() ?? 'N/A'),
                 _buildField('Specialization', jobData['specialization']?.toString() ?? 'N/A'),
                 _buildField('Job Description', jobData['description']?.toString() ?? 'N/A', maxLines: 4),
-                const Spacer(),
+                const SizedBox(height: 16), // Replaced Spacer with fixed spacing
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
@@ -158,7 +159,7 @@ class PreviewJobScreen extends StatelessWidget {
   }
 }
 
-// Custom Animated Button Widget
+// Custom Animated Button Widget (unchanged)
 class AnimatedScaleButton extends StatefulWidget {
   final VoidCallback onPressed;
   final Widget child;
