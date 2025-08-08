@@ -16,7 +16,6 @@ class JobDetailsScreen extends StatefulWidget {
 
 class _JobDetailsScreenState extends State<JobDetailsScreen> {
   Stream<QuerySnapshot>? _applicantsStream;
-  Stream<QuerySnapshot>? _notificationsStream;
   Map<String, dynamic>? _seekerProfile;
   Map<String, dynamic>? _jobData;
   bool _isJobVisible = false;
@@ -109,7 +108,6 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> {
     super.initState();
     _fetchJobAndProfile();
     _fetchApplicants();
-    _fetchNotifications();
   }
 
   Future<void> _fetchJobAndProfile() async {
@@ -219,17 +217,6 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> {
           .collection('Applications')
           .doc(widget.job['jobId']?.toString())
           .collection('AppliedJobs')
-          .snapshots();
-    });
-  }
-
-  Future<void> _fetchNotifications() async {
-    final currentUser = FirebaseAuth.instance.currentUser;
-    if (currentUser == null) return;
-    setState(() {
-      _notificationsStream = FirebaseFirestore.instance
-          .collection('Notifications')
-          .where('to', isEqualTo: currentUser.uid)
           .snapshots();
     });
   }
@@ -508,59 +495,6 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> {
                 const SizedBox(height: 8),
                 Text(description, style: const TextStyle(fontSize: 16)),
                 const SizedBox(height: 20),
-                if (!isRecruiter && currentUser != null)
-                  FutureBuilder<bool>(
-                    future: _checkApplicationStatus(),
-                    builder: (BuildContext context, AsyncSnapshot<bool> snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Center(
-                          child: CircularProgressIndicator(
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.teal),
-                            strokeWidth: 2,
-                          ),
-                        );
-                      }
-                      final hasApplied = snapshot.data ?? _hasApplied;
-                      return AnimatedScaleButton(
-                        onPressed:() {  if (!hasApplied) {    _applyForJob();  }},
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: hasApplied
-                                  ? [Colors.grey.shade400, Colors.grey.shade600]
-                                  : [Colors.blue.shade700, Colors.teal.shade400],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.2),
-                                blurRadius: 4,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.send, color: Colors.white),
-                              const SizedBox(width: 8),
-                              Text(
-                                hasApplied ? 'Applied' : 'Apply Now',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
                 if (isRecruiter)
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -765,67 +699,6 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> {
                                           ),
                                         );
                                       },
-                                    ),
-                                  ),
-                                ),
-                              );
-                            },
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-                if (_notificationsStream != null)
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Notifications',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blue.shade900),
-                      ),
-                      const SizedBox(height: 10),
-                      StreamBuilder<QuerySnapshot>(
-                        stream: _notificationsStream,
-                        builder: (context, snapshot) {
-                          if (snapshot.connectionState == ConnectionState.waiting) {
-                            return const Center(
-                              child: CircularProgressIndicator(
-                                valueColor: AlwaysStoppedAnimation<Color>(Colors.teal),
-                              ),
-                            );
-                          }
-                          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                            return const Text('No notifications yet.', style: TextStyle(fontSize: 16, color: Colors.grey));
-                          }
-                          return ListView.builder(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            itemCount: snapshot.data!.docs.length,
-                            itemBuilder: (context, index) {
-                              final notification = snapshot.data!.docs[index].data() as Map<String, dynamic>;
-                              return AnimatedListItem(
-                                child: Card(
-                                  elevation: 3,
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                  child: Container(
-                                    decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        colors: [Colors.blue.shade50, Colors.blue.shade100],
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                      ),
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: ListTile(
-                                      contentPadding: const EdgeInsets.all(16.0),
-                                      title: Text(
-                                        notification['message'] ?? 'Unknown Message',
-                                        style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.black87),
-                                      ),
-                                      subtitle: Text(
-                                        'Time: ${notification['timestamp']?.toDate().toString() ?? 'N/A'}',
-                                        style: TextStyle(color: Colors.grey.shade600),
-                                      ),
                                     ),
                                   ),
                                 ),

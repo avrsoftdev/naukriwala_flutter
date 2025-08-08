@@ -20,24 +20,34 @@ class NotificationsScreenState extends State<NotificationsScreen> {
   late final String collectionPath;
 
   @override
-  void initState() {
-    super.initState();
-    collectionPath = widget.isRecruiter ? 'RecruiterNotifications' : 'SeekerNotifications';
-    if (uid != null) {
-      _notificationsStream = FirebaseFirestore.instance
-          .collection(collectionPath)
-          .doc(uid)
-          .collection('Notifications')
-          .where('to', isEqualTo: uid)
-          .where('type', isEqualTo: 'application')
-          .orderBy('timestamp', descending: true)
-          .snapshots();
-      dev.log('[2025-08-09 01:15 IST] Initialized notifications stream for ${widget.isRecruiter ? 'recruiter' : 'seeker'} UID: $uid in $collectionPath', name: 'NotificationsScreen');
-    } else {
-      dev.log('[2025-08-09 01:15 IST] No authenticated user found', name: 'NotificationsScreen');
-    }
-  }
+void initState() {
+  super.initState();
+  collectionPath = widget.isRecruiter ? 'RecruiterNotifications' : 'SeekerNotifications';
+  if (uid != null) {
+    // Start with the base query
+    Query<Map<String, dynamic>> query = FirebaseFirestore.instance
+        .collection(collectionPath)
+        .doc(uid)
+        .collection('Notifications')
+        .where('to', isEqualTo: uid);
 
+    // Apply type filter based on role
+    if (widget.isRecruiter) {
+      query = query.where('type', isEqualTo: 'application');
+    } else {
+      query = query.where('type', whereIn: ['application', 'status_update']);
+    }
+
+    // Convert to Stream with orderBy
+    _notificationsStream = query
+        .orderBy('timestamp', descending: true)
+        .snapshots();
+
+    dev.log('[2025-08-09 02:15 IST] Initialized notifications stream for ${widget.isRecruiter ? 'recruiter' : 'seeker'} UID: $uid in $collectionPath', name: 'NotificationsScreen');
+  } else {
+    dev.log('[2025-08-09 02:15 IST] No authenticated user found', name: 'NotificationsScreen');
+  }
+}
   String _formatTimestamp(Timestamp? ts) {
     if (ts == null) return 'N/A';
     final dt = ts.toDate();

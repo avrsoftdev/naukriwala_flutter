@@ -81,9 +81,9 @@ class _ChatScreenState extends State<ChatScreen> {
       try {
         await _authService.sendMessage(widget.recipientId, widget.jobId, _messageController.text);
         _messageController.clear();
-        dev.log('[2025-08-09 01:15 IST] Sent message in chat ${widget.chatId} for job ${widget.jobId}', name: 'ChatScreen');
+        dev.log('[2025-08-09 01:39 IST] Sent message in chat ${widget.chatId} for job ${widget.jobId}', name: 'ChatScreen');
       } catch (e) {
-        dev.log('[2025-08-09 01:15 IST] Error sending message in chat ${widget.chatId}: $e', name: 'ChatScreen', error: e);
+        dev.log('[2025-08-09 01:39 IST] Error sending message in chat ${widget.chatId}: $e', name: 'ChatScreen', error: e);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -136,7 +136,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       final resumeUrl = data['resumeUrl'] as String?;
                       if (resumeUrl != null) {
                         // Implement URL launch logic if needed
-                        dev.log('[2025-08-09 01:15 IST] Attempting to open resume URL: $resumeUrl', name: 'ChatScreen');
+                        dev.log('[2025-08-09 01:39 IST] Attempting to open resume URL: $resumeUrl', name: 'ChatScreen');
                       }
                     },
                     child: Text(
@@ -153,7 +153,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       return const Center(child: CircularProgressIndicator());
                     }
                     if (snapshot.hasError) {
-                      dev.log('[2025-08-09 01:15 IST] Error loading messages for chat ${widget.chatId}: ${snapshot.error}', name: 'ChatScreen', error: snapshot.error);
+                      dev.log('[2025-08-09 01:39 IST] Error loading messages for chat ${widget.chatId}: ${snapshot.error}', name: 'ChatScreen', error: snapshot.error);
                       return const Center(child: Text('Error loading messages'));
                     }
                     final messages = snapshot.data?.docs ?? [];
