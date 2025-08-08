@@ -1,7 +1,7 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Helper functions
+    // Helper functions (unchanged)
     function isAdmin() {
       return request.auth != null && request.auth.token.admin == true;
     }
@@ -22,8 +22,15 @@ service cloud.firestore {
       return exists(/databases/$(database)/documents/Recruiters/$(recipientId)) ||
              exists(/databases/$(database)/documents/Seekers/$(recipientId));
     }
+    function isValidChatParticipant(chatId) {
+      let ids = chatId.split('_');
+      return request.auth != null &&
+             (request.auth.uid == ids[0] || request.auth.uid == ids[1]) &&
+             isValidRecipient(ids[0]) &&
+             isValidRecipient(ids[1]);
+    }
 
-    // Unchanged collections
+    // Unchanged collections (Recruiters, Seekers, UsersIndex, Users, Jobs, etc.)
     match /Recruiters/{uid} {
       allow read: if request.auth != null && (request.auth.uid == uid || isAdmin());
       allow write: if request.auth != null && request.auth.uid == uid;
@@ -84,10 +91,19 @@ service cloud.firestore {
     match /Shortlisted/{jobId}/Seekers/{seekerId} {
       allow read, write: if isRecruiter() && isRecruiterJob(jobId);
     }
+
+    // Updated Messages collection
     match /Messages/{chatId} {
-      allow read, write: if request.auth != null &&
-                           (request.auth.uid == resource.data.senderId ||
-                            request.auth.uid == resource.data.recipientId);
+      // Allow initial creation of chat document
+      allow create: if request.auth != null &&
+                      isValidChatParticipant(chatId) &&
+                      request.resource.data.senderId == request.auth.uid &&
+                      request.resource.data.recipientId == (chatId.split('_')[0] == request.auth.uid ? chatId.split('_')[1] : chatId.split('_')[0]) &&
+                      request.resource.data.jobId is string;
+      // Allow read and update for participants
+      allow read, update: if request.auth != null &&
+                            (request.auth.uid == resource.data.senderId ||
+                             request.auth.uid == resource.data.recipientId);
     }
     match /Messages/{chatId}/Messages/{messageId} {
       allow read: if request.auth != null &&
@@ -96,13 +112,14 @@ service cloud.firestore {
       allow create: if request.auth != null &&
                       request.auth.uid == request.resource.data.senderId &&
                       (request.resource.data.recipientId == resource.data.senderId ||
-                       request.resource.data.recipientId == resource.data.recipientId);
+                       request.resource.data.recipientId == resource.data.recipientId) &&
+                      request.resource.data.message is string &&
+                      request.resource.data.timestamp is timestamp;
     }
+
     match /Bookmarks/{uid}/SavedJobs/{jobId} {
       allow read, write: if request.auth != null && request.auth.uid == uid;
     }
-
-    // Updated Applications collection
     match /Applications/{applicationId} {
       allow read: if request.auth != null &&
                     (
@@ -132,8 +149,6 @@ service cloud.firestore {
                       request.resource.data.recruiterId == resource.data.recruiterId &&
                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'interviewDate', 'updatedAt']);
     }
-
-    // Updated Notifications collection
     match /Notifications/{notifId} {
       allow read: if request.auth != null &&
                     (request.auth.uid == resource.data.recipientId ||
@@ -151,8 +166,6 @@ service cloud.firestore {
                        request.auth.uid == resource.data.to) &&
                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
     }
-
-    // Added AppliedJobs collection group
     match /{path=**}/AppliedJobs/{docId} {
       allow read: if request.auth != null &&
                     isRecruiter() &&
@@ -161,8 +174,6 @@ service cloud.firestore {
                      isRecruiter() &&
                      request.resource.data.recruiterId == request.auth.uid;
     }
-
-    // Default deny
     match /{document=**} {
       allow read, write: if false;
     }
