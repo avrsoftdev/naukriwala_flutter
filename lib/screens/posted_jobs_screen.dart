@@ -36,7 +36,7 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
       );
     }
 
-    dev.log('Current user UID: ${user!.uid}', name: 'PostedJobsScreen');
+    dev.log('[2025-08-08 20:48 IST] Current user UID: ${user!.uid}', name: 'PostedJobsScreen');
 
     final jobsQuery = FirebaseFirestore.instance
         .collection('Recruiters')
@@ -73,7 +73,15 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
           }
 
           if (snapshot.hasError) {
-            dev.log('Stream error for user ${user!.uid}: ${snapshot.error}', name: 'PostedJobsScreen', error: snapshot.error);
+            dev.log('[2025-08-08 20:48 IST] Stream error for user ${user!.uid}: ${snapshot.error}', name: 'PostedJobsScreen', error: snapshot.error);
+            String errorMessage = 'Error loading jobs. Please verify Firestore permissions.';
+            if (snapshot.error is FirebaseException) {
+              final error = snapshot.error as FirebaseException;
+              errorMessage = 'Firebase error: ${error.code} - ${error.message}';
+              if (error.code == 'permission-denied') {
+                errorMessage += '\nEnsure /Recruiters/${user!.uid}/Jobs is accessible.';
+              }
+            }
             return Center(
               child: Card(
                 elevation: 4,
@@ -82,7 +90,7 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Text(
-                    'Error loading jobs: ${snapshot.error}',
+                    errorMessage,
                     style: TextStyle(color: Colors.red.shade700, fontSize: 16),
                     textAlign: TextAlign.center,
                   ),
@@ -107,7 +115,7 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
             itemBuilder: (context, index) {
               final job = jobs[index].data() as Map<String, dynamic>;
               final jobId = jobs[index].id;
-              dev.log('Job $jobId data for user ${user!.uid}: $job', name: 'PostedJobsScreen');
+              dev.log('[2025-08-08 20:48 IST] Job $jobId data for user ${user!.uid}: $job', name: 'PostedJobsScreen');
 
               final title = job['title'] ?? 'Untitled Job';
               final company = job['company'] ?? 'Unknown Company';
@@ -126,7 +134,7 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
                 future: _getApplicantData(jobId),
                 builder: (context, applicantSnapshot) {
                   final applicantCount = applicantSnapshot.data?['count'] ?? 0;
-                  final applicantNames = applicantSnapshot.data?['names'] ?? [];
+                  final applicants = applicantSnapshot.data?['applicants'] ?? [];
 
                   return AnimatedListItem(
                     child: Card(
@@ -202,12 +210,11 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
                                     ),
                                   ),
                                 ]
-                              : applicantNames.isNotEmpty
-                                  ? applicantNames
-                                      .map<Widget>((name) => ListTile(
-                                            title: Text(name, style: const TextStyle(color: Colors.black87)),
-                                          ))
-                                      .toList()
+                              : applicants.isNotEmpty
+                                  ? applicants.map<Widget>((applicant) => ListTile(
+                                        title: Text(applicant['name'], style: const TextStyle(color: Colors.black87)),
+                                        subtitle: Text('Resume URL: ${applicant['resumeUrl'] ?? 'N/A'}', style: TextStyle(color: Colors.blue.shade600)),
+                                      )).toList()
                                   : [
                                       const ListTile(
                                         title: Text('No applicants yet', style: TextStyle(color: Colors.grey)),
@@ -255,25 +262,30 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
     try {
       final snapshot = await FirebaseFirestore.instance
           .collection('Applications')
-          .doc(jobId)
-          .collection('AppliedJobs')
+          .where('jobId', isEqualTo: jobId)
           .where('recruiterId', isEqualTo: user!.uid)
           .get();
 
-      dev.log('Fetched ${snapshot.docs.length} applicants for job $jobId by user ${user!.uid}', name: 'PostedJobsScreen');
+      dev.log('[2025-08-08 20:48 IST] Fetched ${snapshot.docs.length} applicants for job $jobId by user ${user!.uid}', name: 'PostedJobsScreen');
 
-      final names = snapshot.docs.map((doc) {
+      final applicants = snapshot.docs.map((doc) {
         final data = doc.data();
-        return data['resume']?['name']?.toString() ?? 'Unknown Seeker';
+        return {
+          'name': data['resume']?['name']?.toString() ?? 'Unknown Seeker',
+          'resumeUrl': data['resume']?['cvUrl']?.toString() ?? 'N/A',
+        };
       }).toList();
 
-      return {'count': snapshot.docs.length, 'names': names};
+      return {'count': snapshot.docs.length, 'applicants': applicants};
     } catch (e, stackTrace) {
-      dev.log('Error fetching applicant data for job $jobId by user ${user!.uid}: $e', name: 'PostedJobsScreen', error: e, stackTrace: stackTrace);
+      dev.log('[2025-08-08 20:48 IST] Error fetching applicant data for job $jobId by user ${user!.uid}: $e', name: 'PostedJobsScreen', error: e, stackTrace: stackTrace);
       if (e is FirebaseException) {
-        dev.log('Firebase error details: ${e.code} - ${e.message}', name: 'PostedJobsScreen');
+        dev.log('[2025-08-08 20:48 IST] Firebase error details: ${e.code} - ${e.message}', name: 'PostedJobsScreen');
+        if (e.code == 'permission-denied') {
+          dev.log('[2025-08-08 20:48 IST] Permission denied accessing Applications for job $jobId', name: 'PostedJobsScreen');
+        }
       }
-      return {'count': 0, 'names': []};
+      return {'count': 0, 'applicants': []};
     }
   }
 
@@ -308,6 +320,7 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
               Navigator.pop(context);
               try {
                 final batch = FirebaseFirestore.instance.batch();
+                // Delete job
                 batch.delete(
                   FirebaseFirestore.instance
                       .collection('Recruiters')
@@ -315,44 +328,35 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
                       .collection('Jobs')
                       .doc(jobId),
                 );
-                batch.delete(
-                  FirebaseFirestore.instance.collection('Applications').doc(jobId),
-                );
-                final indexSnapshot = await FirebaseFirestore.instance
-                    .collection('ApplicationsIndex')
+                // Delete applications
+                final appsSnapshot = await FirebaseFirestore.instance
+                    .collection('Applications')
                     .where('jobId', isEqualTo: jobId)
                     .where('recruiterId', isEqualTo: user!.uid)
                     .get();
-                for (var doc in indexSnapshot.docs) {
+                for (var doc in appsSnapshot.docs) {
                   batch.delete(doc.reference);
                 }
-                final appsSnapshot = await FirebaseFirestore.instance
-                    .collection('Applications')
-                    .doc(jobId)
-                    .collection('AppliedJobs')
+                // Delete notifications
+                final notificationsSnapshot = await FirebaseFirestore.instance
+                    .collection('Notifications')
+                    .where('jobId', isEqualTo: jobId)
                     .get();
-                for (var doc in appsSnapshot.docs) {
-                  final seekerId = doc.id;
-                  batch.delete(
-                    FirebaseFirestore.instance
-                        .collection('Applications')
-                        .doc(seekerId)
-                        .collection('AppliedJobs')
-                        .doc(jobId),
-                  );
+                for (var doc in notificationsSnapshot.docs) {
+                  batch.delete(doc.reference);
                 }
                 await batch.commit();
                 if (!context.mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                    content: Text('Job deleted'),
+                    content: Text('Job and related data deleted'),
                     backgroundColor: Colors.teal,
                     behavior: SnackBarBehavior.floating,
                   ),
                 );
-                dev.log('Job $jobId and related data deleted by user ${user!.uid}', name: 'PostedJobsScreen');
+                dev.log('[2025-08-08 20:48 IST] Job $jobId and related data deleted by user ${user!.uid}', name: 'PostedJobsScreen');
               } catch (e, stackTrace) {
-                dev.log('Error deleting job $jobId: $e', name: 'PostedJobsScreen', error: e, stackTrace: stackTrace);
+                dev.log('[2025-08-08 20:48 IST] Error deleting job $jobId: $e', name: 'PostedJobsScreen', error: e, stackTrace: stackTrace);
                 if (!context.mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(

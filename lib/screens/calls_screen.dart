@@ -26,11 +26,27 @@ class _CallsScreenState extends State<CallsScreen> {
       endDate: date.add(const Duration(hours: 1)),
     );
     Add2Calendar.addEvent2Cal(event);
-    dev.log('Added calendar event: $title on ${DateFormat('dd MMM yyyy').format(date)}', name: 'CallsScreen');
+    dev.log('[2025-08-09 00:33 IST] Added calendar event: $title on ${DateFormat('dd MMM yyyy').format(date)}', name: 'CallsScreen');
   }
 
   @override
   Widget build(BuildContext context) {
+    if (recruiterId == null) {
+      dev.log('[2025-08-09 00:33 IST] No authenticated recruiter', name: 'CallsScreen');
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Please log in to view scheduled calls.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          Navigator.pushReplacementNamed(context, '/login');
+        }
+      });
+      return const SizedBox.shrink();
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text(
@@ -79,7 +95,7 @@ class _CallsScreenState extends State<CallsScreen> {
             Expanded(
               child: StreamBuilder<QuerySnapshot>(
                 stream: _firestore
-                    .collectionGroup('AppliedJobs')
+                    .collection('Applications')
                     .where('recruiterId', isEqualTo: recruiterId)
                     .where('status', isEqualTo: 'Interview Scheduled')
                     .orderBy('interviewDate', descending: false)
@@ -93,23 +109,12 @@ class _CallsScreenState extends State<CallsScreen> {
                     );
                   }
                   if (snapshot.hasError) {
-                    dev.log('Error loading calls for recruiter $recruiterId: ${snapshot.error}', name: 'CallsScreen');
+                    dev.log('[2025-08-09 00:33 IST] Error loading calls for recruiter $recruiterId: ${snapshot.error}', name: 'CallsScreen');
+                    String errorMessage = 'Error loading calls: ${snapshot.error}. Contact support.';
                     if (snapshot.error.toString().contains('FAILED_PRECONDITION')) {
-                      return Center(
-                        child: Card(
-                          elevation: 4,
-                          color: Colors.red.shade50,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          child: const Padding(
-                            padding: EdgeInsets.all(16.0),
-                            child: Text(
-                              'Error loading calls: Index required. Create it here: https://console.firebase.google.com/v1/r/project/naukriwala-455909/firestore/indexes',
-                              style: TextStyle(fontSize: 16, color: Colors.red),
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
-                        ),
-                      );
+                      errorMessage = 'Error loading calls: Index required. Create it here: https://console.firebase.google.com/v1/r/project/naukriwala-455909/firestore/indexes';
+                    } else if (snapshot.error.toString().contains('PERMISSION_DENIED')) {
+                      errorMessage = 'Permission denied: Ensure /Applications documents have recruiterId=$recruiterId and status=Interview Scheduled.';
                     }
                     return Center(
                       child: Card(
@@ -119,8 +124,9 @@ class _CallsScreenState extends State<CallsScreen> {
                         child: Padding(
                           padding: const EdgeInsets.all(16.0),
                           child: Text(
-                            'Error loading calls: ${snapshot.error}. Contact support.',
+                            errorMessage,
                             style: TextStyle(color: Colors.red.shade700, fontSize: 16),
+                            textAlign: TextAlign.center,
                           ),
                         ),
                       ),
@@ -128,7 +134,7 @@ class _CallsScreenState extends State<CallsScreen> {
                   }
                   final calls = snapshot.data?.docs ?? [];
                   if (calls.isEmpty) {
-                    dev.log('No scheduled calls found for recruiter $recruiterId', name: 'CallsScreen');
+                    dev.log('[2025-08-09 00:33 IST] No scheduled calls found for recruiter $recruiterId', name: 'CallsScreen');
                     return const Center(
                       child: Text(
                         'No scheduled calls found.',
@@ -198,7 +204,7 @@ class _CallsScreenState extends State<CallsScreen> {
                                     color: interviewDate != null ? Colors.teal : Colors.grey,
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Colors.black.withValues(alpha: 0.2),
+                                        color: Colors.black.withOpacity(0.2),
                                         blurRadius: 4,
                                         offset: const Offset(0, 2),
                                       ),
@@ -225,7 +231,7 @@ class _CallsScreenState extends State<CallsScreen> {
 
 // Custom Animated Button Widget
 class AnimatedScaleButton extends StatefulWidget {
-  final VoidCallback? onPressed; // Changed to nullable VoidCallback
+  final VoidCallback? onPressed;
   final Widget child;
 
   const AnimatedScaleButton({required this.onPressed, required this.child, super.key});

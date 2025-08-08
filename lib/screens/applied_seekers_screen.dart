@@ -14,7 +14,15 @@ import 'dart:developer' as dev;
 
 class AppliedSeekersScreen extends StatefulWidget {
   final AuthService authService;
-  const AppliedSeekersScreen({super.key, required this.authService});
+  final String jobId;
+  final String jobTitle;
+
+  const AppliedSeekersScreen({
+    super.key,
+    required this.authService,
+    required this.jobId,
+    required this.jobTitle,
+  });
 
   @override
   State<AppliedSeekersScreen> createState() => _AppliedSeekersScreenState();
@@ -103,7 +111,51 @@ class _AppliedSeekersScreenState extends State<AppliedSeekersScreen> {
       'Content Moderation',
     ],
   };
+Future<Map<String, dynamic>> _getApplicantData(String jobId) async {
+    if (recruiterId == null) {
+      dev.log('[2025-08-08 22:38 IST] No authenticated recruiter', name: 'AppliedSeekersScreen');
+      return {'count': 0, 'applicants': []};
+    }
 
+    try {
+      final jobDoc = await FirebaseFirestore.instance
+          .collection('Recruiters')
+          .doc(recruiterId)
+          .collection('Jobs')
+          .doc(jobId)
+          .get();
+
+      if (!jobDoc.exists) {
+        dev.log('[2025-08-08 22:38 IST] Job $jobId does not exist for recruiter $recruiterId', name: 'AppliedSeekersScreen');
+        return {'count': 0, 'applicants': []};
+      }
+      if (jobDoc.data()!['recruiterId'] != recruiterId) {
+        dev.log('[2025-08-08 22:38 IST] Job $jobId not owned by recruiter $recruiterId', name: 'AppliedSeekersScreen');
+        return {'count': 0, 'applicants': []};
+      }
+
+      final snapshot = await FirebaseFirestore.instance
+          .collection('Applications')
+          .where('jobId', isEqualTo: jobId)
+          .where('recruiterId', isEqualTo: recruiterId)
+          .get();
+
+      final applicants = snapshot.docs.map((doc) => doc.data()).toList();
+      dev.log('[2025-08-08 22:38 IST] Fetched ${applicants.length} applicants for job $jobId', name: 'AppliedSeekersScreen');
+      return {
+        'count': applicants.length,
+        'applicants': applicants,
+      };
+    } catch (e, stackTrace) {
+      dev.log('[2025-08-08 22:38 IST] Error fetching applicants for job $jobId, recruiter $recruiterId: $e',
+          name: 'AppliedSeekersScreen', error: e, stackTrace: stackTrace);
+      if (e is FirebaseException && e.code == 'permission-denied') {
+        dev.log('[2025-08-08 22:38 IST] Permission denied at Applications for job $jobId. Check if recruiterId=$recruiterId matches job or if job exists.',
+            name: 'AppliedSeekersScreen');
+      }
+      return {'count': 0, 'applicants': []};
+    }
+  }
   void _addToCalendar(String title, DateTime date) {
     final event = Event(
       title: title,
@@ -152,19 +204,18 @@ class _AppliedSeekersScreenState extends State<AppliedSeekersScreen> {
       dev.log('[2025-08-07 23:10 IST] Job data: ${jobDoc.data()}', name: 'AppliedSeekersScreen');
 
       // Verify application exists
-      final appDoc = await FirebaseFirestore.instance
-          .collection('Applications')
-          .doc(jobId)
-          .collection('AppliedJobs')
-          .doc(seekerId)
-          .get();
-      if (!appDoc.exists || appDoc.data()?['recruiterId'] != recruiterId) {
-        dev.log('[2025-08-07 23:10 IST] Application not found or invalid for job $jobId, seeker $seekerId: ${appDoc.data()}', name: 'AppliedSeekersScreen');
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Invalid application')));
-        }
-        return;
-      }
+      // final appDoc = await FirebaseFirestore.instance
+      //      .collection('Applications')
+      //     .where('jobId', isEqualTo: jobId)
+      //     .where('recruiterId', isEqualTo: recruiterId)
+      //     .get();
+      // if (!appDoc.exists || appDoc.data()?['recruiterId'] != recruiterId) {
+      //   dev.log('[2025-08-07 23:10 IST] Application not found or invalid for job $jobId, seeker $seekerId: ${appDoc.data()}', name: 'AppliedSeekersScreen');
+      //   if (mounted) {
+      //     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Invalid application')));
+      //   }
+      //   return;
+      // }
 
       dev.log('[2025-08-07 23:10 IST] Handling action: $action for seeker $seekerId, job $jobId', name: 'AppliedSeekersScreen');
       switch (action) {

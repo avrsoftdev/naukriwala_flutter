@@ -30,11 +30,15 @@ class SearchJobScreenState extends State<SearchJobScreen> {
     fetchSeekerProfile();
     fetchJobsFromFirestore();
     _searchController.addListener(() => _filterJobs(_searchController.text));
+    dev.log('[2025-08-08 22:12 IST] SearchJobScreen initialized, isSeekerProfileView: ${widget.isSeekerProfileView}', name: 'SearchJobScreen');
   }
 
   Future<void> fetchSeekerProfile() async {
     final currentUser = FirebaseAuth.instance.currentUser;
-    if (currentUser == null) return;
+    if (currentUser == null) {
+      dev.log('[2025-08-08 22:12 IST] No authenticated user', name: 'SearchJobScreen');
+      return;
+    }
 
     try {
       final userDoc = await FirebaseFirestore.instance
@@ -51,16 +55,27 @@ class SearchJobScreenState extends State<SearchJobScreen> {
           setState(() {
             _seekerProfile = seekerDoc.data();
           });
+          dev.log('[2025-08-08 22:12 IST] Fetched seeker profile for ${currentUser.uid}', name: 'SearchJobScreen');
+        } else {
+          dev.log('[2025-08-08 22:12 IST] No seeker profile found for ${currentUser.uid}', name: 'SearchJobScreen');
         }
       }
     } catch (e, stackTrace) {
-      dev.log('Error fetching seeker profile: $e', name: 'SearchJobScreen', error: e, stackTrace: stackTrace);
+      dev.log('[2025-08-08 22:12 IST] Error fetching seeker profile: $e', name: 'SearchJobScreen', error: e, stackTrace: stackTrace);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading profile: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
   Future<void> fetchJobsFromFirestore() async {
     try {
-      dev.log('Fetching jobs with collection group query, emulator: ${kDebugMode ? "localhost:8080" : "default"}', name: 'SearchJobScreen');
+      dev.log('[2025-08-08 22:12 IST] Fetching jobs with collection group query, emulator: ${kDebugMode ? "localhost:8080" : "default"}', name: 'SearchJobScreen');
       if (kDebugMode) {
         FirebaseFirestore.instance.settings = const Settings(
           host: 'localhost:8080',
@@ -74,7 +89,7 @@ class SearchJobScreenState extends State<SearchJobScreen> {
           .orderBy('createdAt', descending: true)
           .get();
 
-      dev.log('Fetched ${snapshot.docs.length} jobs, docs: ${snapshot.docs.map((d) => d.id).toList()}', name: 'SearchJobScreen');
+      dev.log('[2025-08-08 22:12 IST] Fetched ${snapshot.docs.length} jobs, docs: ${snapshot.docs.map((d) => d.id).toList()}', name: 'SearchJobScreen');
       final jobList = snapshot.docs.map((doc) {
         final data = doc.data();
         return {
@@ -94,7 +109,7 @@ class SearchJobScreenState extends State<SearchJobScreen> {
         });
       }
     } catch (e, stackTrace) {
-      dev.log('Error fetching jobs: $e, stack: ${StackTrace.current}', name: 'SearchJobScreen', error: e, stackTrace: stackTrace);
+      dev.log('[2025-08-08 22:12 IST] Error fetching jobs: $e', name: 'SearchJobScreen', error: e, stackTrace: stackTrace);
       if (mounted) {
         setState(() {
           isLoading = false;
@@ -129,7 +144,7 @@ class SearchJobScreenState extends State<SearchJobScreen> {
       bool educationMatch = jobEducation.isEmpty || seekerEducation.contains(jobEducation);
       bool experienceMatch = seekerExperience >= jobExperience;
 
-      dev.log('Job: ${job['title']}, Skills match: $skillsMatch, Education match: $educationMatch, Experience match: $experienceMatch',
+      dev.log('[2025-08-08 22:12 IST] Job: ${job['title']}, Skills match: $skillsMatch, Education match: $educationMatch, Experience match: $experienceMatch',
           name: 'SearchJobScreen');
 
       return skillsMatch && educationMatch && experienceMatch;
@@ -164,32 +179,6 @@ class SearchJobScreenState extends State<SearchJobScreen> {
     setState(() => filteredJobs = results);
   }
 
-  Future<bool> _hasApplied(String jobId) async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return false;
-    try {
-      final doc = await FirebaseFirestore.instance
-          .collection('Applications')
-          .doc(jobId)
-          .collection('AppliedJobs')
-          .doc(uid)
-          .get();
-      return doc.exists;
-    } catch (e, stackTrace) {
-      dev.log('Error checking application status: $e', name: 'SearchJobScreen', error: e, stackTrace: stackTrace);
-      return false;
-    }
-  }
-
-  void _navigateToJobDetails(Map<String, dynamic> job) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => JobDetailsScreen(job: job),
-      ),
-    );
-  }
-
   Future<void> _applyToJob(Map<String, dynamic> job) async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) {
@@ -197,20 +186,6 @@ class SearchJobScreenState extends State<SearchJobScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Please log in to apply'),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-      return;
-    }
-
-    final hasApplied = await _hasApplied(job['jobId']);
-    if (hasApplied) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('You have already applied for this job'),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
           ),
@@ -239,9 +214,10 @@ class SearchJobScreenState extends State<SearchJobScreen> {
             behavior: SnackBarBehavior.floating,
           ),
         );
+        setState(() {}); // Refresh to update job list if needed
       }
     } catch (e, stackTrace) {
-      dev.log('Error applying to job: $e', name: 'SearchJobScreen', error: e, stackTrace: stackTrace);
+      dev.log('[2025-08-08 22:12 IST] Error navigating to ApplyJobScreen: $e', name: 'SearchJobScreen', error: e, stackTrace: stackTrace);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -252,6 +228,15 @@ class SearchJobScreenState extends State<SearchJobScreen> {
         );
       }
     }
+  }
+
+  void _navigateToJobDetails(Map<String, dynamic> job) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => JobDetailsScreen(job: job),
+      ),
+    );
   }
 
   @override
@@ -367,48 +352,34 @@ class SearchJobScreenState extends State<SearchJobScreen> {
                                             style: TextStyle(color: Colors.grey.shade700, fontSize: 14),
                                           ),
                                         ),
-                                        trailing: FutureBuilder<bool>(
-                                          future: _hasApplied(job['jobId']),
-                                          builder: (context, snapshot) {
-                                            if (snapshot.connectionState == ConnectionState.waiting) {
-                                              return const CircularProgressIndicator(
-                                                strokeWidth: 2,
-                                                valueColor: AlwaysStoppedAnimation<Color>(Colors.teal),
-                                              );
-                                            }
-                                            final hasApplied = snapshot.data ?? false;
-                                            return AnimatedScaleButton(
-                                              onPressed: hasApplied ? null : () => _applyToJob(job),
-                                              child: Container(
-                                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                                decoration: BoxDecoration(
-                                                  gradient: LinearGradient(
-                                                    colors: hasApplied
-                                                        ? [Colors.grey.shade400, Colors.grey.shade600]
-                                                        : [Colors.blue.shade700, Colors.teal.shade400],
-                                                    begin: Alignment.topLeft,
-                                                    end: Alignment.bottomRight,
-                                                  ),
-                                                  borderRadius: BorderRadius.circular(8),
-                                                  boxShadow: [
-                                                    BoxShadow(
-                                                      color: Colors.black.withValues(alpha: 0.2),
-                                                      blurRadius: 4,
-                                                      offset: const Offset(0, 2),
-                                                    ),
-                                                  ],
-                                                ),
-                                                child: Text(
-                                                  hasApplied ? 'Applied' : 'Apply',
-                                                  style: const TextStyle(
-                                                    color: Colors.white,
-                                                    fontWeight: FontWeight.bold,
-                                                    fontSize: 14,
-                                                  ),
-                                                ),
+                                        trailing: AnimatedScaleButton(
+                                          onPressed: () => _applyToJob(job),
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                            decoration: BoxDecoration(
+                                              gradient: LinearGradient(
+                                                colors: [Colors.blue.shade700, Colors.teal.shade400],
+                                                begin: Alignment.topLeft,
+                                                end: Alignment.bottomRight,
                                               ),
-                                            );
-                                          },
+                                              borderRadius: BorderRadius.circular(8),
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: Colors.black.withValues(alpha: 0.2),
+                                                  blurRadius: 4,
+                                                  offset: const Offset(0, 2),
+                                                ),
+                                              ],
+                                            ),
+                                            child: const Text(
+                                              'Apply',
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 14,
+                                              ),
+                                            ),
+                                          ),
                                         ),
                                         onTap: () => _navigateToJobDetails(job),
                                       ),

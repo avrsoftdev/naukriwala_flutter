@@ -28,9 +28,9 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
   void initState() {
     super.initState();
     if (recruiterId == null) {
-      dev.log('No authenticated user found', name: 'RecruiterDashboard');
+      dev.log('[2025-08-08 21:25 IST] No authenticated user found', name: 'RecruiterDashboard');
     } else {
-      dev.log('Recruiter ID: $recruiterId', name: 'RecruiterDashboard');
+      dev.log('[2025-08-08 21:25 IST] Recruiter ID: $recruiterId', name: 'RecruiterDashboard');
     }
     _requestNotificationPermissions();
     _checkRole();
@@ -43,18 +43,18 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
       await _firestore.collection('UsersIndex').doc(recruiterId).set({
         'fcmToken': token,
       }, SetOptions(merge: true));
-      dev.log('FCM token updated for $recruiterId: $token', name: 'RecruiterDashboard');
+      dev.log('[2025-08-08 21:25 IST] FCM token updated for $recruiterId: $token', name: 'RecruiterDashboard');
     } else {
-      dev.log('Failed to retrieve FCM token for $recruiterId', name: 'RecruiterDashboard');
+      dev.log('[2025-08-08 21:25 IST] Failed to retrieve FCM token for $recruiterId', name: 'RecruiterDashboard');
     }
   }
 
   Future<void> _checkRole() async {
     try {
       final role = await _authService.getUserRole();
-      dev.log('Role for UID ${FirebaseAuth.instance.currentUser!.uid}: $role', name: 'RecruiterDashboard');
+      dev.log('[2025-08-08 21:25 IST] Role for UID ${FirebaseAuth.instance.currentUser!.uid}: $role', name: 'RecruiterDashboard');
       if (role != 'recruiter') {
-        dev.log('WARNING: User ${FirebaseAuth.instance.currentUser!.uid} does not have recruiter role', name: 'RecruiterDashboard');
+        dev.log('[2025-08-08 21:25 IST] WARNING: User ${FirebaseAuth.instance.currentUser!.uid} does not have recruiter role', name: 'RecruiterDashboard');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -65,7 +65,7 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
         }
       }
     } catch (e) {
-      dev.log('Error checking role: $e', name: 'RecruiterDashboard', error: e);
+      dev.log('[2025-08-08 21:25 IST] Error checking role: $e', name: 'RecruiterDashboard', error: e);
     }
   }
 
@@ -189,7 +189,11 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => AppliedSeekersScreen(authService: _authService),
+                      builder: (context) => AppliedSeekersScreen(
+                        authService: _authService,
+                        jobId: '',
+                        jobTitle: '',
+                      ),
                     ),
                   );
                 },
@@ -237,17 +241,15 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
                 icon: Icons.logout,
                 title: 'Logout',
                 onTap: () async {
-                  Navigator.pop(context);
                   await _authService.signOut();
-                  if (mounted) {
-                    Navigator.pushReplacementNamed(context, '/');
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: const Text('Logged out successfully'),
-                        backgroundColor: Colors.green,
-                      ),
-                    );
-                  }
+                  if (!mounted) return;
+                  Navigator.pushReplacementNamed(context, '/');
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: const Text('Logged out successfully'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
                 },
               ),
             ],
@@ -298,7 +300,11 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
                   children: [
                     ProfileScreen(isRecruiter: true),
                     PostedJobsScreen(),
-                    AppliedSeekersScreen(authService: _authService),
+                    AppliedSeekersScreen(
+                      authService: _authService,
+                      jobId: '',
+                      jobTitle: '',
+                    ),
                     CallsScreen(),
                     PostJobScreen(),
                     NotificationsScreen(isRecruiter: true),

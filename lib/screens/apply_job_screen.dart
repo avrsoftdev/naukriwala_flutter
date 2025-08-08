@@ -31,8 +31,8 @@ class ApplyJobScreenState extends State<ApplyJobScreen> {
   bool _isLoading = false;
   bool _isCheckingEligibility = false;
   Map<String, dynamic>? _seekerProfile;
+  String? _errorMessage;
 
-  // Specialization options (same as PostJobScreen)
   final List<String> specializationOptions = [
     'Computer Science / IT',
     'Electronics / Electrical / Robotics',
@@ -47,7 +47,6 @@ class ApplyJobScreenState extends State<ApplyJobScreen> {
     'Others',
   ];
 
-  // Skills by specialization (same as PostJobScreen)
   final Map<String, List<String>> skillsBySpecialization = {
     'Computer Science / IT': [
       'Java', 'Python', 'C++', 'C#', 'Dart', 'Flutter', 'Android Development',
@@ -106,9 +105,8 @@ class ApplyJobScreenState extends State<ApplyJobScreen> {
     ],
     'Others': [
       'Communication Skills', 'Problem Solving', 'Teamwork', 'Leadership', 'Time Management',
-      'Adaptability', 'Creativity', 'Conflict Resolution', 'Critical Thinking', 'Customer Support',
-      'Basic Computer Skills', 'Typing', 'Remote Work Tools (Zoom, Slack, Trello)', 'Virtual Assistant',
-      'Content Moderation',
+      'Adaptability', 'Creativity', 'Work Ethic', 'Negotiation', 'Decision Making',
+      'Emotional Intelligence', 'Presentation Skills',
     ],
   };
 
@@ -116,86 +114,35 @@ class ApplyJobScreenState extends State<ApplyJobScreen> {
   void initState() {
     super.initState();
     _seekerProfile = widget.seekerProfile;
-    if (_seekerProfile == null) _fetchSeekerProfile();
-    _updateFcmToken();
-    dev.log('ApplyJobScreen initialized: jobId=${widget.jobId}, recruiterId=${widget.recruiterId}, jobTitle=${widget.jobTitle}', name: 'ApplyJobScreen');
+    // Log Firestore settings for debugging
+    dev.log('[2025-08-08 23:59 IST] Firestore settings: ${FirebaseFirestore.instance.settings}',
+        name: 'ApplyJobScreen');
+    _checkEligibility();
   }
 
-  Future<void> _updateFcmToken() async {
-    try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) {
-        dev.log('No authenticated user for FCM token update', name: 'ApplyJobScreen');
-        return;
-      }
-      final token = await _messaging.getToken();
-      if (token != null) {
-        await FirebaseFirestore.instance.collection('UsersIndex').doc(user.uid).set({
-          'fcmToken': token,
-        }, SetOptions(merge: true));
-        dev.log('FCM token updated for ${user.uid}: $token', name: 'ApplyJobScreen');
-      } else {
-        dev.log('Failed to retrieve FCM token for ${user.uid}', name: 'ApplyJobScreen');
-      }
-    } catch (e) {
-      dev.log('Error updating FCM token: $e', name: 'ApplyJobScreen', error: e);
-    }
-  }
-
-  Future<void> _fetchSeekerProfile() async {
-    final currentUser = FirebaseAuth.instance.currentUser;
-    if (currentUser == null) {
-      dev.log('No authenticated user found', name: 'ApplyJobScreen');
-      _showSnackBar('Please log in to apply');
-      return;
-    }
-
-    try {
-      setState(() => _isLoading = true);
-      final profile = await _authService.fetchProfileData(isRecruiter: false);
-      if (profile != null && mounted) {
-        // Ensure specialization is valid
-        if (profile['specialization'] != null && !specializationOptions.contains(profile['specialization'])) {
-          profile['specialization'] = 'Others';
-        }
-        setState(() {
-          _seekerProfile = profile;
-        });
-        dev.log('Fetched seeker profile for ${currentUser.uid}: $_seekerProfile', name: 'ApplyJobScreen');
-      } else {
-        dev.log('No profile found for ${currentUser.uid}', name: 'ApplyJobScreen');
-        _showSnackBar('Please complete your profile before applying');
-      }
-    } catch (e) {
-      dev.log('Error fetching seeker profile: $e', name: 'ApplyJobScreen', error: e);
-      _showSnackBar('Error loading profile: $e');
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  Future<bool> _checkJobEligibility() async {
-    final currentUser = FirebaseAuth.instance.currentUser;
-    if (currentUser == null) {
-      dev.log('No authenticated user for eligibility check', name: 'ApplyJobScreen');
-      _showSnackBar('Please log in to apply');
-      return false;
-    }
-
-    try {
+  Future<void> _checkEligibility() async {
+    if (mounted) {
       setState(() => _isCheckingEligibility = true);
-      // Check if application already exists
-      final applicationIndexDoc = await FirebaseFirestore.instance
-          .collection('ApplicationsIndex')
-          .doc('${currentUser.uid}_${widget.jobId}')
-          .get();
-      if (applicationIndexDoc.exists) {
-        dev.log('ApplicationsIndex/${currentUser.uid}_${widget.jobId} already exists', name: 'ApplyJobScreen');
-        _showSnackBar('You have already applied for this job');
-        return false;
-      } else {
-        dev.log('ApplicationsIndex/${currentUser.uid}_${widget.jobId} does not exist', name: 'ApplyJobScreen');
+    }
+    try {
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      dev.log('[2025-08-08 23:59 IST] Checking eligibility for job ${widget.jobId}, user UID: $uid',
+          name: 'ApplyJobScreen');
+      if (uid == null) {
+        throw const AuthException('User not logged in');
       }
+      if (uid != '4IxgjmIy4jReBJIsmxGNDDlE2u82') {
+        dev.log('[2025-08-08 23:59 IST] UID mismatch: expected 4IxgjmIy4jReBJIsmxGNDDlE2u82, got $uid',
+            name: 'ApplyJobScreen');
+      }
+
+      // Check seeker document existence
+      final seekerDoc = await FirebaseFirestore.instance
+          .collection('Seekers')
+          .doc(uid)
+          .get();
+      dev.log('[2025-08-08 23:59 IST] Seeker document exists: ${seekerDoc.exists}, data: ${seekerDoc.data()}',
+          name: 'ApplyJobScreen');
 
       final jobDoc = await FirebaseFirestore.instance
           .collection('Recruiters')
@@ -204,206 +151,96 @@ class ApplyJobScreenState extends State<ApplyJobScreen> {
           .doc(widget.jobId)
           .get();
 
+      dev.log('[2025-08-08 23:59 IST] Job document exists: ${jobDoc.exists}, data: ${jobDoc.data()}',
+          name: 'ApplyJobScreen');
       if (!jobDoc.exists) {
-        dev.log('Job ${widget.jobId} does not exist', name: 'ApplyJobScreen');
-        _showSnackBar('This job is no longer available');
-        return false;
+        throw const AuthException('Job does not exist');
       }
-      if (jobDoc.data()?['status'] != 'open') {
-        dev.log('Job ${widget.jobId} is not open: status=${jobDoc.data()?['status']}', name: 'ApplyJobScreen');
-        _showSnackBar('This job is no longer available');
-        return false;
+      if (jobDoc.data()!['status'] != 'open') {
+        throw const AuthException('This job is no longer accepting applications');
       }
 
-      if (_seekerProfile == null) {
-        dev.log('Seeker profile is null', name: 'ApplyJobScreen');
-        _showSnackBar('Profile data not available. Please complete your profile.');
-        return false;
+      // Check if the seeker has already applied
+      final applicationDoc = await FirebaseFirestore.instance
+          .collection('Applications')
+          .doc('${uid}_${widget.jobId}')
+          .get();
+
+      dev.log('[2025-08-08 23:59 IST] Application document exists: ${applicationDoc.exists}, id: ${uid}_${widget.jobId}',
+          name: 'ApplyJobScreen');
+      if (applicationDoc.exists) {
+        throw const AuthException('You have already applied for this job');
       }
-
-      // Validate required profile fields
-      if (_seekerProfile!['name'] == null || _seekerProfile!['name'].toString().trim().isEmpty ||
-          _seekerProfile!['email'] == null || _seekerProfile!['email'].toString().trim().isEmpty ||
-          _seekerProfile!['skills'] == null || (_seekerProfile!['skills'] as List).isEmpty ||
-          _seekerProfile!['education'] == null || _seekerProfile!['education'].toString().trim().isEmpty ||
-          _seekerProfile!['experience'] == null || _seekerProfile!['experience'].toString().trim().isEmpty ||
-          _seekerProfile!['specialization'] == null || _seekerProfile!['specialization'].toString().trim().isEmpty) {
-        dev.log('Incomplete seeker profile: $_seekerProfile', name: 'ApplyJobScreen');
-        _showSnackBar('Please complete your profile (name, email, skills, education, experience, specialization) before applying.');
-        return false;
+    } catch (e, stackTrace) {
+      dev.log('[2025-08-08 23:59 IST] Error checking eligibility for job ${widget.jobId}: $e',
+          name: 'ApplyJobScreen', error: e, stackTrace: stackTrace);
+      if (mounted) {
+        setState(() => _errorMessage = e.toString().contains('PERMISSION_DENIED')
+            ? 'Unable to verify application status due to permission restrictions. Please contact support.'
+            : e.toString());
       }
-
-      final jobData = jobDoc.data()!;
-      final jobSkills = (jobData['skills'] as List<dynamic>?)?.cast<String>() ?? [];
-      final seekerSkills = (_seekerProfile!['skills'] as List<dynamic>?)?.cast<String>() ?? [];
-      final jobEducation = jobData['education']?.toString().toLowerCase() ?? '';
-      final seekerEducation = _seekerProfile!['education']?.toString().toLowerCase() ?? '';
-      final jobSpecialization = jobData['specialization']?.toString() ?? 'Others';
-      final seekerSpecialization = _seekerProfile!['specialization']?.toString() ?? 'Others';
-      final jobExperience = _parseExperience(jobData['experience']?.toString() ?? '0');
-      final seekerExperience = _parseExperience(_seekerProfile!['experience']?.toString() ?? '0');
-
-      // Validate specialization
-      bool specializationMatch = jobSpecialization == 'Others' || seekerSpecialization == jobSpecialization;
-      if (!specializationMatch) {
-        // Allow partial match if seeker has skills from the job's specialization
-        final jobSkillsSet = skillsBySpecialization[jobSpecialization] ?? skillsBySpecialization['Others']!;
-        specializationMatch = seekerSkills.any((s) => jobSkillsSet.contains(s));
-      }
-
-      // Validate skills (at least one skill must match if job specifies skills)
-      bool skillsMatch = jobSkills.isEmpty || seekerSkills.any((s) => jobSkills.contains(s));
-      bool educationMatch = jobEducation.isEmpty || seekerEducation.contains(jobEducation);
-      bool experienceMatch = seekerExperience >= jobExperience;
-
-      dev.log('Eligibility check for job ${widget.jobId}: specializationMatch=$specializationMatch, skillsMatch=$skillsMatch, educationMatch=$educationMatch, experienceMatch=$experienceMatch', name: 'ApplyJobScreen');
-      dev.log('Job skills: $jobSkills, Seeker skills: $seekerSkills', name: 'ApplyJobScreen');
-      dev.log('Job education: $jobEducation, Seeker education: $seekerEducation', name: 'ApplyJobScreen');
-      dev.log('Job specialization: $jobSpecialization, Seeker specialization: $seekerSpecialization', name: 'ApplyJobScreen');
-      dev.log('Job experience: $jobExperience, Seeker experience: $seekerExperience', name: 'ApplyJobScreen');
-
-      if (!specializationMatch || !skillsMatch || !educationMatch || !experienceMatch) {
-        _showSnackBar('You are not eligible for this job based on specialization, skills, education, or experience.');
-        return false;
-      }
-
-      return true;
-    } catch (e) {
-      dev.log('Error checking job eligibility for ${widget.jobId}: $e', name: 'ApplyJobScreen', error: e);
-      if (e is FirebaseException && e.code == 'permission-denied') {
-        dev.log('Permission denied reading Recruiters/${widget.recruiterId}/Jobs/${widget.jobId} or ApplicationsIndex/${currentUser.uid}_${widget.jobId}', name: 'ApplyJobScreen');
-        _showSnackBar('Permission denied: Cannot access job details. Ensure your profile is complete or contact support. Path: ${e.message?.split(' ').last}');
-      } else {
-        _showSnackBar('Error checking eligibility: $e');
-      }
-      return false;
     } finally {
-      if (mounted) setState(() => _isCheckingEligibility = false);
+      if (mounted) {
+        setState(() => _isCheckingEligibility = false);
+      }
     }
-  }
-
-  double _parseExperience(String exp) {
-    try {
-      final match = RegExp(r'\d+').firstMatch(exp);
-      return double.tryParse(match?.group(0) ?? '0') ?? 0;
-    } catch (_) {
-      return 0;
-    }
-  }
-
-  Future<bool> _checkRole() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return false;
-    final role = await _authService.getUserRole();
-    dev.log('User ${user.uid} role: $role', name: 'ApplyJobScreen');
-    return role == 'seeker';
   }
 
   Future<void> _applyForJob() async {
     if (!_formKey.currentState!.validate()) {
-      dev.log('Form validation failed', name: 'ApplyJobScreen');
+      setState(() => _errorMessage = 'Please enter a cover letter');
       return;
     }
 
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      dev.log('No authenticated user', name: 'ApplyJobScreen');
-      _showSnackBar('Please log in to apply');
-      return;
-    }
-
-    if (user.uid == widget.recruiterId) {
-      dev.log('User attempted to apply for their own job', name: 'ApplyJobScreen');
-      _showSnackBar('You cannot apply for your own job');
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) {
+      if (mounted) {
+        setState(() => _errorMessage = 'Please log in to apply');
+      }
       return;
     }
 
     if (_seekerProfile == null) {
-      dev.log('Seeker profile is null before applying', name: 'ApplyJobScreen');
-      _showSnackBar('Profile data not available. Please complete your profile.');
-      return;
-    }
-
-    if (!await _checkRole()) {
-      dev.log('User ${user.uid} does not have seeker role', name: 'ApplyJobScreen');
-      _showSnackBar('You must be a seeker to apply for jobs. Please update your role.');
-      return;
-    }
-
-    final isEligible = await _checkJobEligibility();
-    if (!isEligible) {
-      dev.log('Seeker is not eligible for job ${widget.jobId}', name: 'ApplyJobScreen');
+      if (mounted) {
+        setState(() => _errorMessage = 'Profile not loaded. Please complete your profile in the Profile section.');
+      }
       return;
     }
 
     setState(() => _isLoading = true);
 
     try {
-      final applicationData = {
-        'jobId': widget.jobId,
-        'jobTitle': widget.jobTitle,
-        'seekerId': user.uid,
-        'recruiterId': widget.recruiterId,
-        'coverLetter': _coverLetterController.text.trim(),
-        'status': 'Applied',
-        'appliedAt': FieldValue.serverTimestamp(),
-        'resume': {
-          'name': _seekerProfile!['name'] ?? '',
-          'email': _seekerProfile!['email'] ?? '',
-          'mobileNumber': _seekerProfile!['mobileNumber'] ?? '',
-          'skills': _seekerProfile!['skills'] ?? [],
-          'education': _seekerProfile!['education'] ?? '',
-          'experience': _seekerProfile!['experience'] ?? '',
-          'specialization': _seekerProfile!['specialization'] ?? 'Others',
-          'currentCompany': _seekerProfile!['currentCompany'] ?? '',
-          'currentCtc': _seekerProfile!['currentCtc'] ?? '',
-          'expectedCtc': _seekerProfile!['expectedCtc'] ?? '',
-          'photoUrl': _seekerProfile!['photoUrl'] ?? '',
-          'cvUrl': _seekerProfile!['cvUrl'] ?? '',
-        },
-      };
+      dev.log('[2025-08-08 23:59 IST] Applying for job ${widget.jobId}, seeker profile: $_seekerProfile',
+          name: 'ApplyJobScreen');
+      String? fcmToken = await _messaging.getToken();
+      await _authService.applyToJob(
+        jobId: widget.jobId,
+        jobTitle: widget.jobTitle,
+        recruiterId: widget.recruiterId,
+        coverLetter: _coverLetterController.text.trim(),
+        seekerProfile: _seekerProfile!,
+        fcmToken: fcmToken ?? '',
+      );
 
-      dev.log('Submitting application for job ${widget.jobId}: $applicationData', name: 'ApplyJobScreen');
-      await _authService.applyToJob(widget.jobId, widget.recruiterId, applicationData);
-      dev.log('Application submitted for job ${widget.jobId} by ${user.uid}', name: 'ApplyJobScreen');
-      _showSnackBar('Application submitted successfully');
-      if (mounted) Navigator.pop(context);
-    } catch (e) {
-      dev.log('Error applying for job ${widget.jobId}: $e', name: 'ApplyJobScreen', error: e);
-      if (e is FirebaseException) {
-        dev.log('Firebase error details: code=${e.code}, message=${e.message}, path=Applications/${widget.jobId}/AppliedJobs or ApplicationsIndex/${user.uid}_${widget.jobId} or RecruiterNotifications/${widget.recruiterId}/Notifications', name: 'ApplyJobScreen');
-        if (e.code == 'permission-denied') {
-          _showSnackBar('Permission denied: Unable to submit application. Ensure your profile is complete or contact support. Path: ${e.message?.split(' ').last}');
-        } else {
-          _showSnackBar('Failed to apply: ${e.code} - ${e.message}');
-        }
-      } else if (e is AuthException) {
-        _showSnackBar(e.message);
-      } else {
-        _showSnackBar('Failed to apply: $e');
-      }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  void _showSnackBar(String message) {
-    if (mounted) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          duration: const Duration(seconds: 5),
-          action: message.contains('Permission denied')
-              ? SnackBarAction(
-                  label: 'Contact Support',
-                  onPressed: () {
-                    dev.log('User clicked Contact Support', name: 'ApplyJobScreen');
-                    // TODO: Implement support contact logic (e.g., open email client or support page)
-                  },
-                )
-              : null,
+        const SnackBar(
+          content: Text('Application submitted successfully'),
+          backgroundColor: Colors.teal,
+          behavior: SnackBarBehavior.floating,
         ),
       );
+      Navigator.pop(context);
+    } catch (e, stackTrace) {
+      dev.log('[2025-08-08 23:59 IST] Error applying for job ${widget.jobId}: $e',
+          name: 'ApplyJobScreen', error: e, stackTrace: stackTrace);
+      if (mounted) {
+        setState(() => _errorMessage = 'Failed to apply: $e');
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -416,7 +253,18 @@ class ApplyJobScreenState extends State<ApplyJobScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Apply for ${widget.jobTitle}')),
+      appBar: AppBar(
+        title: Text('Apply for ${widget.jobTitle}'),
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.blue.shade700, Colors.blue.shade900],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
+      ),
       body: _isLoading || _isCheckingEligibility
           ? const Center(child: CircularProgressIndicator())
           : Padding(
@@ -425,14 +273,40 @@ class ApplyJobScreenState extends State<ApplyJobScreen> {
                 key: _formKey,
                 child: ListView(
                   children: [
-                    const Text('Cover Letter', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    if (_errorMessage != null)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 16.0),
+                        child: Card(
+                          color: Colors.red.shade50,
+                          child: Padding(
+                            padding: const EdgeInsets.all(12.0),
+                            child: Text(
+                              _errorMessage!,
+                              style: TextStyle(color: Colors.red.shade700, fontSize: 16),
+                            ),
+                          ),
+                        ),
+                      ),
+                    const Text(
+                      'Cover Letter',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
                     const SizedBox(height: 10),
                     TextFormField(
                       controller: _coverLetterController,
                       maxLines: 5,
-                      decoration: const InputDecoration(
-                        border: OutlineInputBorder(),
+                      decoration: InputDecoration(
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: Colors.grey.shade400),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: Colors.teal, width: 2),
+                        ),
                         hintText: 'Write your cover letter here...',
+                        filled: true,
+                        fillColor: Colors.white,
                       ),
                       validator: (value) =>
                           value == null || value.trim().isEmpty ? 'Please enter a cover letter' : null,
@@ -442,7 +316,10 @@ class ApplyJobScreenState extends State<ApplyJobScreen> {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('Resume Details', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                          const Text(
+                            'Resume Details',
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          ),
                           const SizedBox(height: 10),
                           Text('Name: ${_seekerProfile!['name'] ?? 'N/A'}'),
                           Text('Email: ${_seekerProfile!['email'] ?? 'N/A'}'),
@@ -454,17 +331,44 @@ class ApplyJobScreenState extends State<ApplyJobScreen> {
                           Text('Current Company: ${_seekerProfile!['currentCompany'] ?? 'N/A'}'),
                           Text('Current CTC: ${_seekerProfile!['currentCtc'] ?? 'N/A'}'),
                           Text('Expected CTC: ${_seekerProfile!['expectedCtc'] ?? 'N/A'}'),
+                          Text('Resume URL: ${_seekerProfile!['resumeUrl'] ?? 'N/A'}'),
                         ],
                       )
                     else
-                      const Text('Loading profile...', style: TextStyle(fontSize: 16, color: Colors.grey)),
+                      const Text(
+                        'Loading profile...',
+                        style: TextStyle(fontSize: 16, color: Colors.grey),
+                      ),
                     const SizedBox(height: 20),
                     Center(
-                      child: ElevatedButton.icon(
+                      child: AnimatedScaleButton(
                         onPressed: _applyForJob,
-                        icon: const Icon(Icons.send),
-                        label: const Text('Submit Application'),
-                        style: ElevatedButton.styleFrom(backgroundColor: Colors.deepPurple),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [Colors.blue.shade700, Colors.teal.shade400],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.2),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: const Text(
+                            'Submit Application',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                   ],
@@ -480,4 +384,51 @@ class AuthException implements Exception {
   const AuthException(this.message);
   @override
   String toString() => 'AuthException: $message';
+}
+
+class AnimatedScaleButton extends StatefulWidget {
+  final VoidCallback onPressed;
+  final Widget child;
+
+  const AnimatedScaleButton({required this.onPressed, required this.child, super.key});
+
+  @override
+  AnimatedScaleButtonState createState() => AnimatedScaleButtonState();
+}
+
+class AnimatedScaleButtonState extends State<AnimatedScaleButton> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 100),
+      vsync: this,
+    );
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(_controller);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => _controller.forward(),
+      onTapUp: (_) {
+        _controller.reverse();
+        widget.onPressed();
+      },
+      onTapCancel: () => _controller.reverse(),
+      child: ScaleTransition(
+        scale: _scaleAnimation,
+        child: widget.child,
+      ),
+    );
+  }
 }

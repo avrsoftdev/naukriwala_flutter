@@ -19,14 +19,61 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _messageController = TextEditingController();
   final AuthService _authService = AuthService();
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
   Stream<QuerySnapshot> _getMessagesStream() {
-    return FirebaseFirestore.instance
+    return _firestore
         .collection('Messages')
         .doc(widget.chatId)
-        .collection('Messages')
+        .collection('Chats')
         .orderBy('timestamp', descending: true)
         .snapshots();
+  }
+
+  Future<Map<String, dynamic>> _getChatDetails() async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) return {'recipientName': 'Unknown', 'jobTitle': 'Unknown', 'company': 'Unknown', 'resumeUrl': null};
+
+    // Determine user role (seeker or recruiter)
+    final userDoc = await _firestore.collection('Users').doc(uid).get();
+    final isRecruiter = userDoc.exists && userDoc.data()?['role'] == 'recruiter';
+
+    // Fetch recipient name
+    String recipientName = 'Unknown';
+    final recipientDoc = await _firestore.collection(isRecruiter ? 'Seekers' : 'Recruiters').doc(widget.recipientId).get();
+    if (recipientDoc.exists) {
+      recipientName = recipientDoc.data()?['name'] ?? 'Unknown';
+    }
+
+    // Fetch job details
+    String jobTitle = 'Unknown';
+    String company = 'Unknown';
+    String? resumeUrl;
+    final appDoc = await _firestore.collection('Applications').doc(isRecruiter ? '${widget.recipientId}_${widget.jobId}' : '${uid}_${widget.jobId}').get();
+    if (appDoc.exists) {
+      final appData = appDoc.data()!;
+      jobTitle = appData['jobTitle'] ?? 'Unknown';
+      final jobDoc = await _firestore
+          .collection('Recruiters')
+          .doc(appData['recruiterId'])
+          .collection('Jobs')
+          .doc(widget.jobId)
+          .get();
+      if (jobDoc.exists) {
+        company = jobDoc.data()?['company'] ?? 'Unknown';
+      }
+      if (isRecruiter) {
+        resumeUrl = appData['resume']?['cvUrl'] ?? null;
+      }
+    }
+
+    return {
+      'recipientName': recipientName,
+      'jobTitle': jobTitle,
+      'company': company,
+      'resumeUrl': resumeUrl,
+    };
   }
 
   Future<void> _sendMessage() async {
@@ -34,8 +81,9 @@ class _ChatScreenState extends State<ChatScreen> {
       try {
         await _authService.sendMessage(widget.recipientId, widget.jobId, _messageController.text);
         _messageController.clear();
+        dev.log('[2025-08-09 01:15 IST] Sent message in chat ${widget.chatId} for job ${widget.jobId}', name: 'ChatScreen');
       } catch (e) {
-        dev.log('Error sending message: $e', name: 'ChatScreen', error: e);
+        dev.log('[2025-08-09 01:15 IST] Error sending message in chat ${widget.chatId}: $e', name: 'ChatScreen', error: e);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -53,9 +101,15 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          'Chat with ${widget.recipientId}',
-          style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+        title: FutureBuilder<Map<String, dynamic>>(
+          future: _getChatDetails(),
+          builder: (context, snapshot) {
+            final data = snapshot.data ?? {'recipientName': widget.recipientId, 'jobTitle': 'Unknown'};
+            return Text(
+              'Chat with ${data['recipientName']} - ${data['jobTitle']}',
+              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+            );
+          },
         ),
         flexibleSpace: Container(
           decoration: BoxDecoration(
@@ -68,137 +122,131 @@ class _ChatScreenState extends State<ChatScreen> {
         ),
         elevation: 4,
       ),
-      body: Column(
-        children: [
-          Expanded(
-            child: StreamBuilder<QuerySnapshot>(
-              stream: _getMessagesStream(),
-              builder: (context, snapshot) {
-                if (snapshot.hasError) {
-                  dev.log('Error loading messages: ${snapshot.error}', name: 'ChatScreen');
-                  return Center(
-                    child: Card(
-                      elevation: 4,
-                      color: Colors.red.shade50,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Text(
-                          'Error loading messages',
-                          style: TextStyle(color: Colors.red.shade700, fontSize: 16),
-                        ),
-                      ),
+      body: FutureBuilder<Map<String, dynamic>>(
+        future: _getChatDetails(),
+        builder: (context, snapshot) {
+          final data = snapshot.data ?? {'company': 'Unknown', 'resumeUrl': null};
+          return Column(
+            children: [
+              if (snapshot.hasData && data['resumeUrl'] != null)
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: GestureDetector(
+                    onTap: () async {
+                      final resumeUrl = data['resumeUrl'] as String?;
+                      if (resumeUrl != null) {
+                        // Implement URL launch logic if needed
+                        dev.log('[2025-08-09 01:15 IST] Attempting to open resume URL: $resumeUrl', name: 'ChatScreen');
+                      }
+                    },
+                    child: Text(
+                      'Resume URL: ${data['resumeUrl']}',
+                      style: const TextStyle(color: Colors.blue, decoration: TextDecoration.underline),
                     ),
-                  );
-                }
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(
-                    child: CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.teal),
-                    ),
-                  );
-                }
-
-                final messages = snapshot.data?.docs ?? [];
-                return ListView.builder(
-                  reverse: true,
-                  itemCount: messages.length,
-                  itemBuilder: (context, index) {
-                    final data = messages[index].data() as Map<String, dynamic>;
-                    final senderId = data['senderId'] as String;
-                    final message = data['message'] as String;
-                    final timestamp = (data['timestamp'] as Timestamp).toDate();
-                    final isMe = senderId == FirebaseAuth.instance.currentUser?.uid;
-
-                    return AnimatedListItem(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 16),
-                        child: Align(
-                          alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-                          child: Column(
-                            crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(12),
-                                constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.7),
-                                decoration: BoxDecoration(
-                                  color: isMe ? Colors.teal.shade100 : Colors.grey.shade200,
-                                  borderRadius: BorderRadius.circular(12),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withOpacity(0.1),
-                                      blurRadius: 4,
-                                      offset: const Offset(0, 2),
+                  ),
+                ),
+              Expanded(
+                child: StreamBuilder<QuerySnapshot>(
+                  stream: _getMessagesStream(),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    if (snapshot.hasError) {
+                      dev.log('[2025-08-09 01:15 IST] Error loading messages for chat ${widget.chatId}: ${snapshot.error}', name: 'ChatScreen', error: snapshot.error);
+                      return const Center(child: Text('Error loading messages'));
+                    }
+                    final messages = snapshot.data?.docs ?? [];
+                    return ListView.builder(
+                      reverse: true,
+                      padding: const EdgeInsets.all(16.0),
+                      itemCount: messages.length,
+                      itemBuilder: (context, index) {
+                        final messageData = messages[index].data() as Map<String, dynamic>;
+                        final isSender = messageData['senderId'] == _auth.currentUser?.uid;
+                        final message = messageData['message'] as String? ?? '';
+                        final timestamp = (messageData['timestamp'] as Timestamp?)?.toDate();
+                        return AnimatedListItem(
+                          child: Align(
+                            alignment: isSender ? Alignment.centerRight : Alignment.centerLeft,
+                            child: Container(
+                              margin: const EdgeInsets.symmetric(vertical: 4),
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: isSender ? Colors.teal.shade100 : Colors.grey.shade200,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: isSender ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    message,
+                                    style: const TextStyle(color: Colors.black87),
+                                  ),
+                                  if (timestamp != null)
+                                    Text(
+                                      DateFormat('hh:mm a').format(timestamp),
+                                      style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
                                     ),
-                                  ],
-                                ),
-                                child: Text(
-                                  message,
-                                  style: const TextStyle(fontSize: 16, color: Colors.black87),
-                                ),
+                                ],
                               ),
-                              const SizedBox(height: 4),
-                              Text(
-                                DateFormat('hh:mm a').format(timestamp),
-                                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                              ),
-                            ],
+                            ),
                           ),
-                        ),
-                      ),
+                        );
+                      },
                     );
                   },
-                );
-              },
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _messageController,
-                    decoration: InputDecoration(
-                      hintText: 'Type a message...',
-                      hintStyle: TextStyle(color: Colors.grey.shade500),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey.shade400),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Colors.teal, width: 2),
-                      ),
-                      filled: true,
-                      fillColor: Colors.white,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    ),
-                  ),
                 ),
-                const SizedBox(width: 8),
-                AnimatedScaleButton(
-                  onPressed: _sendMessage,
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.teal,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.2),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _messageController,
+                        decoration: InputDecoration(
+                          hintText: 'Type a message...',
+                          hintStyle: TextStyle(color: Colors.grey.shade500),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: Colors.grey.shade400),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: const BorderSide(color: Colors.teal, width: 2),
+                          ),
+                          filled: true,
+                          fillColor: Colors.white,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                         ),
-                      ],
+                      ),
                     ),
-                    child: const Icon(Icons.send, color: Colors.white, size: 24),
-                  ),
+                    const SizedBox(width: 8),
+                    AnimatedScaleButton(
+                      onPressed: _sendMessage,
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.teal,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.2),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(Icons.send, color: Colors.white, size: 24),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ),
-        ],
+              ),
+            ],
+          );
+        },
       ),
     );
   }
