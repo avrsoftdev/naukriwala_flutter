@@ -193,7 +193,7 @@ class AuthService {
       }
 
       // Validate fields for recruiters
-      if (isRecruiter && normalizedData['company'] == null) {
+      if (isRecruiter && normalizedData['companyName'] == null) {
         dev.log("Missing company field for recruiter UID: $uid", name: 'AuthService');
         throw const AuthException("Company name is required for recruiters");
       }
@@ -657,70 +657,74 @@ Future<List<Map<String, dynamic>>> fetchAppliedSeekers() async {
       rethrow;
     }
   }
-  Future<void> sendMessage(
-    String recipientId,
-    String jobId,
-    String message,
-  ) async {
-    final uid = _auth.currentUser?.uid;
-    if (uid == null) throw const AuthException('User not logged in');
+Future<void> sendMessage(String recipientId, String jobId, String message) async {
+  final senderId = FirebaseAuth.instance.currentUser!.uid;
+  try {
+    // Determine seekerId based on context
+    String seekerId;
+    String applicationId;
+    if (senderId == recipientId) {
+      throw Exception('Cannot send message to self');
+    }
+    // Check if sender is the seeker
+    final senderAppDoc = await FirebaseFirestore.instance
+        .collection('Applications')
+        .doc('${senderId}_$jobId')
+        .get();
+    if (senderAppDoc.exists && senderAppDoc.data()?['seekerId'] == senderId) {
+      seekerId = senderId;
+      applicationId = '${senderId}_$jobId';
+    } else {
+      // Sender is likely the recruiter, recipient is the seeker
+      final recipientAppDoc = await FirebaseFirestore.instance
+          .collection('Applications')
+          .doc('${recipientId}_$jobId')
+          .get();
+      if (!recipientAppDoc.exists) {
+        dev.log('[2025-08-12 16:00 IST] Application ${recipientId}_$jobId not found', name: 'AuthService');
+        throw Exception('Application does not exist');
+      }
+      seekerId = recipientId;
+      applicationId = '${recipientId}_$jobId';
+    }
 
-    final appDoc = await _firestore.collection('Applications').doc('${uid == recipientId ? recipientId : uid}_${jobId}').get();
+    // Verify application data
+    final appDoc = await FirebaseFirestore.instance
+        .collection('Applications')
+        .doc(applicationId)
+        .get();
     if (!appDoc.exists) {
-      throw const AuthException('Application does not exist');
+      dev.log('[2025-08-12 16:00 IST] Application $applicationId not found', name: 'AuthService');
+      throw Exception('Application does not exist');
     }
     final appData = appDoc.data()!;
-    final recruiterId = appData['recruiterId'] as String;
-    final seekerId = appData['seekerId'] as String;
-
-    if (uid != recruiterId && uid != seekerId) {
-      throw const AuthException('Not authorized to send message for this application');
+    if (appData['jobId'] != jobId || appData['seekerId'] != seekerId || appData['recruiterId'] is! String) {
+      dev.log('[2025-08-12 16:00 IST] Invalid application data for $applicationId: $appData', name: 'AuthService');
+      throw Exception('Invalid application data');
     }
 
-    final participants = [seekerId, recruiterId];
+    // Create chat
+    final participants = [senderId, recipientId];
     participants.sort();
     final chatId = '${participants[0]}_${participants[1]}';
-
-    final batch = _firestore.batch();
-    final chatRef = _firestore.collection('Messages').doc(chatId);
-    final messageRef = chatRef.collection('Chats').doc();
-
-    batch.set(chatRef, {
-      'senderId': uid,
-      'recipientId': recipientId,
-      'jobId': jobId,
-      'lastMessage': message,
-      'timestamp': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
-
-    batch.set(messageRef, {
-      'senderId': uid,
-      'recipientId': recipientId,
-      'message': message,
-      'timestamp': FieldValue.serverTimestamp(),
-    });
-
-    await batch.commit();
-    dev.log('[2025-08-09 01:15 IST] Sent message in chat $chatId from $uid to $recipientId for job $jobId', name: 'AuthService');
-
-    // Notify recipient
-    final notificationId = _firestore.collection(uid == recruiterId ? 'SeekerNotifications' : 'RecruiterNotifications').doc(recipientId).collection('Notifications').doc().id;
-    batch.set(
-      _firestore.collection(uid == recruiterId ? 'SeekerNotifications' : 'RecruiterNotifications').doc(recipientId).collection('Notifications').doc(notificationId),
-      {
-        'to': recipientId,
-        'recipientId': recipientId,
-        'from': uid,
-        'jobId': jobId,
-        'notificationId': notificationId,
-        'type': 'message',
-        'read': false,
-        'timestamp': FieldValue.serverTimestamp(),
-        'message': 'New message regarding "${appData['jobTitle']}" from ${uid == recruiterId ? 'recruiter' : 'seeker'}',
-      },
-    );
-    await batch.commit();
+    await FirebaseFirestore.instance
+        .collection('Messages')
+        .doc(chatId)
+        .collection('Chats')
+        .add({
+          'senderId': senderId,
+          'recipientId': recipientId,
+          'jobId': jobId,
+          'message': message,
+          'timestamp': Timestamp.now(),
+        });
+    dev.log('[2025-08-12 16:00 IST] Message sent from $senderId to $recipientId for job $jobId with chatId $chatId', name: 'AuthService');
+  } catch (e) {
+    dev.log('[2025-08-12 16:00 IST] Error sending message from $senderId to $recipientId for job $jobId: $e', name: 'AuthService', error: e);
+    throw AuthException('Application does not exist');
   }
+}
+
   Future<bool> isSignedIn() async => _auth.currentUser != null;
 
   User? getCurrentUser() => _auth.currentUser;

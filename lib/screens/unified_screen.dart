@@ -18,11 +18,12 @@ class UnifiedScreenState extends State<UnifiedScreen> {
   String? _selectedRole;
   LoginMethod _method = LoginMethod.phone;
   ScreenState _currentState = ScreenState.roleSelection;
-
+  final _nameController = TextEditingController();
   final _phoneController = TextEditingController(text: "+91");
   final _otpController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _companyNameController = TextEditingController();
   String? _verificationId;
   bool _otpSent = false;
   bool _isLoading = false;
@@ -283,11 +284,14 @@ class UnifiedScreenState extends State<UnifiedScreen> {
         'Email Id': _emailController.text.trim(),
         'UID': uid,
       };
-
-      if (_selectedRole == 'seeker') {
-        signupData['skills'] = _selectedSkills;
+      if (_selectedRole == 'recruiter') {
+      signupData['companyName'] = _formData['Company Name']?.toString().trim() ?? '';
+      } else if (_selectedRole == 'seeker') {
+      signupData['education'] = _formData['Education']?.toString().trim() ?? '';
+      signupData['specialization'] = _formData['specialization']?.toString().trim() ?? '';
+      signupData['skills'] = _selectedSkills;
       }
-
+      
       await _authService.storeSignupData(
         isRecruiter: _selectedRole == 'recruiter',
         data: signupData,
@@ -855,7 +859,10 @@ class UnifiedScreenState extends State<UnifiedScreen> {
                             key: _formKey,
                             child: ListView(
                               children: [
-                                _buildTextField('Name'),
+                                _buildTextField(
+                                  'Name',                              
+                                  controller: _nameController,
+                                ),
                                 _buildTextField(
                                    'Mobile Number (+91xxxxxxxxxx)',
                                 controller: _phoneController,
@@ -871,8 +878,13 @@ class UnifiedScreenState extends State<UnifiedScreen> {
                                   controller: _passwordController,
                                   isPassword: true,
                                 ),
+                                
                                 if (_currentState == ScreenState.recruiterSignup)
-                                  _buildTextField('Company Name'),
+                                  _buildTextField(
+                                  'Company Name',
+                                  controller: _companyNameController,
+                                  // iscompanyName: true,
+                                ),
                                 if (_currentState == ScreenState.seekerSignup) ...[
                                   _buildEducationDropdown(),
                                   _buildSpecializationDropdown(),

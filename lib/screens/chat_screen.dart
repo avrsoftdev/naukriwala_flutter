@@ -39,9 +39,9 @@ class _ChatScreenState extends State<ChatScreen> {
     final userDoc = await _firestore.collection('Users').doc(uid).get();
     final isRecruiter = userDoc.exists && userDoc.data()?['role'] == 'recruiter';
 
-    // Fetch recipient name
+    // Fetch recipient name from UsersIndex
     String recipientName = 'Unknown';
-    final recipientDoc = await _firestore.collection(isRecruiter ? 'Seekers' : 'Recruiters').doc(widget.recipientId).get();
+    final recipientDoc = await _firestore.collection('UsersIndex').doc(widget.recipientId).get();
     if (recipientDoc.exists) {
       recipientName = recipientDoc.data()?['name'] ?? 'Unknown';
     }
@@ -81,9 +81,9 @@ class _ChatScreenState extends State<ChatScreen> {
       try {
         await _authService.sendMessage(widget.recipientId, widget.jobId, _messageController.text);
         _messageController.clear();
-        dev.log('[2025-08-09 01:39 IST] Sent message in chat ${widget.chatId} for job ${widget.jobId}', name: 'ChatScreen');
+        dev.log('[2025-08-11 16:41 IST] Sent message in chat ${widget.chatId} for job ${widget.jobId}', name: 'ChatScreen');
       } catch (e) {
-        dev.log('[2025-08-09 01:39 IST] Error sending message in chat ${widget.chatId}: $e', name: 'ChatScreen', error: e);
+        dev.log('[2025-08-11 16:41 IST] Error sending message in chat ${widget.chatId}: $e', name: 'ChatScreen', error: e);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -122,131 +122,108 @@ class _ChatScreenState extends State<ChatScreen> {
         ),
         elevation: 4,
       ),
-      body: FutureBuilder<Map<String, dynamic>>(
-        future: _getChatDetails(),
-        builder: (context, snapshot) {
-          final data = snapshot.data ?? {'company': 'Unknown', 'resumeUrl': null};
-          return Column(
-            children: [
-              if (snapshot.hasData && data['resumeUrl'] != null)
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: GestureDetector(
-                    onTap: () async {
-                      final resumeUrl = data['resumeUrl'] as String?;
-                      if (resumeUrl != null) {
-                        // Implement URL launch logic if needed
-                        dev.log('[2025-08-09 01:39 IST] Attempting to open resume URL: $resumeUrl', name: 'ChatScreen');
-                      }
-                    },
+      body: Column(
+        children: [
+          Expanded(
+            child: StreamBuilder<QuerySnapshot>(
+              stream: _getMessagesStream(),
+              builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  dev.log('Error loading messages for chat ${widget.chatId}: ${snapshot.error}', name: 'ChatScreen');
+                  return const Center(
                     child: Text(
-                      'Resume URL: ${data['resumeUrl']}',
-                      style: const TextStyle(color: Colors.blue, decoration: TextDecoration.underline),
+                      'Unable to load messages. Please check your permissions or try again.',
+                      style: TextStyle(color: Colors.red, fontSize: 16),
                     ),
-                  ),
-                ),
-              Expanded(
-                child: StreamBuilder<QuerySnapshot>(
-                  stream: _getMessagesStream(),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
-                    if (snapshot.hasError) {
-                      dev.log('[2025-08-09 01:39 IST] Error loading messages for chat ${widget.chatId}: ${snapshot.error}', name: 'ChatScreen', error: snapshot.error);
-                      return const Center(child: Text('Error loading messages'));
-                    }
-                    final messages = snapshot.data?.docs ?? [];
-                    return ListView.builder(
-                      reverse: true,
-                      padding: const EdgeInsets.all(16.0),
-                      itemCount: messages.length,
-                      itemBuilder: (context, index) {
-                        final messageData = messages[index].data() as Map<String, dynamic>;
-                        final isSender = messageData['senderId'] == _auth.currentUser?.uid;
-                        final message = messageData['message'] as String? ?? '';
-                        final timestamp = (messageData['timestamp'] as Timestamp?)?.toDate();
-                        return AnimatedListItem(
-                          child: Align(
-                            alignment: isSender ? Alignment.centerRight : Alignment.centerLeft,
-                            child: Container(
-                              margin: const EdgeInsets.symmetric(vertical: 4),
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: isSender ? Colors.teal.shade100 : Colors.grey.shade200,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: isSender ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    message,
-                                    style: const TextStyle(color: Colors.black87),
-                                  ),
-                                  if (timestamp != null)
-                                    Text(
-                                      DateFormat('hh:mm a').format(timestamp),
-                                      style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
-                                    ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    );
-                  },
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _messageController,
-                        decoration: InputDecoration(
-                          hintText: 'Type a message...',
-                          hintStyle: TextStyle(color: Colors.grey.shade500),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: Colors.grey.shade400),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Colors.teal, width: 2),
-                          ),
-                          filled: true,
-                          fillColor: Colors.white,
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    AnimatedScaleButton(
-                      onPressed: _sendMessage,
+                  );
+                }
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                final messages = snapshot.data?.docs ?? [];
+                return ListView.builder(
+                  reverse: true,
+                  itemCount: messages.length,
+                  itemBuilder: (context, index) {
+                    final messageData = messages[index].data() as Map<String, dynamic>;
+                    final isSender = messageData['senderId'] == _auth.currentUser?.uid;
+                    return AnimatedListItem(
                       child: Container(
-                        padding: const EdgeInsets.all(12),
+                        margin: const EdgeInsets.symmetric(vertical: 5, horizontal: 10),
+                        padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.teal,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.2),
-                              blurRadius: 4,
-                              offset: const Offset(0, 2),
+                          color: isSender ? Colors.teal.shade100 : Colors.grey.shade200,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: isSender ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              messageData['message'] ?? '',
+                              style: const TextStyle(fontSize: 16),
+                            ),
+                            const SizedBox(height: 5),
+                            Text(
+                              messageData['timestamp'] != null
+                                  ? DateFormat('MMM d, h:mm a').format((messageData['timestamp'] as Timestamp).toDate())
+                                  : 'Unknown time',
+                              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                             ),
                           ],
                         ),
-                        child: const Icon(Icons.send, color: Colors.white, size: 24),
                       ),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _messageController,
+                    decoration: InputDecoration(
+                      hintText: 'Type a message...',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey.shade400),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Colors.teal, width: 2),
+                      ),
+                      filled: true,
+                      fillColor: Colors.white,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     ),
-                  ],
+                  ),
                 ),
-              ),
-            ],
-          );
-        },
+                const SizedBox(width: 8),
+                AnimatedScaleButton(
+                  onPressed: _sendMessage,
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.teal,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.2),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(Icons.send, color: Colors.white, size: 24),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -258,7 +235,6 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 }
 
-// Custom Animated Button Widget
 class AnimatedScaleButton extends StatefulWidget {
   final VoidCallback onPressed;
   final Widget child;
@@ -306,7 +282,6 @@ class AnimatedScaleButtonState extends State<AnimatedScaleButton> with SingleTic
   }
 }
 
-// Custom Animated List Item Widget
 class AnimatedListItem extends StatefulWidget {
   final Widget child;
 

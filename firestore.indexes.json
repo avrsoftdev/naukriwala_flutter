@@ -33,6 +33,13 @@
       ]
     },
     {
+  "collectionGroup": "Chats",
+  "queryScope": "COLLECTION",
+  "fields": [
+    { "fieldPath": "timestamp", "order": "DESCENDING" }
+  ]
+},
+    {
       "collectionGroup": "Applications",
       "queryScope": "COLLECTION",
       "fields": [
