@@ -33,8 +33,20 @@ class PostJobScreenState extends State<PostJobScreen> {
 
   // State variables for spinners and multi-select
   String? _selectedEducation;
+  String? _selectedExperience;
   String? _selectedSpecialization;
   List<String> _selectedSkills = [];
+
+// Experience options
+  final List<String> experienceOptions = [
+    'Fresher',
+    '1-2 years',
+    '2-4 years',
+    '4-6 years',
+    '6-8 years',
+    '8-10 years',
+    '10-12 years',
+  ];
 
   // Education options
   final List<String> educationOptions = [
@@ -143,7 +155,7 @@ class PostJobScreenState extends State<PostJobScreen> {
     _titleController.text = widget.editJobData!['title']?.toString() ?? widget.editJobData!['Job Title']?.toString() ?? '';
     _companyController.text = widget.editJobData!['company']?.toString() ?? widget.editJobData!['Company Name']?.toString() ?? '';
     _locationController.text = widget.editJobData!['location']?.toString() ?? widget.editJobData!['Location (Remote, On-site, Hybrid)']?.toString() ?? '';
-    _experienceController.text = widget.editJobData!['experience']?.toString() ?? widget.editJobData!['Experience Required']?.toString() ?? '';
+    _selectedExperience = widget.editJobData!['experience']?.toString() ?? widget.editJobData!['Experience Required']?.toString() ?? '';
     _salaryController.text = widget.editJobData!['salary']?.toString() ?? widget.editJobData!['Salary Range']?.toString() ?? '';
     _jobTypeController.text = widget.editJobData!['jobType']?.toString() ?? widget.editJobData!['Job Type (Full-time, Part-time)']?.toString() ?? '';
     _descriptionController.text = widget.editJobData!['description']?.toString() ?? widget.editJobData!['Job Description']?.toString() ?? '';
@@ -181,7 +193,7 @@ class PostJobScreenState extends State<PostJobScreen> {
       'title': _titleController.text.trim(),
       'company': _companyController.text.trim(),
       'location': _locationController.text.trim(),
-      'experience': _experienceController.text.trim(),
+      'experience': _selectedExperience ?? '',
       'salary': _salaryController.text.trim(),
       'jobType': _jobTypeController.text.trim(),
       'description': _descriptionController.text.trim(),
@@ -360,20 +372,40 @@ class PostJobScreenState extends State<PostJobScreen> {
                           controller: _locationController,
                           labelText: 'Location (City,State)',
                         ),
-                        _buildTextField(
-                          controller: _experienceController,
-                          labelText: 'Experience Required (e.g., 2 years)',
-                          keyboardType: TextInputType.text,
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return 'Please enter Experience Required';
-                            }
-                            final match = RegExp(r'^\d+\s*(years?|yrs?)?$').hasMatch(value.trim());
-                            if (!match) {
-                              return 'Please enter experience in format "X years" (e.g., "2 years")';
-                            }
-                            return null;
-                          },
+                        Padding(
+                          padding: EdgeInsets.symmetric(vertical: 8.h),
+                          child: DropdownButtonFormField<String>(
+                            decoration: InputDecoration(
+                              labelText: 'Experience Required',
+                              labelStyle: TextStyle(color: Colors.grey.shade600, fontSize: 14.sp),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12.r),
+                                borderSide: BorderSide(color: Colors.grey.shade400),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12.r),
+                                borderSide: const BorderSide(color: Colors.teal, width: 2),
+                              ),
+                              filled: true,
+                              fillColor: Colors.white,
+                            ),
+                            value: _experienceController.text.isNotEmpty &&
+                                    experienceOptions.contains(_experienceController.text)
+                                ? _experienceController.text
+                                : null,
+                            items: experienceOptions.map((String option) {
+                              return DropdownMenuItem<String>(
+                                value: option,
+                                child: Text(option, style: TextStyle(color: Colors.black87, fontSize: 14.sp)),
+                              );
+                            }).toList(),
+                            onChanged: (newValue) {
+                              setState(() {
+                                _experienceController.text = newValue ?? '';
+                              });
+                            },
+                            validator: (value) => value == null ? 'Please select an experience level' : null,
+                          ),
                         ),
                         _buildTextField(
                           controller: _salaryController,

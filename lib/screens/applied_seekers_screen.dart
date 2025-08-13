@@ -191,6 +191,7 @@ class _AppliedSeekersScreenState extends State<AppliedSeekersScreen> {
         );
       } else if (action == 'schedule') {
         final pickedDate = await showDatePicker(
+          // ignore: use_build_context_synchronously
           context: context,
           initialDate: DateTime.now().add(const Duration(days: 1)),
           firstDate: DateTime.now(),
@@ -359,6 +360,7 @@ class _AppliedSeekersScreenState extends State<AppliedSeekersScreen> {
                           if (applicants.isEmpty) {
                             dev.log('[2025-08-07 23:10 IST] No applicants to export for recruiter $recruiterId', name: 'AppliedSeekersScreen');
                             if (mounted) {
+                              // ignore: use_build_context_synchronously
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(content: Text('No applicants available to export.')),
                               );

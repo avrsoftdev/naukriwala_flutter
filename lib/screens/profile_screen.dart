@@ -39,6 +39,18 @@ class ProfileScreenState extends State<ProfileScreen> {
   String? _selectedSpecialization;
   String? _selectedEducation;
   List<String> _selectedSkills = [];
+ 
+
+  // Experience options
+  final List<String> experienceOptions = [
+    'Fresher',
+    '1-2 years',
+    '2-4 years',
+    '4-6 years',
+    '6-8 years',
+    '8-10 years',
+    '10-12 years',
+  ];
 
   // Specialization options
   final List<String> specializationOptions = [
@@ -277,9 +289,8 @@ class ProfileScreenState extends State<ProfileScreen> {
         setState(() => errorMessage = 'Experience is required');
         return;
       }
-      final experienceMatch = RegExp(r'^\d+\s*(years?|yrs?)?$').hasMatch(_experienceController.text.trim());
-      if (!experienceMatch) {
-        setState(() => errorMessage = 'Experience must be in format "X years" (e.g., "2 years")');
+      if (!experienceOptions.contains(_experienceController.text.trim())) {
+        setState(() => errorMessage = 'Please select a valid experience level');
         return;
       }
       if (_selectedSpecialization == null) {
@@ -302,7 +313,7 @@ class ProfileScreenState extends State<ProfileScreen> {
             }
           : {
               'name': _nameController.text.trim(),
-              'mobileNumber': _mobileNumber!.trim(), // Added mobileNumber
+              'mobileNumber': _mobileNumber!.trim(),
               'skills': _selectedSkills,
               'education': _selectedEducation,
               'experience': _experienceController.text.trim(),
@@ -557,6 +568,60 @@ class ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  Widget _buildExperienceDropdown() {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 8.h),
+      child: Container(
+        constraints: BoxConstraints(maxWidth: 300.w),
+        child: DropdownButtonFormField<String>(
+          value: _experienceController.text.isNotEmpty &&
+                  experienceOptions.contains(_experienceController.text)
+              ? _experienceController.text
+              : null,
+          decoration: InputDecoration(
+            labelText: 'Experience',
+            labelStyle: TextStyle(color: Colors.grey, fontSize: 12.sp),
+            enabledBorder: OutlineInputBorder(
+              borderSide: BorderSide(color: Colors.grey.shade400),
+              borderRadius: BorderRadius.circular(12.r),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderSide: BorderSide(color: Colors.teal, width: 2.w),
+              borderRadius: BorderRadius.circular(12.r),
+            ),
+            filled: true,
+            fillColor: Colors.white,
+            contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+          ),
+          isExpanded: true,
+          menuMaxHeight: 300.h,
+          items: experienceOptions.map((String experience) {
+            return DropdownMenuItem<String>(
+              value: experience,
+              child: Container(
+                constraints: BoxConstraints(maxWidth: 250.w),
+                child: Text(
+                  experience,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: Colors.black87, fontSize: 12.sp),
+                ),
+              ),
+            );
+          }).toList(),
+          onChanged: (value) {
+            if (mounted) {
+              setState(() {
+                _experienceController.text = value ?? '';
+                errorMessage = null;
+              });
+            }
+          },
+          validator: (value) => value == null ? 'Experience is required' : null,
+        ),
+      ),
+    );
+  }
+
   Widget _buildSkillsMultiSelect() {
     final availableSkills = skillsBySpecialization[_selectedSpecialization ?? 'Others'] ?? [];
     return Padding(
@@ -706,14 +771,11 @@ class ProfileScreenState extends State<ProfileScreen> {
                                 Wrap(
                                   spacing: 6.w,
                                   runSpacing: 4.h,
-                                  children: (resumeData['skills'] as List<dynamic>?)
-                                          ?.cast<String>()
-                                          .map((skill) => Chip(
-                                                label: Text(skill, style: TextStyle(fontSize: 12.sp)),
-                                                backgroundColor: Colors.teal.shade100,
-                                                labelStyle: TextStyle(color: Colors.teal.shade900),
-                                              ))
-                                          .toList() ??
+                                  children: (resumeData['skills'] as List<dynamic>?)?.cast<String>().map((skill) => Chip(
+                                        label: Text(skill, style: TextStyle(fontSize: 12.sp)),
+                                        backgroundColor: Colors.teal.shade100,
+                                        labelStyle: TextStyle(color: Colors.teal.shade900),
+                                      )).toList() ??
                                       [
                                         Chip(
                                           label: const Text('N/A', style: TextStyle(fontSize: 12)),
@@ -789,7 +851,7 @@ class ProfileScreenState extends State<ProfileScreen> {
                                           ),
                                           boxShadow: [
                                             BoxShadow(
-                                              color: Colors.black.withOpacity(0.2),
+                                              color: Colors.black.withValues(alpha: 0.2),
                                               blurRadius: 8.r,
                                               offset: Offset(0, 4.h),
                                             ),
@@ -803,7 +865,7 @@ class ProfileScreenState extends State<ProfileScreen> {
                                               : _imageUrl != null
                                                   ? NetworkImage(_imageUrl!)
                                                   : null,
-                                          backgroundColor: Colors.grey.withOpacity(0.2),
+                                          backgroundColor: Colors.grey.withValues(alpha: 0.2),
                                           child: _imageFile == null && _imageUrl == null
                                               ? const Icon(Icons.person, size: 60, color: Colors.grey)
                                               : null,
@@ -821,7 +883,7 @@ class ProfileScreenState extends State<ProfileScreen> {
                                               color: Colors.teal,
                                               boxShadow: [
                                                 BoxShadow(
-                                                  color: Colors.black.withOpacity(0.2),
+                                                  color: Colors.black.withValues(alpha: 0.2),
                                                   blurRadius: 4.r,
                                                   offset: Offset(0, 2.h),
                                                 ),
@@ -869,20 +931,7 @@ class ProfileScreenState extends State<ProfileScreen> {
                                   _buildSpecializationDropdown(),
                                   _buildSkillsMultiSelect(),
                                   _buildEducationDropdown(),
-                                  _buildTextField(
-                                    'Experience (e.g., 2 years)',
-                                    controller: _experienceController,
-                                    validator: (value) {
-                                      if (value == null || value.trim().isEmpty) {
-                                        return 'Experience is required';
-                                      }
-                                      final match = RegExp(r'^\d+\s*(years?|yrs?)?$').hasMatch(value.trim());
-                                      if (!match) {
-                                        return 'Experience must be in format "X years" (e.g., "2 years")';
-                                      }
-                                      return null;
-                                    },
-                                  ),
+                                  _buildExperienceDropdown(),
                                   _buildTextField('Current Company', controller: _currentCompanyController),
                                   _buildTextField('Current CTC', controller: _currentCtcController),
                                   _buildTextField('Expected CTC', controller: _expectedCtcController),
@@ -903,7 +952,7 @@ class ProfileScreenState extends State<ProfileScreen> {
                                         borderRadius: BorderRadius.circular(12.r),
                                         boxShadow: [
                                           BoxShadow(
-                                            color: Colors.black.withOpacity(0.2),
+                                            color: Colors.black.withValues(alpha: 0.2),
                                             blurRadius: 4.r,
                                             offset: Offset(0, 2.h),
                                           ),
@@ -937,7 +986,7 @@ class ProfileScreenState extends State<ProfileScreen> {
                                         borderRadius: BorderRadius.circular(12.r),
                                         boxShadow: [
                                           BoxShadow(
-                                            color: Colors.black.withOpacity(0.2),
+                                            color: Colors.black.withValues(alpha: 0.2),
                                             blurRadius: 4.r,
                                             offset: Offset(0, 2.h),
                                           ),

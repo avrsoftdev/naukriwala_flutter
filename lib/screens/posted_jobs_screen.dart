@@ -125,6 +125,7 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
               final salary = job['salary'] ?? 'Not specified';
               final skills = (job['skills'] as List<dynamic>?)?.join(', ') ?? 'N/A';
               final education = job['education'] ?? 'N/A';
+              final experience = job['experience'] ?? 'N/A';
               final specialization = job['specialization'] ?? 'N/A';
               final status = job['status'] ?? 'unknown';
               final timestamp = job['createdAt'] as Timestamp?;
@@ -197,6 +198,7 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
                                 Text('Salary: $salary', style: TextStyle(color: Colors.grey.shade700, fontSize: 14.sp)),
                                 Text('Skills: $skills', style: TextStyle(color: Colors.grey.shade700, fontSize: 14.sp)),
                                 Text('Education: $education', style: TextStyle(color: Colors.grey.shade700, fontSize: 14.sp)),
+                                Text('Experience: $experience', style: TextStyle(color: Colors.grey.shade700, fontSize: 14.sp)),
                                 Text('Specialization: $specialization', style: TextStyle(color: Colors.grey.shade700, fontSize: 14.sp)),
                                 Text('Posted: $postedDate', style: TextStyle(color: Colors.grey.shade700, fontSize: 14.sp)),
                                 Text('Applicants: $applicantCount', style: TextStyle(color: Colors.grey.shade700, fontSize: 14.sp)),
