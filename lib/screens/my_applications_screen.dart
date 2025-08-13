@@ -209,7 +209,7 @@ class _MyApplicationsScreenState extends State<MyApplicationsScreen> {
                               ],
                             ),
                             trailing: AnimatedScaleButton(
-                              onPressed: () async {
+                                                          onPressed: () async {
                                 if (!mounted) {
                                   dev.log('[2025-08-09 01:29 IST] Widget not mounted, cannot start chat', name: 'MyApplicationsScreen');
                                   return;
