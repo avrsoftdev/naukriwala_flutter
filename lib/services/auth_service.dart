@@ -313,82 +313,120 @@ Future<String> uploadSeekerPhoto(File file) async {
 
 
 Future<void> applyToJob({
-    required String jobId,
-    required String jobTitle,
-    required String recruiterId,
-    required String coverLetter,
-    required Map<String, dynamic> seekerProfile,
-    required String fcmToken,
-  }) async {
-    final uid = _auth.currentUser?.uid;
-    if (uid == null) throw const AuthException('User not logged in');
+  required String jobId,
+  required String jobTitle,
+  required String recruiterId,
+  required String coverLetter,
+  required Map<String, dynamic> seekerProfile,
+  required String fcmToken,
+}) async {
+  final uid = _auth.currentUser?.uid;
+  if (uid == null) throw const AuthException('User not logged in');
 
-    final applicationId = '${uid}_$jobId';
-    final batch = _firestore.batch();
-    final applicationRef = _firestore.collection('Applications').doc(applicationId);
+  final applicationId = '${uid}_$jobId';
+  final batch = _firestore.batch();
+  final applicationRef = _firestore.collection('Applications').doc(applicationId);
 
-    final jobDoc = await _firestore
-        .collection('Recruiters')
-        .doc(recruiterId)
-        .collection('Jobs')
-        .doc(jobId)
-        .get();
+  // Fetch job data
+  final jobDoc = await _firestore
+      .collection('Recruiters')
+      .doc(recruiterId)
+      .collection('Jobs')
+      .doc(jobId)
+      .get();
 
-    if (!jobDoc.exists) {
-      throw const AuthException('Job does not exist');
-    }
-    final jobData = jobDoc.data()!;
-    if (jobData['status'] != 'open') {
-      throw const AuthException('This job is no longer accepting applications');
-    }
-
-    final applicationData = {
-      'seekerId': uid,
-      'jobId': jobId,
-      'recruiterId': recruiterId,
-      'status': 'Applied',
-      'appliedAt': FieldValue.serverTimestamp(),
-      'jobTitle': jobTitle,
-      'company': jobData['company']?.toString() ?? 'Unknown',
-      'coverLetter': coverLetter,
-      'resume': {
-        'name': seekerProfile['name']?.toString() ?? '',
-        'email': seekerProfile['email']?.toString() ?? '',
-        'mobileNumber': seekerProfile['mobileNumber']?.toString() ?? '',
-        'skills': seekerProfile['skills'] is String
-            ? seekerProfile['skills'].split(',').map((s) => s.trim()).toList()
-            : seekerProfile['skills'] ?? [],
-        'education': seekerProfile['education']?.toString() ?? '',
-        'experience': seekerProfile['experience']?.toString() ?? '',
-        'specialization': seekerProfile['specialization']?.toString() ?? 'Others',
-        'currentCompany': seekerProfile['currentCompany']?.toString() ?? '',
-        'currentCtc': seekerProfile['currentCtc']?.toString() ?? '',
-        'expectedCtc': seekerProfile['expectedCtc']?.toString() ?? '',
-        'cvUrl': seekerProfile['resumeUrl']?.toString() ?? '',
-      },
-      'fcmToken': fcmToken,
-    };
-
-    batch.set(applicationRef, applicationData);
-    final notificationId = _firestore.collection('RecruiterNotifications').doc(recruiterId).collection('Notifications').doc().id;
-    batch.set(
-      _firestore.collection('RecruiterNotifications').doc(recruiterId).collection('Notifications').doc(notificationId),
-      {
-        'to': recruiterId,
-        'recipientId': recruiterId,
-        'from': uid,
-        'jobId': jobId,
-        'notificationId': notificationId,
-        'type': 'application',
-        'read': false,
-        'timestamp': FieldValue.serverTimestamp(),
-        'message': 'New application for $jobTitle from ${seekerProfile['name'] ?? 'a seeker'}',
-      },
-    );
-
-    await batch.commit();
-    dev.log('[2025-08-09 01:15 IST] Applied to job $jobId by seeker $uid', name: 'AuthService');
+  if (!jobDoc.exists) {
+    throw const AuthException('Job does not exist');
   }
+  final jobData = jobDoc.data()!;
+  if (jobData['status'] != 'open') {
+    throw const AuthException('This job is no longer accepting applications');
+  }
+
+  // Extract job requirements
+  final requiredSkills = (jobData['requiredSkills'] as List<dynamic>?)?.cast<String>() ?? [];
+  final minExperience = (jobData['minExperience'] as num?)?.toDouble() ?? 0.0;
+  final requiredEducation = (jobData['requiredEducation'] as String?)?.toLowerCase() ?? '';
+  final requiredSpecialization = (jobData['requiredSpecialization'] as String?)?.toLowerCase() ?? '';
+
+  // Extract seeker profile data
+  final seekerSkills = seekerProfile['skills'] is String
+      ? seekerProfile['skills'].split(',').map((s) => s.trim().toLowerCase()).toList()
+      : (seekerProfile['skills'] as List<dynamic>?)?.cast<String>().map((s) => s.toLowerCase()).toList() ?? [];
+  final seekerExperience = double.tryParse(seekerProfile['experience']?.toString() ?? '0') ?? 0.0;
+  final seekerEducation = (seekerProfile['education'] as String?)?.toLowerCase() ?? '';
+  final seekerSpecialization = (seekerProfile['specialization'] as String?)?.toLowerCase() ?? '';
+
+  // Validate skills (at least 30% match)
+  if (requiredSkills.isNotEmpty) {
+    final matchingSkills = requiredSkills.where((skill) => seekerSkills.contains(skill.toLowerCase())).length;
+    final skillMatchPercentage = (matchingSkills / requiredSkills.length) * 100;
+    if (skillMatchPercentage < 30) {
+      throw AuthException('Insufficient skills match. Required: ${requiredSkills.join(', ')}');
+    }
+  }
+
+  // Validate experience
+  if (seekerExperience < minExperience) {
+    throw AuthException('Insufficient experience. Required: $minExperience years');
+  }
+
+  // Validate education
+  if (requiredEducation.isNotEmpty && seekerEducation != requiredEducation) {
+    throw AuthException('Education does not match. Required: $requiredEducation');
+  }
+
+  // Validate specialization
+  if (requiredSpecialization.isNotEmpty && seekerSpecialization != requiredSpecialization) {
+    throw AuthException('Specialization does not match. Required: $requiredSpecialization');
+  }
+
+  // Proceed with application
+  final applicationData = {
+    'seekerId': uid,
+    'jobId': jobId,
+    'recruiterId': recruiterId,
+    'status': 'Applied',
+    'appliedAt': FieldValue.serverTimestamp(),
+    'jobTitle': jobTitle,
+    'company': jobData['company']?.toString() ?? 'Unknown',
+    'coverLetter': coverLetter,
+    'resume': {
+      'name': seekerProfile['name']?.toString() ?? '',
+      'email': seekerProfile['email']?.toString() ?? '',
+      'mobileNumber': seekerProfile['mobileNumber']?.toString() ?? '',
+      'skills': seekerSkills,
+      'education': seekerProfile['education']?.toString() ?? '',
+      'experience': seekerProfile['experience']?.toString() ?? '',
+      'specialization': seekerProfile['specialization']?.toString() ?? 'Others',
+      'currentCompany': seekerProfile['currentCompany']?.toString() ?? '',
+      'currentCtc': seekerProfile['currentCtc']?.toString() ?? '',
+      'expectedCtc': seekerProfile['expectedCtc']?.toString() ?? '',
+      'cvUrl': seekerProfile['resumeUrl']?.toString() ?? '',
+    },
+    'fcmToken': fcmToken,
+  };
+
+  batch.set(applicationRef, applicationData);
+  final notificationId = _firestore.collection('RecruiterNotifications').doc(recruiterId).collection('Notifications').doc().id;
+  batch.set(
+    _firestore.collection('RecruiterNotifications').doc(recruiterId).collection('Notifications').doc(notificationId),
+    {
+      'to': recruiterId,
+      'recipientId': recruiterId,
+      'from': uid,
+      'jobId': jobId,
+      'notificationId': notificationId,
+      'type': 'application',
+      'read': false,
+      'timestamp': FieldValue.serverTimestamp(),
+      'message': 'New application for $jobTitle from ${seekerProfile['name'] ?? 'a seeker'}',
+    },
+  );
+
+  await batch.commit();
+  dev.log('[2025-08-13 23:25 IST] Applied to job $jobId by seeker $uid', name: 'AuthService');
+}
 Future<void> scheduleInterview({
   required String jobId,
   required String seekerId,
@@ -450,6 +488,7 @@ Future<List<Map<String, dynamic>>> fetchAppliedSeekers() async {
         .where('recruiterId', isEqualTo: uid)
         .get();
     dev.log('[2025-08-09 00:33 IST] Fetched ${snapshot.docs.length} applicants for recruiter $uid', name: 'AuthService');
+    // ignore: unnecessary_cast
     return snapshot.docs.map((doc) => doc.data() as Map<String, dynamic>).toList();
   } catch (e) {
     dev.log('[2025-08-09 00:33 IST] Error fetching applied seekers for $uid: $e', name: 'AuthService', error: e);

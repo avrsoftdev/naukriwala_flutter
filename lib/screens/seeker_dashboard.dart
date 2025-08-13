@@ -2,7 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:naukariwala/screens/profile_screen.dart';
-import 'package:naukariwala/screens/search_job_screen.dart';
+import 'package:naukariwala/screens/job_screen.dart';
 import 'package:naukariwala/screens/my_applications_screen.dart';
 import 'package:naukariwala/screens/notifications_screen.dart';
 import 'package:naukariwala/services/auth_service.dart';
@@ -140,7 +140,7 @@ class _SeekerDashboardState extends State<SeekerDashboard> {
                   Navigator.pop(context);
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => const SearchJobScreen()),
+                    MaterialPageRoute(builder: (context) => const JobScreen()),
                   );
                 },
               ),
@@ -237,7 +237,7 @@ class _SeekerDashboardState extends State<SeekerDashboard> {
                 child: TabBarView(
                   children: [
                     const ProfileScreen(isRecruiter: false),
-                    const SearchJobScreen(isSeekerProfileView: true),
+                    const JobScreen(isSeekerProfileView: true),
                     MyApplicationsScreen(seekerId: uid),
                     const NotificationsScreen(isRecruiter: false),
                   ],

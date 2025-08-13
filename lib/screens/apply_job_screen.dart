@@ -116,7 +116,7 @@ class ApplyJobScreenState extends State<ApplyJobScreen> {
     super.initState();
     _seekerProfile = widget.seekerProfile;
     // Log Firestore settings for debugging
-    dev.log('[2025-08-08 23:59 IST] Firestore settings: ${FirebaseFirestore.instance.settings}',
+    dev.log('[2025-08-13 23:31 IST] Firestore settings: ${FirebaseFirestore.instance.settings}',
         name: 'ApplyJobScreen');
     _checkEligibility();
   }
@@ -127,13 +127,13 @@ class ApplyJobScreenState extends State<ApplyJobScreen> {
     }
     try {
       final uid = FirebaseAuth.instance.currentUser?.uid;
-      dev.log('[2025-08-08 23:59 IST] Checking eligibility for job ${widget.jobId}, user UID: $uid',
+      dev.log('[2025-08-13 23:31 IST] Checking eligibility for job ${widget.jobId}, user UID: $uid',
           name: 'ApplyJobScreen');
       if (uid == null) {
         throw const AuthException('User not logged in');
       }
       if (uid != '4IxgjmIy4jReBJIsmxGNDDlE2u82') {
-        dev.log('[2025-08-08 23:59 IST] UID mismatch: expected 4IxgjmIy4jReBJIsmxGNDDlE2u82, got $uid',
+        dev.log('[2025-08-13 23:31 IST] UID mismatch: expected 4IxgjmIy4jReBJIsmxGNDDlE2u82, got $uid',
             name: 'ApplyJobScreen');
       }
 
@@ -142,8 +142,12 @@ class ApplyJobScreenState extends State<ApplyJobScreen> {
           .collection('Seekers')
           .doc(uid)
           .get();
-      dev.log('[2025-08-08 23:59 IST] Seeker document exists: ${seekerDoc.exists}, data: ${seekerDoc.data()}',
+      dev.log('[2025-08-13 23:31 IST] Seeker document exists: ${seekerDoc.exists}, data: ${seekerDoc.data()}',
           name: 'ApplyJobScreen');
+
+      if (!seekerDoc.exists) {
+        throw const AuthException('Seeker profile not found. Please complete your profile.');
+      }
 
       final jobDoc = await FirebaseFirestore.instance
           .collection('Recruiters')
@@ -152,7 +156,7 @@ class ApplyJobScreenState extends State<ApplyJobScreen> {
           .doc(widget.jobId)
           .get();
 
-      dev.log('[2025-08-08 23:59 IST] Job document exists: ${jobDoc.exists}, data: ${jobDoc.data()}',
+      dev.log('[2025-08-13 23:31 IST] Job document exists: ${jobDoc.exists}, data: ${jobDoc.data()}',
           name: 'ApplyJobScreen');
       if (!jobDoc.exists) {
         throw const AuthException('Job does not exist');
@@ -167,18 +171,59 @@ class ApplyJobScreenState extends State<ApplyJobScreen> {
           .doc('${uid}_${widget.jobId}')
           .get();
 
-      dev.log('[2025-08-08 23:59 IST] Application document exists: ${applicationDoc.exists}, id: ${uid}_${widget.jobId}',
+      dev.log('[2025-08-13 23:31 IST] Application document exists: ${applicationDoc.exists}, id: ${uid}_${widget.jobId}',
           name: 'ApplyJobScreen');
       if (applicationDoc.exists) {
         throw const AuthException('You have already applied for this job');
       }
+
+      // Extract job requirements
+      final jobData = jobDoc.data()!;
+      final requiredSkills = (jobData['requiredSkills'] as List<dynamic>?)?.cast<String>().map((s) => s.toLowerCase()).toList() ?? [];
+      final minExperience = (jobData['minExperience'] as num?)?.toDouble() ?? 0.0;
+      final requiredEducation = (jobData['requiredEducation'] as String?)?.toLowerCase() ?? '';
+      final requiredSpecialization = (jobData['requiredSpecialization'] as String?)?.toLowerCase() ?? '';
+
+      // Extract seeker profile data
+      final seekerData = seekerDoc.data()!;
+      final seekerSkills = seekerData['skills'] is String
+          ? seekerData['skills'].split(',').map((s) => s.trim().toLowerCase()).toList()
+          : (seekerData['skills'] as List<dynamic>?)?.cast<String>().map((s) => s.toLowerCase()).toList() ?? [];
+      final seekerExperience = double.tryParse(seekerData['experience']?.toString() ?? '0') ?? 0.0;
+      final seekerEducation = (seekerData['education'] as String?)?.toLowerCase() ?? '';
+      final seekerSpecialization = (seekerData['specialization'] as String?)?.toLowerCase() ?? '';
+
+      // Validate skills (at least 30% match)
+      if (requiredSkills.isNotEmpty) {
+        final matchingSkills = requiredSkills.where((skill) => seekerSkills.contains(skill)).length;
+        final skillMatchPercentage = (matchingSkills / requiredSkills.length) * 100;
+        if (skillMatchPercentage < 30) {
+          throw AuthException('Your skills do not sufficiently match the job requirements. Required: ${requiredSkills.join(', ')}');
+        }
+      }
+
+      // Validate experience
+      if (seekerExperience < minExperience) {
+        throw AuthException('You do not meet the experience requirement. Required: $minExperience years');
+      }
+
+      // Validate education
+      if (requiredEducation.isNotEmpty && seekerEducation != requiredEducation) {
+        throw AuthException('Your education does not match the job requirements. Required: $requiredEducation');
+      }
+
+      // Validate specialization
+      if (requiredSpecialization.isNotEmpty && seekerSpecialization != requiredSpecialization) {
+        throw AuthException('Your specialization does not match the job requirements. Required: $requiredSpecialization');
+      }
+
     } catch (e, stackTrace) {
-      dev.log('[2025-08-08 23:59 IST] Error checking eligibility for job ${widget.jobId}: $e',
+      dev.log('[2025-08-13 23:31 IST] Error checking eligibility for job ${widget.jobId}: $e',
           name: 'ApplyJobScreen', error: e, stackTrace: stackTrace);
       if (mounted) {
         setState(() => _errorMessage = e.toString().contains('PERMISSION_DENIED')
             ? 'Unable to verify application status due to permission restrictions. Please contact support.'
-            : e.toString());
+            : e.toString().replaceFirst('AuthException: ', ''));
       }
     } finally {
       if (mounted) {
@@ -211,7 +256,7 @@ class ApplyJobScreenState extends State<ApplyJobScreen> {
     setState(() => _isLoading = true);
 
     try {
-      dev.log('[2025-08-08 23:59 IST] Applying for job ${widget.jobId}, seeker profile: $_seekerProfile',
+      dev.log('[2025-08-13 23:31 IST] Applying for job ${widget.jobId}, seeker profile: $_seekerProfile',
           name: 'ApplyJobScreen');
       String? fcmToken = await _messaging.getToken();
       await _authService.applyToJob(
@@ -233,7 +278,7 @@ class ApplyJobScreenState extends State<ApplyJobScreen> {
       );
       Navigator.pop(context);
     } catch (e, stackTrace) {
-      dev.log('[2025-08-08 23:59 IST] Error applying for job ${widget.jobId}: $e',
+      dev.log('[2025-08-13 23:31 IST] Error applying for job ${widget.jobId}: $e',
           name: 'ApplyJobScreen', error: e, stackTrace: stackTrace);
       if (mounted) {
         setState(() => _errorMessage = 'Failed to apply: $e');
