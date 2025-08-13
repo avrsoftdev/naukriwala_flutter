@@ -4,6 +4,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'dart:developer' as dev;
 import '../../services/auth_service.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class ApplyJobScreen extends StatefulWidget {
   final String jobId;
@@ -252,129 +253,136 @@ class ApplyJobScreenState extends State<ApplyJobScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Apply for ${widget.jobTitle}'),
-        flexibleSpace: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Colors.blue.shade700, Colors.blue.shade900],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-          ),
-        ),
-      ),
-      body: _isLoading || _isCheckingEligibility
-          ? const Center(child: CircularProgressIndicator())
-          : Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Form(
-                key: _formKey,
-                child: ListView(
-                  children: [
-                    if (_errorMessage != null)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 16.0),
-                        child: Card(
-                          color: Colors.red.shade50,
-                          child: Padding(
-                            padding: const EdgeInsets.all(12.0),
-                            child: Text(
-                              _errorMessage!,
-                              style: TextStyle(color: Colors.red.shade700, fontSize: 16),
-                            ),
-                          ),
-                        ),
-                      ),
-                    const Text(
-                      'Cover Letter',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 10),
-                    TextFormField(
-                      controller: _coverLetterController,
-                      maxLines: 5,
-                      decoration: InputDecoration(
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: Colors.grey.shade400),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Colors.teal, width: 2),
-                        ),
-                        hintText: 'Write your cover letter here...',
-                        filled: true,
-                        fillColor: Colors.white,
-                      ),
-                      validator: (value) =>
-                          value == null || value.trim().isEmpty ? 'Please enter a cover letter' : null,
-                    ),
-                    const SizedBox(height: 20),
-                    if (_seekerProfile != null)
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Resume Details',
-                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(height: 10),
-                          Text('Name: ${_seekerProfile!['name'] ?? 'N/A'}'),
-                          Text('Email: ${_seekerProfile!['email'] ?? 'N/A'}'),
-                          Text('Mobile Number: ${_seekerProfile!['mobileNumber'] ?? 'N/A'}'),
-                          Text('Skills: ${(_seekerProfile!['skills'] as List?)?.join(', ') ?? 'N/A'}'),
-                          Text('Education: ${_seekerProfile!['education'] ?? 'N/A'}'),
-                          Text('Experience: ${_seekerProfile!['experience'] ?? 'N/A'}'),
-                          Text('Specialization: ${_seekerProfile!['specialization'] ?? 'N/A'}'),
-                          Text('Current Company: ${_seekerProfile!['currentCompany'] ?? 'N/A'}'),
-                          Text('Current CTC: ${_seekerProfile!['currentCtc'] ?? 'N/A'}'),
-                          Text('Expected CTC: ${_seekerProfile!['expectedCtc'] ?? 'N/A'}'),
-                          Text('Resume URL: ${_seekerProfile!['resumeUrl'] ?? 'N/A'}'),
-                        ],
-                      )
-                    else
-                      const Text(
-                        'Loading profile...',
-                        style: TextStyle(fontSize: 16, color: Colors.grey),
-                      ),
-                    const SizedBox(height: 20),
-                    Center(
-                      child: AnimatedScaleButton(
-                        onPressed: _applyForJob,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [Colors.blue.shade700, Colors.teal.shade400],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.2),
-                                blurRadius: 4,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: const Text(
-                            'Submit Application',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+    return ScreenUtilInit(
+      designSize: const Size(360, 690),
+      minTextAdapt: true,
+      splitScreenMode: true,
+      builder: (context, child) {
+        return Scaffold(
+          appBar: AppBar(
+            title: Text('Apply for ${widget.jobTitle}', style: TextStyle(fontSize: 20.sp)),
+            flexibleSpace: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.blue.shade700, Colors.blue.shade900],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
               ),
             ),
+          ),
+          body: _isLoading || _isCheckingEligibility
+              ? const Center(child: CircularProgressIndicator())
+              : Padding(
+                  padding: EdgeInsets.all(16.w),
+                  child: Form(
+                    key: _formKey,
+                    child: ListView(
+                      children: [
+                        if (_errorMessage != null)
+                          Padding(
+                            padding: EdgeInsets.only(bottom: 16.h),
+                            child: Card(
+                              color: Colors.red.shade50,
+                              child: Padding(
+                                padding: EdgeInsets.all(12.w),
+                                child: Text(
+                                  _errorMessage!,
+                                  style: TextStyle(color: Colors.red.shade700, fontSize: 16.sp),
+                                ),
+                              ),
+                            ),
+                          ),
+                        const Text(
+                          'Cover Letter',
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
+                        SizedBox(height: 10.h),
+                        TextFormField(
+                          controller: _coverLetterController,
+                          maxLines: 5,
+                          decoration: InputDecoration(
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12.r),
+                              borderSide: BorderSide(color: Colors.grey.shade400),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12.r),
+                              borderSide: const BorderSide(color: Colors.teal, width: 2),
+                            ),
+                            hintText: 'Write your cover letter here...',
+                            filled: true,
+                            fillColor: Colors.white,
+                          ),
+                          validator: (value) =>
+                              value == null || value.trim().isEmpty ? 'Please enter a cover letter' : null,
+                        ),
+                        SizedBox(height: 20.h),
+                        if (_seekerProfile != null)
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Resume Details',
+                                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                              ),
+                              SizedBox(height: 10.h),
+                              Text('Name: ${_seekerProfile!['name'] ?? 'N/A'}', style: TextStyle(fontSize: 14.sp)),
+                              Text('Email: ${_seekerProfile!['email'] ?? 'N/A'}', style: TextStyle(fontSize: 14.sp)),
+                              Text('Mobile Number: ${_seekerProfile!['mobileNumber'] ?? 'N/A'}', style: TextStyle(fontSize: 14.sp)),
+                              Text('Skills: ${(_seekerProfile!['skills'] as List?)?.join(', ') ?? 'N/A'}', style: TextStyle(fontSize: 14.sp)),
+                              Text('Education: ${_seekerProfile!['education'] ?? 'N/A'}', style: TextStyle(fontSize: 14.sp)),
+                              Text('Experience: ${_seekerProfile!['experience'] ?? 'N/A'}', style: TextStyle(fontSize: 14.sp)),
+                              Text('Specialization: ${_seekerProfile!['specialization'] ?? 'N/A'}', style: TextStyle(fontSize: 14.sp)),
+                              Text('Current Company: ${_seekerProfile!['currentCompany'] ?? 'N/A'}', style: TextStyle(fontSize: 14.sp)),
+                              Text('Current CTC: ${_seekerProfile!['currentCtc'] ?? 'N/A'}', style: TextStyle(fontSize: 14.sp)),
+                              Text('Expected CTC: ${_seekerProfile!['expectedCtc'] ?? 'N/A'}', style: TextStyle(fontSize: 14.sp)),
+                              Text('Resume URL: ${_seekerProfile!['resumeUrl'] ?? 'N/A'}', style: TextStyle(fontSize: 14.sp)),
+                            ],
+                          )
+                        else
+                          Text(
+                            'Loading profile...',
+                            style: TextStyle(fontSize: 16.sp, color: Colors.grey),
+                          ),
+                        SizedBox(height: 20.h),
+                        Center(
+                          child: AnimatedScaleButton(
+                            onPressed: _applyForJob,
+                            child: Container(
+                              padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [Colors.blue.shade700, Colors.teal.shade400],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                borderRadius: BorderRadius.circular(12.r),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.2),
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: const Text(
+                                'Submit Application',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+        );
+      },
     );
   }
 }

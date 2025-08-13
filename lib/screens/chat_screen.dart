@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'dart:developer' as dev;
 import '../services/auth_service.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class ChatScreen extends StatefulWidget {
   final String chatId;
@@ -99,132 +100,139 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: FutureBuilder<Map<String, dynamic>>(
-          future: _getChatDetails(),
-          builder: (context, snapshot) {
-            final data = snapshot.data ?? {'recipientName': widget.recipientId, 'jobTitle': 'Unknown'};
-            return Text(
-              'Chat with ${data['recipientName']} - ${data['jobTitle']}',
-              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
-            );
-          },
-        ),
-        flexibleSpace: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Colors.blue.shade700, Colors.blue.shade900],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-          ),
-        ),
-        elevation: 4,
-      ),
-      body: Column(
-        children: [
-          Expanded(
-            child: StreamBuilder<QuerySnapshot>(
-              stream: _getMessagesStream(),
+    return ScreenUtilInit(
+      designSize: const Size(360, 690),
+      minTextAdapt: true,
+      splitScreenMode: true,
+      builder: (context, child) {
+        return Scaffold(
+          appBar: AppBar(
+            title: FutureBuilder<Map<String, dynamic>>(
+              future: _getChatDetails(),
               builder: (context, snapshot) {
-                if (snapshot.hasError) {
-                  dev.log('Error loading messages for chat ${widget.chatId}: ${snapshot.error}', name: 'ChatScreen');
-                  return const Center(
-                    child: Text(
-                      'Unable to load messages. Please check your permissions or try again.',
-                      style: TextStyle(color: Colors.red, fontSize: 16),
-                    ),
-                  );
-                }
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                final messages = snapshot.data?.docs ?? [];
-                return ListView.builder(
-                  reverse: true,
-                  itemCount: messages.length,
-                  itemBuilder: (context, index) {
-                    final messageData = messages[index].data() as Map<String, dynamic>;
-                    final isSender = messageData['senderId'] == _auth.currentUser?.uid;
-                    return AnimatedListItem(
-                      child: Container(
-                        margin: const EdgeInsets.symmetric(vertical: 5, horizontal: 10),
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: isSender ? Colors.teal.shade100 : Colors.grey.shade200,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: isSender ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              messageData['message'] ?? '',
-                              style: const TextStyle(fontSize: 16),
-                            ),
-                            const SizedBox(height: 5),
-                            Text(
-                              messageData['timestamp'] != null
-                                  ? DateFormat('MMM d, h:mm a').format((messageData['timestamp'] as Timestamp).toDate())
-                                  : 'Unknown time',
-                              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
+                final data = snapshot.data ?? {'recipientName': widget.recipientId, 'jobTitle': 'Unknown'};
+                return Text(
+                  'Chat with ${data['recipientName']} - ${data['jobTitle']}',
+                  style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
                 );
               },
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _messageController,
-                    decoration: InputDecoration(
-                      hintText: 'Type a message...',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey.shade400),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Colors.teal, width: 2),
-                      ),
-                      filled: true,
-                      fillColor: Colors.white,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    ),
-                  ),
+            flexibleSpace: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.blue.shade700, Colors.blue.shade900],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
-                const SizedBox(width: 8),
-                AnimatedScaleButton(
-                  onPressed: _sendMessage,
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.teal,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.2),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: const Icon(Icons.send, color: Colors.white, size: 24),
-                  ),
-                ),
-              ],
+              ),
             ),
+            elevation: 4,
           ),
-        ],
-      ),
+          body: Column(
+            children: [
+              Expanded(
+                child: StreamBuilder<QuerySnapshot>(
+                  stream: _getMessagesStream(),
+                  builder: (context, snapshot) {
+                    if (snapshot.hasError) {
+                      dev.log('Error loading messages for chat ${widget.chatId}: ${snapshot.error}', name: 'ChatScreen');
+                      return const Center(
+                        child: Text(
+                          'Unable to load messages. Please check your permissions or try again.',
+                          style: TextStyle(color: Colors.red, fontSize: 16),
+                        ),
+                      );
+                    }
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    final messages = snapshot.data?.docs ?? [];
+                    return ListView.builder(
+                      reverse: true,
+                      itemCount: messages.length,
+                      itemBuilder: (context, index) {
+                        final messageData = messages[index].data() as Map<String, dynamic>;
+                        final isSender = messageData['senderId'] == _auth.currentUser?.uid;
+                        return AnimatedListItem(
+                          child: Container(
+                            margin: EdgeInsets.symmetric(vertical: 5.h, horizontal: 10.w),
+                            padding: EdgeInsets.all(10.w),
+                            decoration: BoxDecoration(
+                              color: isSender ? Colors.teal.shade100 : Colors.grey.shade200,
+                              borderRadius: BorderRadius.circular(12.r),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: isSender ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  messageData['message'] ?? '',
+                                  style: const TextStyle(fontSize: 16),
+                                ),
+                                SizedBox(height: 5.h),
+                                Text(
+                                  messageData['timestamp'] != null
+                                      ? DateFormat('MMM d, h:mm a').format((messageData['timestamp'] as Timestamp).toDate())
+                                      : 'Unknown time',
+                                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+              Padding(
+                padding: EdgeInsets.all(8.w),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _messageController,
+                        decoration: InputDecoration(
+                          hintText: 'Type a message...',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12.r),
+                            borderSide: BorderSide(color: Colors.grey.shade400),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12.r),
+                            borderSide: const BorderSide(color: Colors.teal, width: 2),
+                          ),
+                          filled: true,
+                          fillColor: Colors.white,
+                          contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: 8.w),
+                    AnimatedScaleButton(
+                      onPressed: _sendMessage,
+                      child: Container(
+                        padding: EdgeInsets.all(12.w),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.teal,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.2),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(Icons.send, color: Colors.white, size: 24),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 

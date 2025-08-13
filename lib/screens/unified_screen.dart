@@ -1,6 +1,7 @@
-import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:naukariwala/screens/recruiter_dashboard.dart';
 import 'package:naukariwala/screens/seeker_dashboard.dart';
 import 'package:multi_select_flutter/multi_select_flutter.dart';
@@ -34,15 +35,14 @@ class UnifiedScreenState extends State<UnifiedScreen> {
 
   final AuthService _authService = AuthService();
   final List<String> educationOptions = [
-  'High School',
-  'Associate Degree',
-  'Bachelor’s Degree',
-  'Master’s Degree',
-  'Doctorate/PhD',
-  'Diploma',
-  'Other',
+    'High School',
+    'Associate Degree',
+    'Bachelor’s Degree',
+    'Master’s Degree',
+    'Doctorate/PhD',
+    'Diploma',
+    'Other',
   ];
-  // Specialization options (same as AuthService)
   final List<String> specializationOptions = [
     'Computer Science / IT',
     'Electronics / Electrical / Robotics',
@@ -57,7 +57,6 @@ class UnifiedScreenState extends State<UnifiedScreen> {
     'Others',
   ];
 
-  // Skills by specialization (same as AuthService)
   final Map<String, List<String>> skillsBySpecialization = {
     'Computer Science / IT': [
       'Java', 'Python', 'C++', 'C#', 'Dart', 'Flutter', 'Android Development',
@@ -175,7 +174,7 @@ class UnifiedScreenState extends State<UnifiedScreen> {
 
   void _sendOTP() async {
     final raw = _phoneController.text.trim();
-    if (!RegExp(r'^\+91\d{10}$').hasMatch(raw)) {
+    if (!RegExp(r'^\+91[0-9]{10}$').hasMatch(raw)) {
       _showSnack("Enter valid +91 followed by 10-digit number");
       return;
     }
@@ -265,6 +264,11 @@ class UnifiedScreenState extends State<UnifiedScreen> {
       return;
     }
 
+    if (_selectedRole == 'seeker' && _selectedSkills.isEmpty) {
+      _showSnack("Please select at least one skill.");
+      return;
+    }
+
     _formKey.currentState!.save();
     setState(() => _isLoading = true);
 
@@ -285,13 +289,13 @@ class UnifiedScreenState extends State<UnifiedScreen> {
         'UID': uid,
       };
       if (_selectedRole == 'recruiter') {
-      signupData['companyName'] = _formData['Company Name']?.toString().trim() ?? '';
+        signupData['companyName'] = _formData['Company Name']?.toString().trim() ?? '';
       } else if (_selectedRole == 'seeker') {
-      signupData['education'] = _formData['Education']?.toString().trim() ?? '';
-      signupData['specialization'] = _formData['specialization']?.toString().trim() ?? '';
-      signupData['skills'] = _selectedSkills;
+        signupData['education'] = _formData['Education']?.toString().trim() ?? '';
+        signupData['specialization'] = _formData['specialization']?.toString().trim() ?? '';
+        signupData['skills'] = _selectedSkills;
       }
-      
+
       await _authService.storeSignupData(
         isRecruiter: _selectedRole == 'recruiter',
         data: signupData,
@@ -314,10 +318,13 @@ class UnifiedScreenState extends State<UnifiedScreen> {
   void _showSnack(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(msg),
+        content: Text(
+          msg,
+          style: TextStyle(fontSize: 14.sp),
+        ),
         backgroundColor: msg.contains('Error') || msg.contains('failed') ? Colors.red : Colors.teal,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
       ),
     );
   }
@@ -325,92 +332,101 @@ class UnifiedScreenState extends State<UnifiedScreen> {
   Widget _buildTextField(String label,
       {bool isPassword = false, TextInputType? keyboardType, TextEditingController? controller}) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      padding: EdgeInsets.symmetric(vertical: 8.h),
       child: TextFormField(
         controller: controller,
         obscureText: isPassword,
-        keyboardType: keyboardType ?? TextInputType.text,
+        keyboardType: label == 'Mobile Number (+91xxxxxxxxxx)' || label == 'Enter OTP'
+            ? TextInputType.phone
+            : label == 'Email Id'
+                ? TextInputType.emailAddress
+                : keyboardType ?? TextInputType.text,
         decoration: InputDecoration(
           labelText: label,
-          labelStyle: TextStyle(color: Colors.grey.shade600),
+          labelStyle: TextStyle(color: Colors.grey.shade600, fontSize: 14.sp),
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(12.r),
             borderSide: BorderSide(color: Colors.grey.shade400),
           ),
           focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Colors.teal, width: 2),
+            borderRadius: BorderRadius.circular(12.r),
+            borderSide: BorderSide(color: Colors.teal, width: 2.w),
           ),
           filled: true,
           fillColor: Colors.white,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
         ),
-        inputFormatters: label == 'Mobile Number' || label == 'Enter OTP'
-            ? [FilteringTextInputFormatter.digitsOnly]
-            : null,
+        inputFormatters: label == 'Mobile Number (+91xxxxxxxxxx)'
+            ? [_PhoneNumberFormatter()]
+            : label == 'Enter OTP'
+                ? [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(6)]
+                : null,
         validator: (value) {
           final trimmed = value?.trim() ?? '';
           if (trimmed.isEmpty) return 'This field is required';
-          if (label == 'Mobile Number' && !RegExp(r'^\+91\d{10}$').hasMatch(trimmed)) {
-            return 'Must be in format: +911234567890';
+          if (label == 'Mobile Number (+91xxxxxxxxxx)' && !RegExp(r'^\+91[0-9]{10}$').hasMatch(trimmed)) {
+            return 'Please enter a valid mobile number in the format +911234567890';
           }
           if (label == 'Email Id' && !trimmed.contains('@')) return 'Invalid email format';
           if (label == 'Password' && trimmed.length < 6) return 'Password must be at least 6 characters';
           return null;
         },
         onSaved: (value) => _formData[label] = value!.trim(),
+        style: TextStyle(fontSize: 16.sp),
       ),
     );
   }
+
   Widget _buildEducationDropdown() {
-  return Padding(
-    padding: const EdgeInsets.symmetric(vertical: 8.0),
-    child: DropdownButtonFormField<String>(
-      decoration: InputDecoration(
-        labelText: 'Education',
-        labelStyle: TextStyle(color: Colors.grey.shade600),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.shade400),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.teal, width: 2),
-        ),
-        filled: true,
-        fillColor: Colors.white,
-      ),
-      value: _formData['Education'] ?? educationOptions.first, // Default to first option
-      items: educationOptions.map((edu) {
-        return DropdownMenuItem(
-          value: edu,
-          child: Text(edu, style: const TextStyle(color: Colors.black87)),
-        );
-      }).toList(),
-      onChanged: (value) {
-        setState(() {
-          _formData['Education'] = value!;
-        });
-      },
-      validator: (value) => value == null ? 'Please select an education level' : null,
-      onSaved: (value) => _formData['Education'] = value!,
-    ),
-  );
- }
-  Widget _buildSpecializationDropdown() {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      padding: EdgeInsets.symmetric(vertical: 8.h),
       child: DropdownButtonFormField<String>(
         decoration: InputDecoration(
-          labelText: 'Specialization',
-          labelStyle: TextStyle(color: Colors.grey.shade600),
+          labelText: 'Education',
+          labelStyle: TextStyle(color: Colors.grey.shade600, fontSize: 14.sp),
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(12.r),
             borderSide: BorderSide(color: Colors.grey.shade400),
           ),
           focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Colors.teal, width: 2),
+            borderRadius: BorderRadius.circular(12.r),
+            borderSide: BorderSide(color: Colors.teal, width: 2.w),
+          ),
+          filled: true,
+          fillColor: Colors.white,
+        ),
+        value: _formData['Education'] ?? educationOptions.first,
+        items: educationOptions.map((edu) {
+          return DropdownMenuItem(
+            value: edu,
+            child: Text(edu, style: TextStyle(color: Colors.black87, fontSize: 14.sp)),
+          );
+        }).toList(),
+        onChanged: (value) {
+          setState(() {
+            _formData['Education'] = value!;
+          });
+        },
+        validator: (value) => value == null ? 'Please select an education level' : null,
+        onSaved: (value) => _formData['Education'] = value!,
+      ),
+    );
+  }
+
+  Widget _buildSpecializationDropdown() {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 8.h),
+      child: DropdownButtonFormField<String>(
+        decoration: InputDecoration(
+          labelText: 'Specialization',
+          labelStyle: TextStyle(color: Colors.grey.shade600, fontSize: 14.sp),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12.r),
+            borderSide: BorderSide(color: Colors.grey.shade400),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12.r),
+            borderSide: BorderSide(color: Colors.teal, width: 2.w),
           ),
           filled: true,
           fillColor: Colors.white,
@@ -419,13 +435,13 @@ class UnifiedScreenState extends State<UnifiedScreen> {
         items: specializationOptions.map((spec) {
           return DropdownMenuItem(
             value: spec,
-            child: Text(spec, style: const TextStyle(color: Colors.black87)),
+            child: Text(spec, style: TextStyle(color: Colors.black87, fontSize: 14.sp)),
           );
         }).toList(),
         onChanged: (value) {
           setState(() {
             _formData['specialization'] = value!;
-            _selectedSkills = []; // Reset skills when specialization changes
+            _selectedSkills = [];
           });
         },
         validator: (value) => value == null ? 'Please select a specialization' : null,
@@ -438,15 +454,15 @@ class UnifiedScreenState extends State<UnifiedScreen> {
     final specialization = _formData['specialization'] ?? specializationOptions.last;
     final availableSkills = skillsBySpecialization[specialization] ?? [];
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      padding: EdgeInsets.symmetric(vertical: 8.h),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             'Skills',
-            style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
+            style: TextStyle(fontSize: 16.sp, color: Colors.grey.shade600),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8.h),
           AnimatedScaleButton(
             onPressed: () {
               showDialog(
@@ -454,7 +470,7 @@ class UnifiedScreenState extends State<UnifiedScreen> {
                 builder: (_) => MultiSelectDialog(
                   items: availableSkills.map((skill) => MultiSelectItem(skill, skill)).toList(),
                   initialValue: _selectedSkills,
-                  title: const Text('Select Skills', style: TextStyle(color: Colors.black87)),
+                  title: Text('Select Skills', style: TextStyle(color: Colors.black87, fontSize: 16.sp)),
                   selectedColor: Colors.teal,
                 ),
               ).then((selected) {
@@ -466,16 +482,16 @@ class UnifiedScreenState extends State<UnifiedScreen> {
               });
             },
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
               decoration: BoxDecoration(
                 border: Border.all(color: Colors.grey.shade400),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(12.r),
                 color: Colors.white,
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.1),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
+                    blurRadius: 4.r,
+                    offset: Offset(0, 2.h),
                   ),
                 ],
               ),
@@ -484,27 +500,27 @@ class UnifiedScreenState extends State<UnifiedScreen> {
                 children: [
                   Text(
                     _selectedSkills.isEmpty ? 'Select Skills' : 'Selected ${_selectedSkills.length} skill(s)',
-                    style: TextStyle(color: Colors.grey.shade600),
+                    style: TextStyle(color: Colors.grey.shade600, fontSize: 14.sp),
                   ),
-                  const Icon(Icons.arrow_drop_down, color: Colors.teal),
+                  Icon(Icons.arrow_drop_down, color: Colors.teal, size: 24.sp),
                 ],
               ),
             ),
           ),
           if (_selectedSkills.isNotEmpty)
             Padding(
-              padding: const EdgeInsets.only(top: 8),
+              padding: EdgeInsets.only(top: 8.h),
               child: Text(
                 'Selected: ${_selectedSkills.join(', ')}',
-                style: const TextStyle(color: Colors.black87, fontSize: 14),
+                style: TextStyle(color: Colors.black87, fontSize: 14.sp),
               ),
             ),
           if (_formKey.currentState?.validate() == false && _selectedSkills.isEmpty)
-            const Padding(
-              padding: EdgeInsets.only(top: 8),
+            Padding(
+              padding: EdgeInsets.only(top: 8.h),
               child: Text(
                 'Please select at least one skill',
-                style: TextStyle(color: Colors.red, fontSize: 12),
+                style: TextStyle(color: Colors.red, fontSize: 12.sp),
               ),
             ),
         ],
@@ -514,427 +530,503 @@ class UnifiedScreenState extends State<UnifiedScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          _currentState == ScreenState.roleSelection
-              ? "Welcome to Naukariwala"
-              : _currentState == ScreenState.login
-                  ? "Login"
-                  : _selectedRole == 'seeker'
-                      ? "Seeker Signup"
-                      : "Recruiter Signup",
-          style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
-        ),
-        flexibleSpace: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Colors.blue.shade700, Colors.blue.shade900],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+    return ScreenUtilInit(
+      designSize: const Size(360, 690),
+      minTextAdapt: true,
+      splitScreenMode: true,
+      builder: (context, child) {
+        return Scaffold(
+          appBar: AppBar(
+            leading: _currentState == ScreenState.login || _currentState == ScreenState.seekerSignup || _currentState == ScreenState.recruiterSignup
+                ? IconButton(
+                    icon: Icon(Icons.arrow_back, color: Colors.white, size: 24.sp),
+                    onPressed: () {
+                      setState(() {
+                        if (_currentState == ScreenState.login) {
+                          _currentState = ScreenState.roleSelection;
+                        } else {
+                          _currentState = ScreenState.login;
+                        }
+                      });
+                    },
+                  )
+                : null,
+            title: Text(
+              _currentState == ScreenState.roleSelection
+                  ? "Welcome to Naukariwala"
+                  : _currentState == ScreenState.login
+                      ? "Login"
+                      : _selectedRole == 'seeker'
+                          ? "Seeker Signup"
+                          : "Recruiter Signup",
+              style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 20.sp),
             ),
-          ),
-        ),
-        elevation: 4,
-      ),
-      body: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-        padding: const EdgeInsets.all(20),
-        child: _isLoading
-            ? const Center(
-                child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.teal),
+            flexibleSpace: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.blue.shade700, Colors.blue.shade900],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
-              )
-            : _currentState == ScreenState.roleSelection
+              ),
+            ),
+            elevation: 4,
+          ),
+          body: AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+            padding: EdgeInsets.all(20.w),
+            child: _isLoading
                 ? Center(
-                    child: SingleChildScrollView(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Container(
-                            height: 200,
-                            width: 200,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.rectangle,
-                              image: const DecorationImage(
-                                image: AssetImage('assets/logo.png'),
-                                fit: BoxFit.contain,
-                              ),
-                              borderRadius: BorderRadius.circular(12),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.2),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-                          Text(
-                            'Where Talents Meet Opportunity',
-                            style: TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.blue.shade800,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            'Powered by AVR Softwares Pvt. Ltd.',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.blue.shade600,
-                            ),
-                          ),
-                          const SizedBox(height: 32),
-                          Text(
-                            'Select Your Role',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.black87,
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-                          AnimatedScaleButton(
-                            onPressed: () {
-                              setState(() {
-                                _selectedRole = 'recruiter';
-                                _currentState = ScreenState.login;
-                              });
-                            },
-                            child: Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [Colors.blue.shade700, Colors.teal.shade400],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                ),
-                                borderRadius: BorderRadius.circular(12),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.2),
-                                    blurRadius: 4,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  const Icon(Icons.business, color: Colors.white),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    "I'm a Recruiter",
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          AnimatedScaleButton(
-                            onPressed: () {
-                              setState(() {
-                                _selectedRole = 'seeker';
-                                _currentState = ScreenState.login;
-                              });
-                            },
-                            child: Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [Colors.blue.shade700, Colors.teal.shade400],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                ),
-                                borderRadius: BorderRadius.circular(12),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.2),
-                                    blurRadius: 4,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  const Icon(Icons.person, color: Colors.white),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    "I'm a Seeker",
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.teal),
+                      strokeWidth: 4.w,
                     ),
                   )
-                : _currentState == ScreenState.login
-                    ? SingleChildScrollView(
-                        child: Column(
-                          children: [
-                            ToggleButtons(
-                              isSelected: [_method == LoginMethod.phone, _method == LoginMethod.email],
-                              onPressed: (i) {
-                                setState(() {
-                                  _method = i == 0 ? LoginMethod.phone : LoginMethod.email;
-                                  _otpSent = false;
-                                  _isLoading = false;
-                                });
-                              },
-                              borderRadius: BorderRadius.circular(12),
-                              selectedColor: Colors.teal,
-                              fillColor: Colors.teal.shade100,
-                              color: Colors.grey.shade600,
-                              constraints: const BoxConstraints(minHeight: 40, minWidth: 120),
-                              children: const [
-                                Padding(
-                                  padding: EdgeInsets.symmetric(horizontal: 16),
-                                  child: Text("Phone", style: TextStyle(fontWeight: FontWeight.w600)),
+                : _currentState == ScreenState.roleSelection
+                    ? Center(
+                        child: SingleChildScrollView(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Container(
+                                height: 200.h,
+                                width: 200.w,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  image: const DecorationImage(
+                                    image: AssetImage('assets/logo.png'),
+                                    fit: BoxFit.contain,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: 0.2),
+                                      blurRadius: 8.r,
+                                      offset: Offset(0, 4.h),
+                                    ),
+                                  ],
                                 ),
-                                Padding(
-                                  padding: EdgeInsets.symmetric(horizontal: 16),
-                                  child: Text("Email", style: TextStyle(fontWeight: FontWeight.w600)),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 20),
-                            if (_method == LoginMethod.phone) ...[
-                              _buildTextField(
-                                'Mobile Number (+91xxxxxxxxxx)',
-                                controller: _phoneController,
-                                keyboardType: TextInputType.phone,
                               ),
-                              if (_otpSent)
-                                _buildTextField(
-                                  'Enter OTP',
-                                  controller: _otpController,
-                                  keyboardType: TextInputType.number,
+                              SizedBox(height: 20.h),
+                              Text(
+                                'Where Talent Meets Opportunity',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 22.sp,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.blue.shade900,
+                                  letterSpacing: 0.5,
                                 ),
-                              const SizedBox(height: 16),
+                              ),
+                              SizedBox(height: 8.h),
+                              Text(
+                                'Powered by AVR Softwares Pvt. Ltd.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 14.sp,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.blue.shade600,
+                                ),
+                              ),
+                              SizedBox(height: 32.h),
+                              Text(
+                                'Select Your Role',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 18.sp,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                              SizedBox(height: 20.h),
                               AnimatedScaleButton(
                                 onPressed: () {
-                                  if (_isLoading) return;
-                                  if (_otpSent) {
-                                    _verifyOTP();
-                                  } else {
-                                    _sendOTP();
-                                  }
+                                  setState(() {
+                                    _selectedRole = 'recruiter';
+                                    _currentState = ScreenState.login;
+                                  });
                                 },
                                 child: Container(
                                   width: double.infinity,
-                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                  padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
                                   decoration: BoxDecoration(
                                     gradient: LinearGradient(
                                       colors: [Colors.blue.shade700, Colors.teal.shade400],
                                       begin: Alignment.topLeft,
                                       end: Alignment.bottomRight,
                                     ),
-                                    borderRadius: BorderRadius.circular(12),
+                                    borderRadius: BorderRadius.circular(12.r),
                                     boxShadow: [
                                       BoxShadow(
                                         color: Colors.black.withValues(alpha: 0.2),
-                                        blurRadius: 4,
-                                        offset: const Offset(0, 2),
+                                        blurRadius: 4.r,
+                                        offset: Offset(0, 2.h),
                                       ),
                                     ],
                                   ),
-                                  child: _isLoading
-                                      ? const CircularProgressIndicator(
-                                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                        )
-                                      : Text(
-                                          _otpSent ? 'Verify OTP' : 'Send OTP',
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 16,
-                                          ),
-                                          textAlign: TextAlign.center,
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.business, color: Colors.white, size: 24.sp),
+                                      SizedBox(width: 8.w),
+                                      Text(
+                                        "I'm a Recruiter",
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16.sp,
                                         ),
-                                ),
-                              ),
-                              if (_otpSent)
-                                TextButton(
-                                  onPressed: _isLoading ? null : _sendOTP,
-                                  child: Text(
-                                    'Resend OTP',
-                                    style: TextStyle(color: Colors.teal.shade700, fontWeight: FontWeight.w600),
+                                      ),
+                                    ],
                                   ),
                                 ),
-                            ] else ...[
-                              _buildTextField(
-                                'Email',
-                                controller: _emailController,
-                                keyboardType: TextInputType.emailAddress,
                               ),
-                              _buildTextField(
-                                'Password',
-                                controller: _passwordController,
-                                isPassword: true,
-                              ),
-                              const SizedBox(height: 16),
+                              SizedBox(height: 16.h),
                               AnimatedScaleButton(
                                 onPressed: () {
-                                  if (_isLoading) return;
-                                  _signInWithEmail();
+                                  setState(() {
+                                    _selectedRole = 'seeker';
+                                    _currentState = ScreenState.login;
+                                  });
                                 },
                                 child: Container(
                                   width: double.infinity,
-                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                  padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
                                   decoration: BoxDecoration(
                                     gradient: LinearGradient(
                                       colors: [Colors.blue.shade700, Colors.teal.shade400],
                                       begin: Alignment.topLeft,
                                       end: Alignment.bottomRight,
                                     ),
-                                    borderRadius: BorderRadius.circular(12),
+                                    borderRadius: BorderRadius.circular(12.r),
                                     boxShadow: [
                                       BoxShadow(
                                         color: Colors.black.withValues(alpha: 0.2),
-                                        blurRadius: 4,
-                                        offset: const Offset(0, 2),
+                                        blurRadius: 4.r,
+                                        offset: Offset(0, 2.h),
                                       ),
                                     ],
                                   ),
-                                  child: _isLoading
-                                      ? const CircularProgressIndicator(
-                                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                        )
-                                      : const Text(
-                                          'Login with Email',
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 16,
-                                          ),
-                                          textAlign: TextAlign.center,
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.person, color: Colors.white, size: 24.sp),
+                                      SizedBox(width: 8.w),
+                                      Text(
+                                        "I'm a Seeker",
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16.sp,
                                         ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ],
-                            const SizedBox(height: 24),
-                            AnimatedScaleButton(
-                              onPressed: () {
-                                setState(() {
-                                  _currentState = _selectedRole == 'seeker'
-                                      ? ScreenState.seekerSignup
-                                      : ScreenState.recruiterSignup;
-                                });
-                              },
-                              child: Text(
-                                'New here? Register',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.teal.shade700,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
                       )
-                    : _currentState == ScreenState.seekerSignup || _currentState == ScreenState.recruiterSignup
-                        ? Form(
-                            key: _formKey,
-                            child: ListView(
+                    : _currentState == ScreenState.login
+                        ? SingleChildScrollView(
+                            child: Column(
                               children: [
-                                _buildTextField(
-                                  'Name',                              
-                                  controller: _nameController,
+                                ToggleButtons(
+                                  isSelected: [_method == LoginMethod.phone, _method == LoginMethod.email],
+                                  onPressed: (i) {
+                                    setState(() {
+                                      _method = i == 0 ? LoginMethod.phone : LoginMethod.email;
+                                      _otpSent = false;
+                                      _isLoading = false;
+                                    });
+                                  },
+                                  borderRadius: BorderRadius.circular(12.r),
+                                  selectedColor: Colors.teal,
+                                  fillColor: Colors.teal.shade100,
+                                  color: Colors.grey.shade600,
+                                  constraints: BoxConstraints(minHeight: 40.h, minWidth: 120.w),
+                                  children: [
+                                    Padding(
+                                      padding: EdgeInsets.symmetric(horizontal: 16.w),
+                                      child: Text("Phone", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14.sp)),
+                                    ),
+                                    Padding(
+                                      padding: EdgeInsets.symmetric(horizontal: 16.w),
+                                      child: Text("Email", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14.sp)),
+                                    ),
+                                  ],
                                 ),
-                                _buildTextField(
-                                   'Mobile Number (+91xxxxxxxxxx)',
-                                controller: _phoneController,
-                                keyboardType: TextInputType.phone,
-                                ),
-                                _buildTextField(
-                                  'Email Id',
-                                  controller: _emailController,
-                                  keyboardType: TextInputType.emailAddress,
-                                ),
-                                _buildTextField(
-                                  'Password',
-                                  controller: _passwordController,
-                                  isPassword: true,
-                                ),
-                                
-                                if (_currentState == ScreenState.recruiterSignup)
+                                SizedBox(height: 20.h),
+                                if (_method == LoginMethod.phone) ...[
                                   _buildTextField(
-                                  'Company Name',
-                                  controller: _companyNameController,
-                                  // iscompanyName: true,
-                                ),
-                                if (_currentState == ScreenState.seekerSignup) ...[
-                                  _buildEducationDropdown(),
-                                  _buildSpecializationDropdown(),
-                                  _buildSkillsMultiSelect(),
+                                    'Mobile Number (+91xxxxxxxxxx)',
+                                    controller: _phoneController,
+                                    keyboardType: TextInputType.phone,
+                                  ),
+                                  if (_otpSent)
+                                    _buildTextField(
+                                      'Enter OTP',
+                                      controller: _otpController,
+                                      keyboardType: TextInputType.number,
+                                    ),
+                                  SizedBox(height: 16.h),
+                                  AnimatedScaleButton(
+                                    onPressed: () {
+                                      if (_isLoading) return;
+                                      if (_otpSent) {
+                                        _verifyOTP();
+                                      } else {
+                                        _sendOTP();
+                                      }
+                                    },
+                                    child: Container(
+                                      width: double.infinity,
+                                      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          colors: [Colors.blue.shade700, Colors.teal.shade400],
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                        ),
+                                        borderRadius: BorderRadius.circular(12.r),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black.withValues(alpha: 0.2),
+                                            blurRadius: 4.r,
+                                            offset: Offset(0, 2.h),
+                                          ),
+                                        ],
+                                      ),
+                                      child: _isLoading
+                                          ? CircularProgressIndicator(
+                                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                              strokeWidth: 4.w,
+                                            )
+                                          : Text(
+                                              _otpSent ? 'Verify OTP' : 'Send OTP',
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 16.sp,
+                                              ),
+                                              textAlign: TextAlign.center,
+                                            ),
+                                    ),
+                                  ),
+                                  if (_otpSent)
+                                    TextButton(
+                                      onPressed: _isLoading ? null : _sendOTP,
+                                      child: Text(
+                                        'Resend OTP',
+                                        style: TextStyle(color: Colors.teal.shade700, fontWeight: FontWeight.w600, fontSize: 14.sp),
+                                      ),
+                                    ),
+                                ] else ...[
+                                  _buildTextField(
+                                    'Email',
+                                    controller: _emailController,
+                                    keyboardType: TextInputType.emailAddress,
+                                  ),
+                                  _buildTextField(
+                                    'Password',
+                                    controller: _passwordController,
+                                    isPassword: true,
+                                  ),
+                                  SizedBox(height: 16.h),
+                                  AnimatedScaleButton(
+                                    onPressed: () {
+                                      if (_isLoading) return;
+                                      _signInWithEmail();
+                                    },
+                                    child: Container(
+                                      width: double.infinity,
+                                      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          colors: [Colors.blue.shade700, Colors.teal.shade400],
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                        ),
+                                        borderRadius: BorderRadius.circular(12.r),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black.withValues(alpha: 0.2),
+                                            blurRadius: 4.r,
+                                            offset: Offset(0, 2.h),
+                                          ),
+                                        ],
+                                      ),
+                                      child: _isLoading
+                                          ? CircularProgressIndicator(
+                                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                              strokeWidth: 4.w,
+                                            )
+                                          : Text(
+                                              'Login with Email',
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 16.sp,
+                                              ),
+                                              textAlign: TextAlign.center,
+                                            ),
+                                    ),
+                                  ),
                                 ],
-                                const SizedBox(height: 20),
+                                SizedBox(height: 24.h),
                                 AnimatedScaleButton(
                                   onPressed: () {
-                                    if (_isLoading) return;
-                                    _submitSignup();
+                                    setState(() {
+                                      _currentState = _selectedRole == 'seeker'
+                                          ? ScreenState.seekerSignup
+                                          : ScreenState.recruiterSignup;
+                                    });
                                   },
-                                  child: Container(
-                                    width: double.infinity,
-                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                    decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        colors: [Colors.blue.shade700, Colors.teal.shade400],
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                      ),
-                                      borderRadius: BorderRadius.circular(12),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: Colors.black.withValues(alpha: 0.2),
-                                          blurRadius: 4,
-                                          offset: const Offset(0, 2),
-                                        ),
-                                      ],
-                                    ),
-                                    child: const Text(
-                                      'Submit',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16,
-                                      ),
-                                      textAlign: TextAlign.center,
+                                  child: Text(
+                                    'New here? Register',
+                                    style: TextStyle(
+                                      fontSize: 16.sp,
+                                      color: Colors.teal.shade700,
+                                      fontWeight: FontWeight.w600,
                                     ),
                                   ),
                                 ),
                               ],
                             ),
                           )
-                        : const SizedBox.shrink(),
-      ),
+                        : _currentState == ScreenState.seekerSignup || _currentState == ScreenState.recruiterSignup
+                            ? Form(
+                                key: _formKey,
+                                child: ListView(
+                                  children: [
+                                    _buildTextField(
+                                      'Name',
+                                      controller: _nameController,
+                                    ),
+                                    _buildTextField(
+                                      'Mobile Number (+91xxxxxxxxxx)',
+                                      controller: _phoneController,
+                                      keyboardType: TextInputType.phone,
+                                    ),
+                                    _buildTextField(
+                                      'Email Id',
+                                      controller: _emailController,
+                                      keyboardType: TextInputType.emailAddress,
+                                    ),
+                                    _buildTextField(
+                                      'Password',
+                                      controller: _passwordController,
+                                      isPassword: true,
+                                    ),
+                                    if (_currentState == ScreenState.recruiterSignup)
+                                      _buildTextField(
+                                        'Company Name',
+                                        controller: _companyNameController,
+                                      ),
+                                    if (_currentState == ScreenState.seekerSignup) ...[
+                                      _buildEducationDropdown(),
+                                      _buildSpecializationDropdown(),
+                                      _buildSkillsMultiSelect(),
+                                    ],
+                                    SizedBox(height: 20.h),
+                                    AnimatedScaleButton(
+                                      onPressed: () {
+                                        if (_isLoading) return;
+                                        _submitSignup();
+                                      },
+                                      child: Container(
+                                        width: double.infinity,
+                                        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+                                        decoration: BoxDecoration(
+                                          gradient: LinearGradient(
+                                            colors: [Colors.blue.shade700, Colors.teal.shade400],
+                                            begin: Alignment.topLeft,
+                                            end: Alignment.bottomRight,
+                                          ),
+                                          borderRadius: BorderRadius.circular(12.r),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.black.withValues(alpha: 0.2),
+                                              blurRadius: 4.r,
+                                              offset: Offset(0, 2.h),
+                                            ),
+                                          ],
+                                        ),
+                                        child: Text(
+                                          'Submit',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16.sp,
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            : SizedBox.shrink(),
+          ),
+        );
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _phoneController.dispose();
+    _otpController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    _companyNameController.dispose();
+    super.dispose();
+  }
+}
+
+// Custom TextInputFormatter to preserve +91 prefix
+class _PhoneNumberFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    String newText = newValue.text;
+
+    // If the input is empty, reset to "+91"
+    if (newText.isEmpty) {
+      return const TextEditingValue(
+        text: '+91',
+        selection: TextSelection.collapsed(offset: 3),
+      );
+    }
+
+    // Ensure the input starts with "+91"
+    if (!newText.startsWith('+91')) {
+      newText = '+91${newText.replaceAll(RegExp(r'^\+91|[^0-9]'), '')}';
+    }
+
+    // Limit to +91 followed by up to 10 digits
+    String digits = newText.replaceAll('+91', '');
+    if (digits.length > 10) {
+      digits = digits.substring(0, 10);
+      newText = '+91$digits';
+    }
+
+    // Update cursor position
+    int cursorOffset = newValue.selection.baseOffset;
+    if (cursorOffset < 3) {
+      cursorOffset = 3; // Keep cursor after +91
+    } else if (cursorOffset > newText.length) {
+      cursorOffset = newText.length;
+    }
+
+    return TextEditingValue(
+      text: newText,
+      selection: TextSelection.collapsed(offset: cursorOffset),
     );
   }
 }
 
-// Custom Animated Button Widget
 class AnimatedScaleButton extends StatefulWidget {
   final VoidCallback onPressed;
   final Widget child;

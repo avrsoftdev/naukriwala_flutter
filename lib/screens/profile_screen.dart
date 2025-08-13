@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:naukariwala/services/auth_service.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'dart:developer' as dev;
 
 class ProfileScreen extends StatefulWidget {
@@ -382,9 +383,9 @@ class ProfileScreenState extends State<ProfileScreen> {
       TextEditingController? controller,
       String? Function(String?)? validator}) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      padding: EdgeInsets.symmetric(vertical: 8.h),
       child: Container(
-        constraints: const BoxConstraints(maxWidth: 300),
+        constraints: BoxConstraints(maxWidth: 300.w),
         child: TextFormField(
           controller: controller,
           obscureText: isPassword,
@@ -392,16 +393,16 @@ class ProfileScreenState extends State<ProfileScreen> {
           maxLength: multiline ? 500 : 100,
           decoration: InputDecoration(
             labelText: label,
-            labelStyle: const TextStyle(color: Colors.grey, fontSize: 12),
+            labelStyle: TextStyle(color: Colors.grey, fontSize: 12.sp),
             enabledBorder: const UnderlineInputBorder(
               borderSide: BorderSide(color: Colors.grey),
             ),
             focusedBorder: UnderlineInputBorder(
-              borderSide: BorderSide(color: Colors.teal, width: 2),
+              borderSide: BorderSide(color: Colors.teal, width: 2.w),
             ),
             filled: true,
             fillColor: Colors.white,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
             counterText: multiline ? null : '',
           ),
           validator: validator,
@@ -415,34 +416,34 @@ class ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildNonEditableField(String label, String? value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      padding: EdgeInsets.symmetric(vertical: 8.h),
       child: Card(
         elevation: 2,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
         child: Container(
-          constraints: const BoxConstraints(maxWidth: 300),
-          padding: const EdgeInsets.all(12.0),
+          constraints: BoxConstraints(maxWidth: 300.w),
+          padding: EdgeInsets.all(12.w),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [Colors.blue.shade50, Colors.blue.shade100],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(12.r),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 label,
-                style: TextStyle(fontSize: 12, color: Colors.blue.shade800, fontWeight: FontWeight.w600),
+                style: TextStyle(fontSize: 12.sp, color: Colors.blue.shade800, fontWeight: FontWeight.w600),
                 overflow: TextOverflow.ellipsis,
                 maxLines: 1,
               ),
-              const SizedBox(height: 6),
+              SizedBox(height: 6.h),
               Text(
                 value ?? 'N/A',
-                style: const TextStyle(fontSize: 14, color: Colors.black87),
+                style: TextStyle(fontSize: 14.sp, color: Colors.black87),
                 overflow: TextOverflow.ellipsis,
                 maxLines: 1,
               ),
@@ -455,37 +456,37 @@ class ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildSpecializationDropdown() {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      padding: EdgeInsets.symmetric(vertical: 8.h),
       child: Container(
-        constraints: const BoxConstraints(maxWidth: 300),
+        constraints: BoxConstraints(maxWidth: 300.w),
         child: DropdownButtonFormField<String>(
           value: _selectedSpecialization,
           decoration: InputDecoration(
             labelText: 'Specialization',
-            labelStyle: const TextStyle(color: Colors.grey, fontSize: 12),
+            labelStyle: TextStyle(color: Colors.grey, fontSize: 12.sp),
             enabledBorder: OutlineInputBorder(
               borderSide: BorderSide(color: Colors.grey.shade400),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
             ),
             focusedBorder: OutlineInputBorder(
-              borderSide: const BorderSide(color: Colors.teal, width: 2),
-              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: Colors.teal, width: 2.w),
+              borderRadius: BorderRadius.circular(12.r),
             ),
             filled: true,
             fillColor: Colors.white,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
           ),
           isExpanded: true,
-          menuMaxHeight: 300,
+          menuMaxHeight: 300.h,
           items: specializationOptions.map((String specialization) {
             return DropdownMenuItem<String>(
               value: specialization,
               child: Container(
-                constraints: const BoxConstraints(maxWidth: 250),
+                constraints: BoxConstraints(maxWidth: 250.w),
                 child: Text(
                   specialization,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: Colors.black87, fontSize: 12),
+                  style: TextStyle(color: Colors.black87, fontSize: 12.sp),
                 ),
               ),
             );
@@ -507,37 +508,37 @@ class ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildEducationDropdown() {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      padding: EdgeInsets.symmetric(vertical: 8.h),
       child: Container(
-        constraints: const BoxConstraints(maxWidth: 300),
+        constraints: BoxConstraints(maxWidth: 300.w),
         child: DropdownButtonFormField<String>(
           value: _selectedEducation,
           decoration: InputDecoration(
             labelText: 'Education',
-            labelStyle: const TextStyle(color: Colors.grey, fontSize: 12),
+            labelStyle: TextStyle(color: Colors.grey, fontSize: 12.sp),
             enabledBorder: OutlineInputBorder(
               borderSide: BorderSide(color: Colors.grey.shade400),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12.r),
             ),
             focusedBorder: OutlineInputBorder(
-              borderSide: const BorderSide(color: Colors.teal, width: 2),
-              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: Colors.teal, width: 2.w),
+              borderRadius: BorderRadius.circular(12.r),
             ),
             filled: true,
             fillColor: Colors.white,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
           ),
           isExpanded: true,
-          menuMaxHeight: 300,
+          menuMaxHeight: 300.h,
           items: educationOptions.map((String education) {
             return DropdownMenuItem<String>(
               value: education,
               child: Container(
-                constraints: const BoxConstraints(maxWidth: 250),
+                constraints: BoxConstraints(maxWidth: 250.w),
                 child: Text(
                   education,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: Colors.black87, fontSize: 12),
+                  style: TextStyle(color: Colors.black87, fontSize: 12.sp),
                 ),
               ),
             );
@@ -559,20 +560,20 @@ class ProfileScreenState extends State<ProfileScreen> {
   Widget _buildSkillsMultiSelect() {
     final availableSkills = skillsBySpecialization[_selectedSpecialization ?? 'Others'] ?? [];
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      padding: EdgeInsets.symmetric(vertical: 8.h),
       child: Card(
         elevation: 2,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
         child: Container(
-          constraints: const BoxConstraints(maxWidth: 300),
-          padding: const EdgeInsets.all(12.0),
+          constraints: BoxConstraints(maxWidth: 300.w),
+          padding: EdgeInsets.all(12.w),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [Colors.blue.shade50, Colors.blue.shade100],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(12.r),
           ),
           child: GestureDetector(
             onTap: () async {
@@ -595,29 +596,29 @@ class ProfileScreenState extends State<ProfileScreen> {
               children: [
                 Text(
                   'Skills',
-                  style: TextStyle(fontSize: 12, color: Colors.blue.shade800, fontWeight: FontWeight.w600),
+                  style: TextStyle(fontSize: 12.sp, color: Colors.blue.shade800, fontWeight: FontWeight.w600),
                   overflow: TextOverflow.ellipsis,
                   maxLines: 1,
                 ),
-                const SizedBox(height: 6),
+                SizedBox(height: 6.h),
                 Container(
-                  constraints: const BoxConstraints(maxWidth: 250),
+                  constraints: BoxConstraints(maxWidth: 250.w),
                   child: Text(
                     _selectedSkills.isEmpty ? 'Select skills' : _selectedSkills.join(', '),
                     overflow: TextOverflow.ellipsis,
                     maxLines: 2,
                     style: TextStyle(
-                      fontSize: 14,
+                      fontSize: 14.sp,
                       color: _selectedSkills.isEmpty ? Colors.grey : Colors.black87,
                     ),
                   ),
                 ),
                 if (_selectedSkills.isEmpty)
                   Padding(
-                    padding: const EdgeInsets.only(top: 6.0),
+                    padding: EdgeInsets.only(top: 6.h),
                     child: Text(
                       'At least one skill is required',
-                      style: TextStyle(fontSize: 10, color: Colors.red.shade700),
+                      style: TextStyle(fontSize: 10.sp, color: Colors.red.shade700),
                     ),
                   ),
               ],
@@ -643,317 +644,325 @@ class ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          widget.isRecruiter ? 'Recruiter Profile' : 'Seeker Profile',
-          style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 18),
-        ),
-        flexibleSpace: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Colors.blue.shade700, Colors.blue.shade900],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+    return ScreenUtilInit(
+      designSize: const Size(360, 690),
+      minTextAdapt: true,
+      splitScreenMode: true,
+      builder: (context, child) {
+        return Scaffold(
+          appBar: AppBar(
+            title: Text(
+              widget.isRecruiter ? 'Recruiter Profile' : 'Seeker Profile',
+              style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 18.sp),
             ),
-          ),
-        ),
-        elevation: 4,
-        actions: [
-          if (!widget.isRecruiter)
-            IconButton(
-              icon: const Icon(Icons.description, color: Colors.white, size: 22),
-              padding: const EdgeInsets.all(2),
-              onPressed: () {
-                dev.log('Opening resume preview', name: 'ProfileScreen');
-                final resumeData = _generateResumeData();
-                showDialog(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                    title: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [Colors.blue.shade700, Colors.blue.shade900],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                      ),
-                      child: const Text(
-                        'Resume Preview',
-                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
-                      ),
-                    ),
-                    content: SingleChildScrollView(
-                      child: Container(
-                        constraints: const BoxConstraints(maxWidth: 300),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Name: ${resumeData['name'] ?? 'N/A'}', style: const TextStyle(fontSize: 14)),
-                            Text('Email: ${resumeData['email'] ?? 'N/A'}', style: const TextStyle(fontSize: 14)),
-                            Text('Mobile: ${resumeData['mobileNumber'] ?? 'N/A'}', style: const TextStyle(fontSize: 14)),
-                            const SizedBox(height: 6),
-                            Text('Skills:', style: TextStyle(fontSize: 12, color: Colors.blue.shade800)),
-                            Wrap(
-                              spacing: 6,
-                              runSpacing: 4,
-                              children: (resumeData['skills'] as List<dynamic>?)
-                                      ?.cast<String>()
-                                      .map((skill) => Chip(
-                                            label: Text(skill, style: const TextStyle(fontSize: 12)),
-                                            backgroundColor: Colors.teal.shade100,
-                                            labelStyle: TextStyle(color: Colors.teal.shade900),
-                                          ))
-                                      .toList() ??
-                                  [
-                                    Chip(
-                                      label: const Text('N/A', style: TextStyle(fontSize: 12)),
-                                      backgroundColor: Colors.grey.shade200,
-                                    )
-                                  ],
-                            ),
-                            Text('Education: ${resumeData['education'] ?? 'N/A'}', style: const TextStyle(fontSize: 14)),
-                            Text('Experience: ${resumeData['experience'] ?? 'N/A'}', style: const TextStyle(fontSize: 14)),
-                            Text('Specialization: ${resumeData['specialization'] ?? 'N/A'}', style: const TextStyle(fontSize: 14)),
-                            Text('Current Company: ${resumeData['currentCompany'] ?? 'N/A'}', style: const TextStyle(fontSize: 14)),
-                            Text('Current CTC: ${resumeData['currentCtc'] ?? 'N/A'}', style: const TextStyle(fontSize: 14)),
-                            Text('Expected CTC: ${resumeData['expectedCtc'] ?? 'N/A'}', style: const TextStyle(fontSize: 14)),
-                          ],
-                        ),
-                      ),
-                    ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text('Close', style: TextStyle(color: Colors.teal, fontSize: 12)),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-        ],
-      ),
-      body: isLoading
-          ? const Center(
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.teal),
+            flexibleSpace: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.blue.shade700, Colors.blue.shade900],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
               ),
-            )
-          : errorMessage != null
-              ? Center(
-                  child: Card(
-                    elevation: 4,
-                    color: Colors.red.shade50,
-                    child: Padding(
-                      padding: const EdgeInsets.all(12.0),
-                      child: Text(
-                        errorMessage!,
-                        style: TextStyle(color: Colors.red.shade700, fontSize: 14),
+            ),
+            elevation: 4,
+            actions: [
+              if (!widget.isRecruiter)
+                IconButton(
+                  icon: const Icon(Icons.description, color: Colors.white, size: 22),
+                  padding: EdgeInsets.all(2.w),
+                  onPressed: () {
+                    dev.log('Opening resume preview', name: 'ProfileScreen');
+                    final resumeData = _generateResumeData();
+                    showDialog(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+                        title: Container(
+                          padding: EdgeInsets.all(12.w),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [Colors.blue.shade700, Colors.blue.shade900],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.vertical(top: Radius.circular(16.r)),
+                          ),
+                          child: const Text(
+                            'Resume Preview',
+                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                          ),
+                        ),
+                        content: SingleChildScrollView(
+                          child: Container(
+                            constraints: BoxConstraints(maxWidth: 300.w),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Name: ${resumeData['name'] ?? 'N/A'}', style: TextStyle(fontSize: 14.sp)),
+                                Text('Email: ${resumeData['email'] ?? 'N/A'}', style: TextStyle(fontSize: 14.sp)),
+                                Text('Mobile: ${resumeData['mobileNumber'] ?? 'N/A'}', style: TextStyle(fontSize: 14.sp)),
+                                SizedBox(height: 6.h),
+                                Text('Skills:', style: TextStyle(fontSize: 12.sp, color: Colors.blue.shade800)),
+                                Wrap(
+                                  spacing: 6.w,
+                                  runSpacing: 4.h,
+                                  children: (resumeData['skills'] as List<dynamic>?)
+                                          ?.cast<String>()
+                                          .map((skill) => Chip(
+                                                label: Text(skill, style: TextStyle(fontSize: 12.sp)),
+                                                backgroundColor: Colors.teal.shade100,
+                                                labelStyle: TextStyle(color: Colors.teal.shade900),
+                                              ))
+                                          .toList() ??
+                                      [
+                                        Chip(
+                                          label: const Text('N/A', style: TextStyle(fontSize: 12)),
+                                          backgroundColor: Colors.grey.shade200,
+                                        )
+                                      ],
+                                ),
+                                Text('Education: ${resumeData['education'] ?? 'N/A'}', style: TextStyle(fontSize: 14.sp)),
+                                Text('Experience: ${resumeData['experience'] ?? 'N/A'}', style: TextStyle(fontSize: 14.sp)),
+                                Text('Specialization: ${resumeData['specialization'] ?? 'N/A'}', style: TextStyle(fontSize: 14.sp)),
+                                Text('Current Company: ${resumeData['currentCompany'] ?? 'N/A'}', style: TextStyle(fontSize: 14.sp)),
+                                Text('Current CTC: ${resumeData['currentCtc'] ?? 'N/A'}', style: TextStyle(fontSize: 14.sp)),
+                                Text('Expected CTC: ${resumeData['expectedCtc'] ?? 'N/A'}', style: TextStyle(fontSize: 14.sp)),
+                              ],
+                            ),
+                          ),
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text('Close', style: TextStyle(color: Colors.teal, fontSize: 12)),
+                          ),
+                        ],
                       ),
-                    ),
+                    );
+                  },
+                ),
+            ],
+          ),
+          body: isLoading
+              ? Center(
+                  child: CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.teal),
+                    strokeWidth: 4.w,
                   ),
                 )
-              : SingleChildScrollView(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Card(
-                    elevation: 4,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    child: Padding(
-                      padding: const EdgeInsets.all(12.0),
-                      child: Form(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Image Display and Upload
-                            Center(
-                              child: Stack(
-                                children: [
-                                  Container(
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      gradient: LinearGradient(
-                                        colors: [Colors.blue.shade700, Colors.teal.shade400],
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                      ),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: Colors.black.withOpacity(0.2),
-                                          blurRadius: 8,
-                                          offset: const Offset(0, 4),
-                                        ),
-                                      ],
-                                    ),
-                                    padding: const EdgeInsets.all(4),
-                                    child: CircleAvatar(
-                                      radius: 60,
-                                      backgroundImage: _imageFile != null
-                                          ? FileImage(_imageFile!)
-                                          : _imageUrl != null
-                                              ? NetworkImage(_imageUrl!)
-                                              : null,
-                                      backgroundColor: Colors.grey.withOpacity(0.2),
-                                      child: _imageFile == null && _imageUrl == null
-                                          ? const Icon(Icons.person, size: 60, color: Colors.grey)
-                                          : null,
-                                    ),
-                                  ),
-                                  Positioned(
-                                    bottom: 0,
-                                    right: 0,
-                                    child: GestureDetector(
-                                      onTap: _pickImage,
-                                      child: Container(
-                                        padding: const EdgeInsets.all(6),
+              : errorMessage != null
+                  ? Center(
+                      child: Card(
+                        elevation: 4,
+                        color: Colors.red.shade50,
+                        child: Padding(
+                          padding: EdgeInsets.all(12.w),
+                          child: Text(
+                            errorMessage!,
+                            style: TextStyle(color: Colors.red.shade700, fontSize: 14.sp),
+                          ),
+                        ),
+                      ),
+                    )
+                  : SingleChildScrollView(
+                      padding: EdgeInsets.all(16.w),
+                      child: Card(
+                        elevation: 4,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                        child: Padding(
+                          padding: EdgeInsets.all(12.w),
+                          child: Form(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Image Display and Upload
+                                Center(
+                                  child: Stack(
+                                    children: [
+                                      Container(
                                         decoration: BoxDecoration(
                                           shape: BoxShape.circle,
-                                          color: Colors.teal,
+                                          gradient: LinearGradient(
+                                            colors: [Colors.blue.shade700, Colors.teal.shade400],
+                                            begin: Alignment.topLeft,
+                                            end: Alignment.bottomRight,
+                                          ),
                                           boxShadow: [
                                             BoxShadow(
                                               color: Colors.black.withOpacity(0.2),
-                                              blurRadius: 4,
-                                              offset: const Offset(0, 2),
+                                              blurRadius: 8.r,
+                                              offset: Offset(0, 4.h),
                                             ),
                                           ],
                                         ),
-                                        child: const Icon(Icons.camera_alt, color: Colors.white, size: 20),
+                                        padding: EdgeInsets.all(4.w),
+                                        child: CircleAvatar(
+                                          radius: 60.r,
+                                          backgroundImage: _imageFile != null
+                                              ? FileImage(_imageFile!)
+                                              : _imageUrl != null
+                                                  ? NetworkImage(_imageUrl!)
+                                                  : null,
+                                          backgroundColor: Colors.grey.withOpacity(0.2),
+                                          child: _imageFile == null && _imageUrl == null
+                                              ? const Icon(Icons.person, size: 60, color: Colors.grey)
+                                              : null,
+                                        ),
                                       ),
-                                    ),
+                                      Positioned(
+                                        bottom: 0,
+                                        right: 0,
+                                        child: GestureDetector(
+                                          onTap: _pickImage,
+                                          child: Container(
+                                            padding: EdgeInsets.all(6.w),
+                                            decoration: BoxDecoration(
+                                              shape: BoxShape.circle,
+                                              color: Colors.teal,
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: Colors.black.withOpacity(0.2),
+                                                  blurRadius: 4.r,
+                                                  offset: Offset(0, 2.h),
+                                                ),
+                                              ],
+                                            ),
+                                            child: const Icon(Icons.camera_alt, color: Colors.white, size: 20),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
+                                ),
+                                SizedBox(height: 12.h),
+                                Text(
+                                  widget.isRecruiter ? 'Company Logo' : 'Profile Photo',
+                                  style: TextStyle(
+                                    fontSize: 16.sp,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.blue.shade900,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                SizedBox(height: 16.h),
+                                // Common Fields
+                                _buildTextField(
+                                  'Name',
+                                  controller: _nameController,
+                                  validator: (value) => value == null || value.trim().isEmpty ? 'Name is required' : null,
+                                ),
+                                _buildNonEditableField('Mobile Number', _mobileNumber),
+                                _buildNonEditableField('Email', _email),
+                                // Recruiter-Specific Fields
+                                if (widget.isRecruiter) ...[
+                                  _buildTextField(
+                                    'Company Name',
+                                    controller: _companyNameController,
+                                    validator: (value) => value == null || value.trim().isEmpty ? 'Company Name is required' : null,
+                                  ),
+                                  _buildTextField('Company Profile', multiline: true, controller: _companyProfileController),
+                                  _buildTextField('Designation', controller: _designationController),
+                                ]
+                                // Seeker-Specific Fields
+                                else ...[
+                                  _buildSpecializationDropdown(),
+                                  _buildSkillsMultiSelect(),
+                                  _buildEducationDropdown(),
+                                  _buildTextField(
+                                    'Experience (e.g., 2 years)',
+                                    controller: _experienceController,
+                                    validator: (value) {
+                                      if (value == null || value.trim().isEmpty) {
+                                        return 'Experience is required';
+                                      }
+                                      final match = RegExp(r'^\d+\s*(years?|yrs?)?$').hasMatch(value.trim());
+                                      if (!match) {
+                                        return 'Experience must be in format "X years" (e.g., "2 years")';
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                                  _buildTextField('Current Company', controller: _currentCompanyController),
+                                  _buildTextField('Current CTC', controller: _currentCtcController),
+                                  _buildTextField('Expected CTC', controller: _expectedCtcController),
                                 ],
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            Text(
-                              widget.isRecruiter ? 'Company Logo' : 'Profile Photo',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.blue.shade900,
-                              ),
-                              textAlign: TextAlign.center,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            const SizedBox(height: 16),
-                            // Common Fields
-                            _buildTextField(
-                              'Name',
-                              controller: _nameController,
-                              validator: (value) => value == null || value.trim().isEmpty ? 'Name is required' : null,
-                            ),
-                            _buildNonEditableField('Mobile Number', _mobileNumber),
-                            _buildNonEditableField('Email', _email),
-                            // Recruiter-Specific Fields
-                            if (widget.isRecruiter) ...[
-                              _buildTextField(
-                                'Company Name',
-                                controller: _companyNameController,
-                                validator: (value) => value == null || value.trim().isEmpty ? 'Company Name is required' : null,
-                              ),
-                              _buildTextField('Company Profile', multiline: true, controller: _companyProfileController),
-                              _buildTextField('Designation', controller: _designationController),
-                            ]
-                            // Seeker-Specific Fields
-                            else ...[
-                              _buildSpecializationDropdown(),
-                              _buildSkillsMultiSelect(),
-                              _buildEducationDropdown(),
-                              _buildTextField(
-                                'Experience (e.g., 2 years)',
-                                controller: _experienceController,
-                                validator: (value) {
-                                  if (value == null || value.trim().isEmpty) {
-                                    return 'Experience is required';
-                                  }
-                                  final match = RegExp(r'^\d+\s*(years?|yrs?)?$').hasMatch(value.trim());
-                                  if (!match) {
-                                    return 'Experience must be in format "X years" (e.g., "2 years")';
-                                  }
-                                  return null;
-                                },
-                              ),
-                              _buildTextField('Current Company', controller: _currentCompanyController),
-                              _buildTextField('Current CTC', controller: _currentCtcController),
-                              _buildTextField('Expected CTC', controller: _expectedCtcController),
-                            ],
-                            const SizedBox(height: 16),
-                            Center(
-                              child: AnimatedScaleButton(
-                                onPressed: _updateProfile,
-                                child: Container(
-                                  constraints: const BoxConstraints(maxWidth: 200),
-                                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      colors: [Colors.blue.shade700, Colors.teal.shade400],
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                    ),
-                                    borderRadius: BorderRadius.circular(12),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.2),
-                                        blurRadius: 4,
-                                        offset: const Offset(0, 2),
+                                SizedBox(height: 16.h),
+                                Center(
+                                  child: AnimatedScaleButton(
+                                    onPressed: _updateProfile,
+                                    child: Container(
+                                      constraints: BoxConstraints(maxWidth: 200.w),
+                                      padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 10.h),
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          colors: [Colors.blue.shade700, Colors.teal.shade400],
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                        ),
+                                        borderRadius: BorderRadius.circular(12.r),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black.withOpacity(0.2),
+                                            blurRadius: 4.r,
+                                            offset: Offset(0, 2.h),
+                                          ),
+                                        ],
                                       ),
-                                    ],
-                                  ),
-                                  child: const Text(
-                                    'Update Profile',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
+                                      child: const Text(
+                                        'Update Profile',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
                                     ),
-                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            Center(
-                              child: AnimatedScaleButton(
-                                onPressed: _logout,
-                                child: Container(
-                                  constraints: const BoxConstraints(maxWidth: 200),
-                                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      colors: [Colors.red.shade600, Colors.red.shade800],
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                    ),
-                                    borderRadius: BorderRadius.circular(12),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.2),
-                                        blurRadius: 4,
-                                        offset: const Offset(0, 2),
+                                SizedBox(height: 12.h),
+                                Center(
+                                  child: AnimatedScaleButton(
+                                    onPressed: _logout,
+                                    child: Container(
+                                      constraints: BoxConstraints(maxWidth: 200.w),
+                                      padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 10.h),
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          colors: [Colors.red.shade600, Colors.red.shade800],
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                        ),
+                                        borderRadius: BorderRadius.circular(12.r),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black.withOpacity(0.2),
+                                            blurRadius: 4.r,
+                                            offset: Offset(0, 2.h),
+                                          ),
+                                        ],
                                       ),
-                                    ],
-                                  ),
-                                  child: const Text(
-                                    'Logout',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
+                                      child: const Text(
+                                        'Logout',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
                                     ),
-                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
-                              ),
+                              ],
                             ),
-                          ],
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ),
+        );
+      },
     );
   }
 }
@@ -1029,16 +1038,16 @@ class MultiSelectDialogState extends State<MultiSelectDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
       title: Container(
-        padding: const EdgeInsets.all(12),
+        padding: EdgeInsets.all(12.w),
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [Colors.blue.shade700, Colors.blue.shade900],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(16.r)),
         ),
         child: const Text(
           'Select Skills',
@@ -1047,20 +1056,20 @@ class MultiSelectDialogState extends State<MultiSelectDialog> {
       ),
       content: SingleChildScrollView(
         child: Container(
-          constraints: const BoxConstraints(maxWidth: 300),
+          constraints: BoxConstraints(maxWidth: 300.w),
           child: Column(
             children: widget.items.map((item) {
               return CheckboxListTile(
                 title: Text(
                   item,
-                  style: const TextStyle(color: Colors.black87, fontSize: 12),
+                  style: TextStyle(color: Colors.black87, fontSize: 12.sp),
                   overflow: TextOverflow.ellipsis,
                   maxLines: 1,
                 ),
                 value: _tempSelectedItems.contains(item),
                 activeColor: Colors.teal,
                 checkColor: Colors.white,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                contentPadding: EdgeInsets.symmetric(horizontal: 8.w),
                 onChanged: (value) {
                   setState(() {
                     if (value == true) {

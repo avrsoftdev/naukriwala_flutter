@@ -1,9 +1,11 @@
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import 'package:naukariwala/screens/post_job_screen.dart';
 import 'dart:developer' as dev;
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class PostedJobsScreen extends StatefulWidget {
   const PostedJobsScreen({super.key});
@@ -23,12 +25,12 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
           child: Card(
             elevation: 4,
             color: Colors.red.shade50,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
             child: Padding(
-              padding: const EdgeInsets.all(16.0),
+              padding: EdgeInsets.all(16.w),
               child: Text(
                 'User not logged in',
-                style: TextStyle(color: Colors.red.shade700, fontSize: 16),
+                style: TextStyle(color: Colors.red.shade700, fontSize: 16.sp),
               ),
             ),
           ),
@@ -86,12 +88,12 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
               child: Card(
                 elevation: 4,
                 color: Colors.red.shade50,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
                 child: Padding(
-                  padding: const EdgeInsets.all(16.0),
+                  padding: EdgeInsets.all(16.w),
                   child: Text(
                     errorMessage,
-                    style: TextStyle(color: Colors.red.shade700, fontSize: 16),
+                    style: TextStyle(color: Colors.red.shade700, fontSize: 16.sp),
                     textAlign: TextAlign.center,
                   ),
                 ),
@@ -105,7 +107,7 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
             return Center(
               child: Text(
                 'No jobs posted yet',
-                style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
+                style: TextStyle(fontSize: 16.sp, color: Colors.grey.shade600),
               ),
             );
           }
@@ -139,8 +141,8 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
                   return AnimatedListItem(
                     child: Card(
                       elevation: 3,
-                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      margin: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
                       child: Container(
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
@@ -148,7 +150,7 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           ),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(12.r),
                         ),
                         child: ExpansionTile(
                           title: Row(
@@ -157,27 +159,27 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
                               Flexible(
                                 child: Text(
                                   title,
-                                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 18, color: Colors.black87),
+                                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 18.sp, color: Colors.black87),
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
                                 decoration: BoxDecoration(
                                   color: status == 'open' ? Colors.green.shade100 : Colors.red.shade100,
-                                  borderRadius: BorderRadius.circular(12),
+                                  borderRadius: BorderRadius.circular(12.r),
                                   boxShadow: [
                                     BoxShadow(
                                       color: Colors.black.withValues(alpha: 0.1),
-                                      blurRadius: 2,
-                                      offset: const Offset(0, 1),
+                                      blurRadius: 2.r,
+                                      offset: Offset(0, 1.h),
                                     ),
                                   ],
                                 ),
                                 child: Text(
                                   status.toUpperCase(),
                                   style: TextStyle(
-                                    fontSize: 12,
+                                    fontSize: 12.sp,
                                     fontWeight: FontWeight.bold,
                                     color: status == 'open' ? Colors.green.shade700 : Colors.red.shade700,
                                   ),
@@ -186,18 +188,18 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
                             ],
                           ),
                           subtitle: Padding(
-                            padding: const EdgeInsets.only(top: 8.0),
+                            padding: EdgeInsets.only(top: 8.h),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text('Company: $company', style: TextStyle(color: Colors.grey.shade700)),
-                                Text('Location: $location', style: TextStyle(color: Colors.grey.shade700)),
-                                Text('Salary: $salary', style: TextStyle(color: Colors.grey.shade700)),
-                                Text('Skills: $skills', style: TextStyle(color: Colors.grey.shade700)),
-                                Text('Education: $education', style: TextStyle(color: Colors.grey.shade700)),
-                                Text('Specialization: $specialization', style: TextStyle(color: Colors.grey.shade700)),
-                                Text('Posted: $postedDate', style: TextStyle(color: Colors.grey.shade700)),
-                                Text('Applicants: $applicantCount', style: TextStyle(color: Colors.grey.shade700)),
+                                Text('Company: $company', style: TextStyle(color: Colors.grey.shade700, fontSize: 14.sp)),
+                                Text('Location: $location', style: TextStyle(color: Colors.grey.shade700, fontSize: 14.sp)),
+                                Text('Salary: $salary', style: TextStyle(color: Colors.grey.shade700, fontSize: 14.sp)),
+                                Text('Skills: $skills', style: TextStyle(color: Colors.grey.shade700, fontSize: 14.sp)),
+                                Text('Education: $education', style: TextStyle(color: Colors.grey.shade700, fontSize: 14.sp)),
+                                Text('Specialization: $specialization', style: TextStyle(color: Colors.grey.shade700, fontSize: 14.sp)),
+                                Text('Posted: $postedDate', style: TextStyle(color: Colors.grey.shade700, fontSize: 14.sp)),
+                                Text('Applicants: $applicantCount', style: TextStyle(color: Colors.grey.shade700, fontSize: 14.sp)),
                               ],
                             ),
                           ),
@@ -206,14 +208,14 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
                                   ListTile(
                                     title: Text(
                                       'Error loading applicants',
-                                      style: TextStyle(color: Colors.red.shade700),
+                                      style: TextStyle(color: Colors.red.shade700, fontSize: 14.sp),
                                     ),
                                   ),
                                 ]
                               : applicants.isNotEmpty
                                   ? applicants.map<Widget>((applicant) => ListTile(
-                                        title: Text(applicant['name'], style: const TextStyle(color: Colors.black87)),
-                                        subtitle: Text('Resume URL: ${applicant['resumeUrl'] ?? 'N/A'}', style: TextStyle(color: Colors.blue.shade600)),
+                                        title: Text(applicant['name'], style: TextStyle(color: Colors.black87, fontSize: 14.sp)),
+                                        subtitle: Text('Resume URL: ${applicant['resumeUrl'] ?? 'N/A'}', style: TextStyle(color: Colors.blue.shade600, fontSize: 12.sp)),
                                       )).toList()
                                   : [
                                       const ListTile(
@@ -293,9 +295,9 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
         title: Container(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(16.w),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [Colors.blue.shade700, Colors.blue.shade900],
@@ -368,19 +370,19 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
               }
             },
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [Colors.red.shade600, Colors.red.shade800],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(8.r),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.2),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
+                    blurRadius: 4.r,
+                    offset: Offset(0, 2.h),
                   ),
                 ],
               ),

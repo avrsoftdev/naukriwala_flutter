@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:naukariwala/screens/chat_screen.dart';
 import 'package:naukariwala/services/auth_service.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'dart:developer' as dev;
 
 class MyApplicationsScreen extends StatefulWidget {
@@ -30,12 +31,12 @@ class _MyApplicationsScreenState extends State<MyApplicationsScreen> {
           child: Card(
             elevation: 4,
             color: Colors.red.shade50,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            child: const Padding(
-              padding: EdgeInsets.all(16.0),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+            child: Padding(
+              padding: EdgeInsets.all(16.w),
               child: Text(
                 'Please log in to view your applications.',
-                style: TextStyle(fontSize: 16, color: Colors.red),
+                style: TextStyle(fontSize: 16.sp, color: Colors.red),
               ),
             ),
           ),
@@ -49,12 +50,12 @@ class _MyApplicationsScreenState extends State<MyApplicationsScreen> {
           child: Card(
             elevation: 4,
             color: Colors.red.shade50,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            child: const Padding(
-              padding: EdgeInsets.all(16.0),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+            child: Padding(
+              padding: EdgeInsets.all(16.w),
               child: Text(
                 'Unauthorized access. Seeker ID mismatch.',
-                style: TextStyle(fontSize: 16, color: Colors.red),
+                style: TextStyle(fontSize: 16.sp, color: Colors.red),
               ),
             ),
           ),
@@ -62,225 +63,233 @@ class _MyApplicationsScreenState extends State<MyApplicationsScreen> {
       );
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'My Applications',
-          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
-        ),
-        flexibleSpace: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Colors.blue.shade700, Colors.blue.shade900],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+    return ScreenUtilInit(
+      designSize: const Size(360, 690),
+      minTextAdapt: true,
+      splitScreenMode: true,
+      builder: (context, child) {
+        return Scaffold(
+          appBar: AppBar(
+            title: Text(
+              'My Applications',
+              style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 22.sp),
             ),
-          ),
-        ),
-        elevation: 4,
-      ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: TextField(
-              decoration: InputDecoration(
-                labelText: 'Search by title...',
-                labelStyle: const TextStyle(color: Colors.grey),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.grey.shade400),
+            flexibleSpace: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.blue.shade700, Colors.blue.shade900],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Colors.teal, width: 2),
-                ),
-                prefixIcon: const Icon(Icons.search, color: Colors.teal),
-                filled: true,
-                fillColor: Colors.white,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               ),
-              onChanged: (val) {
-                setState(() {
-                  _searchQuery = val.toLowerCase();
-                });
-              },
             ),
+            elevation: 4,
           ),
-          Expanded(
-            child: StreamBuilder<QuerySnapshot>(
-              stream: _firestore
-                  .collection('Applications')
-                  .where('seekerId', isEqualTo: uid)
-                  .orderBy('appliedAt', descending: true)
-                  .snapshots(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(
-                    child: CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.teal),
+          body: Column(
+            children: [
+              Padding(
+                padding: EdgeInsets.all(16.w),
+                child: TextField(
+                  decoration: InputDecoration(
+                    labelText: 'Search by title...',
+                    labelStyle: TextStyle(color: Colors.grey, fontSize: 14.sp),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12.r),
+                      borderSide: BorderSide(color: Colors.grey.shade400),
                     ),
-                  );
-                }
-                if (snapshot.hasError) {
-                  dev.log('[2025-08-09 01:29 IST] Error loading applications for seekerId $uid: ${snapshot.error}', name: 'MyApplicationsScreen');
-                  String errorMessage = 'Error loading applications. Please verify Firestore permissions or contact support.';
-                  if (snapshot.error is FirebaseException) {
-                    final error = snapshot.error as FirebaseException;
-                    errorMessage = 'Firebase error: ${error.code} - ${error.message}';
-                    if (error.code == 'permission-denied') {
-                      errorMessage += '\nEnsure /Applications/{seekerId_jobId} exists with seekerId=$uid.';
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12.r),
+                      borderSide: BorderSide(color: Colors.teal, width: 2.w),
+                    ),
+                    prefixIcon: const Icon(Icons.search, color: Colors.teal),
+                    filled: true,
+                    fillColor: Colors.white,
+                    contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+                  ),
+                  onChanged: (val) {
+                    setState(() {
+                      _searchQuery = val.toLowerCase();
+                    });
+                  },
+                ),
+              ),
+              Expanded(
+                child: StreamBuilder<QuerySnapshot>(
+                  stream: _firestore
+                      .collection('Applications')
+                      .where('seekerId', isEqualTo: uid)
+                      .orderBy('appliedAt', descending: true)
+                      .snapshots(),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return Center(
+                        child: CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.teal),
+                          strokeWidth: 4.w,
+                        ),
+                      );
                     }
-                  }
-                  return Center(
-                    child: Card(
-                      elevation: 4,
-                      color: Colors.red.shade50,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
+                    if (snapshot.hasError) {
+                      dev.log('[2025-08-09 01:29 IST] Error loading applications for seekerId $uid: ${snapshot.error}', name: 'MyApplicationsScreen');
+                      String errorMessage = 'Error loading applications. Please verify Firestore permissions or contact support.';
+                      if (snapshot.error is FirebaseException) {
+                        final error = snapshot.error as FirebaseException;
+                        errorMessage = 'Firebase error: ${error.code} - ${error.message}';
+                        if (error.code == 'permission-denied') {
+                          errorMessage += '\nEnsure /Applications/{seekerId_jobId} exists with seekerId=$uid.';
+                        }
+                      }
+                      return Center(
+                        child: Card(
+                          elevation: 4,
+                          color: Colors.red.shade50,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                          child: Padding(
+                            padding: EdgeInsets.all(16.w),
+                            child: Text(
+                              errorMessage,
+                              style: TextStyle(color: Colors.red.shade700, fontSize: 16.sp),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ),
+                      );
+                    }
+                    if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                      dev.log('[2025-08-09 01:29 IST] No applications found for seekerId $uid', name: 'MyApplicationsScreen');
+                      return Center(
                         child: Text(
-                          errorMessage,
-                          style: TextStyle(color: Colors.red.shade700, fontSize: 16),
+                          'No applications found.',
+                          style: TextStyle(fontSize: 16.sp, color: Colors.grey.shade600),
                           textAlign: TextAlign.center,
                         ),
-                      ),
-                    ),
-                  );
-                }
-                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  dev.log('[2025-08-09 01:29 IST] No applications found for seekerId $uid', name: 'MyApplicationsScreen');
-                  return Center(
-                    child: Text(
-                      'No applications found.',
-                      style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
-                      textAlign: TextAlign.center,
-                    ),
-                  );
-                }
+                      );
+                    }
 
-                final applications = snapshot.data!.docs.where((doc) {
-                  final data = doc.data() as Map<String, dynamic>;
-                  final title = (data['jobTitle'] ?? '').toString().toLowerCase();
-                  return title.contains(_searchQuery);
-                }).toList();
+                    final applications = snapshot.data!.docs.where((doc) {
+                      final data = doc.data() as Map<String, dynamic>;
+                      final title = (data['jobTitle'] ?? '').toString().toLowerCase();
+                      return title.contains(_searchQuery);
+                    }).toList();
 
-                return ListView.builder(
-                  padding: const EdgeInsets.all(16.0),
-                  itemCount: applications.length,
-                  itemBuilder: (context, index) {
-                    final data = applications[index].data() as Map<String, dynamic>;
-                    final jobId = data['jobId'] as String? ?? 'Unknown';
-                    final title = data['jobTitle'] as String? ?? 'Unknown';
-                    final company = data['company'] as String? ?? 'Unknown';
-                    final status = data['status'] as String? ?? 'Unknown';
-                    final appliedAt = data['appliedAt'] as Timestamp?;
-                    final interviewDate = data['interviewDate'] as Timestamp?;
-                    final recruiterId = data['recruiterId'] as String? ?? 'Unknown';
-                    final appliedAtStr = appliedAt != null ? DateFormat('dd MMM yyyy').format(appliedAt.toDate()) : 'N/A';
-                    final interviewDateStr = interviewDate != null ? DateFormat('dd MMM yyyy, hh:mm a').format(interviewDate.toDate()) : 'N/A';
+                    return ListView.builder(
+                      padding: EdgeInsets.all(16.w),
+                      itemCount: applications.length,
+                      itemBuilder: (context, index) {
+                        final data = applications[index].data() as Map<String, dynamic>;
+                        final jobId = data['jobId'] as String? ?? 'Unknown';
+                        final title = data['jobTitle'] as String? ?? 'Unknown';
+                        final company = data['company'] as String? ?? 'Unknown';
+                        final status = data['status'] as String? ?? 'Unknown';
+                        final appliedAt = data['appliedAt'] as Timestamp?;
+                        final interviewDate = data['interviewDate'] as Timestamp?;
+                        final recruiterId = data['recruiterId'] as String? ?? 'Unknown';
+                        final appliedAtStr = appliedAt != null ? DateFormat('dd MMM yyyy').format(appliedAt.toDate()) : 'N/A';
+                        final interviewDateStr = interviewDate != null ? DateFormat('dd MMM yyyy, hh:mm a').format(interviewDate.toDate()) : 'N/A';
 
-                    return AnimatedListItem(
-                      child: Card(
-                        elevation: 3,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [Colors.blue.shade50, Colors.blue.shade100],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: ListTile(
-                            contentPadding: const EdgeInsets.all(16.0),
-                            title: Text(
-                              title,
-                              style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.black87),
-                            ),
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('Company: $company'),
-                                Text('Status: $status'),
-                                Text('Applied: $appliedAtStr'),
-                                if (status == 'Interview Scheduled') Text('Interview: $interviewDateStr'),
-                              ],
-                            ),
-                            trailing: AnimatedScaleButton(
-                                                          onPressed: () async {
-                                if (!mounted) {
-                                  dev.log('[2025-08-09 01:29 IST] Widget not mounted, cannot start chat', name: 'MyApplicationsScreen');
-                                  return;
-                                }
-                                try {
-                                  final chatId = await _authService.getChatId(
-                                    seekerId: uid,
-                                    jobId: jobId,
-                                  );
-                                  await _authService.sendMessage(
-                                    recruiterId,
-                                    jobId,
-                                    'Hello, I’d like to discuss my application!',
-                                  );
-                                  if (!mounted) {
-                                    dev.log('[2025-08-09 01:29 IST] Widget not mounted after async, cannot navigate', name: 'MyApplicationsScreen');
-                                    return;
-                                  }
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => ChatScreen(
-                                        chatId: chatId,
-                                        recipientId: recruiterId,
-                                        jobId: jobId,
-                                      ),
-                                    ),
-                                  );
-                                  dev.log('[2025-08-09 01:29 IST] Navigated to ChatScreen for job $jobId with chatId $chatId', name: 'MyApplicationsScreen');
-                                } catch (e) {
-                                  dev.log('[2025-08-09 01:29 IST] Error starting chat for job $jobId: $e', name: 'MyApplicationsScreen', error: e);
-                                  if (!mounted) {
-                                    dev.log('[2025-08-09 01:29 IST] Widget not mounted, cannot show snackbar', name: 'MyApplicationsScreen');
-                                    return;
-                                  }
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: const Text('Failed to start chat'),
-                                      backgroundColor: Colors.red,
-                                      behavior: SnackBarBehavior.floating,
-                                    ),
-                                  );
-                                }
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: Colors.teal,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withOpacity(0.2),
-                                      blurRadius: 4,
-                                      offset: const Offset(0, 2),
-                                    ),
+                        return AnimatedListItem(
+                          child: Card(
+                            elevation: 3,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [Colors.blue.shade50, Colors.blue.shade100],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                borderRadius: BorderRadius.circular(12.r),
+                              ),
+                              child: ListTile(
+                                contentPadding: EdgeInsets.all(16.w),
+                                title: Text(
+                                  title,
+                                  style: TextStyle(fontWeight: FontWeight.w600, color: Colors.black87, fontSize: 16.sp),
+                                ),
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('Company: $company', style: TextStyle(fontSize: 14.sp)),
+                                    Text('Status: $status', style: TextStyle(fontSize: 14.sp)),
+                                    Text('Applied: $appliedAtStr', style: TextStyle(fontSize: 14.sp)),
+                                    if (status == 'Interview Scheduled') Text('Interview: $interviewDateStr', style: TextStyle(fontSize: 14.sp)),
                                   ],
                                 ),
-                                child: const Icon(Icons.chat, color: Colors.white, size: 24),
+                                trailing: AnimatedScaleButton(
+                                  onPressed: () async {
+                                    if (!mounted) {
+                                      dev.log('[2025-08-09 01:29 IST] Widget not mounted, cannot start chat', name: 'MyApplicationsScreen');
+                                      return;
+                                    }
+                                    try {
+                                      final chatId = await _authService.getChatId(
+                                        seekerId: uid,
+                                        jobId: jobId,
+                                      );
+                                      await _authService.sendMessage(
+                                        recruiterId,
+                                        jobId,
+                                        'Hello, I’d like to discuss my application!',
+                                      );
+                                      if (!mounted) {
+                                        dev.log('[2025-08-09 01:29 IST] Widget not mounted after async, cannot navigate', name: 'MyApplicationsScreen');
+                                        return;
+                                      }
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => ChatScreen(
+                                            chatId: chatId,
+                                            recipientId: recruiterId,
+                                            jobId: jobId,
+                                          ),
+                                        ),
+                                      );
+                                      dev.log('[2025-08-09 01:29 IST] Navigated to ChatScreen for job $jobId with chatId $chatId', name: 'MyApplicationsScreen');
+                                    } catch (e) {
+                                      dev.log('[2025-08-09 01:29 IST] Error starting chat for job $jobId: $e', name: 'MyApplicationsScreen', error: e);
+                                      if (!mounted) {
+                                        dev.log('[2025-08-09 01:29 IST] Widget not mounted, cannot show snackbar', name: 'MyApplicationsScreen');
+                                        return;
+                                      }
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: const Text('Failed to start chat'),
+                                          backgroundColor: Colors.red,
+                                          behavior: SnackBarBehavior.floating,
+                                        ),
+                                      );
+                                    }
+                                  },
+                                  child: Container(
+                                    padding: EdgeInsets.all(8.w),
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: Colors.teal,
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(0.2),
+                                          blurRadius: 4.r,
+                                          offset: Offset(0, 2.h),
+                                        ),
+                                      ],
+                                    ),
+                                    child: const Icon(Icons.chat, color: Colors.white, size: 24),
+                                  ),
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                      ),
+                        );
+                      },
                     );
                   },
-                );
-              },
-            ),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'dart:developer' as dev;
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class NotificationsScreen extends StatefulWidget {
   final List<Map<String, String>>? notifications;
@@ -115,153 +116,160 @@ void initState() {
       return const SizedBox.shrink();
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'Notifications',
-          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
-        ),
-        flexibleSpace: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Colors.blue.shade700, Colors.blue.shade900],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+    return ScreenUtilInit(
+      designSize: const Size(360, 690),
+      minTextAdapt: true,
+      splitScreenMode: true,
+      builder: (context, child) {
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text(
+              'Notifications',
+              style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
             ),
-          ),
-        ),
-        elevation: 4,
-      ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: _notificationsStream,
-        builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            dev.log('[2025-08-09 01:15 IST] Error loading notifications for UID $uid: ${snapshot.error}', name: 'NotificationsScreen', error: snapshot.error);
-            String errorMessage = 'Error loading notifications. Please verify Firestore permissions.';
-            if (snapshot.error is FirebaseException) {
-              final error = snapshot.error as FirebaseException;
-              errorMessage = 'Firebase error: ${error.code} - ${error.message}';
-              if (error.code == 'permission-denied') {
-                errorMessage += '\nEnsure /$collectionPath/$uid/Notifications exists with to=$uid.';
-              } else if (error.code == 'failed-precondition') {
-                errorMessage += '\nIndex required. Create it at: https://console.firebase.google.com/v1/r/project/naukriwala-455909/firestore/indexes';
-              }
-            }
-            return Center(
-              child: Card(
-                elevation: 4,
-                color: Colors.red.shade50,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Text(
-                    errorMessage,
-                    style: TextStyle(color: Colors.red.shade700, fontSize: 16),
-                    textAlign: TextAlign.center,
-                  ),
+            flexibleSpace: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.blue.shade700, Colors.blue.shade900],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
               ),
-            );
-          }
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.teal),
-              ),
-            );
-          }
-
-          final docs = snapshot.data?.docs ?? [];
-          if (docs.isEmpty) {
-            dev.log('[2025-08-09 01:15 IST] No notifications found for UID $uid in $collectionPath', name: 'NotificationsScreen');
-            return Center(
-              child: Text(
-                'No notifications found.',
-                style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
-                textAlign: TextAlign.center,
-              ),
-            );
-          }
-
-          return ListView.builder(
-            padding: const EdgeInsets.all(16.0),
-            itemCount: docs.length,
-            itemBuilder: (context, index) {
-              final data = docs[index].data() as Map<String, dynamic>;
-              final message = data['message'] ?? 'N/A';
-              final timestamp = data['timestamp'] as Timestamp?;
-              final read = data['read'] ?? false;
-              final jobId = data['jobId'] as String? ?? 'Unknown';
-              final seekerId = data['seekerId'] as String? ?? 'Unknown';
-              final notificationId = data['notificationId'] as String? ?? docs[index].id;
-
-              return FutureBuilder<Map<String, dynamic>>(
-                future: _getNotificationDetails(jobId, seekerId),
-                builder: (context, detailsSnapshot) {
-                  final jobTitle = detailsSnapshot.data?['jobTitle'] ?? 'Unknown';
-                  final resumeUrl = detailsSnapshot.data?['resumeUrl'];
-
-                  return AnimatedListItem(
-                    child: Card(
-                      elevation: 3,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: read
-                                ? [Colors.grey.shade100, Colors.grey.shade200]
-                                : [Colors.blue.shade50, Colors.blue.shade100],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: ListTile(
-                          contentPadding: const EdgeInsets.all(16.0),
-                          title: Text(
-                            message,
-                            style: TextStyle(
-                              fontWeight: read ? FontWeight.normal : FontWeight.w600,
-                              color: Colors.black87,
-                            ),
-                          ),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              if (timestamp != null)
-                                Text(
-                                  _formatTimestamp(timestamp),
-                                  style: TextStyle(color: Colors.grey.shade600),
-                                ),
-                              Text(
-                                'Job: $jobTitle (ID: $jobId)',
-                                style: TextStyle(color: Colors.grey.shade600),
-                              ),
-                              if (resumeUrl != null && widget.isRecruiter)
-                                Text(
-                                  'Resume URL: $resumeUrl',
-                                  style: TextStyle(color: Colors.blue.shade600),
-                                ),
-                            ],
-                          ),
-                          trailing: read
-                              ? const Icon(Icons.check_circle, color: Colors.teal, size: 28)
-                              : const Icon(Icons.circle, color: Colors.grey, size: 28),
-                          onTap: () async {
-                            if (!read) {
-                              await _markAsRead(notificationId);
-                            }
-                          },
-                        ),
+            ),
+            elevation: 4,
+          ),
+          body: StreamBuilder<QuerySnapshot>(
+            stream: _notificationsStream,
+            builder: (context, snapshot) {
+              if (snapshot.hasError) {
+                dev.log('[2025-08-09 01:15 IST] Error loading notifications for UID $uid: ${snapshot.error}', name: 'NotificationsScreen', error: snapshot.error);
+                String errorMessage = 'Error loading notifications. Please verify Firestore permissions.';
+                if (snapshot.error is FirebaseException) {
+                  final error = snapshot.error as FirebaseException;
+                  errorMessage = 'Firebase error: ${error.code} - ${error.message}';
+                  if (error.code == 'permission-denied') {
+                    errorMessage += '\nEnsure /$collectionPath/$uid/Notifications exists with to=$uid.';
+                  } else if (error.code == 'failed-precondition') {
+                    errorMessage += '\nIndex required. Create it at: https://console.firebase.google.com/v1/r/project/naukriwala-455909/firestore/indexes';
+                  }
+                }
+                return Center(
+                  child: Card(
+                    elevation: 4,
+                    color: Colors.red.shade50,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                    child: Padding(
+                      padding: EdgeInsets.all(16.w),
+                      child: Text(
+                        errorMessage,
+                        style: TextStyle(color: Colors.red.shade700, fontSize: 16.sp),
+                        textAlign: TextAlign.center,
                       ),
                     ),
+                  ),
+                );
+              }
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(
+                  child: CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.teal),
+                  ),
+                );
+              }
+
+              final docs = snapshot.data?.docs ?? [];
+              if (docs.isEmpty) {
+                dev.log('[2025-08-09 01:15 IST] No notifications found for UID $uid in $collectionPath', name: 'NotificationsScreen');
+                return Center(
+                  child: Text(
+                    'No notifications found.',
+                    style: TextStyle(fontSize: 16.sp, color: Colors.grey.shade600),
+                    textAlign: TextAlign.center,
+                  ),
+                );
+              }
+
+              return ListView.builder(
+                padding: EdgeInsets.all(16.w),
+                itemCount: docs.length,
+                itemBuilder: (context, index) {
+                  final data = docs[index].data() as Map<String, dynamic>;
+                  final message = data['message'] ?? 'N/A';
+                  final timestamp = data['timestamp'] as Timestamp?;
+                  final read = data['read'] ?? false;
+                  final jobId = data['jobId'] as String? ?? 'Unknown';
+                  final seekerId = data['seekerId'] as String? ?? 'Unknown';
+                  final notificationId = data['notificationId'] as String? ?? docs[index].id;
+
+                  return FutureBuilder<Map<String, dynamic>>(
+                    future: _getNotificationDetails(jobId, seekerId),
+                    builder: (context, detailsSnapshot) {
+                      final jobTitle = detailsSnapshot.data?['jobTitle'] ?? 'Unknown';
+                      final resumeUrl = detailsSnapshot.data?['resumeUrl'];
+
+                      return AnimatedListItem(
+                        child: Card(
+                          elevation: 3,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: read
+                                    ? [Colors.grey.shade100, Colors.grey.shade200]
+                                    : [Colors.blue.shade50, Colors.blue.shade100],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              borderRadius: BorderRadius.circular(12.r),
+                            ),
+                            child: ListTile(
+                              contentPadding: EdgeInsets.all(16.w),
+                              title: Text(
+                                message,
+                                style: TextStyle(
+                                  fontWeight: read ? FontWeight.normal : FontWeight.w600,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  if (timestamp != null)
+                                    Text(
+                                      _formatTimestamp(timestamp),
+                                      style: TextStyle(color: Colors.grey.shade600),
+                                    ),
+                                  Text(
+                                    'Job: $jobTitle (ID: $jobId)',
+                                    style: TextStyle(color: Colors.grey.shade600),
+                                  ),
+                                  if (resumeUrl != null && widget.isRecruiter)
+                                    Text(
+                                      'Resume URL: $resumeUrl',
+                                      style: TextStyle(color: Colors.blue.shade600),
+                                    ),
+                                ],
+                              ),
+                              trailing: read
+                                  ? const Icon(Icons.check_circle, color: Colors.teal, size: 28)
+                                  : const Icon(Icons.circle, color: Colors.grey, size: 28),
+                              onTap: () async {
+                                if (!read) {
+                                  await _markAsRead(notificationId);
+                                }
+                              },
+                            ),
+                          ),
+                        ),
+                      );
+                    },
                   );
                 },
               );
             },
-          );
-        },
-      ),
+          ),
+        );
+      },
     );
   }
 }

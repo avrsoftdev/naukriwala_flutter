@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'dart:developer' as dev;
 import 'apply_job_screen.dart';
 import 'edit_job_screen.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class JobDetailsScreen extends StatefulWidget {
   final Map<String, dynamic> job;
@@ -432,12 +433,12 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> {
           child: Card(
             elevation: 4,
             color: Colors.red.shade50,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
             child: Padding(
-              padding: const EdgeInsets.all(16.0),
+              padding: EdgeInsets.all(16.w),
               child: Text(
                 _ineligibilityReason ?? 'This job does not match your specialization, skills, education, or experience.',
-                style: TextStyle(color: Colors.red.shade700, fontSize: 16),
+                style: TextStyle(color: Colors.red.shade700, fontSize: 16.sp),
                 textAlign: TextAlign.center,
               ),
             ),
@@ -446,274 +447,281 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> {
       );
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          jobTitle,
-          style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
-        ),
-        flexibleSpace: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Colors.blue.shade700, Colors.blue.shade900],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+    return ScreenUtilInit(
+      designSize: const Size(360, 690),
+      minTextAdapt: true,
+      splitScreenMode: true,
+      builder: (context, child) {
+        return Scaffold(
+          appBar: AppBar(
+            title: Text(
+              jobTitle,
+              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
             ),
+            flexibleSpace: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.blue.shade700, Colors.blue.shade900],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+            ),
+            elevation: 4,
           ),
-        ),
-        elevation: 4,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Card(
-          elevation: 4,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: ListView(
-              children: [
-                Text(
-                  jobTitle,
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.blue.shade900),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  '$company • $location • $jobType',
-                  style: TextStyle(fontSize: 16, color: Colors.grey.shade700),
-                ),
-                const SizedBox(height: 12),
-                Text('Salary: $salary', style: const TextStyle(fontSize: 16)),
-                Text('Experience Required: $experience', style: const TextStyle(fontSize: 16)),
-                Text('Skills: $skills', style: const TextStyle(fontSize: 16)),
-                Text('Education: $education', style: const TextStyle(fontSize: 16)),
-                Text('Specialization: $specialization', style: const TextStyle(fontSize: 16)),
-                const SizedBox(height: 20),
-                Text(
-                  'Job Description',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blue.shade900),
-                ),
-                const SizedBox(height: 8),
-                Text(description, style: const TextStyle(fontSize: 16)),
-                const SizedBox(height: 20),
-                if (isRecruiter)
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      AnimatedScaleButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => EditJobScreen(
-                                jobId: widget.job['jobId']?.toString() ?? '',
-                                jobData: _jobData ?? widget.job,
-                              ),
-                            ),
-                          );
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [Colors.blue.shade700, Colors.teal.shade400],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.2),
-                                blurRadius: 4,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.edit, color: Colors.white),
-                              const SizedBox(width: 8),
-                              const Text(
-                                'Edit',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      AnimatedScaleButton(
-                        onPressed: deleteJob,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [Colors.red.shade600, Colors.red.shade800],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.2),
-                                blurRadius: 4,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.delete, color: Colors.white),
-                              const SizedBox(width: 8),
-                              const Text(
-                                'Delete',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                const SizedBox(height: 20),
-                if (isRecruiter && _applicantsStream != null)
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Applicants',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blue.shade900),
-                      ),
-                      const SizedBox(height: 10),
-                      StreamBuilder<QuerySnapshot>(
-                        stream: _applicantsStream,
-                        builder: (context, snapshot) {
-                          if (snapshot.connectionState == ConnectionState.waiting) {
-                            return const Center(
-                              child: CircularProgressIndicator(
-                                valueColor: AlwaysStoppedAnimation<Color>(Colors.teal),
-                              ),
-                            );
-                          }
-                          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                            return const Text('No applicants yet.', style: TextStyle(fontSize: 16, color: Colors.grey));
-                          }
-                          return ListView.builder(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            itemCount: snapshot.data!.docs.length,
-                            itemBuilder: (context, index) {
-                              final applicant = snapshot.data!.docs[index].data() as Map<String, dynamic>;
-                              final resume = applicant['resume'] as Map<String, dynamic>? ?? {};
-                              return AnimatedListItem(
-                                child: Card(
-                                  elevation: 3,
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                  child: Container(
-                                    decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        colors: [Colors.blue.shade50, Colors.blue.shade100],
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                      ),
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: ListTile(
-                                      contentPadding: const EdgeInsets.all(16.0),
-                                      title: Text(
-                                        resume['name'] ?? 'Unknown Applicant',
-                                        style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.black87),
-                                      ),
-                                      subtitle: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text('Job: ${applicant['jobTitle'] ?? 'Unknown Job'}'),
-                                          Text('Skills: ${(resume['skills'] as List<dynamic>?)?.cast<String>().join(', ') ?? 'N/A'}'),
-                                          Text('Education: ${resume['education'] ?? 'N/A'}'),
-                                          Text('Experience: ${resume['experience'] ?? 'N/A'}'),
-                                          Text('Specialization: ${resume['specialization'] ?? 'N/A'}'),
-                                          Text('Email: ${resume['email'] ?? 'N/A'}'),
-                                          Text('Mobile: ${resume['mobileNumber'] ?? 'N/A'}'),
-                                        ],
-                                      ),
-                                      onTap: () {
-                                        showDialog(
-                                          context: context,
-                                          builder: (context) => AlertDialog(
-                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                                            title: Container(
-                                              padding: const EdgeInsets.all(16),
-                                              decoration: BoxDecoration(
-                                                gradient: LinearGradient(
-                                                  colors: [Colors.blue.shade700, Colors.blue.shade900],
-                                                  begin: Alignment.topLeft,
-                                                  end: Alignment.bottomRight,
-                                                ),
-                                                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                                              ),
-                                              child: Text(
-                                                'Applicant: ${resume['name'] ?? 'Unknown'}',
-                                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                                              ),
-                                            ),
-                                            content: SingleChildScrollView(
-                                              child: Column(
-                                                crossAxisAlignment: CrossAxisAlignment.start,
-                                                children: [
-                                                  Text('Job: ${applicant['jobTitle'] ?? 'Unknown Job'}'),
-                                                  Text('Skills: ${(resume['skills'] as List<dynamic>?)?.cast<String>().join(', ') ?? 'N/A'}'),
-                                                  Text('Education: ${resume['education'] ?? 'N/A'}'),
-                                                  Text('Experience: ${resume['experience'] ?? 'N/A'}'),
-                                                  Text('Specialization: ${resume['specialization'] ?? 'N/A'}'),
-                                                  Text('Email: ${resume['email'] ?? 'N/A'}'),
-                                                  Text('Mobile: ${resume['mobileNumber'] ?? 'N/A'}'),
-                                                  Text('Current Company: ${resume['currentCompany'] ?? 'N/A'}'),
-                                                  Text('Current CTC: ${resume['currentCtc'] ?? 'N/A'}'),
-                                                  Text('Expected CTC: ${resume['expectedCtc'] ?? 'N/A'}'),
-                                                  Text('Cover Letter: ${applicant['coverLetter'] ?? 'N/A'}'),
-                                                  if (resume['photoUrl']?.isNotEmpty ?? false)
-                                                    Padding(
-                                                      padding: const EdgeInsets.only(top: 8),
-                                                      child: ClipRRect(
-                                                        borderRadius: BorderRadius.circular(8),
-                                                        child: Image.network(resume['photoUrl'], height: 100, fit: BoxFit.cover),
-                                                      ),
-                                                    ),
-                                                ],
-                                              ),
-                                            ),
-                                            actions: [
-                                              TextButton(
-                                                onPressed: () => Navigator.pop(context),
-                                                child: const Text('Close', style: TextStyle(color: Colors.teal)),
-                                              ),
-                                            ],
-                                          ),
-                                        );
-                                      },
-                                    ),
+          body: Padding(
+            padding: EdgeInsets.all(16.w),
+            child: Card(
+              elevation: 4,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+              child: Padding(
+                padding: EdgeInsets.all(16.w),
+                child: ListView(
+                  children: [
+                    Text(
+                      jobTitle,
+                      style: TextStyle(fontSize: 24.sp, fontWeight: FontWeight.bold, color: Colors.blue.shade900),
+                    ),
+                    SizedBox(height: 12.h),
+                    Text(
+                      '$company • $location • $jobType',
+                      style: TextStyle(fontSize: 16.sp, color: Colors.grey.shade700),
+                    ),
+                    SizedBox(height: 12.h),
+                    Text('Salary: $salary', style: TextStyle(fontSize: 16.sp)),
+                    Text('Experience Required: $experience', style: TextStyle(fontSize: 16.sp)),
+                    Text('Skills: $skills', style: TextStyle(fontSize: 16.sp)),
+                    Text('Education: $education', style: TextStyle(fontSize: 16.sp)),
+                    Text('Specialization: $specialization', style: TextStyle(fontSize: 16.sp)),
+                    SizedBox(height: 20.h),
+                    Text(
+                      'Job Description',
+                      style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold, color: Colors.blue.shade900),
+                    ),
+                    SizedBox(height: 8.h),
+                    Text(description, style: TextStyle(fontSize: 16.sp)),
+                    SizedBox(height: 20.h),
+                    if (isRecruiter)
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          AnimatedScaleButton(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => EditJobScreen(
+                                    jobId: widget.job['jobId']?.toString() ?? '',
+                                    jobData: _jobData ?? widget.job,
                                   ),
                                 ),
                               );
                             },
-                          );
-                        },
+                            child: Container(
+                              padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [Colors.blue.shade700, Colors.teal.shade400],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                borderRadius: BorderRadius.circular(12.r),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.2),
+                                    blurRadius: 4.r,
+                                    offset: Offset(0, 2.h),
+                                  ),
+                                ],
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.edit, color: Colors.white),
+                                  SizedBox(width: 8.w),
+                                  const Text(
+                                    'Edit',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          AnimatedScaleButton(
+                            onPressed: deleteJob,
+                            child: Container(
+                              padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [Colors.red.shade600, Colors.red.shade800],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                borderRadius: BorderRadius.circular(12.r),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.2),
+                                    blurRadius: 4.r,
+                                    offset: Offset(0, 2.h),
+                                  ),
+                                ],
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.delete, color: Colors.white),
+                                  SizedBox(width: 8.w),
+                                  const Text(
+                                    'Delete',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-              ],
+                    SizedBox(height: 20.h),
+                    if (isRecruiter && _applicantsStream != null)
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Applicants',
+                            style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold, color: Colors.blue.shade900),
+                          ),
+                          SizedBox(height: 10.h),
+                          StreamBuilder<QuerySnapshot>(
+                            stream: _applicantsStream,
+                            builder: (context, snapshot) {
+                              if (snapshot.connectionState == ConnectionState.waiting) {
+                                return const Center(
+                                  child: CircularProgressIndicator(
+                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.teal),
+                                  ),
+                                );
+                              }
+                              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                                return const Text('No applicants yet.', style: TextStyle(fontSize: 16, color: Colors.grey));
+                              }
+                              return ListView.builder(
+                                shrinkWrap: true,
+                                physics: const NeverScrollableScrollPhysics(),
+                                itemCount: snapshot.data!.docs.length,
+                                itemBuilder: (context, index) {
+                                  final applicant = snapshot.data!.docs[index].data() as Map<String, dynamic>;
+                                  final resume = applicant['resume'] as Map<String, dynamic>? ?? {};
+                                  return AnimatedListItem(
+                                    child: Card(
+                                      elevation: 3,
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                                      child: Container(
+                                        decoration: BoxDecoration(
+                                          gradient: LinearGradient(
+                                            colors: [Colors.blue.shade50, Colors.blue.shade100],
+                                            begin: Alignment.topLeft,
+                                            end: Alignment.bottomRight,
+                                          ),
+                                          borderRadius: BorderRadius.circular(12.r),
+                                        ),
+                                        child: ListTile(
+                                          contentPadding: EdgeInsets.all(16.w),
+                                          title: Text(
+                                            resume['name'] ?? 'Unknown Applicant',
+                                            style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.black87),
+                                          ),
+                                          subtitle: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text('Job: ${applicant['jobTitle'] ?? 'Unknown Job'}'),
+                                              Text('Skills: ${(resume['skills'] as List<dynamic>?)?.cast<String>().join(', ') ?? 'N/A'}'),
+                                              Text('Education: ${resume['education'] ?? 'N/A'}'),
+                                              Text('Experience: ${resume['experience'] ?? 'N/A'}'),
+                                              Text('Specialization: ${resume['specialization'] ?? 'N/A'}'),
+                                              Text('Email: ${resume['email'] ?? 'N/A'}'),
+                                              Text('Mobile: ${resume['mobileNumber'] ?? 'N/A'}'),
+                                            ],
+                                          ),
+                                          onTap: () {
+                                            showDialog(
+                                              context: context,
+                                              builder: (context) => AlertDialog(
+                                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+                                                title: Container(
+                                                  padding: EdgeInsets.all(16.w),
+                                                  decoration: BoxDecoration(
+                                                    gradient: LinearGradient(
+                                                      colors: [Colors.blue.shade700, Colors.blue.shade900],
+                                                      begin: Alignment.topLeft,
+                                                      end: Alignment.bottomRight,
+                                                    ),
+                                                    borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                                                  ),
+                                                  child: Text(
+                                                    'Applicant: ${resume['name'] ?? 'Unknown'}',
+                                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                                  ),
+                                                ),
+                                                content: SingleChildScrollView(
+                                                  child: Column(
+                                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                                    children: [
+                                                      Text('Job: ${applicant['jobTitle'] ?? 'Unknown Job'}'),
+                                                      Text('Skills: ${(resume['skills'] as List<dynamic>?)?.cast<String>().join(', ') ?? 'N/A'}'),
+                                                      Text('Education: ${resume['education'] ?? 'N/A'}'),
+                                                      Text('Experience: ${resume['experience'] ?? 'N/A'}'),
+                                                      Text('Specialization: ${resume['specialization'] ?? 'N/A'}'),
+                                                      Text('Email: ${resume['email'] ?? 'N/A'}'),
+                                                      Text('Mobile: ${resume['mobileNumber'] ?? 'N/A'}'),
+                                                      Text('Current Company: ${resume['currentCompany'] ?? 'N/A'}'),
+                                                      Text('Current CTC: ${resume['currentCtc'] ?? 'N/A'}'),
+                                                      Text('Expected CTC: ${resume['expectedCtc'] ?? 'N/A'}'),
+                                                      Text('Cover Letter: ${applicant['coverLetter'] ?? 'N/A'}'),
+                                                      if (resume['photoUrl']?.isNotEmpty ?? false)
+                                                        Padding(
+                                                          padding: EdgeInsets.only(top: 8.h),
+                                                          child: ClipRRect(
+                                                            borderRadius: BorderRadius.circular(8.r),
+                                                            child: Image.network(resume['photoUrl'], height: 100.h, fit: BoxFit.cover),
+                                                          ),
+                                                        ),
+                                                    ],
+                                                  ),
+                                                ),
+                                                actions: [
+                                                  TextButton(
+                                                    onPressed: () => Navigator.pop(context),
+                                                    child: const Text('Close', style: TextStyle(color: Colors.teal)),
+                                                  ),
+                                                ],
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                  ],
+                ),
+              ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }

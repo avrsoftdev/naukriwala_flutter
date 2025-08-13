@@ -9,6 +9,7 @@ import 'package:naukariwala/screens/applied_seekers_screen.dart';
 import 'package:naukariwala/screens/calls_screen.dart';
 import 'package:naukariwala/screens/notifications_screen.dart';
 import '../../services/auth_service.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'dart:developer' as dev;
 
 class RecruiterDashboard extends StatefulWidget {
@@ -86,149 +87,34 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
       return const SizedBox.shrink();
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 2,
-        title: const Text(
-          'Recruiter Dashboard',
-          style: TextStyle(
-            color: Colors.black87,
-            fontWeight: FontWeight.bold,
-            fontSize: 22,
-          ),
-        ),
-        centerTitle: true,
-        leading: Builder(
-          builder: (context) => IconButton(
-            icon: const Icon(Icons.menu, color: Colors.black87, size: 28),
-            onPressed: () => Scaffold.of(context).openDrawer(),
-          ),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications, color: Colors.black87, size: 28),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const NotificationsScreen(isRecruiter: true),
-                ),
-              );
-            },
-          ),
-        ],
-      ),
-      drawer: Drawer(
-        child: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFF4A00E0), Color(0xFF8E2DE2)],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
+    return ScreenUtilInit(
+      designSize: const Size(360, 690),
+      minTextAdapt: true,
+      splitScreenMode: true,
+      builder: (context, child) {
+        return Scaffold(
+          appBar: AppBar(
+            backgroundColor: Colors.white,
+            elevation: 2,
+            title: Text(
+              'Recruiter Dashboard',
+              style: TextStyle(
+                color: Colors.black87,
+                fontWeight: FontWeight.bold,
+                fontSize: 22.sp,
+              ),
             ),
-          ),
-          child: ListView(
-            padding: EdgeInsets.zero,
-            children: [
-              DrawerHeader(
-                decoration: const BoxDecoration(
-                  color: Colors.transparent,
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    CircleAvatar(
-                      radius: 40,
-                      backgroundColor: Colors.white.withOpacity(0.2),
-                      child: const Icon(Icons.person, size: 50, color: Colors.white),
-                    ),
-                    const SizedBox(height: 10),
-                    const Text(
-                      'Recruiter',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
+            centerTitle: true,
+            leading: Builder(
+              builder: (context) => IconButton(
+                icon: const Icon(Icons.menu, color: Colors.black87, size: 28),
+                onPressed: () => Scaffold.of(context).openDrawer(),
               ),
-              _buildDrawerItem(
-                icon: Icons.person,
-                title: 'Profile',
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const ProfileScreen(isRecruiter: true),
-                    ),
-                  );
-                },
-              ),
-              _buildDrawerItem(
-                icon: Icons.work,
-                title: 'Posted Jobs',
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const PostedJobsScreen(),
-                    ),
-                  );
-                },
-              ),
-              _buildDrawerItem(
-                icon: Icons.group_add,
-                title: 'Applied Seekers',
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => AppliedSeekersScreen(
-                        authService: _authService,
-                        jobId: '',
-                        jobTitle: '',
-                      ),
-                    ),
-                  );
-                },
-              ),
-              _buildDrawerItem(
-                icon: Icons.call,
-                title: 'Calls',
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const CallsScreen(),
-                    ),
-                  );
-                },
-              ),
-              _buildDrawerItem(
-                icon: Icons.work,
-                title: 'Post a Job',
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const PostJobScreen(),
-                    ),
-                  );
-                },
-              ),
-              _buildDrawerItem(
-                icon: Icons.notifications,
-                title: 'Notifications',
-                onTap: () {
-                  Navigator.pop(context);
+            ),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.notifications, color: Colors.black87, size: 28),
+                onPressed: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -237,84 +123,206 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
                   );
                 },
               ),
-              _buildDrawerItem(
-                icon: Icons.logout,
-                title: 'Logout',
-                onTap: () async {
-                  await _authService.signOut();
-                  if (!mounted) return;
-                  Navigator.pushReplacementNamed(context, '/');
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: const Text('Logged out successfully'),
-                      backgroundColor: Colors.green,
-                    ),
-                  );
-                },
-              ),
             ],
           ),
-        ),
-      ),
-      body: DefaultTabController(
-        length: 6,
-        child: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+          drawer: Drawer(
+            child: Container(
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
                   colors: [Color(0xFF4A00E0), Color(0xFF8E2DE2)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black12,
-                    blurRadius: 8,
-                    offset: Offset(0, 4),
+              ),
+              child: ListView(
+                padding: EdgeInsets.zero,
+                children: [
+                  DrawerHeader(
+                    decoration: const BoxDecoration(
+                      color: Colors.transparent,
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CircleAvatar(
+                          radius: 40.r,
+                          backgroundColor: Colors.white.withOpacity(0.2),
+                          child: const Icon(Icons.person, size: 50, color: Colors.white),
+                        ),
+                        SizedBox(height: 10.h),
+                        Text(
+                          'Recruiter',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 20.sp,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  _buildDrawerItem(
+                    icon: Icons.person,
+                    title: 'Profile',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const ProfileScreen(isRecruiter: true),
+                        ),
+                      );
+                    },
+                  ),
+                  _buildDrawerItem(
+                    icon: Icons.work,
+                    title: 'Posted Jobs',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const PostedJobsScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  _buildDrawerItem(
+                    icon: Icons.group_add,
+                    title: 'Applied Seekers',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => AppliedSeekersScreen(
+                            authService: _authService,
+                            jobId: '',
+                            jobTitle: '',
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  _buildDrawerItem(
+                    icon: Icons.call,
+                    title: 'Calls',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const CallsScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  _buildDrawerItem(
+                    icon: Icons.work,
+                    title: 'Post a Job',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const PostJobScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  _buildDrawerItem(
+                    icon: Icons.notifications,
+                    title: 'Notifications',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const NotificationsScreen(isRecruiter: true),
+                        ),
+                      );
+                    },
+                  ),
+                  _buildDrawerItem(
+                    icon: Icons.logout,
+                    title: 'Logout',
+                    onTap: () async {
+                      await _authService.signOut();
+                      if (!mounted) return;
+                      Navigator.pushReplacementNamed(context, '/');
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: const Text('Logged out successfully'),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),
-              child: TabBar(
-                labelColor: Colors.white,
-                unselectedLabelColor: Colors.white70,
-                indicator: const BoxDecoration(
-                  borderRadius: BorderRadius.all(Radius.circular(20)),
-                  color: Colors.white24,
-                ),
-                tabs: [
-                  _buildTab(Icons.person, 'Profile'),
-                  _buildTab(Icons.work, 'Jobs'),
-                  _buildTab(Icons.group_add, 'Seekers'),
-                  _buildTab(Icons.call, 'Calls'),
-                  _buildTab(Icons.post_add, 'Post Job'),
-                  _buildTab(Icons.notifications, 'Notifications'),
-                ],
-              ),
             ),
-            Expanded(
-              child: Container(
-                color: Colors.grey[100],
-                child: TabBarView(
-                  children: [
-                    ProfileScreen(isRecruiter: true),
-                    PostedJobsScreen(),
-                    AppliedSeekersScreen(
-                      authService: _authService,
-                      jobId: '',
-                      jobTitle: '',
+          ),
+          body: DefaultTabController(
+            length: 6,
+            child: Column(
+              children: [
+                Container(
+                  padding: EdgeInsets.symmetric(vertical: 8.h, horizontal: 16.w),
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Color(0xFF4A00E0), Color(0xFF8E2DE2)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
-                    CallsScreen(),
-                    PostJobScreen(),
-                    NotificationsScreen(isRecruiter: true),
-                  ],
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black12,
+                        blurRadius: 8,
+                        offset: Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: TabBar(
+                    labelColor: Colors.white,
+                    unselectedLabelColor: Colors.white70,
+                    indicator: const BoxDecoration(
+                      borderRadius: BorderRadius.all(Radius.circular(20)),
+                      color: Colors.white24,
+                    ),
+                    tabs: [
+                      _buildTab(Icons.person, 'Profile'),
+                      _buildTab(Icons.work, 'Jobs'),
+                      _buildTab(Icons.group_add, 'Seekers'),
+                      _buildTab(Icons.call, 'Calls'),
+                      _buildTab(Icons.post_add, 'Post Job'),
+                      _buildTab(Icons.notifications, 'Notifications'),
+                    ],
+                  ),
                 ),
-              ),
+                Expanded(
+                  child: Container(
+                    color: Colors.grey[100],
+                    child: TabBarView(
+                      children: [
+                        ProfileScreen(isRecruiter: true),
+                        PostedJobsScreen(),
+                        AppliedSeekersScreen(
+                          authService: _authService,
+                          jobId: '',
+                          jobTitle: '',
+                        ),
+                        CallsScreen(),
+                        PostJobScreen(),
+                        NotificationsScreen(isRecruiter: true),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
@@ -327,18 +335,18 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
       leading: Icon(icon, color: Colors.white, size: 28),
       title: Text(
         title,
-        style: const TextStyle(
+        style: TextStyle(
           color: Colors.white,
-          fontSize: 16,
+          fontSize: 16.sp,
           fontWeight: FontWeight.w500,
         ),
       ),
       onTap: onTap,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 5),
+      contentPadding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 5.h),
       tileColor: Colors.transparent,
       hoverColor: Colors.white12,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(10.r),
       ),
     );
   }
@@ -346,18 +354,18 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
   Widget _buildTab(IconData icon, String label) {
     return Tab(
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+        padding: EdgeInsets.symmetric(vertical: 6.h, horizontal: 12.w),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(20.r),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(icon, size: 20),
-            const SizedBox(width: 6),
+            SizedBox(width: 6.w),
             Text(
               label,
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+              style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w600),
             ),
           ],
         ),

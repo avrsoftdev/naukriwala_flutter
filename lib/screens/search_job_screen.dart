@@ -2,6 +2,7 @@ import 'dart:developer' as dev;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:naukariwala/screens/apply_job_screen.dart';
 import 'package:naukariwala/screens/job_details_screen.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
@@ -23,6 +24,8 @@ class SearchJobScreenState extends State<SearchJobScreen> {
   bool isLoading = true;
   String? errorMessage;
   Map<String, dynamic>? _seekerProfile;
+  // Track applied jobs
+  final Set<String> _appliedJobIds = {};
 
   @override
   void initState() {
@@ -54,6 +57,14 @@ class SearchJobScreenState extends State<SearchJobScreen> {
         if (seekerDoc.exists) {
           setState(() {
             _seekerProfile = seekerDoc.data();
+          });
+          // Fetch applied jobs for the user
+          final applications = await FirebaseFirestore.instance
+              .collection('Applications')
+              .where('seekerId', isEqualTo: currentUser.uid)
+              .get();
+          setState(() {
+            _appliedJobIds.addAll(applications.docs.map((doc) => doc['jobId'] as String));
           });
           dev.log('[2025-08-08 22:12 IST] Fetched seeker profile for ${currentUser.uid}', name: 'SearchJobScreen');
         } else {
@@ -184,8 +195,11 @@ class SearchJobScreenState extends State<SearchJobScreen> {
     if (uid == null) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Please log in to apply'),
+          SnackBar(
+            content: Text(
+              'Please log in to apply',
+              style: TextStyle(fontSize: 14.sp),
+            ),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
           ),
@@ -195,7 +209,7 @@ class SearchJobScreenState extends State<SearchJobScreen> {
     }
 
     try {
-      await Navigator.push(
+      final result = await Navigator.push(
         context,
         MaterialPageRoute(
           builder: (context) => ApplyJobScreen(
@@ -206,22 +220,30 @@ class SearchJobScreenState extends State<SearchJobScreen> {
           ),
         ),
       );
-      if (mounted) {
+      if (mounted && result == true) {
+        setState(() {
+          _appliedJobIds.add(job['jobId']);
+        });
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Application submitted successfully'),
+          SnackBar(
+            content: Text(
+              'Application submitted successfully',
+              style: TextStyle(fontSize: 14.sp),
+            ),
             backgroundColor: Colors.teal,
             behavior: SnackBarBehavior.floating,
           ),
         );
-        setState(() {}); // Refresh to update job list if needed
       }
     } catch (e, stackTrace) {
       dev.log('[2025-08-08 22:12 IST] Error navigating to ApplyJobScreen: $e', name: 'SearchJobScreen', error: e, stackTrace: stackTrace);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to apply: $e'),
+            content: Text(
+              'Failed to apply: $e',
+              style: TextStyle(fontSize: 14.sp),
+            ),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
           ),
@@ -247,11 +269,12 @@ class SearchJobScreenState extends State<SearchJobScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ScreenUtil.init(context, designSize: const Size(360, 640), minTextAdapt: true, splitScreenMode: true);
     return Scaffold(
       appBar: AppBar(
         title: Text(
           widget.isSeekerProfileView ? 'Available Jobs' : 'Search & Available Jobs',
-          style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 20.sp),
         ),
         flexibleSpace: Container(
           decoration: BoxDecoration(
@@ -265,9 +288,9 @@ class SearchJobScreenState extends State<SearchJobScreen> {
         elevation: 4,
       ),
       body: isLoading
-          ? const Center(
+          ? Center(
               child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.teal),
+                valueColor: const AlwaysStoppedAnimation<Color>(Colors.teal),
               ),
             )
           : errorMessage != null
@@ -275,12 +298,12 @@ class SearchJobScreenState extends State<SearchJobScreen> {
                   child: Card(
                     elevation: 4,
                     color: Colors.red.shade50,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
                     child: Padding(
-                      padding: const EdgeInsets.all(16.0),
+                      padding: EdgeInsets.all(16.r),
                       child: Text(
                         errorMessage!,
-                        style: TextStyle(color: Colors.red.shade700, fontSize: 16),
+                        style: TextStyle(color: Colors.red.shade700, fontSize: 16.sp),
                         textAlign: TextAlign.center,
                       ),
                     ),
@@ -290,25 +313,26 @@ class SearchJobScreenState extends State<SearchJobScreen> {
                   children: [
                     if (!widget.isSeekerProfileView)
                       Padding(
-                        padding: const EdgeInsets.all(16.0),
+                        padding: EdgeInsets.all(16.r),
                         child: TextField(
                           controller: _searchController,
                           decoration: InputDecoration(
                             hintText: 'Search by job title, company, or location',
-                            hintStyle: TextStyle(color: Colors.grey.shade500),
-                            prefixIcon: const Icon(Icons.search, color: Colors.teal),
+                            hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 14.sp),
+                            prefixIcon: Icon(Icons.search, color: Colors.teal, size: 20.sp),
                             border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(12.r),
                               borderSide: BorderSide(color: Colors.grey.shade400),
                             ),
                             focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(color: Colors.teal, width: 2),
+                              borderRadius: BorderRadius.circular(12.r),
+                              borderSide: BorderSide(color: Colors.teal, width: 2.w),
                             ),
                             filled: true,
                             fillColor: Colors.white,
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
                           ),
+                          style: TextStyle(fontSize: 16.sp),
                           onChanged: _filterJobs,
                         ),
                       ),
@@ -317,7 +341,7 @@ class SearchJobScreenState extends State<SearchJobScreen> {
                           ? Center(
                               child: Text(
                                 'No jobs found matching your skills, education, or experience.',
-                                style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
+                                style: TextStyle(fontSize: 16.sp, color: Colors.grey.shade600),
                                 textAlign: TextAlign.center,
                               ),
                             )
@@ -325,11 +349,12 @@ class SearchJobScreenState extends State<SearchJobScreen> {
                               itemCount: filteredJobs.length,
                               itemBuilder: (context, index) {
                                 final job = filteredJobs[index];
+                                final isApplied = _appliedJobIds.contains(job['jobId']);
                                 return AnimatedListItem(
                                   child: Card(
                                     elevation: 3,
-                                    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                    margin: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
                                     child: Container(
                                       decoration: BoxDecoration(
                                         gradient: LinearGradient(
@@ -337,46 +362,48 @@ class SearchJobScreenState extends State<SearchJobScreen> {
                                           begin: Alignment.topLeft,
                                           end: Alignment.bottomRight,
                                         ),
-                                        borderRadius: BorderRadius.circular(12),
+                                        borderRadius: BorderRadius.circular(12.r),
                                       ),
                                       child: ListTile(
-                                        contentPadding: const EdgeInsets.all(16.0),
+                                        contentPadding: EdgeInsets.all(16.r),
                                         title: Text(
                                           job['title'] ?? 'Untitled',
-                                          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 18, color: Colors.black87),
+                                          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 18.sp, color: Colors.black87),
                                         ),
                                         subtitle: Padding(
-                                          padding: const EdgeInsets.only(top: 8.0),
+                                          padding: EdgeInsets.only(top: 8.h),
                                           child: Text(
                                             '${job['company'] ?? ''} • ${job['location'] ?? ''} • ${job['jobType'] ?? ''}',
-                                            style: TextStyle(color: Colors.grey.shade700, fontSize: 14),
+                                            style: TextStyle(color: Colors.grey.shade700, fontSize: 14.sp),
                                           ),
                                         ),
                                         trailing: AnimatedScaleButton(
-                                          onPressed: () => _applyToJob(job),
+                                          onPressed: isApplied ? null : () => _applyToJob(job),
                                           child: Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
                                             decoration: BoxDecoration(
                                               gradient: LinearGradient(
-                                                colors: [Colors.blue.shade700, Colors.teal.shade400],
+                                                colors: isApplied
+                                                    ? [Colors.grey.shade400, Colors.grey.shade600]
+                                                    : [Colors.blue.shade700, Colors.teal.shade400],
                                                 begin: Alignment.topLeft,
                                                 end: Alignment.bottomRight,
                                               ),
-                                              borderRadius: BorderRadius.circular(8),
+                                              borderRadius: BorderRadius.circular(8.r),
                                               boxShadow: [
                                                 BoxShadow(
                                                   color: Colors.black.withValues(alpha: 0.2),
-                                                  blurRadius: 4,
-                                                  offset: const Offset(0, 2),
+                                                  blurRadius: 4.r,
+                                                  offset: Offset(0, 2.h),
                                                 ),
                                               ],
                                             ),
-                                            child: const Text(
-                                              'Apply',
+                                            child: Text(
+                                              isApplied ? 'Applied' : 'Apply',
                                               style: TextStyle(
                                                 color: Colors.white,
                                                 fontWeight: FontWeight.bold,
-                                                fontSize: 14,
+                                                fontSize: 14.sp,
                                               ),
                                             ),
                                           ),

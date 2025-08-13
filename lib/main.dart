@@ -8,6 +8,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'firebase_options.dart';
 import 'screens/unified_screen.dart';
 
@@ -74,14 +75,25 @@ class NaukariwalaApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Naukariwala',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-        visualDensity: VisualDensity.adaptivePlatformDensity,
-      ),
-      debugShowCheckedModeBanner: false,
-      home: const UnifiedScreen(),
+    return ScreenUtilInit(
+      designSize: const Size(360, 690),
+      minTextAdapt: true,
+      splitScreenMode: true,
+      builder: (context, child) {
+        return MaterialApp(
+          title: 'Naukariwala',
+          theme: ThemeData(
+            primarySwatch: Colors.blue,
+            visualDensity: VisualDensity.adaptivePlatformDensity,
+            textTheme: TextTheme(
+              bodyMedium: TextStyle(fontSize: 16.sp),
+              titleLarge: TextStyle(fontSize: 20.sp, fontWeight: FontWeight.bold),
+            ),
+          ),
+          debugShowCheckedModeBanner: false,
+          home: const UnifiedScreen(),
+        );
+      },
     );
   }
 }
