@@ -311,7 +311,6 @@ Future<String> uploadSeekerPhoto(File file) async {
     }
   }
 
-
 Future<void> applyToJob({
   required String jobId,
   required String jobTitle,
@@ -474,7 +473,6 @@ Future<void> scheduleInterview({
   dev.log('[2025-08-09 01:05 IST] Scheduled interview for job $jobId, seeker $seekerId by recruiter $uid', name: 'AuthService');
 }
 
-
 Future<List<Map<String, dynamic>>> fetchAppliedSeekers() async {
   final uid = _auth.currentUser?.uid;
   if (uid == null) {
@@ -495,7 +493,7 @@ Future<List<Map<String, dynamic>>> fetchAppliedSeekers() async {
     rethrow;
   }
 }
- Future<String> getChatId({
+Future<String> getChatId({
     required String seekerId,
     required String jobId,
   }) async {
@@ -604,37 +602,6 @@ Future<List<Map<String, dynamic>>> fetchAppliedSeekers() async {
           });
           break;
 
-        case 'chat':
-          dev.log('Initiating chat with seeker $seekerId for job $jobId', name: 'AuthService');
-          final chatId = [uid, seekerId].join('_').split('_')..sort();
-          final normalizedChatId = '${chatId[0]}_${chatId[1]}';
-          batch.set(_firestore.collection('Messages').doc(normalizedChatId), {
-            'senderId': uid,
-            'recipientId': seekerId,
-            'jobId': jobId,
-            'lastMessage': 'Hello, let’s discuss your application for "$jobTitle"!',
-            'timestamp': FieldValue.serverTimestamp(),
-          }, SetOptions(merge: true));
-          batch.set(_firestore.collection('Messages').doc(normalizedChatId).collection('Messages').doc(), {
-            'senderId': uid,
-            'recipientId': seekerId,
-            'message': 'Hello, let’s discuss your application for "$jobTitle"!',
-            'timestamp': FieldValue.serverTimestamp(),
-            'jobId': jobId,
-          });
-          batch.set(notifRef, {
-            'to': seekerId,
-            'from': uid,
-            'message': 'New message regarding "$jobTitle" from recruiter',
-            'timestamp': FieldValue.serverTimestamp(),
-            'read': false,
-            'type': 'status_update',
-            'jobId': jobId,
-            'jobTitle': jobTitle,
-            'notificationId': notificationId,
-          });
-          break;
-
         default:
           dev.log('Invalid action: $action for application $applicationId', name: 'AuthService');
           throw const AuthException('Invalid action');
@@ -645,8 +612,8 @@ Future<List<Map<String, dynamic>>> fetchAppliedSeekers() async {
     } catch (e, stackTrace) {
       dev.log('handleAction ERROR for action $action, job $jobId, seeker $seekerId: $e', name: 'AuthService', error: e, stackTrace: stackTrace);
       if (e is FirebaseException) {
-              final applicationId = '${seekerId}_$jobId';
-      dev.log('Firebase error details: code=${e.code}, message=${e.message}, path=Applications/$applicationId or Shortlisted/$jobId/Seekers/$seekerId or Messages', name: 'AuthService');
+        final applicationId = '${seekerId}_$jobId';
+        dev.log('Firebase error details: code=${e.code}, message=${e.message}, path=Applications/$applicationId or Shortlisted/$jobId/Seekers/$seekerId or Messages', name: 'AuthService');
         throw AuthException('Action failed: ${e.code} - ${e.message}. Check Firestore rules for Applications/$applicationId or Shortlisted/$jobId/Seekers/$seekerId or Messages.');
       }
       rethrow;

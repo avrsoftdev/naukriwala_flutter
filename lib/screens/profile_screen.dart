@@ -1,8 +1,6 @@
-import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:naukariwala/services/auth_service.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'dart:developer' as dev;
@@ -18,7 +16,6 @@ class ProfileScreen extends StatefulWidget {
 
 class ProfileScreenState extends State<ProfileScreen> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final ImagePicker _picker = ImagePicker();
   final AuthService _authService = AuthService();
 
   // Controllers for editable fields
@@ -39,7 +36,6 @@ class ProfileScreenState extends State<ProfileScreen> {
   String? _selectedSpecialization;
   String? _selectedEducation;
   List<String> _selectedSkills = [];
- 
 
   // Experience options
   final List<String> experienceOptions = [
@@ -144,8 +140,6 @@ class ProfileScreenState extends State<ProfileScreen> {
     ],
   };
 
-  File? _imageFile;
-  String? _imageUrl;
   bool isLoading = false;
   String? errorMessage;
 
@@ -153,6 +147,9 @@ class ProfileScreenState extends State<ProfileScreen> {
   void initState() {
     super.initState();
     _loadUserData();
+    // Add listeners to format CTC fields when focus changes
+    _currentCtcController.addListener(_formatCtcOnChange);
+    _expectedCtcController.addListener(_formatCtcOnChange);
   }
 
   Future<void> _loadUserData() async {
@@ -171,10 +168,11 @@ class ProfileScreenState extends State<ProfileScreen> {
           _nameController.text = data['name']?.toString().trim() ?? '';
           _mobileNumber = data['mobileNumber']?.toString().trim() ??
               data['mobile']?.toString().trim() ??
-              data['Mobile Number']?.toString().trim() ??
-              '';
+              data['Mobile Number']?.toString().trim();
+          if (_mobileNumber == null || _mobileNumber!.isEmpty) {
+            dev.log('Warning: Mobile number not found in Firestore data for UID: ${user.uid}', name: 'ProfileScreen');
+          }
           _email = user.email?.trim() ?? '';
-          _imageUrl = widget.isRecruiter ? data['companyLogo'] : data['photoUrl'];
           if (widget.isRecruiter) {
             _companyNameController.text = data['companyName']?.toString().trim() ?? '';
             _companyProfileController.text = data['companyProfile']?.toString().trim() ?? '';
@@ -192,8 +190,8 @@ class ProfileScreenState extends State<ProfileScreen> {
                 ? data['specialization']
                 : 'Others';
             _currentCompanyController.text = data['currentCompany']?.toString().trim() ?? '';
-            _currentCtcController.text = data['currentCtc']?.toString().trim() ?? '';
-            _expectedCtcController.text = data['expectedCtc']?.toString().trim() ?? '';
+            _currentCtcController.text = _formatCtc(data['currentCtc']?.toString().trim() ?? '');
+            _expectedCtcController.text = _formatCtc(data['expectedCtc']?.toString().trim() ?? '');
           }
         });
       } else if (mounted) {
@@ -212,28 +210,29 @@ class ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  Future<void> _pickImage() async {
-    final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
-    if (pickedFile != null && mounted) {
-      setState(() {
-        _imageFile = File(pickedFile.path);
-      });
+  String _formatCtc(String value) {
+    // Remove any existing " LPA" and parse the number
+    value = value.replaceAll(' LPA', '').trim();
+    double? number = double.tryParse(value);
+    if (number == null) {
+      return '0.0 LPA'; // Default to 0.0 LPA if parsing fails
     }
+    return '${number.toStringAsFixed(1)} LPA';
   }
 
-  Future<String?> _uploadImage() async {
-    if (_imageFile == null) return _imageUrl;
-    try {
-      final url = widget.isRecruiter
-          ? await _authService.uploadCompanyLogo(_imageFile!)
-          : await _authService.uploadSeekerPhoto(_imageFile!);
-      return url;
-    } catch (e) {
-      dev.log('Error uploading image: $e', name: 'ProfileScreen', error: e);
-      if (mounted) {
-        setState(() => errorMessage = 'Error uploading image: $e');
-      }
-      return null;
+  void _formatCtcOnChange() {
+    final controller = _currentCtcController == FocusScope.of(context).focusedChild?.context?.widget ? _currentCtcController : _expectedCtcController;
+    if (controller == null) return;
+
+    final value = controller.text;
+    final formattedValue = _formatCtc(value);
+    if (controller.text != formattedValue) {
+      final selection = controller.selection;
+      controller.text = formattedValue;
+      // Restore the cursor position if it was at the end, otherwise keep the relative position
+      controller.selection = selection.extent.offset == value.length
+          ? TextSelection.fromPosition(TextPosition(offset: formattedValue.length))
+          : TextSelection.collapsed(offset: selection.extent.offset);
     }
   }
 
@@ -248,9 +247,8 @@ class ProfileScreenState extends State<ProfileScreen> {
       'experience': _experienceController.text.trim(),
       'specialization': _selectedSpecialization ?? 'Others',
       'currentCompany': _currentCompanyController.text.trim(),
-      'currentCtc': _currentCtcController.text.trim(),
-      'expectedCtc': _expectedCtcController.text.trim(),
-      'photoUrl': _imageUrl,
+      'currentCtc': _currentCtcController.text.replaceAll(' LPA', '').trim(),
+      'expectedCtc': _expectedCtcController.text.replaceAll(' LPA', '').trim(),
       'updatedAt': FieldValue.serverTimestamp(),
     };
   }
@@ -268,7 +266,7 @@ class ProfileScreenState extends State<ProfileScreen> {
       return;
     }
     if (_mobileNumber == null || _mobileNumber!.trim().isEmpty) {
-      setState(() => errorMessage = 'Mobile number is required');
+      setState(() => errorMessage = 'Mobile number is required. Please ensure it is set in your profile.');
       return;
     }
     if (widget.isRecruiter) {
@@ -301,15 +299,14 @@ class ProfileScreenState extends State<ProfileScreen> {
 
     try {
       setState(() => isLoading = true);
-      final imageUrl = await _uploadImage();
       final profileData = widget.isRecruiter
           ? {
               'name': _nameController.text.trim(),
+              'mobileNumber': _mobileNumber!.trim(),
               'companyName': _companyNameController.text.trim(),
               'companyProfile': _companyProfileController.text.trim(),
               'designation': _designationController.text.trim(),
               'updatedAt': FieldValue.serverTimestamp(),
-              if (imageUrl != null) 'companyLogo': imageUrl,
             }
           : {
               'name': _nameController.text.trim(),
@@ -319,10 +316,9 @@ class ProfileScreenState extends State<ProfileScreen> {
               'experience': _experienceController.text.trim(),
               'specialization': _selectedSpecialization,
               'currentCompany': _currentCompanyController.text.trim(),
-              'currentCtc': _currentCtcController.text.trim(),
-              'expectedCtc': _expectedCtcController.text.trim(),
+              'currentCtc': _currentCtcController.text.replaceAll(' LPA', '').trim(),
+              'expectedCtc': _expectedCtcController.text.replaceAll(' LPA', '').trim(),
               'updatedAt': FieldValue.serverTimestamp(),
-              if (imageUrl != null) 'photoUrl': imageUrl,
             };
 
       dev.log('Updating profile with data: $profileData', name: 'ProfileScreen');
@@ -696,6 +692,8 @@ class ProfileScreenState extends State<ProfileScreen> {
 
   @override
   void dispose() {
+    _currentCtcController.removeListener(_formatCtcOnChange);
+    _expectedCtcController.removeListener(_formatCtcOnChange);
     _nameController.dispose();
     _companyNameController.dispose();
     _companyProfileController.dispose();
@@ -787,8 +785,8 @@ class ProfileScreenState extends State<ProfileScreen> {
                                 Text('Experience: ${resumeData['experience'] ?? 'N/A'}', style: TextStyle(fontSize: 14.sp)),
                                 Text('Specialization: ${resumeData['specialization'] ?? 'N/A'}', style: TextStyle(fontSize: 14.sp)),
                                 Text('Current Company: ${resumeData['currentCompany'] ?? 'N/A'}', style: TextStyle(fontSize: 14.sp)),
-                                Text('Current CTC: ${resumeData['currentCtc'] ?? 'N/A'}', style: TextStyle(fontSize: 14.sp)),
-                                Text('Expected CTC: ${resumeData['expectedCtc'] ?? 'N/A'}', style: TextStyle(fontSize: 14.sp)),
+                                Text('Current CTC: ${_formatCtc(resumeData['currentCtc'] ?? '0.0')}', style: TextStyle(fontSize: 14.sp)),
+                                Text('Expected CTC: ${_formatCtc(resumeData['expectedCtc'] ?? '0.0')}', style: TextStyle(fontSize: 14.sp)),
                               ],
                             ),
                           ),
@@ -837,76 +835,6 @@ class ProfileScreenState extends State<ProfileScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                // Image Display and Upload
-                                Center(
-                                  child: Stack(
-                                    children: [
-                                      Container(
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          gradient: LinearGradient(
-                                            colors: [Colors.blue.shade700, Colors.teal.shade400],
-                                            begin: Alignment.topLeft,
-                                            end: Alignment.bottomRight,
-                                          ),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: Colors.black.withValues(alpha: 0.2),
-                                              blurRadius: 8.r,
-                                              offset: Offset(0, 4.h),
-                                            ),
-                                          ],
-                                        ),
-                                        padding: EdgeInsets.all(4.w),
-                                        child: CircleAvatar(
-                                          radius: 60.r,
-                                          backgroundImage: _imageFile != null
-                                              ? FileImage(_imageFile!)
-                                              : _imageUrl != null
-                                                  ? NetworkImage(_imageUrl!)
-                                                  : null,
-                                          backgroundColor: Colors.grey.withValues(alpha: 0.2),
-                                          child: _imageFile == null && _imageUrl == null
-                                              ? const Icon(Icons.person, size: 60, color: Colors.grey)
-                                              : null,
-                                        ),
-                                      ),
-                                      Positioned(
-                                        bottom: 0,
-                                        right: 0,
-                                        child: GestureDetector(
-                                          onTap: _pickImage,
-                                          child: Container(
-                                            padding: EdgeInsets.all(6.w),
-                                            decoration: BoxDecoration(
-                                              shape: BoxShape.circle,
-                                              color: Colors.teal,
-                                              boxShadow: [
-                                                BoxShadow(
-                                                  color: Colors.black.withValues(alpha: 0.2),
-                                                  blurRadius: 4.r,
-                                                  offset: Offset(0, 2.h),
-                                                ),
-                                              ],
-                                            ),
-                                            child: const Icon(Icons.camera_alt, color: Colors.white, size: 20),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                SizedBox(height: 12.h),
-                                Text(
-                                  widget.isRecruiter ? 'Company Logo' : 'Profile Photo',
-                                  style: TextStyle(
-                                    fontSize: 16.sp,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.blue.shade900,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
                                 SizedBox(height: 16.h),
                                 // Common Fields
                                 _buildTextField(

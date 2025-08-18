@@ -371,6 +371,7 @@ class _AppliedSeekersScreenState extends State<AppliedSeekersScreen> {
                         } catch (e) {
                           dev.log('[2025-08-07 23:10 IST] Error exporting applicants for recruiter $recruiterId: $e', name: 'AppliedSeekersScreen', error: e);
                           if (mounted) {
+                            // ignore: use_build_context_synchronously
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(content: Text('Error exporting applicants. Check logs.')),
                             );
@@ -411,7 +412,7 @@ class _AppliedSeekersScreenState extends State<AppliedSeekersScreen> {
                         dev.log('[2025-08-07 23:10 IST] No applicants found for recruiter $recruiterId. Verify /Applications/{jobId} exists with correct recruiterId.', name: 'AppliedSeekersScreen');
                         return const Center(
                           child: Text(
-                            'No applied seekers found. Ensure /Applications/{jobId} exists with correct recruiterId and jobs are posted in /Recruiters/{recruiterId}/Jobs.',
+                            'No applied seekers found',
                             textAlign: TextAlign.center,
                           ),
                         );

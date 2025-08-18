@@ -22,6 +22,66 @@ class _ChatScreenState extends State<ChatScreen> {
   final AuthService _authService = AuthService();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  bool isNewChat = true;
+  Map<String, dynamic>? _chatDetails;
+  late Future<void> _initializationFuture;
+  bool _showInitialMessagePrompt = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializationFuture = _initializeChat();
+  }
+
+  Future<void> _initializeChat() async {
+    try {
+      dev.log('[2025-08-19 04:06 IST] Initializing chat ${widget.chatId} with recipientId: ${widget.recipientId}, jobId: ${widget.jobId}', name: 'ChatScreen');
+      await Future.wait([
+        _checkChatStatus(),
+        _fetchChatDetails(),
+      ], eagerError: true);
+      if (mounted && isNewChat) {
+        setState(() {
+          _showInitialMessagePrompt = true;
+        });
+      }
+    } catch (e) {
+      dev.log('[2025-08-19 04:06 IST] Error initializing chat ${widget.chatId}: $e', name: 'ChatScreen', error: e);
+    }
+  }
+
+  Future<void> _checkChatStatus() async {
+    try {
+      final messagesSnapshot = await _firestore
+          .collection('Messages')
+          .doc(widget.chatId)
+          .collection('Chats')
+          .limit(1)
+          .get();
+      if (mounted) {
+        setState(() {
+          isNewChat = messagesSnapshot.docs.isEmpty;
+          dev.log('[2025-08-19 04:06 IST] Chat ${widget.chatId} is ${isNewChat ? 'new' : 'existing'}', name: 'ChatScreen');
+        });
+      }
+    } catch (e) {
+      dev.log('[2025-08-19 04:06 IST] Error checking chat status for ${widget.chatId}: $e', name: 'ChatScreen', error: e);
+    }
+  }
+
+  Future<void> _fetchChatDetails() async {
+    try {
+      final details = await _getChatDetails();
+      if (mounted) {
+        setState(() {
+          _chatDetails = details;
+          dev.log('[2025-08-19 04:06 IST] Fetched chat details for ${widget.chatId}: $details', name: 'ChatScreen');
+        });
+      }
+    } catch (e) {
+      dev.log('[2025-08-19 04:06 IST] Error fetching chat details for ${widget.chatId}: $e', name: 'ChatScreen', error: e);
+    }
+  }
 
   Stream<QuerySnapshot> _getMessagesStream() {
     return _firestore
@@ -34,66 +94,96 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Future<Map<String, dynamic>> _getChatDetails() async {
     final uid = _auth.currentUser?.uid;
-    if (uid == null) return {'recipientName': 'Unknown', 'jobTitle': 'Unknown', 'company': 'Unknown', 'resumeUrl': null};
-
-    // Determine user role (seeker or recruiter)
-    final userDoc = await _firestore.collection('Users').doc(uid).get();
-    final isRecruiter = userDoc.exists && userDoc.data()?['role'] == 'recruiter';
-
-    // Fetch recipient name from UsersIndex
-    String recipientName = 'Unknown';
-    final recipientDoc = await _firestore.collection('UsersIndex').doc(widget.recipientId).get();
-    if (recipientDoc.exists) {
-      recipientName = recipientDoc.data()?['name'] ?? 'Unknown';
+    if (uid == null) {
+      dev.log('[2025-08-19 04:06 IST] No authenticated user for chat ${widget.chatId}', name: 'ChatScreen');
+      return {'recipientName': 'Unknown', 'company': 'Unknown'};
     }
 
-    // Fetch job details
-    String jobTitle = 'Unknown';
+    final isRecruiter = (await _firestore.collection('UsersIndex').doc(uid).get()).data()?['role'] == 'recruiter';
+    dev.log('[2025-08-19 04:06 IST] User $uid is ${isRecruiter ? 'recruiter' : 'seeker'}', name: 'ChatScreen');
+
+    String recipientName = widget.recipientId;
     String company = 'Unknown';
-    String? resumeUrl;
-    final appDoc = await _firestore.collection('Applications').doc(isRecruiter ? '${widget.recipientId}_${widget.jobId}' : '${uid}_${widget.jobId}').get();
+    final recipientDoc = await _firestore.collection('UsersIndex').doc(widget.recipientId).get();
+    if (recipientDoc.exists) {
+      final data = recipientDoc.data()!;
+      recipientName = data['name'] ?? data['fullName'] ?? widget.recipientId;
+      if (isRecruiter) {
+        final recruiterDoc = await _firestore.collection('Recruiters').doc(widget.recipientId).get();
+        company = recruiterDoc.data()?['companyName'] ?? 'Unknown';
+      }
+    }
+    dev.log('[2025-08-19 04:06 IST] Recipient details for ${widget.recipientId}: name=$recipientName, company=$company', name: 'ChatScreen');
+
+    String jobTitle = widget.jobId;
+    final appDoc = await _firestore
+        .collection('Applications')
+        .doc(isRecruiter ? '${widget.recipientId}_${widget.jobId}' : '${uid}_${widget.jobId}')
+        .get();
     if (appDoc.exists) {
-      final appData = appDoc.data()!;
-      jobTitle = appData['jobTitle'] ?? 'Unknown';
+      jobTitle = appDoc.data()!['jobTitle'] ?? widget.jobId;
       final jobDoc = await _firestore
           .collection('Recruiters')
-          .doc(appData['recruiterId'])
+          .doc(appDoc.data()!['recruiterId'])
           .collection('Jobs')
           .doc(widget.jobId)
           .get();
       if (jobDoc.exists) {
-        company = jobDoc.data()?['company'] ?? 'Unknown';
-      }
-      if (isRecruiter) {
-        resumeUrl = appData['resume']?['cvUrl'] ?? null;
+        company = jobDoc.data()?['company'] ?? company;
       }
     }
 
     return {
       'recipientName': recipientName,
-      'jobTitle': jobTitle,
       'company': company,
-      'resumeUrl': resumeUrl,
+      'jobTitle': jobTitle,
     };
   }
 
   Future<void> _sendMessage() async {
-    if (_messageController.text.isNotEmpty) {
-      try {
-        await _authService.sendMessage(widget.recipientId, widget.jobId, _messageController.text);
-        _messageController.clear();
-        dev.log('[2025-08-11 16:41 IST] Sent message in chat ${widget.chatId} for job ${widget.jobId}', name: 'ChatScreen');
-      } catch (e) {
-        dev.log('[2025-08-11 16:41 IST] Error sending message in chat ${widget.chatId}: $e', name: 'ChatScreen', error: e);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text('Failed to send message'),
-              backgroundColor: Colors.red,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        }
+    final message = _messageController.text.trim();
+    if (message.isEmpty) {
+      dev.log('[2025-08-19 04:06 IST] Empty message not sent in chat ${widget.chatId}', name: 'ChatScreen');
+      return;
+    }
+
+    try {
+      await _authService.sendMessage(widget.recipientId, widget.jobId, message);
+      _messageController.clear();
+      if (mounted) {
+        setState(() {
+          isNewChat = false;
+          _showInitialMessagePrompt = false;
+        });
+      }
+      dev.log('[2025-08-19 04:06 IST] Sent message in chat ${widget.chatId} for job ${widget.jobId}: $message', name: 'ChatScreen');
+    } catch (e) {
+      dev.log('[2025-08-19 04:06 IST] Error sending message in chat ${widget.chatId}: $e', name: 'ChatScreen', error: e);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to send message'), backgroundColor: Colors.red, behavior: SnackBarBehavior.floating),
+        );
+      }
+    }
+  }
+
+  void _sendInitialMessage() async {
+    final initialMessage = 'Hello, let’s discuss your application for "${_chatDetails?['jobTitle'] ?? widget.jobId}"!';
+    try {
+      await _authService.sendMessage(widget.recipientId, widget.jobId, initialMessage);
+      if (mounted) {
+        setState(() {
+          isNewChat = false;
+          _showInitialMessagePrompt = false;
+        });
+      }
+      dev.log('[2025-08-19 04:06 IST] Sent initial message in chat ${widget.chatId} for job ${widget.jobId}', name: 'ChatScreen');
+    } catch (e) {
+      dev.log('[2025-08-19 04:06 IST] Error sending initial message in chat ${widget.chatId}: $e', name: 'ChatScreen', error: e);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to send initial message'), backgroundColor: Colors.red, behavior: SnackBarBehavior.floating),
+        );
       }
     }
   }
@@ -107,13 +197,27 @@ class _ChatScreenState extends State<ChatScreen> {
       builder: (context, child) {
         return Scaffold(
           appBar: AppBar(
-            title: FutureBuilder<Map<String, dynamic>>(
-              future: _getChatDetails(),
+            title: FutureBuilder<void>(
+              future: _initializationFuture,
               builder: (context, snapshot) {
-                final data = snapshot.data ?? {'recipientName': widget.recipientId, 'jobTitle': 'Unknown'};
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return Text(
+                    '${widget.recipientId} - ${widget.jobId}',
+                    style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 16.sp),
+                    overflow: TextOverflow.ellipsis,
+                  );
+                }
+                if (snapshot.hasError || _chatDetails == null) {
+                  return Text(
+                    '${widget.recipientId} - Unknown',
+                    style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 16.sp),
+                    overflow: TextOverflow.ellipsis,
+                  );
+                }
                 return Text(
-                  'Chat with ${data['recipientName']} - ${data['jobTitle']}',
-                  style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                  '${_chatDetails!['recipientName']} - ${_chatDetails!['company']}',
+                  style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 16.sp),
+                  overflow: TextOverflow.ellipsis,
                 );
               },
             ),
@@ -131,57 +235,96 @@ class _ChatScreenState extends State<ChatScreen> {
           body: Column(
             children: [
               Expanded(
-                child: StreamBuilder<QuerySnapshot>(
-                  stream: _getMessagesStream(),
-                  builder: (context, snapshot) {
-                    if (snapshot.hasError) {
-                      dev.log('Error loading messages for chat ${widget.chatId}: ${snapshot.error}', name: 'ChatScreen');
-                      return const Center(
-                        child: Text(
-                          'Unable to load messages. Please check your permissions or try again.',
-                          style: TextStyle(color: Colors.red, fontSize: 16),
-                        ),
-                      );
-                    }
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
-                    final messages = snapshot.data?.docs ?? [];
-                    return ListView.builder(
-                      reverse: true,
-                      itemCount: messages.length,
-                      itemBuilder: (context, index) {
-                        final messageData = messages[index].data() as Map<String, dynamic>;
-                        final isSender = messageData['senderId'] == _auth.currentUser?.uid;
-                        return AnimatedListItem(
-                          child: Container(
-                            margin: EdgeInsets.symmetric(vertical: 5.h, horizontal: 10.w),
-                            padding: EdgeInsets.all(10.w),
-                            decoration: BoxDecoration(
-                              color: isSender ? Colors.teal.shade100 : Colors.grey.shade200,
-                              borderRadius: BorderRadius.circular(12.r),
+                child: Stack(
+                  children: [
+                    StreamBuilder<QuerySnapshot>(
+                      stream: _getMessagesStream(),
+                      builder: (context, snapshot) {
+                        if (snapshot.hasError) {
+                          dev.log('[2025-08-19 04:06 IST] Error loading messages for chat ${widget.chatId}: ${snapshot.error}', name: 'ChatScreen');
+                          return Center(
+                            child: Text(
+                              'Unable to load messages. Please check your permissions or try again.',
+                              style: TextStyle(color: Colors.red, fontSize: 16.sp),
                             ),
-                            child: Column(
-                              crossAxisAlignment: isSender ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  messageData['message'] ?? '',
-                                  style: const TextStyle(fontSize: 16),
+                          );
+                        }
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return const Center(child: CircularProgressIndicator());
+                        }
+                        final messages = snapshot.data?.docs ?? [];
+                        return ListView.builder(
+                          reverse: true,
+                          itemCount: messages.length,
+                          itemBuilder: (context, index) {
+                            final messageData = messages[index].data() as Map<String, dynamic>;
+                            final isSender = messageData['senderId'] == _auth.currentUser?.uid;
+                            return AnimatedListItem(
+                              child: Container(
+                                margin: EdgeInsets.symmetric(vertical: 5.h, horizontal: 10.w),
+                                padding: EdgeInsets.all(10.w),
+                                decoration: BoxDecoration(
+                                  color: isSender ? Colors.teal.shade100 : Colors.grey.shade200,
+                                  borderRadius: BorderRadius.circular(12.r),
                                 ),
-                                SizedBox(height: 5.h),
-                                Text(
-                                  messageData['timestamp'] != null
-                                      ? DateFormat('MMM d, h:mm a').format((messageData['timestamp'] as Timestamp).toDate())
-                                      : 'Unknown time',
-                                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                                child: Column(
+                                  crossAxisAlignment: isSender ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      messageData['message'] ?? '',
+                                      style: TextStyle(fontSize: 16.sp),
+                                    ),
+                                    SizedBox(height: 5.h),
+                                    Text(
+                                      messageData['timestamp'] != null
+                                          ? DateFormat('MMM d, h:mm a').format((messageData['timestamp'] as Timestamp).toDate())
+                                          : 'Unknown time',
+                                      style: TextStyle(fontSize: 12.sp, color: Colors.grey.shade600),
+                                    ),
+                                  ],
                                 ),
-                              ],
-                            ),
-                          ),
+                              ),
+                            );
+                          },
                         );
                       },
-                    );
-                  },
+                    ),
+                    if (_showInitialMessagePrompt && isNewChat)
+                      Center(
+                        child: Container(
+                          padding: EdgeInsets.all(16.w),
+                          color: Colors.white.withOpacity(0.9),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                'Start a new chat with a default message?',
+                                style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold),
+                              ),
+                              SizedBox(height: 10.h),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  ElevatedButton(
+                                    onPressed: _sendInitialMessage,
+                                    child: Text('Yes', style: TextStyle(fontSize: 14.sp)),
+                                  ),
+                                  SizedBox(width: 10.w),
+                                  TextButton(
+                                    onPressed: () {
+                                      setState(() {
+                                        _showInitialMessagePrompt = false;
+                                      });
+                                    },
+                                    child: Text('No', style: TextStyle(fontSize: 14.sp, color: Colors.grey)),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
               ),
               Padding(
@@ -199,7 +342,7 @@ class _ChatScreenState extends State<ChatScreen> {
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12.r),
-                            borderSide: const BorderSide(color: Colors.teal, width: 2),
+                            borderSide: BorderSide(color: Colors.teal, width: 2.w),
                           ),
                           filled: true,
                           fillColor: Colors.white,
@@ -218,12 +361,12 @@ class _ChatScreenState extends State<ChatScreen> {
                           boxShadow: [
                             BoxShadow(
                               color: Colors.black.withOpacity(0.2),
-                              blurRadius: 4,
+                              blurRadius: 4.r,
                               offset: const Offset(0, 2),
                             ),
                           ],
                         ),
-                        child: const Icon(Icons.send, color: Colors.white, size: 24),
+                        child: Icon(Icons.send, color: Colors.white, size: 24.r),
                       ),
                     ),
                   ],

@@ -231,19 +231,6 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
                     },
                   ),
                   _buildDrawerItem(
-                    icon: Icons.notifications,
-                    title: 'Notifications',
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const NotificationsScreen(isRecruiter: true),
-                        ),
-                      );
-                    },
-                  ),
-                  _buildDrawerItem(
                     icon: Icons.logout,
                     title: 'Logout',
                     onTap: () async {
@@ -263,11 +250,11 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
             ),
           ),
           body: DefaultTabController(
-            length: 6,
+            length: 5,
             child: Column(
               children: [
                 Container(
-                  padding: EdgeInsets.symmetric(vertical: 8.h, horizontal: 16.w),
+                  padding: EdgeInsets.symmetric(vertical: 8.h, horizontal: 8.w),
                   decoration: const BoxDecoration(
                     gradient: LinearGradient(
                       colors: [Color(0xFF4A00E0), Color(0xFF8E2DE2)],
@@ -283,6 +270,7 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
                     ],
                   ),
                   child: TabBar(
+                    isScrollable: true,
                     labelColor: Colors.white,
                     unselectedLabelColor: Colors.white70,
                     indicator: const BoxDecoration(
@@ -295,7 +283,6 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
                       _buildTab(Icons.group_add, 'Seekers'),
                       _buildTab(Icons.call, 'Calls'),
                       _buildTab(Icons.post_add, 'Post Job'),
-                      _buildTab(Icons.notifications, 'Notifications'),
                     ],
                   ),
                 ),
@@ -313,7 +300,6 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
                         ),
                         CallsScreen(),
                         PostJobScreen(),
-                        NotificationsScreen(isRecruiter: true),
                       ],
                     ),
                   ),
@@ -332,7 +318,7 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
     required VoidCallback onTap,
   }) {
     return ListTile(
-      leading: Icon(icon, color: Colors.white, size: 28),
+      leading: Icon(icon, color: Colors.white, size: 28.r),
       title: Text(
         title,
         style: TextStyle(
@@ -361,7 +347,7 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 20),
+            Icon(icon, size: 20.r),
             SizedBox(width: 6.w),
             Text(
               label,
