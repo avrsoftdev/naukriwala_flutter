@@ -122,7 +122,7 @@ class _AppliedSeekersScreenState extends State<AppliedSeekersScreen> {
       endDate: date.add(const Duration(hours: 1)),
     );
     Add2Calendar.addEvent2Cal(event);
-    dev.log('[2025-08-07 23:10 IST] Added calendar event: $title on ${DateFormat('dd MMM yyyy').format(date)}', name: 'AppliedSeekersScreen');
+    dev.log('[2025-08-19 04:25 IST] Added calendar event: $title on ${DateFormat('dd MMM yyyy').format(date)}', name: 'AppliedSeekersScreen');
   }
 
   void _handleAction(String action, String jobId, String seekerId, Map<String, dynamic> applicant) async {
@@ -135,7 +135,7 @@ class _AppliedSeekersScreenState extends State<AppliedSeekersScreen> {
           .doc(jobId)
           .get();
       if (!jobDoc.exists || jobDoc.data()?['recruiterId'] != recruiterId) {
-        dev.log('[2025-08-11 18:50 IST] Job $jobId not owned by recruiter $recruiterId: ${jobDoc.data()}', name: 'AppliedSeekersScreen');
+        dev.log('[2025-08-19 04:25 IST] Job $jobId not owned by recruiter $recruiterId: ${jobDoc.data()}', name: 'AppliedSeekersScreen');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -155,7 +155,7 @@ class _AppliedSeekersScreenState extends State<AppliedSeekersScreen> {
           .doc(applicationId)
           .get();
       if (!appDoc.exists || appDoc.data()?['recruiterId'] != recruiterId) {
-        dev.log('[2025-08-11 18:50 IST] Application $applicationId not found or not owned by recruiter $recruiterId', name: 'AppliedSeekersScreen');
+        dev.log('[2025-08-19 04:25 IST] Application $applicationId not found or not owned by recruiter $recruiterId', name: 'AppliedSeekersScreen');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -172,13 +172,12 @@ class _AppliedSeekersScreenState extends State<AppliedSeekersScreen> {
         final participants = [seekerId, recruiterId!];
         participants.sort();
         final chatId = '${participants[0]}_${participants[1]}';
-        dev.log('[2025-08-11 18:50 IST] Initiating chat with seeker $seekerId for job $jobId', name: 'AppliedSeekersScreen');
-        await widget.authService.sendMessage(seekerId, jobId, 'Hello! I would like to discuss your application for ${applicant['jobTitle']}.');
+        dev.log('[2025-08-19 04:25 IST] Initiating chat with seeker $seekerId for job $jobId', name: 'AppliedSeekersScreen');
         if (!mounted) {
-          dev.log('[2025-08-11 18:50 IST] Widget not mounted, cannot navigate to ChatScreen', name: 'AppliedSeekersScreen');
+          dev.log('[2025-08-19 04:25 IST] Widget not mounted, cannot navigate to ChatScreen', name: 'AppliedSeekersScreen');
           return;
         }
-        dev.log('[2025-08-11 18:50 IST] Navigating to ChatScreen for seeker $seekerId', name: 'AppliedSeekersScreen');
+        dev.log('[2025-08-19 04:25 IST] Navigating to ChatScreen for seeker $seekerId', name: 'AppliedSeekersScreen');
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -222,9 +221,9 @@ class _AppliedSeekersScreenState extends State<AppliedSeekersScreen> {
         final url = resume['cvUrl'] as String? ?? '';
         if (url.isNotEmpty && await canLaunchUrl(Uri.parse(url))) {
           await launchUrl(Uri.parse(url));
-          dev.log('[2025-08-11 18:50 IST] Downloaded CV for seeker $seekerId: $url', name: 'AppliedSeekersScreen');
+          dev.log('[2025-08-19 04:25 IST] Downloaded CV for seeker $seekerId: $url', name: 'AppliedSeekersScreen');
         } else {
-          dev.log('[2025-08-11 18:50 IST] No CV available for seeker $seekerId', name: 'AppliedSeekersScreen');
+          dev.log('[2025-08-19 04:25 IST] No CV available for seeker $seekerId', name: 'AppliedSeekersScreen');
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
@@ -252,7 +251,7 @@ class _AppliedSeekersScreenState extends State<AppliedSeekersScreen> {
         );
       }
     } catch (e) {
-      dev.log('[2025-08-11 18:50 IST] Error handling action $action for seeker $seekerId, job $jobId: $e', name: 'AppliedSeekersScreen', error: e);
+      dev.log('[2025-08-19 04:25 IST] Error handling action $action for seeker $seekerId, job $jobId: $e', name: 'AppliedSeekersScreen', error: e);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -296,9 +295,9 @@ class _AppliedSeekersScreenState extends State<AppliedSeekersScreen> {
       await file.writeAsBytes(Uint8List.fromList(bytes!));
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Exported to $path')));
-      dev.log('[2025-08-07 23:10 IST] Exported applicants to $path', name: 'AppliedSeekersScreen');
+      dev.log('[2025-08-19 04:25 IST] Exported applicants to $path', name: 'AppliedSeekersScreen');
     } catch (e) {
-      dev.log('[2025-08-07 23:10 IST] Error exporting to Excel: $e', name: 'AppliedSeekersScreen', error: e);
+      dev.log('[2025-08-19 04:25 IST] Error exporting to Excel: $e', name: 'AppliedSeekersScreen', error: e);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Error exporting applicants. Check logs.')));
       }
@@ -358,7 +357,7 @@ class _AppliedSeekersScreenState extends State<AppliedSeekersScreen> {
                         try {
                           final applicants = await widget.authService.fetchAppliedSeekers();
                           if (applicants.isEmpty) {
-                            dev.log('[2025-08-07 23:10 IST] No applicants to export for recruiter $recruiterId', name: 'AppliedSeekersScreen');
+                            dev.log('[2025-08-19 04:25 IST] No applicants to export for recruiter $recruiterId', name: 'AppliedSeekersScreen');
                             if (mounted) {
                               // ignore: use_build_context_synchronously
                               ScaffoldMessenger.of(context).showSnackBar(
@@ -369,7 +368,7 @@ class _AppliedSeekersScreenState extends State<AppliedSeekersScreen> {
                           }
                           await _exportToExcel(applicants);
                         } catch (e) {
-                          dev.log('[2025-08-07 23:10 IST] Error exporting applicants for recruiter $recruiterId: $e', name: 'AppliedSeekersScreen', error: e);
+                          dev.log('[2025-08-19 04:25 IST] Error exporting applicants for recruiter $recruiterId: $e', name: 'AppliedSeekersScreen', error: e);
                           if (mounted) {
                             // ignore: use_build_context_synchronously
                             ScaffoldMessenger.of(context).showSnackBar(
@@ -400,16 +399,16 @@ class _AppliedSeekersScreenState extends State<AppliedSeekersScreen> {
                           if (error.code == 'permission-denied') {
                             errorMessage +=
                                 '\nEnsure /Applications/{jobId} exists with recruiterId=$recruiterId and job exists in /Recruiters/$recruiterId/Jobs/{jobId}.';
-                            dev.log('[2025-08-07 23:10 IST] Permission denied in fetchAppliedSeekers. Check /Applications/{jobId} and /Recruiters/$recruiterId/Jobs for recruiter $recruiterId', name: 'AppliedSeekersScreen');
+                            dev.log('[2025-08-19 04:25 IST] Permission denied in fetchAppliedSeekers. Check /Applications/{jobId} and /Recruiters/$recruiterId/Jobs for recruiter $recruiterId', name: 'AppliedSeekersScreen');
                           }
                         }
-                        dev.log('[2025-08-07 23:10 IST] Error loading applied seekers for recruiter $recruiterId: $error', name: 'AppliedSeekersScreen', error: error, stackTrace: snapshot.stackTrace);
+                        dev.log('[2025-08-19 04:25 IST] Error loading applied seekers for recruiter $recruiterId: $error', name: 'AppliedSeekersScreen', error: error, stackTrace: snapshot.stackTrace);
                         return Center(child: Text(errorMessage, textAlign: TextAlign.center, style: TextStyle(fontSize: 14.sp)));
                       }
                       final applicants = snapshot.data ?? [];
 
                       if (applicants.isEmpty) {
-                        dev.log('[2025-08-07 23:10 IST] No applicants found for recruiter $recruiterId. Verify /Applications/{jobId} exists with correct recruiterId.', name: 'AppliedSeekersScreen');
+                        dev.log('[2025-08-19 04:25 IST] No applicants found for recruiter $recruiterId. Verify /Applications/{jobId} exists with correct recruiterId.', name: 'AppliedSeekersScreen');
                         return const Center(
                           child: Text(
                             'No applied seekers found',

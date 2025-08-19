@@ -222,6 +222,7 @@ class ProfileScreenState extends State<ProfileScreen> {
 
   void _formatCtcOnChange() {
     final controller = _currentCtcController == FocusScope.of(context).focusedChild?.context?.widget ? _currentCtcController : _expectedCtcController;
+    // ignore: unnecessary_null_comparison
     if (controller == null) return;
 
     final value = controller.text;
@@ -761,9 +762,9 @@ class ProfileScreenState extends State<ProfileScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text('Name: ${resumeData['name'] ?? 'N/A'}', style: TextStyle(fontSize: 14.sp)),
                                 Text('Email: ${resumeData['email'] ?? 'N/A'}', style: TextStyle(fontSize: 14.sp)),
                                 Text('Mobile: ${resumeData['mobileNumber'] ?? 'N/A'}', style: TextStyle(fontSize: 14.sp)),
+                                Text('Name: ${resumeData['name'] ?? 'N/A'}', style: TextStyle(fontSize: 14.sp)),
                                 SizedBox(height: 6.h),
                                 Text('Skills:', style: TextStyle(fontSize: 12.sp, color: Colors.blue.shade800)),
                                 Wrap(
@@ -837,13 +838,13 @@ class ProfileScreenState extends State<ProfileScreen> {
                               children: [
                                 SizedBox(height: 16.h),
                                 // Common Fields
+                                _buildNonEditableField('Email', _email),
+                                _buildNonEditableField('Mobile Number', _mobileNumber),
                                 _buildTextField(
                                   'Name',
                                   controller: _nameController,
                                   validator: (value) => value == null || value.trim().isEmpty ? 'Name is required' : null,
                                 ),
-                                _buildNonEditableField('Mobile Number', _mobileNumber),
-                                _buildNonEditableField('Email', _email),
                                 // Recruiter-Specific Fields
                                 if (widget.isRecruiter) ...[
                                   _buildTextField(

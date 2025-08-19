@@ -19,8 +19,8 @@ service cloud.firestore {
              get(/databases/$(database)/documents/Recruiters/$(request.auth.uid)/Jobs/$(jobId)).data.recruiterId == request.auth.uid;
     }
     function isValidRecipient(recipientId) {
-  return exists(/databases/$(database)/documents/UsersIndex/$(recipientId));
-}
+      return exists(/databases/$(database)/documents/UsersIndex/$(recipientId));
+    }
     function isValidChatParticipant(chatId) {
       let ids = chatId.split('_');
       return request.auth != null &&
@@ -28,11 +28,18 @@ service cloud.firestore {
              isValidRecipient(ids[0]) &&
              isValidRecipient(ids[1]);
     }
-    // Unchanged collections (Recruiters, Seekers, UsersIndex, Users, Jobs, etc.)
+
+    // Updated Recruiters rule (removed nested match and fixed get condition)
     match /Recruiters/{uid} {
       allow read: if request.auth != null && (request.auth.uid == uid || isAdmin());
+      // Allow seekers to read name and companyName if a valid chat exists with this recruiter
+      allow get: if request.auth != null && isSeeker() &&
+                 exists(/databases/$(database)/documents/Messages/$(request.auth.uid + '_' + uid)) &&
+                 resource.data.keys().hasAll(['name', 'companyName']);
       allow write: if request.auth != null && request.auth.uid == uid;
     }
+
+    // Unchanged collections (Seekers, UsersIndex, Users, Jobs, etc.)
     match /Seekers/{uid} {
       allow read: if request.auth != null && (request.auth.uid == uid || isAdmin());
       allow write: if request.auth != null && request.auth.uid == uid;
@@ -89,32 +96,31 @@ service cloud.firestore {
     match /Shortlisted/{jobId}/Seekers/{seekerId} {
       allow read, write: if isRecruiter() && isRecruiterJob(jobId);
     }
-    // Updated Messages collection
-   match /Messages/{chatId} {
-  allow read: if request.auth != null &&
-                isValidChatParticipant(chatId);
-  allow create: if request.auth != null &&
-                  request.auth.uid == request.resource.data.senderId &&
-                  isValidChatParticipant(chatId) &&
-                  request.resource.data.recipientId == (chatId.split('_')[0] == request.auth.uid ? chatId.split('_')[1] : chatId.split('_')[0]) &&
-                  request.resource.data.message is string &&
-                  request.resource.data.timestamp is timestamp &&
-                  request.resource.data.jobId is string;
-  allow update: if request.auth != null &&
-                  isValidChatParticipant(chatId) &&
-                  request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastMessage', 'timestamp']);
-  match /Chats/{messageId} {
-    allow read: if request.auth != null &&
-                  isValidChatParticipant(chatId);
-    allow create: if request.auth != null &&
+    match /Messages/{chatId} {
+      allow read: if request.auth != null &&
+                    isValidChatParticipant(chatId);
+      allow create: if request.auth != null &&
                     request.auth.uid == request.resource.data.senderId &&
                     isValidChatParticipant(chatId) &&
                     request.resource.data.recipientId == (chatId.split('_')[0] == request.auth.uid ? chatId.split('_')[1] : chatId.split('_')[0]) &&
                     request.resource.data.message is string &&
                     request.resource.data.timestamp is timestamp &&
                     request.resource.data.jobId is string;
-  }
-}
+      allow update: if request.auth != null &&
+                    isValidChatParticipant(chatId) &&
+                    request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastMessage', 'timestamp']);
+      match /Chats/{messageId} {
+        allow read: if request.auth != null &&
+                    isValidChatParticipant(chatId);
+        allow create: if request.auth != null &&
+                      request.auth.uid == request.resource.data.senderId &&
+                      isValidChatParticipant(chatId) &&
+                      request.resource.data.recipientId == (chatId.split('_')[0] == request.auth.uid ? chatId.split('_')[1] : chatId.split('_')[0]) &&
+                      request.resource.data.message is string &&
+                      request.resource.data.timestamp is timestamp &&
+                      request.resource.data.jobId is string;
+      }
+    }
     match /Bookmarks/{uid}/SavedJobs/{jobId} {
       allow read, write: if request.auth != null && request.auth.uid == uid;
     }

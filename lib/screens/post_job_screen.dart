@@ -37,7 +37,7 @@ class PostJobScreenState extends State<PostJobScreen> {
   String? _selectedSpecialization;
   List<String> _selectedSkills = [];
 
-// Experience options
+  // Experience options
   final List<String> experienceOptions = [
     'Fresher',
     '1-2 years',
@@ -148,6 +148,7 @@ class PostJobScreenState extends State<PostJobScreen> {
       _mapEditData();
     } else {
       _loadRecruiterLocation();
+      _salaryController.text = '0.0-0.0 LPA'; // Default to editable range with fixed LPA
     }
   }
 
@@ -156,7 +157,7 @@ class PostJobScreenState extends State<PostJobScreen> {
     _companyController.text = widget.editJobData!['company']?.toString() ?? widget.editJobData!['Company Name']?.toString() ?? '';
     _locationController.text = widget.editJobData!['location']?.toString() ?? widget.editJobData!['Location (Remote, On-site, Hybrid)']?.toString() ?? '';
     _selectedExperience = widget.editJobData!['experience']?.toString() ?? widget.editJobData!['Experience Required']?.toString() ?? '';
-    _salaryController.text = widget.editJobData!['salary']?.toString() ?? widget.editJobData!['Salary Range']?.toString() ?? '';
+    _salaryController.text = widget.editJobData!['salary']?.toString() ?? widget.editJobData!['Salary Range']?.toString() ?? '0.0-0.0 LPA';
     _jobTypeController.text = widget.editJobData!['jobType']?.toString() ?? widget.editJobData!['Job Type (Full-time, Part-time)']?.toString() ?? '';
     _descriptionController.text = widget.editJobData!['description']?.toString() ?? widget.editJobData!['Job Description']?.toString() ?? '';
     _selectedSkills = (widget.editJobData!['skills'] as List<dynamic>?)?.cast<String>() ?? [];
@@ -280,7 +281,7 @@ class PostJobScreenState extends State<PostJobScreen> {
       }
 
       if (!mounted) return;
-      Navigator.pushReplacement(
+      Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => const PostedJobsScreen()),
       );
@@ -389,10 +390,7 @@ class PostJobScreenState extends State<PostJobScreen> {
                               filled: true,
                               fillColor: Colors.white,
                             ),
-                            value: _experienceController.text.isNotEmpty &&
-                                    experienceOptions.contains(_experienceController.text)
-                                ? _experienceController.text
-                                : null,
+                            value: _selectedExperience,
                             items: experienceOptions.map((String option) {
                               return DropdownMenuItem<String>(
                                 value: option,
@@ -401,7 +399,7 @@ class PostJobScreenState extends State<PostJobScreen> {
                             }).toList(),
                             onChanged: (newValue) {
                               setState(() {
-                                _experienceController.text = newValue ?? '';
+                                _selectedExperience = newValue;
                               });
                             },
                             validator: (value) => value == null ? 'Please select an experience level' : null,
@@ -410,6 +408,17 @@ class PostJobScreenState extends State<PostJobScreen> {
                         _buildTextField(
                           controller: _salaryController,
                           labelText: 'Salary Range',
+                          keyboardType: TextInputType.number,
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) return 'Please enter Salary Range';
+                            final parts = value.trim().split('-');
+                            if (parts.length != 2) return 'Please enter in format: min-max LPA';
+                            final min = double.tryParse(parts[0].trim().replaceAll(' LPA', ''));
+                            final max = double.tryParse(parts[1].trim().replaceAll(' LPA', ''));
+                            if (min == null || max == null) return 'Please enter valid numbers for min and max';
+                            if (min > max) return 'Min salary cannot be greater than max salary';
+                            return null;
+                          },
                         ),
                         _buildTextField(
                           controller: _jobTypeController,
@@ -498,7 +507,7 @@ class PostJobScreenState extends State<PostJobScreen> {
                               borderRadius: BorderRadius.circular(12.r),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.1),
+                                  color: Colors.black.withOpacity(0.1),
                                   blurRadius: 4.r,
                                   offset: Offset(0, 2.h),
                                 ),
@@ -538,7 +547,7 @@ class PostJobScreenState extends State<PostJobScreen> {
                               borderRadius: BorderRadius.circular(12.r),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.2),
+                                  color: Colors.black.withOpacity(0.2),
                                   blurRadius: 4.r,
                                   offset: Offset(0, 2.h),
                                 ),

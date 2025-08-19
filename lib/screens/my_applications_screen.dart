@@ -25,7 +25,7 @@ class _MyApplicationsScreenState extends State<MyApplicationsScreen> {
   Widget build(BuildContext context) {
     final uid = _auth.currentUser?.uid;
     if (uid == null) {
-      dev.log('[2025-08-09 01:29 IST] No authenticated user', name: 'MyApplicationsScreen');
+      dev.log('[2025-08-19 04:14 IST] No authenticated user', name: 'MyApplicationsScreen');
       return Scaffold(
         body: Center(
           child: Card(
@@ -44,7 +44,7 @@ class _MyApplicationsScreenState extends State<MyApplicationsScreen> {
       );
     }
     if (uid != widget.seekerId) {
-      dev.log('[2025-08-09 01:29 IST] Unauthorized access: seekerId $uid does not match widget.seekerId ${widget.seekerId}', name: 'MyApplicationsScreen');
+      dev.log('[2025-08-19 04:14 IST] Unauthorized access: seekerId $uid does not match widget.seekerId ${widget.seekerId}', name: 'MyApplicationsScreen');
       return Scaffold(
         body: Center(
           child: Card(
@@ -130,7 +130,7 @@ class _MyApplicationsScreenState extends State<MyApplicationsScreen> {
                       );
                     }
                     if (snapshot.hasError) {
-                      dev.log('[2025-08-09 01:29 IST] Error loading applications for seekerId $uid: ${snapshot.error}', name: 'MyApplicationsScreen');
+                      dev.log('[2025-08-19 04:14 IST] Error loading applications for seekerId $uid: ${snapshot.error}', name: 'MyApplicationsScreen');
                       String errorMessage = 'Error loading applications. Please verify Firestore permissions or contact support.';
                       if (snapshot.error is FirebaseException) {
                         final error = snapshot.error as FirebaseException;
@@ -156,7 +156,7 @@ class _MyApplicationsScreenState extends State<MyApplicationsScreen> {
                       );
                     }
                     if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                      dev.log('[2025-08-09 01:29 IST] No applications found for seekerId $uid', name: 'MyApplicationsScreen');
+                      dev.log('[2025-08-19 04:14 IST] No applications found for seekerId $uid', name: 'MyApplicationsScreen');
                       return Center(
                         child: Text(
                           'No applications found.',
@@ -218,7 +218,7 @@ class _MyApplicationsScreenState extends State<MyApplicationsScreen> {
                                 trailing: AnimatedScaleButton(
                                   onPressed: () async {
                                     if (!mounted) {
-                                      dev.log('[2025-08-09 01:29 IST] Widget not mounted, cannot start chat', name: 'MyApplicationsScreen');
+                                      dev.log('[2025-08-19 04:14 IST] Widget not mounted, cannot start chat', name: 'MyApplicationsScreen');
                                       return;
                                     }
                                     try {
@@ -226,13 +226,8 @@ class _MyApplicationsScreenState extends State<MyApplicationsScreen> {
                                         seekerId: uid,
                                         jobId: jobId,
                                       );
-                                      await _authService.sendMessage(
-                                        recruiterId,
-                                        jobId,
-                                        'Hello, I’d like to discuss my application!',
-                                      );
                                       if (!mounted) {
-                                        dev.log('[2025-08-09 01:29 IST] Widget not mounted after async, cannot navigate', name: 'MyApplicationsScreen');
+                                        dev.log('[2025-08-19 04:14 IST] Widget not mounted after async, cannot navigate', name: 'MyApplicationsScreen');
                                         return;
                                       }
                                       Navigator.push(
@@ -245,16 +240,16 @@ class _MyApplicationsScreenState extends State<MyApplicationsScreen> {
                                           ),
                                         ),
                                       );
-                                      dev.log('[2025-08-09 01:29 IST] Navigated to ChatScreen for job $jobId with chatId $chatId', name: 'MyApplicationsScreen');
+                                      dev.log('[2025-08-19 04:14 IST] Navigated to ChatScreen for job $jobId with chatId $chatId', name: 'MyApplicationsScreen');
                                     } catch (e) {
-                                      dev.log('[2025-08-09 01:29 IST] Error starting chat for job $jobId: $e', name: 'MyApplicationsScreen', error: e);
+                                      dev.log('[2025-08-19 04:14 IST] Error starting chat for job $jobId: $e', name: 'MyApplicationsScreen', error: e);
                                       if (!mounted) {
-                                        dev.log('[2025-08-09 01:29 IST] Widget not mounted, cannot show snackbar', name: 'MyApplicationsScreen');
+                                        dev.log('[2025-08-19 04:14 IST] Widget not mounted, cannot show snackbar', name: 'MyApplicationsScreen');
                                         return;
                                       }
                                       ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(
-                                          content: const Text('Failed to start chat'),
+                                        const SnackBar(
+                                          content: Text('Failed to start chat'),
                                           backgroundColor: Colors.red,
                                           behavior: SnackBarBehavior.floating,
                                         ),
