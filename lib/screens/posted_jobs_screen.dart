@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -38,7 +37,7 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
       );
     }
 
-    dev.log('[2025-08-08 20:48 IST] Current user UID: ${user!.uid}', name: 'PostedJobsScreen');
+    dev.log('[2025-08-20 11:47 IST] Current user UID: ${user!.uid}', name: 'PostedJobsScreen');
 
     final jobsQuery = FirebaseFirestore.instance
         .collection('Recruiters')
@@ -75,7 +74,7 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
           }
 
           if (snapshot.hasError) {
-            dev.log('[2025-08-08 20:48 IST] Stream error for user ${user!.uid}: ${snapshot.error}', name: 'PostedJobsScreen', error: snapshot.error);
+            dev.log('[2025-08-20 11:47 IST] Stream error for user ${user!.uid}: ${snapshot.error}', name: 'PostedJobsScreen', error: snapshot.error);
             String errorMessage = 'Error loading jobs. Please verify Firestore permissions.';
             if (snapshot.error is FirebaseException) {
               final error = snapshot.error as FirebaseException;
@@ -117,7 +116,7 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
             itemBuilder: (context, index) {
               final job = jobs[index].data() as Map<String, dynamic>;
               final jobId = jobs[index].id;
-              dev.log('[2025-08-08 20:48 IST] Job $jobId data for user ${user!.uid}: $job', name: 'PostedJobsScreen');
+              dev.log('[2025-08-20 11:47 IST] Job $jobId data for user ${user!.uid}: $job', name: 'PostedJobsScreen');
 
               final title = job['title'] ?? 'Untitled Job';
               final company = job['company'] ?? 'Unknown Company';
@@ -270,7 +269,7 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
           .where('recruiterId', isEqualTo: user!.uid)
           .get();
 
-      dev.log('[2025-08-08 20:48 IST] Fetched ${snapshot.docs.length} applicants for job $jobId by user ${user!.uid}', name: 'PostedJobsScreen');
+      dev.log('[2025-08-20 11:47 IST] Fetched ${snapshot.docs.length} applicants for job $jobId by user ${user!.uid}', name: 'PostedJobsScreen');
 
       final applicants = snapshot.docs.map((doc) {
         final data = doc.data();
@@ -282,11 +281,11 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
 
       return {'count': snapshot.docs.length, 'applicants': applicants};
     } catch (e, stackTrace) {
-      dev.log('[2025-08-08 20:48 IST] Error fetching applicant data for job $jobId by user ${user!.uid}: $e', name: 'PostedJobsScreen', error: e, stackTrace: stackTrace);
+      dev.log('[2025-08-20 11:47 IST] Error fetching applicant data for job $jobId by user ${user!.uid}: $e', name: 'PostedJobsScreen', error: e, stackTrace: stackTrace);
       if (e is FirebaseException) {
-        dev.log('[2025-08-08 20:48 IST] Firebase error details: ${e.code} - ${e.message}', name: 'PostedJobsScreen');
+        dev.log('[2025-08-20 11:47 IST] Firebase error details: ${e.code} - ${e.message}', name: 'PostedJobsScreen');
         if (e.code == 'permission-denied') {
-          dev.log('[2025-08-08 20:48 IST] Permission denied accessing Applications for job $jobId', name: 'PostedJobsScreen');
+          dev.log('[2025-08-20 11:47 IST] Permission denied accessing Applications for job $jobId', name: 'PostedJobsScreen');
         }
       }
       return {'count': 0, 'applicants': []};
@@ -324,15 +323,15 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
               Navigator.pop(context);
               try {
                 final batch = FirebaseFirestore.instance.batch();
-                // Delete job
-                batch.delete(
-                  FirebaseFirestore.instance
-                      .collection('Recruiters')
-                      .doc(user!.uid)
-                      .collection('Jobs')
-                      .doc(jobId),
-                );
-                // Delete applications
+                final jobRef = FirebaseFirestore.instance
+                    .collection('Recruiters')
+                    .doc(user!.uid)
+                    .collection('Jobs')
+                    .doc(jobId);
+                batch.delete(jobRef);
+
+                dev.log('[2025-08-20 11:47 IST] Deleting job document at ${jobRef.path}', name: 'PostedJobsScreen');
+
                 final appsSnapshot = await FirebaseFirestore.instance
                     .collection('Applications')
                     .where('jobId', isEqualTo: jobId)
@@ -340,31 +339,58 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
                     .get();
                 for (var doc in appsSnapshot.docs) {
                   batch.delete(doc.reference);
+                  dev.log('[2025-08-20 11:47 IST] Queued delete for application at ${doc.reference.path}', name: 'PostedJobsScreen');
                 }
-                // Delete notifications
-                final notificationsSnapshot = await FirebaseFirestore.instance
+
+                final recruiterNotifsSnapshot = await FirebaseFirestore.instance
+                    .collection('RecruiterNotifications')
+                    .doc(user!.uid)
                     .collection('Notifications')
                     .where('jobId', isEqualTo: jobId)
                     .get();
-                for (var doc in notificationsSnapshot.docs) {
+                for (var doc in recruiterNotifsSnapshot.docs) {
                   batch.delete(doc.reference);
+                  dev.log('[2025-08-20 11:47 IST] Queued delete for recruiter notification at ${doc.reference.path}', name: 'PostedJobsScreen');
                 }
+
+                // Attempt to delete seeker notifications, handle permission errors gracefully
+                try {
+                  final seekerNotifsSnapshot = await FirebaseFirestore.instance
+                      .collectionGroup('Notifications')
+                      .where('jobId', isEqualTo: jobId)
+                      .get();
+                  for (var doc in seekerNotifsSnapshot.docs) {
+                    batch.delete(doc.reference);
+                    dev.log('[2025-08-20 11:47 IST] Queued delete for seeker notification at ${doc.reference.path}', name: 'PostedJobsScreen');
+                  }
+                } catch (e) {
+                  dev.log('[2025-08-20 11:47 IST] Failed to delete seeker notifications for job $jobId: $e', name: 'PostedJobsScreen', error: e);
+                }
+
                 await batch.commit();
+                dev.log('[2025-08-20 11:47 IST] Batch commit completed for job $jobId', name: 'PostedJobsScreen');
+
                 if (!context.mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                    content: Text('Job and related data deleted'),
+                    content: Text('Job deleted successfully. Some related notifications may persist.'),
                     backgroundColor: Colors.teal,
                     behavior: SnackBarBehavior.floating,
                   ),
                 );
-                dev.log('[2025-08-08 20:48 IST] Job $jobId and related data deleted by user ${user!.uid}', name: 'PostedJobsScreen');
+                dev.log('[2025-08-20 11:47 IST] Job $jobId and related data deleted by user ${user!.uid}', name: 'PostedJobsScreen');
               } catch (e, stackTrace) {
-                dev.log('[2025-08-08 20:48 IST] Error deleting job $jobId: $e', name: 'PostedJobsScreen', error: e, stackTrace: stackTrace);
+                dev.log('[2025-08-20 11:47 IST] Error deleting job $jobId: $e', name: 'PostedJobsScreen', error: e, stackTrace: stackTrace);
+                if (e is FirebaseException) {
+                  dev.log('[2025-08-20 11:47 IST] Firebase error details: ${e.code} - ${e.message}', name: 'PostedJobsScreen');
+                  if (e.code == 'permission-denied') {
+                    dev.log('[2025-08-20 11:47 IST] Permission denied deleting job $jobId or related data', name: 'PostedJobsScreen');
+                  }
+                }
                 if (!context.mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text('Failed to delete job: $e'),
+                    content: Text('Failed to delete job: ${e.toString()}'),
                     backgroundColor: Colors.red,
                     behavior: SnackBarBehavior.floating,
                   ),

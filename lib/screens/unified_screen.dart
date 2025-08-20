@@ -258,6 +258,26 @@ class UnifiedScreenState extends State<UnifiedScreen> {
     }
   }
 
+  Future<void> _resetPassword() async {
+    final email = _emailController.text.trim();
+    if (email.isEmpty || !email.contains('@')) {
+      _showSnack("Please enter a valid email address");
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    try {
+      dev.log('Sending password reset email to: $email', name: 'UnifiedScreen');
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+      _showSnack("Password reset email sent! Check your inbox.");
+    } catch (e) {
+      dev.log('Password reset error: $e', name: 'UnifiedScreen');
+      _showSnack("Failed to send reset email: ${e.toString()}");
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
   Future<void> _submitSignup() async {
     if (!_formKey.currentState!.validate()) {
       _showSnack("Please complete all required fields.");
@@ -288,16 +308,16 @@ class UnifiedScreenState extends State<UnifiedScreen> {
         'Email Id': _emailController.text.trim(),
         'UID': uid,
       };
-      if (_selectedRole == 'recruiter') {
+      if (_currentState == ScreenState.recruiterSignup) {
         signupData['companyName'] = _formData['Company Name']?.toString().trim() ?? '';
-      } else if (_selectedRole == 'seeker') {
+      } else if (_currentState == ScreenState.seekerSignup) {
         signupData['education'] = _formData['Education']?.toString().trim() ?? '';
         signupData['specialization'] = _formData['specialization']?.toString().trim() ?? '';
         signupData['skills'] = _selectedSkills;
       }
 
       await _authService.storeSignupData(
-        isRecruiter: _selectedRole == 'recruiter',
+        isRecruiter: _currentState == ScreenState.recruiterSignup,
         data: signupData,
       );
 
@@ -584,8 +604,8 @@ class UnifiedScreenState extends State<UnifiedScreen> {
                     ),
                   )
                 : _currentState == ScreenState.roleSelection
-                    ? Center(
-                        child: SingleChildScrollView(
+                    ? SingleChildScrollView(
+                        child: Center(
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
@@ -724,6 +744,7 @@ class UnifiedScreenState extends State<UnifiedScreen> {
                                   ),
                                 ),
                               ),
+                              SizedBox(height: 20.h), // Added to ensure bottom padding
                             ],
                           ),
                         ),
@@ -731,6 +752,7 @@ class UnifiedScreenState extends State<UnifiedScreen> {
                     : _currentState == ScreenState.login
                         ? SingleChildScrollView(
                             child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 ToggleButtons(
                                   isSelected: [_method == LoginMethod.phone, _method == LoginMethod.email],
@@ -833,6 +855,17 @@ class UnifiedScreenState extends State<UnifiedScreen> {
                                     controller: _passwordController,
                                     isPassword: true,
                                   ),
+                                  SizedBox(height: 8.h),
+                                  Align(
+                                    alignment: Alignment.centerRight,
+                                    child: TextButton(
+                                      onPressed: _isLoading ? null : _resetPassword,
+                                      child: Text(
+                                        'Forgot Password?',
+                                        style: TextStyle(color: Colors.teal.shade700, fontWeight: FontWeight.w600, fontSize: 14.sp),
+                                      ),
+                                    ),
+                                  ),
                                   SizedBox(height: 16.h),
                                   AnimatedScaleButton(
                                     onPressed: () {
@@ -892,79 +925,86 @@ class UnifiedScreenState extends State<UnifiedScreen> {
                                     ),
                                   ),
                                 ),
+                                SizedBox(height: 20.h), // Added to ensure bottom padding
                               ],
                             ),
                           )
                         : _currentState == ScreenState.seekerSignup || _currentState == ScreenState.recruiterSignup
-                            ? Form(
-                                key: _formKey,
-                                child: ListView(
-                                  children: [
-                                    _buildTextField(
-                                      'Name',
-                                      controller: _nameController,
-                                    ),
-                                    _buildTextField(
-                                      'Mobile Number (+91xxxxxxxxxx)',
-                                      controller: _phoneController,
-                                      keyboardType: TextInputType.phone,
-                                    ),
-                                    _buildTextField(
-                                      'Email Id',
-                                      controller: _emailController,
-                                      keyboardType: TextInputType.emailAddress,
-                                    ),
-                                    _buildTextField(
-                                      'Password',
-                                      controller: _passwordController,
-                                      isPassword: true,
-                                    ),
-                                    if (_currentState == ScreenState.recruiterSignup)
-                                      _buildTextField(
-                                        'Company Name',
-                                        controller: _companyNameController,
-                                      ),
-                                    if (_currentState == ScreenState.seekerSignup) ...[
-                                      _buildEducationDropdown(),
-                                      _buildSpecializationDropdown(),
-                                      _buildSkillsMultiSelect(),
-                                    ],
-                                    SizedBox(height: 20.h),
-                                    AnimatedScaleButton(
-                                      onPressed: () {
-                                        if (_isLoading) return;
-                                        _submitSignup();
-                                      },
-                                      child: Container(
-                                        width: double.infinity,
-                                        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
-                                        decoration: BoxDecoration(
-                                          gradient: LinearGradient(
-                                            colors: [Colors.blue.shade700, Colors.teal.shade400],
-                                            begin: Alignment.topLeft,
-                                            end: Alignment.bottomRight,
+                            ? SingleChildScrollView(
+                                child: Form(
+                                  key: _formKey,
+                                  child: Padding(
+                                    padding: EdgeInsets.only(bottom: 20.h),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        _buildTextField(
+                                          'Name',
+                                          controller: _nameController,
+                                        ),
+                                        _buildTextField(
+                                          'Mobile Number (+91xxxxxxxxxx)',
+                                          controller: _phoneController,
+                                          keyboardType: TextInputType.phone,
+                                        ),
+                                        _buildTextField(
+                                          'Email Id',
+                                          controller: _emailController,
+                                          keyboardType: TextInputType.emailAddress,
+                                        ),
+                                        _buildTextField(
+                                          'Password',
+                                          controller: _passwordController,
+                                          isPassword: true,
+                                        ),
+                                        if (_currentState == ScreenState.recruiterSignup)
+                                          _buildTextField(
+                                            'Company Name',
+                                            controller: _companyNameController,
                                           ),
-                                          borderRadius: BorderRadius.circular(12.r),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: Colors.black.withValues(alpha: 0.2),
-                                              blurRadius: 4.r,
-                                              offset: Offset(0, 2.h),
+                                        if (_currentState == ScreenState.seekerSignup) ...[
+                                          _buildEducationDropdown(),
+                                          _buildSpecializationDropdown(),
+                                          _buildSkillsMultiSelect(),
+                                        ],
+                                        SizedBox(height: 20.h),
+                                        AnimatedScaleButton(
+                                          onPressed: () {
+                                            if (_isLoading) return;
+                                            _submitSignup();
+                                          },
+                                          child: Container(
+                                            width: double.infinity,
+                                            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+                                            decoration: BoxDecoration(
+                                              gradient: LinearGradient(
+                                                colors: [Colors.blue.shade700, Colors.teal.shade400],
+                                                begin: Alignment.topLeft,
+                                                end: Alignment.bottomRight,
+                                              ),
+                                              borderRadius: BorderRadius.circular(12.r),
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: Colors.black.withValues(alpha: 0.2),
+                                                  blurRadius: 4.r,
+                                                  offset: Offset(0, 2.h),
+                                                ),
+                                              ],
                                             ),
-                                          ],
-                                        ),
-                                        child: Text(
-                                          'Submit',
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 16.sp,
+                                            child: Text(
+                                              'Submit',
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 16.sp,
+                                              ),
+                                              textAlign: TextAlign.center,
+                                            ),
                                           ),
-                                          textAlign: TextAlign.center,
                                         ),
-                                      ),
+                                      ],
                                     ),
-                                  ],
+                                  ),
                                 ),
                               )
                             : SizedBox.shrink(),

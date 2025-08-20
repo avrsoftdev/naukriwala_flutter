@@ -1,3 +1,5 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -156,7 +158,7 @@ class PostJobScreenState extends State<PostJobScreen> {
     _titleController.text = widget.editJobData!['title']?.toString() ?? widget.editJobData!['Job Title']?.toString() ?? '';
     _companyController.text = widget.editJobData!['company']?.toString() ?? widget.editJobData!['Company Name']?.toString() ?? '';
     _locationController.text = widget.editJobData!['location']?.toString() ?? widget.editJobData!['Location (Remote, On-site, Hybrid)']?.toString() ?? '';
-    _selectedExperience = widget.editJobData!['experience']?.toString() ?? widget.editJobData!['Experience Required']?.toString() ?? '';
+    _selectedExperience = widget.editJobData!['experience']?.toString() ?? widget.editJobData!['Experience Required']?.toString();
     _salaryController.text = widget.editJobData!['salary']?.toString() ?? widget.editJobData!['Salary Range']?.toString() ?? '0.0-0.0 LPA';
     _jobTypeController.text = widget.editJobData!['jobType']?.toString() ?? widget.editJobData!['Job Type (Full-time, Part-time)']?.toString() ?? '';
     _descriptionController.text = widget.editJobData!['description']?.toString() ?? widget.editJobData!['Job Description']?.toString() ?? '';
@@ -164,6 +166,9 @@ class PostJobScreenState extends State<PostJobScreen> {
     _selectedEducation = widget.editJobData!['education']?.toString();
     _selectedSpecialization = widget.editJobData!['specialization']?.toString();
     // Ensure selected values are valid options
+    if (_selectedExperience != null && !experienceOptions.contains(_selectedExperience)) {
+      _selectedExperience = null;
+    }
     if (_selectedEducation != null && !educationOptions.contains(_selectedEducation)) {
       _selectedEducation = null;
     }
@@ -375,34 +380,42 @@ class PostJobScreenState extends State<PostJobScreen> {
                         ),
                         Padding(
                           padding: EdgeInsets.symmetric(vertical: 8.h),
-                          child: DropdownButtonFormField<String>(
-                            decoration: InputDecoration(
-                              labelText: 'Experience Required',
-                              labelStyle: TextStyle(color: Colors.grey.shade600, fontSize: 14.sp),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12.r),
-                                borderSide: BorderSide(color: Colors.grey.shade400),
+                          child: Expanded(
+                            child: DropdownButtonFormField<String>(
+                              decoration: InputDecoration(
+                                labelText: 'Experience Required',
+                                labelStyle: TextStyle(color: Colors.grey.shade600, fontSize: 14.sp),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12.r),
+                                  borderSide: BorderSide(color: Colors.grey.shade400),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12.r),
+                                  borderSide: const BorderSide(color: Colors.teal, width: 2),
+                                ),
+                                filled: true,
+                                fillColor: Colors.white,
                               ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12.r),
-                                borderSide: const BorderSide(color: Colors.teal, width: 2),
-                              ),
-                              filled: true,
-                              fillColor: Colors.white,
+                              value: _selectedExperience,
+                              items: experienceOptions.map((String option) {
+                                return DropdownMenuItem<String>(
+                                  value: option,
+                                  child: Text(
+                                    option,
+                                    style: TextStyle(color: Colors.black87, fontSize: 14.sp),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                );
+                              }).toList(),
+                              onChanged: (newValue) {
+                                setState(() {
+                                  _selectedExperience = newValue;
+                                });
+                              },
+                              validator: (value) => value == null ? 'Please select an experience level' : null,
+                              dropdownColor: Colors.white,
+                              isExpanded: true,
                             ),
-                            value: _selectedExperience,
-                            items: experienceOptions.map((String option) {
-                              return DropdownMenuItem<String>(
-                                value: option,
-                                child: Text(option, style: TextStyle(color: Colors.black87, fontSize: 14.sp)),
-                              );
-                            }).toList(),
-                            onChanged: (newValue) {
-                              setState(() {
-                                _selectedExperience = newValue;
-                              });
-                            },
-                            validator: (value) => value == null ? 'Please select an experience level' : null,
                           ),
                         ),
                         _buildTextField(
@@ -410,13 +423,21 @@ class PostJobScreenState extends State<PostJobScreen> {
                           labelText: 'Salary Range',
                           keyboardType: TextInputType.number,
                           validator: (value) {
-                            if (value == null || value.trim().isEmpty) return 'Please enter Salary Range';
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Please enter Salary Range';
+                            }
                             final parts = value.trim().split('-');
-                            if (parts.length != 2) return 'Please enter in format: min-max LPA';
+                            if (parts.length != 2) {
+                              return 'Please enter in format: min-max LPA';
+                            }
                             final min = double.tryParse(parts[0].trim().replaceAll(' LPA', ''));
                             final max = double.tryParse(parts[1].trim().replaceAll(' LPA', ''));
-                            if (min == null || max == null) return 'Please enter valid numbers for min and max';
-                            if (min > max) return 'Min salary cannot be greater than max salary';
+                            if (min == null || max == null) {
+                              return 'Please enter valid numbers for min and max';
+                            }
+                            if (min > max) {
+                              return 'Min salary cannot be greater than max salary';
+                            }
                             return null;
                           },
                         ),
@@ -424,74 +445,87 @@ class PostJobScreenState extends State<PostJobScreen> {
                           controller: _jobTypeController,
                           labelText: 'Job Type (Full-time, Part-time)',
                         ),
-                        // Education Dropdown
                         Padding(
                           padding: EdgeInsets.symmetric(vertical: 8.h),
-                          child: DropdownButtonFormField<String>(
-                            decoration: InputDecoration(
-                              labelText: 'Education Required',
-                              labelStyle: TextStyle(color: Colors.grey.shade600, fontSize: 14.sp),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12.r),
-                                borderSide: BorderSide(color: Colors.grey.shade400),
+                          child: Expanded(
+                            child: DropdownButtonFormField<String>(
+                              decoration: InputDecoration(
+                                labelText: 'Education Required',
+                                labelStyle: TextStyle(color: Colors.grey.shade600, fontSize: 14.sp),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12.r),
+                                  borderSide: BorderSide(color: Colors.grey.shade400),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12.r),
+                                  borderSide: const BorderSide(color: Colors.teal, width: 2),
+                                ),
+                                filled: true,
+                                fillColor: Colors.white,
                               ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12.r),
-                                borderSide: const BorderSide(color: Colors.teal, width: 2),
-                              ),
-                              filled: true,
-                              fillColor: Colors.white,
+                              value: _selectedEducation,
+                              items: educationOptions.map((String option) {
+                                return DropdownMenuItem<String>(
+                                  value: option,
+                                  child: Text(
+                                    option,
+                                    style: TextStyle(color: Colors.black87, fontSize: 14.sp),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                );
+                              }).toList(),
+                              onChanged: (newValue) {
+                                setState(() {
+                                  _selectedEducation = newValue;
+                                });
+                              },
+                              validator: (value) => value == null ? 'Please select an education level' : null,
+                              dropdownColor: Colors.white,
+                              isExpanded: true,
                             ),
-                            value: _selectedEducation,
-                            items: educationOptions.map((String option) {
-                              return DropdownMenuItem<String>(
-                                value: option,
-                                child: Text(option, style: TextStyle(color: Colors.black87, fontSize: 14.sp)),
-                              );
-                            }).toList(),
-                            onChanged: (newValue) {
-                              setState(() {
-                                _selectedEducation = newValue;
-                              });
-                            },
-                            validator: (value) => value == null ? 'Please select an education level' : null,
                           ),
                         ),
-                        // Specialization Dropdown
                         Padding(
                           padding: EdgeInsets.symmetric(vertical: 8.h),
-                          child: DropdownButtonFormField<String>(
-                            decoration: InputDecoration(
-                              labelText: 'Specialization',
-                              labelStyle: TextStyle(color: Colors.grey.shade600, fontSize: 14.sp),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12.r),
-                                borderSide: BorderSide(color: Colors.grey.shade400),
+                          child: Expanded(
+                            child: DropdownButtonFormField<String>(
+                              decoration: InputDecoration(
+                                labelText: 'Specialization',
+                                labelStyle: TextStyle(color: Colors.grey.shade600, fontSize: 14.sp),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12.r),
+                                  borderSide: BorderSide(color: Colors.grey.shade400),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12.r),
+                                  borderSide: const BorderSide(color: Colors.teal, width: 2),
+                                ),
+                                filled: true,
+                                fillColor: Colors.white,
                               ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12.r),
-                                borderSide: const BorderSide(color: Colors.teal, width: 2),
-                              ),
-                              filled: true,
-                              fillColor: Colors.white,
+                              value: _selectedSpecialization,
+                              items: specializationOptions.map((String option) {
+                                return DropdownMenuItem<String>(
+                                  value: option,
+                                  child: Text(
+                                    option,
+                                    style: TextStyle(color: Colors.black87, fontSize: 14.sp),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                );
+                              }).toList(),
+                              onChanged: (newValue) {
+                                setState(() {
+                                  _selectedSpecialization = newValue;
+                                  _selectedSkills = []; // Reset skills when specialization changes
+                                });
+                              },
+                              validator: (value) => value == null ? 'Please select a specialization' : null,
+                              dropdownColor: Colors.white,
+                              isExpanded: true,
                             ),
-                            value: _selectedSpecialization,
-                            items: specializationOptions.map((String option) {
-                              return DropdownMenuItem<String>(
-                                value: option,
-                                child: Text(option, style: TextStyle(color: Colors.black87, fontSize: 14.sp)),
-                              );
-                            }).toList(),
-                            onChanged: (newValue) {
-                              setState(() {
-                                _selectedSpecialization = newValue;
-                                _selectedSkills = []; // Reset skills when specialization changes
-                              });
-                            },
-                            validator: (value) => value == null ? 'Please select a specialization' : null,
                           ),
                         ),
-                        // Skills Multi-Select Dropdown
                         Padding(
                           padding: EdgeInsets.symmetric(vertical: 8.h),
                           child: MultiSelectDialogField(
@@ -507,7 +541,7 @@ class PostJobScreenState extends State<PostJobScreen> {
                               borderRadius: BorderRadius.circular(12.r),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.1),
+                                  color: Colors.black.withValues(alpha: 0.1),
                                   blurRadius: 4.r,
                                   offset: Offset(0, 2.h),
                                 ),
@@ -547,7 +581,7 @@ class PostJobScreenState extends State<PostJobScreen> {
                               borderRadius: BorderRadius.circular(12.r),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.2),
+                                  color: Colors.black.withValues(alpha: 0.2),
                                   blurRadius: 4.r,
                                   offset: Offset(0, 2.h),
                                 ),

@@ -149,6 +149,7 @@ class _AppliedSeekersScreenState extends State<AppliedSeekersScreen> {
       }
 
       // Verify application exists
+      // ignore: unnecessary_brace_in_string_interps
       final applicationId = '${seekerId}_${jobId}';
       final appDoc = await FirebaseFirestore.instance
           .collection('Applications')

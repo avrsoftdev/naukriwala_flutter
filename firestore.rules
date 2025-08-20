@@ -29,17 +29,16 @@ service cloud.firestore {
              isValidRecipient(ids[1]);
     }
 
-    // Updated Recruiters rule (removed nested match and fixed get condition)
+    // Recruiters rule (unchanged)
     match /Recruiters/{uid} {
       allow read: if request.auth != null && (request.auth.uid == uid || isAdmin());
-      // Allow seekers to read name and companyName if a valid chat exists with this recruiter
       allow get: if request.auth != null && isSeeker() &&
                  exists(/databases/$(database)/documents/Messages/$(request.auth.uid + '_' + uid)) &&
                  resource.data.keys().hasAll(['name', 'companyName']);
       allow write: if request.auth != null && request.auth.uid == uid;
     }
 
-    // Unchanged collections (Seekers, UsersIndex, Users, Jobs, etc.)
+    // Unchanged collections
     match /Seekers/{uid} {
       allow read: if request.auth != null && (request.auth.uid == uid || isAdmin());
       allow write: if request.auth != null && request.auth.uid == uid;
@@ -55,6 +54,7 @@ service cloud.firestore {
     match /Recruiters/{recruiterId}/Jobs/{jobId} {
       allow read: if request.auth != null;
       allow write: if isRecruiter() && request.auth.uid == recruiterId;
+      allow delete: if isRecruiter() && request.auth.uid == recruiterId;
     }
     match /{any=**}/Jobs/{jobId} {
       allow read: if request.auth != null;
@@ -75,6 +75,7 @@ service cloud.firestore {
       allow update: if request.auth != null &&
                       request.auth.uid == recruiterId &&
                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+      allow delete: if request.auth != null && request.auth.uid == recruiterId;
     }
     match /SeekerNotifications/{seekerId}/Notifications/{notifId} {
       allow read: if request.auth != null && request.auth.uid == seekerId;
@@ -92,6 +93,32 @@ service cloud.firestore {
       allow update: if request.auth != null &&
                       request.auth.uid == seekerId &&
                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+      allow delete: if request.auth != null &&
+                      (request.auth.uid == seekerId ||
+                       (request.resource.data.jobId != null &&
+                        isRecruiterJob(request.resource.data.jobId)));
+    }
+    match /{path=**}/Notifications/{notifId} {
+      allow read: if request.auth != null &&
+                    (request.auth.uid == resource.data.recipientId ||
+                     request.auth.uid == resource.data.to);
+      allow create: if request.auth != null &&
+                     request.resource.data.to != request.resource.data.from &&
+                     request.resource.data.jobId is string &&
+                     request.resource.data.notificationId == notifId &&
+                     request.resource.data.type is string &&
+                     request.resource.data.read is bool &&
+                     request.resource.data.timestamp is timestamp &&
+                     isValidRecipient(request.resource.data.to);
+      allow update: if request.auth != null &&
+                      (request.auth.uid == resource.data.recipientId ||
+                       request.auth.uid == resource.data.to) &&
+                      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+      allow delete: if request.auth != null &&
+                      (request.auth.uid == resource.data.recipientId ||
+                       request.auth.uid == resource.data.to ||
+                       (resource.data.jobId != null &&
+                        isRecruiterJob(resource.data.jobId)));
     }
     match /Shortlisted/{jobId}/Seekers/{seekerId} {
       allow read, write: if isRecruiter() && isRecruiterJob(jobId);
@@ -152,23 +179,7 @@ service cloud.firestore {
                       request.resource.data.jobId == resource.data.jobId &&
                       request.resource.data.recruiterId == resource.data.recruiterId &&
                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'interviewDate', 'updatedAt']);
-    }
-    match /Notifications/{notifId} {
-      allow read: if request.auth != null &&
-                    (request.auth.uid == resource.data.recipientId ||
-                     request.auth.uid == resource.data.to);
-      allow create: if request.auth != null &&
-                     request.resource.data.to != request.resource.data.from &&
-                     request.resource.data.jobId is string &&
-                     request.resource.data.notificationId == notifId &&
-                     request.resource.data.type is string &&
-                     request.resource.data.read is bool &&
-                     request.resource.data.timestamp is timestamp &&
-                     isValidRecipient(request.resource.data.to);
-      allow update: if request.auth != null &&
-                      (request.auth.uid == resource.data.recipientId ||
-                       request.auth.uid == resource.data.to) &&
-                      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+      allow delete: if isRecruiter() && isRecruiterJob(resource.data.jobId);
     }
     match /{path=**}/AppliedJobs/{docId} {
       allow read: if request.auth != null &&

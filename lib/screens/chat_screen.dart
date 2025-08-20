@@ -406,6 +406,7 @@ class _ChatScreenState extends State<ChatScreen> {
                           color: Colors.teal,
                           boxShadow: [
                             BoxShadow(
+                              // ignore: deprecated_member_use
                               color: Colors.black.withOpacity(0.2),
                               blurRadius: 4.r,
                               offset: const Offset(0, 2),

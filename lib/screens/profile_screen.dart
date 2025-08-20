@@ -1,3 +1,5 @@
+// ignore_for_file: unrelated_type_equality_checks
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -425,38 +427,25 @@ class ProfileScreenState extends State<ProfileScreen> {
   Widget _buildNonEditableField(String label, String? value) {
     return Padding(
       padding: EdgeInsets.symmetric(vertical: 8.h),
-      child: Card(
-        elevation: 2,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
-        child: Container(
-          constraints: BoxConstraints(maxWidth: 300.w),
-          padding: EdgeInsets.all(12.w),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Colors.blue.shade50, Colors.blue.shade100],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+      child: Container(
+        constraints: BoxConstraints(maxWidth: 300.w),
+        child: TextFormField(
+          initialValue: value ?? 'N/A',
+          enabled: false,
+          decoration: InputDecoration(
+            labelText: label,
+            labelStyle: TextStyle(color: Colors.grey, fontSize: 12.sp),
+            enabledBorder: const UnderlineInputBorder(
+              borderSide: BorderSide(color: Colors.grey),
             ),
-            borderRadius: BorderRadius.circular(12.r),
+            focusedBorder: UnderlineInputBorder(
+              borderSide: BorderSide(color: Colors.teal, width: 2.w),
+            ),
+            filled: true,
+            fillColor: Colors.white,
+            contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: TextStyle(fontSize: 12.sp, color: Colors.blue.shade800, fontWeight: FontWeight.w600),
-                overflow: TextOverflow.ellipsis,
-                maxLines: 1,
-              ),
-              SizedBox(height: 6.h),
-              Text(
-                value ?? 'N/A',
-                style: TextStyle(fontSize: 14.sp, color: Colors.black87),
-                overflow: TextOverflow.ellipsis,
-                maxLines: 1,
-              ),
-            ],
-          ),
+          style: TextStyle(fontSize: 14.sp, color: Colors.black87),
         ),
       ),
     );
