@@ -29,7 +29,7 @@ class JobScreenState extends State<JobScreen> {
   Map<String, dynamic>? _selectedJob;
   Stream<QuerySnapshot>? _applicantsStream;
   Map<String, dynamic>? _jobData;
-  bool _isJobVisible = false;
+  bool _isEligible = false;
   String? _ineligibilityReason;
 
   final List<String> specializationOptions = [
@@ -113,16 +113,27 @@ class JobScreenState extends State<JobScreen> {
   @override
   void initState() {
     super.initState();
-    fetchSeekerProfile();
-    fetchJobsFromFirestore();
+    _initializeData();
     _searchController.addListener(() => _filterJobs(_searchController.text));
-    dev.log('[2025-08-14 00:29 IST] JobScreen initialized, isSeekerProfileView: ${widget.isSeekerProfileView}', name: 'JobScreen');
+    dev.log('[2025-08-21 12:55 IST] JobScreen initialized, isSeekerProfileView: ${widget.isSeekerProfileView}', name: 'JobScreen');
+  }
+
+  Future<void> _initializeData() async {
+    await fetchSeekerProfile();
+    if (_seekerProfile != null || FirebaseAuth.instance.currentUser == null) {
+      await fetchJobsFromFirestore();
+    }
   }
 
   Future<void> fetchSeekerProfile() async {
     final currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser == null) {
-      dev.log('[2025-08-14 00:29 IST] No authenticated user', name: 'JobScreen');
+      dev.log('[2025-08-21 12:55 IST] No authenticated user', name: 'JobScreen');
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
       return;
     }
 
@@ -148,14 +159,26 @@ class JobScreenState extends State<JobScreen> {
           setState(() {
             _appliedJobIds.addAll(applications.docs.map((doc) => doc['jobId'] as String));
           });
-          dev.log('[2025-08-14 00:29 IST] Fetched seeker profile for ${currentUser.uid}', name: 'JobScreen');
+          dev.log('[2025-08-21 12:55 IST] Fetched seeker profile for ${currentUser.uid}', name: 'JobScreen');
+          if (mounted && isLoading) {
+            await fetchJobsFromFirestore();
+          }
         } else {
-          dev.log('[2025-08-14 00:29 IST] No seeker profile found for ${currentUser.uid}', name: 'JobScreen');
+          dev.log('[2025-08-21 12:55 IST] No seeker profile found for ${currentUser.uid}', name: 'JobScreen');
+          if (mounted) {
+            setState(() {
+              isLoading = false;
+            });
+          }
         }
       }
     } catch (e, stackTrace) {
-      dev.log('[2025-08-14 00:29 IST] Error fetching seeker profile: $e', name: 'JobScreen', error: e, stackTrace: stackTrace);
+      dev.log('[2025-08-21 12:55 IST] Error fetching seeker profile: $e', name: 'JobScreen', error: e, stackTrace: stackTrace);
       if (mounted) {
+        setState(() {
+          isLoading = false;
+          errorMessage = 'Error loading profile: $e';
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error loading profile: $e'),
@@ -168,7 +191,7 @@ class JobScreenState extends State<JobScreen> {
 
   Future<void> fetchJobsFromFirestore() async {
     try {
-      dev.log('[2025-08-14 00:29 IST] Fetching jobs with collection group query, emulator: ${kDebugMode ? "localhost:8080" : "default"}', name: 'JobScreen');
+      dev.log('[2025-08-21 12:55 IST] Fetching jobs with collection group query, emulator: ${kDebugMode ? "localhost:8080" : "default"}', name: 'JobScreen');
       if (kDebugMode) {
         FirebaseFirestore.instance.settings = const Settings(
           host: 'localhost:8080',
@@ -182,7 +205,7 @@ class JobScreenState extends State<JobScreen> {
           .orderBy('createdAt', descending: true)
           .get();
 
-      dev.log('[2025-08-14 00:29 IST] Fetched ${snapshot.docs.length} jobs, docs: ${snapshot.docs.map((d) => d.id).toList()}', name: 'JobScreen');
+      dev.log('[2025-08-21 12:55 IST] Fetched ${snapshot.docs.length} jobs, docs: ${snapshot.docs.map((d) => d.id).toList()}', name: 'JobScreen');
       final jobList = snapshot.docs.map((doc) {
         final data = doc.data();
         return {
@@ -190,19 +213,20 @@ class JobScreenState extends State<JobScreen> {
           'jobId': doc.id,
           'recruiterId': data['recruiterId'],
           'postedAt': (data['createdAt'] as Timestamp?)?.toDate(),
+          'isEligible': _seekerProfile != null ? _checkJobCompatibilityForJob(data) : false, // Default to false if no profile
         };
       }).toList();
 
       if (mounted) {
         setState(() {
           jobs = jobList;
-          filteredJobs = _filterJobsByProfile(jobList);
+          filteredJobs = jobList;
           isLoading = false;
           errorMessage = null;
         });
       }
     } catch (e, stackTrace) {
-      dev.log('[2025-08-14 00:29 IST] Error fetching jobs: $e', name: 'JobScreen', error: e, stackTrace: stackTrace);
+      dev.log('[2025-08-21 12:55 IST] Error fetching jobs: $e', name: 'JobScreen', error: e, stackTrace: stackTrace);
       if (mounted) {
         setState(() {
           isLoading = false;
@@ -219,44 +243,14 @@ class JobScreenState extends State<JobScreen> {
     }
   }
 
-  List<Map<String, dynamic>> _filterJobsByProfile(List<Map<String, dynamic>> jobList) {
-    final currentUser = FirebaseAuth.instance.currentUser;
-    if (_seekerProfile == null || currentUser == null || jobList.isEmpty || currentUser.uid == jobList.first['recruiterId']?.toString()) {
-      return jobList;
-    }
-
-    return jobList.where((job) {
-      final jobSkills = (job['skills'] as List<dynamic>?)?.cast<String>().map((s) => s.toLowerCase()).toList() ?? [];
-      final seekerSkills = (_seekerProfile!['skills'] as List<dynamic>?)?.cast<String>().map((s) => s.toLowerCase()).toList() ?? [];
-      final jobEducation = job['education']?.toString().toLowerCase() ?? '';
-      final seekerEducation = _seekerProfile!['education']?.toString().toLowerCase() ?? '';
-      final jobSpecialization = job['specialization']?.toString().toLowerCase() ?? '';
-      final seekerSpecialization = _seekerProfile!['specialization']?.toString().toLowerCase() ?? '';
-      final jobExperience = _parseExperience(job['experience']?.toString() ?? '0');
-      final seekerExperience = _parseExperience(_seekerProfile!['experience']?.toString() ?? '0');
-
-      final matchingSkills = jobSkills.where((skill) => seekerSkills.contains(skill)).length;
-      final skillMatchPercentage = jobSkills.isEmpty ? 100.0 : (matchingSkills / jobSkills.length) * 100;
-      final skillsMatch = skillMatchPercentage >= 30;
-      final educationMatch = jobEducation.isEmpty || jobEducation == seekerEducation;
-      final specializationMatch = jobSpecialization.isEmpty || jobSpecialization == seekerSpecialization;
-      final experienceMatch = seekerExperience >= jobExperience;
-
-      dev.log('[2025-08-14 00:29 IST] Job: ${job['title']}, Skills match: $skillsMatch ($skillMatchPercentage%), Education match: $educationMatch, Specialization match: $specializationMatch, Experience match: $experienceMatch',
-          name: 'JobScreen');
-
-      return skillsMatch && educationMatch && specializationMatch && experienceMatch;
-    }).toList();
-  }
-
   void _filterJobs(String query) {
     _searchQuery = query.toLowerCase();
     if (_searchQuery.isEmpty) {
-      setState(() => filteredJobs = _filterJobsByProfile(jobs));
+      setState(() => filteredJobs = jobs);
       return;
     }
 
-    final results = _filterJobsByProfile(jobs).where((job) {
+    final results = jobs.where((job) {
       final title = (job['title'] ?? '').toString().toLowerCase();
       final company = (job['company'] ?? '').toString().toLowerCase();
       final location = (job['location'] ?? '').toString().toLowerCase();
@@ -272,8 +266,6 @@ class JobScreenState extends State<JobScreen> {
     setState(() {
       _selectedJob = job;
       isJobDetailsLoading = true;
-      _isJobVisible = false;
-      _ineligibilityReason = null;
       _jobData = null;
       _applicantsStream = null;
     });
@@ -282,8 +274,8 @@ class JobScreenState extends State<JobScreen> {
     if (currentUser == null) {
       setState(() {
         isJobDetailsLoading = false;
-        _isJobVisible = false;
-        _ineligibilityReason = 'Please log in to view this job.';
+        _isEligible = false;
+        _ineligibilityReason = 'Please log in to view eligibility.';
       });
       return;
     }
@@ -299,7 +291,7 @@ class JobScreenState extends State<JobScreen> {
       if (!jobDoc.exists || jobDoc.data()?['status'] != 'open') {
         setState(() {
           isJobDetailsLoading = false;
-          _isJobVisible = false;
+          _isEligible = false;
           _ineligibilityReason = 'This job is no longer available.';
         });
         return;
@@ -310,7 +302,7 @@ class JobScreenState extends State<JobScreen> {
       if (currentUser.uid == job['recruiterId']?.toString()) {
         setState(() {
           isJobDetailsLoading = false;
-          _isJobVisible = true;
+          _isEligible = true; // Recruiters are always eligible to view
         });
         _fetchApplicants();
         return;
@@ -324,8 +316,8 @@ class JobScreenState extends State<JobScreen> {
         if (!seekerDoc.exists) {
           setState(() {
             isJobDetailsLoading = false;
-            _isJobVisible = false;
-            _ineligibilityReason = 'Please complete your profile to view this job.';
+            _isEligible = false;
+            _ineligibilityReason = 'Please complete your profile to determine eligibility.';
           });
           return;
         }
@@ -336,18 +328,16 @@ class JobScreenState extends State<JobScreen> {
       }
 
       setState(() {
-        _isJobVisible = _checkJobCompatibility();
+        _isEligible = job['isEligible'] ?? _checkJobCompatibility();
         isJobDetailsLoading = false;
-        if (!_isJobVisible) {
-          _ineligibilityReason = _getIneligibilityReason();
-        }
+        _ineligibilityReason = _isEligible ? null : _getIneligibilityReason();
       });
       _fetchApplicants();
     } catch (e, stackTrace) {
-      dev.log('[2025-08-14 00:29 IST] Error fetching job details: $e', name: 'JobScreen', error: e, stackTrace: stackTrace);
+      dev.log('[2025-08-21 12:55 IST] Error fetching job details: $e', name: 'JobScreen', error: e, stackTrace: stackTrace);
       setState(() {
         isJobDetailsLoading = false;
-        _isJobVisible = false;
+        _isEligible = false;
         _ineligibilityReason = 'Failed to load job details: $e';
       });
     }
@@ -363,6 +353,30 @@ class JobScreenState extends State<JobScreen> {
           .collection('AppliedJobs')
           .snapshots();
     });
+  }
+
+  bool _checkJobCompatibilityForJob(Map<String, dynamic> jobData) {
+    if (_seekerProfile == null || jobData == null) return false;
+
+    final jobSkills = (jobData['skills'] as List<dynamic>?)?.cast<String>().map((s) => s.toLowerCase()).toList() ?? [];
+    final seekerSkills = (_seekerProfile!['skills'] as List<dynamic>?)?.cast<String>().map((s) => s.toLowerCase()).toList() ?? [];
+    final jobEducation = jobData['education']?.toString().toLowerCase() ?? '';
+    final seekerEducation = _seekerProfile!['education']?.toString().toLowerCase() ?? '';
+    final jobSpecialization = jobData['specialization']?.toString().toLowerCase() ?? '';
+    final seekerSpecialization = _seekerProfile!['specialization']?.toString().toLowerCase() ?? '';
+    final jobExperience = _parseExperience(jobData['experience']?.toString() ?? '0');
+    final seekerExperience = _parseExperience(_seekerProfile!['experience']?.toString() ?? '0');
+
+    final matchingSkills = jobSkills.where((skill) => seekerSkills.contains(skill)).length;
+    final skillMatchPercentage = jobSkills.isEmpty ? 100.0 : (matchingSkills / jobSkills.length) * 100;
+    final skillsMatch = skillMatchPercentage >= 30;
+    final educationMatch = jobEducation.isEmpty || jobEducation == seekerEducation;
+    final specializationMatch = jobSpecialization.isEmpty || jobSpecialization == seekerSpecialization;
+    final experienceMatch = seekerExperience >= jobExperience;
+
+    dev.log('[2025-08-21 12:55 IST] Pre-check compatibility for job ${jobData['jobId']}: Skills match=$skillsMatch ($skillMatchPercentage%), Education match=$educationMatch, Specialization match=$specializationMatch, Experience match=$experienceMatch',
+        name: 'JobScreen');
+    return skillsMatch && educationMatch && specializationMatch && experienceMatch;
   }
 
   bool _checkJobCompatibility() {
@@ -384,13 +398,8 @@ class JobScreenState extends State<JobScreen> {
     final specializationMatch = jobSpecialization.isEmpty || jobSpecialization == seekerSpecialization;
     final experienceMatch = seekerExperience >= jobExperience;
 
-    dev.log('[2025-08-14 00:29 IST] Compatibility check for job ${_jobData!['jobId']}: Skills match=$skillsMatch ($skillMatchPercentage%), Education match=$educationMatch, Specialization match=$specializationMatch, Experience match=$experienceMatch',
+    dev.log('[2025-08-21 12:55 IST] Compatibility check for job ${_jobData!['jobId']}: Skills match=$skillsMatch ($skillMatchPercentage%), Education match=$educationMatch, Specialization match=$specializationMatch, Experience match=$experienceMatch',
         name: 'JobScreen');
-    dev.log('Job skills: $jobSkills, Seeker skills: $seekerSkills', name: 'JobScreen');
-    dev.log('Job education: $jobEducation, Seeker education: $seekerEducation', name: 'JobScreen');
-    dev.log('Job specialization: $jobSpecialization, Seeker specialization: $seekerSpecialization', name: 'JobScreen');
-    dev.log('Job experience: $jobExperience, Seeker experience: $seekerExperience', name: 'JobScreen');
-
     return skillsMatch && educationMatch && specializationMatch && experienceMatch;
   }
 
@@ -485,7 +494,7 @@ class JobScreenState extends State<JobScreen> {
         );
       }
     } catch (e, stackTrace) {
-      dev.log('[2025-08-14 00:29 IST] Error navigating to ApplyJobScreen: $e', name: 'JobScreen', error: e, stackTrace: stackTrace);
+      dev.log('[2025-08-21 12:55 IST] Error navigating to ApplyJobScreen: $e', name: 'JobScreen', error: e, stackTrace: stackTrace);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -526,7 +535,7 @@ class JobScreenState extends State<JobScreen> {
         });
       }
     } catch (e, stackTrace) {
-      dev.log('[2025-08-14 00:29 IST] Error deleting job: $e', name: 'JobScreen', error: e, stackTrace: stackTrace);
+      dev.log('[2025-08-21 12:55 IST] Error deleting job: $e', name: 'JobScreen', error: e, stackTrace: stackTrace);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -592,6 +601,7 @@ class JobScreenState extends State<JobScreen> {
                   itemBuilder: (context, index) {
                     final job = filteredJobs[index];
                     final isApplied = _appliedJobIds.contains(job['jobId']);
+                    Color cardColor = _seekerProfile != null ? (job['isEligible'] == true ? Colors.green.shade100 : Colors.red.shade100) : Colors.grey.shade200;
                     return Column(
                       children: [
                         AnimatedListItem(
@@ -599,10 +609,11 @@ class JobScreenState extends State<JobScreen> {
                             elevation: 3,
                             margin: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                            color: cardColor,
                             child: Container(
                               decoration: BoxDecoration(
                                 gradient: LinearGradient(
-                                  colors: [Colors.blue.shade50, Colors.blue.shade100],
+                                  colors: [cardColor, cardColor.withOpacity(0.8)],
                                   begin: Alignment.topLeft,
                                   end: Alignment.bottomRight,
                                 ),
@@ -633,284 +644,82 @@ class JobScreenState extends State<JobScreen> {
                                     valueColor: const AlwaysStoppedAnimation<Color>(Colors.teal),
                                   ),
                                 )
-                              : !_isJobVisible
-                                  ? Center(
-                                      child: Card(
-                                        elevation: 4,
-                                        color: Colors.red.shade50,
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
-                                        child: Padding(
-                                          padding: EdgeInsets.all(16.w),
-                                          child: Text(
-                                            _ineligibilityReason ?? 'This job does not match your education, specialization, skills (at least 30%), or experience.',
-                                            style: TextStyle(color: Colors.red.shade700, fontSize: 16.sp),
-                                            textAlign: TextAlign.center,
+                              : Padding(
+                                  padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+                                  child: Card(
+                                    elevation: 4,
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                                    child: Padding(
+                                      padding: EdgeInsets.all(16.w),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            _jobData?['title']?.toString() ?? _selectedJob!['title']?.toString() ?? 'Job Details',
+                                            style: TextStyle(fontSize: 24.sp, fontWeight: FontWeight.bold, color: Colors.blue.shade900),
                                           ),
-                                        ),
-                                      ),
-                                    )
-                                  : Padding(
-                                      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
-                                      child: Card(
-                                        elevation: 4,
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
-                                        child: Padding(
-                                          padding: EdgeInsets.all(16.w),
-                                          child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                _jobData?['title']?.toString() ?? _selectedJob!['title']?.toString() ?? 'Job Details',
-                                                style: TextStyle(fontSize: 24.sp, fontWeight: FontWeight.bold, color: Colors.blue.shade900),
+                                          SizedBox(height: 12.h),
+                                          Text(
+                                            '${_jobData?['company']?.toString() ?? _selectedJob!['company']?.toString() ?? 'Unknown Company'} • '
+                                            '${_jobData?['location']?.toString() ?? _selectedJob!['location']?.toString() ?? 'Unknown Location'} • '
+                                            '${_jobData?['jobType']?.toString() ?? _selectedJob!['jobType']?.toString() ?? 'Unknown Type'}',
+                                            style: TextStyle(fontSize: 16.sp, color: Colors.grey.shade700),
+                                          ),
+                                          SizedBox(height: 12.h),
+                                          Text('Salary: ${_jobData?['salary']?.toString() ?? _selectedJob!['salary']?.toString() ?? 'Not specified'}', style: TextStyle(fontSize: 16.sp)),
+                                          Text('Experience Required: ${_jobData?['experience']?.toString() ?? _selectedJob!['experience']?.toString() ?? 'N/A'}', style: TextStyle(fontSize: 16.sp)),
+                                          Text('Skills: ${(_jobData?['skills'] as List<dynamic>?)?.cast<String>().join(', ') ?? _selectedJob!['skills']?.toString() ?? 'N/A'}', style: TextStyle(fontSize: 16.sp)),
+                                          Text('Education: ${_jobData?['education']?.toString() ?? _selectedJob!['education']?.toString() ?? 'N/A'}', style: TextStyle(fontSize: 16.sp)),
+                                          Text('Specialization: ${_jobData?['specialization']?.toString() ?? _selectedJob!['specialization']?.toString() ?? 'N/A'}', style: TextStyle(fontSize: 16.sp)),
+                                          SizedBox(height: 20.h),
+                                          Text(
+                                            'Job Description',
+                                            style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold, color: Colors.blue.shade900),
+                                          ),
+                                          SizedBox(height: 8.h),
+                                          Text(
+                                            _jobData?['description']?.toString() ?? _selectedJob!['description']?.toString() ?? 'No description provided',
+                                            style: TextStyle(fontSize: 16.sp),
+                                          ),
+                                          SizedBox(height: 20.h),
+                                          Text(
+                                            _isEligible ? 'Eligible' : 'Non-Eligible',
+                                            style: TextStyle(
+                                              fontSize: 18.sp,
+                                              fontWeight: FontWeight.bold,
+                                              color: _isEligible ? Colors.green : Colors.red,
+                                            ),
+                                          ),
+                                          if (_ineligibilityReason != null)
+                                            Padding(
+                                              padding: EdgeInsets.only(top: 8.h),
+                                              child: Text(
+                                                _ineligibilityReason!,
+                                                style: TextStyle(fontSize: 14.sp, color: Colors.red.shade700),
                                               ),
-                                              SizedBox(height: 12.h),
-                                              Text(
-                                                '${_jobData?['company']?.toString() ?? _selectedJob!['company']?.toString() ?? 'Unknown Company'} • '
-                                                '${_jobData?['location']?.toString() ?? _selectedJob!['location']?.toString() ?? 'Unknown Location'} • '
-                                                '${_jobData?['jobType']?.toString() ?? _selectedJob!['jobType']?.toString() ?? 'Unknown Type'}',
-                                                style: TextStyle(fontSize: 16.sp, color: Colors.grey.shade700),
-                                              ),
-                                              SizedBox(height: 12.h),
-                                              Text('Salary: ${_jobData?['salary']?.toString() ?? _selectedJob!['salary']?.toString() ?? 'Not specified'}', style: TextStyle(fontSize: 16.sp)),
-                                              Text('Experience Required: ${_jobData?['experience']?.toString() ?? _selectedJob!['experience']?.toString() ?? 'N/A'}', style: TextStyle(fontSize: 16.sp)),
-                                              Text('Skills: ${(_jobData?['skills'] as List<dynamic>?)?.cast<String>().join(', ') ?? _selectedJob!['skills']?.toString() ?? 'N/A'}', style: TextStyle(fontSize: 16.sp)),
-                                              Text('Education: ${_jobData?['education']?.toString() ?? _selectedJob!['education']?.toString() ?? 'N/A'}', style: TextStyle(fontSize: 16.sp)),
-                                              Text('Specialization: ${_jobData?['specialization']?.toString() ?? _selectedJob!['specialization']?.toString() ?? 'N/A'}', style: TextStyle(fontSize: 16.sp)),
-                                              SizedBox(height: 20.h),
-                                              Text(
-                                                'Job Description',
-                                                style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold, color: Colors.blue.shade900),
-                                              ),
-                                              SizedBox(height: 8.h),
-                                              Text(
-                                                _jobData?['description']?.toString() ?? _selectedJob!['description']?.toString() ?? 'No description provided',
-                                                style: TextStyle(fontSize: 16.sp),
-                                              ),
-                                              SizedBox(height: 20.h),
-                                              if (FirebaseAuth.instance.currentUser?.uid == _selectedJob?['recruiterId']?.toString())
-                                                Row(
-                                                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                                                  children: [
-                                                    AnimatedScaleButton(
-                                                      onPressed: () {
-                                                        Navigator.push(
-                                                          context,
-                                                          MaterialPageRoute(
-                                                            builder: (context) => EditJobScreen(
-                                                              jobId: _selectedJob!['jobId']?.toString() ?? '',
-                                                              jobData: _jobData ?? _selectedJob!,
-                                                            ),
-                                                          ),
-                                                        );
-                                                      },
-                                                      child: Container(
-                                                        padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
-                                                        decoration: BoxDecoration(
-                                                          gradient: LinearGradient(
-                                                            colors: [Colors.blue.shade700, Colors.teal.shade400],
-                                                            begin: Alignment.topLeft,
-                                                            end: Alignment.bottomRight,
-                                                          ),
-                                                          borderRadius: BorderRadius.circular(12.r),
-                                                          boxShadow: [
-                                                            BoxShadow(
-                                                              color: Colors.black.withValues(alpha: 0.2),
-                                                              blurRadius: 4.r,
-                                                              offset: Offset(0, 2.h),
-                                                            ),
-                                                          ],
-                                                        ),
-                                                        child: Row(
-                                                          mainAxisSize: MainAxisSize.min,
-                                                          children: [
-                                                            const Icon(Icons.edit, color: Colors.white),
-                                                            SizedBox(width: 8.w),
-                                                            const Text(
-                                                              'Edit',
-                                                              style: TextStyle(
-                                                                color: Colors.white,
-                                                                fontSize: 16,
-                                                                fontWeight: FontWeight.bold,
-                                                              ),
-                                                            ),
-                                                          ],
-                                                        ),
-                                                      ),
-                                                    ),
-                                                    AnimatedScaleButton(
-                                                      onPressed: _deleteJob,
-                                                      child: Container(
-                                                        padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
-                                                        decoration: BoxDecoration(
-                                                          gradient: LinearGradient(
-                                                            colors: [Colors.red.shade600, Colors.red.shade800],
-                                                            begin: Alignment.topLeft,
-                                                            end: Alignment.bottomRight,
-                                                          ),
-                                                          borderRadius: BorderRadius.circular(12.r),
-                                                          boxShadow: [
-                                                            BoxShadow(
-                                                              color: Colors.black.withValues(alpha: 0.2),
-                                                              blurRadius: 4.r,
-                                                              offset: Offset(0, 2.h),
-                                                            ),
-                                                          ],
-                                                        ),
-                                                        child: Row(
-                                                          mainAxisSize: MainAxisSize.min,
-                                                          children: [
-                                                            const Icon(Icons.delete, color: Colors.white),
-                                                            SizedBox(width: 8.w),
-                                                            const Text(
-                                                              'Delete',
-                                                              style: TextStyle(
-                                                                color: Colors.white,
-                                                                fontSize: 16,
-                                                                fontWeight: FontWeight.bold,
-                                                              ),
-                                                            ),
-                                                          ],
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              if (FirebaseAuth.instance.currentUser?.uid == _selectedJob?['recruiterId']?.toString() && _applicantsStream != null)
-                                                Column(
-                                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                                  children: [
-                                                    SizedBox(height: 20.h),
-                                                    Text(
-                                                      'Applicants',
-                                                      style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold, color: Colors.blue.shade900),
-                                                    ),
-                                                    SizedBox(height: 10.h),
-                                                    StreamBuilder<QuerySnapshot>(
-                                                      stream: _applicantsStream,
-                                                      builder: (context, snapshot) {
-                                                        if (snapshot.connectionState == ConnectionState.waiting) {
-                                                          return const Center(
-                                                            child: CircularProgressIndicator(
-                                                              valueColor: AlwaysStoppedAnimation<Color>(Colors.teal),
-                                                            ),
-                                                          );
-                                                        }
-                                                        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                                                          return const Text('No applicants yet.', style: TextStyle(fontSize: 16, color: Colors.grey));
-                                                        }
-                                                        return ListView.builder(
-                                                          shrinkWrap: true,
-                                                          physics: const NeverScrollableScrollPhysics(),
-                                                          itemCount: snapshot.data!.docs.length,
-                                                          itemBuilder: (context, index) {
-                                                            final applicant = snapshot.data!.docs[index].data() as Map<String, dynamic>;
-                                                            final resume = applicant['resume'] as Map<String, dynamic>? ?? {};
-                                                            return AnimatedListItem(
-                                                              child: Card(
-                                                                elevation: 3,
-                                                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
-                                                                child: Container(
-                                                                  decoration: BoxDecoration(
-                                                                    gradient: LinearGradient(
-                                                                      colors: [Colors.blue.shade50, Colors.blue.shade100],
-                                                                      begin: Alignment.topLeft,
-                                                                      end: Alignment.bottomRight,
-                                                                    ),
-                                                                    borderRadius: BorderRadius.circular(12.r),
-                                                                  ),
-                                                                  child: ListTile(
-                                                                    contentPadding: EdgeInsets.all(16.w),
-                                                                    title: Text(
-                                                                      resume['name'] ?? 'Unknown Applicant',
-                                                                      style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.black87),
-                                                                    ),
-                                                                    subtitle: Column(
-                                                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                                                      children: [
-                                                                        Text('Job: ${applicant['jobTitle'] ?? 'Unknown Job'}'),
-                                                                        Text('Skills: ${(resume['skills'] as List<dynamic>?)?.cast<String>().join(', ') ?? 'N/A'}'),
-                                                                        Text('Education: ${resume['education'] ?? 'N/A'}'),
-                                                                        Text('Experience: ${resume['experience'] ?? 'N/A'}'),
-                                                                        Text('Specialization: ${resume['specialization'] ?? 'N/A'}'),
-                                                                        Text('Email: ${resume['email'] ?? 'N/A'}'),
-                                                                        Text('Mobile: ${resume['mobileNumber'] ?? 'N/A'}'),
-                                                                      ],
-                                                                    ),
-                                                                    onTap: () {
-                                                                      showDialog(
-                                                                        context: context,
-                                                                        builder: (context) => AlertDialog(
-                                                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
-                                                                          title: Container(
-                                                                            padding: EdgeInsets.all(16.w),
-                                                                            decoration: BoxDecoration(
-                                                                              gradient: LinearGradient(
-                                                                                colors: [Colors.blue.shade700, Colors.blue.shade900],
-                                                                                begin: Alignment.topLeft,
-                                                                                end: Alignment.bottomRight,
-                                                                              ),
-                                                                              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                                                                            ),
-                                                                            child: Text(
-                                                                              'Applicant: ${resume['name'] ?? 'Unknown'}',
-                                                                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                                                                            ),
-                                                                          ),
-                                                                          content: SingleChildScrollView(
-                                                                            child: Column(
-                                                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                                                              children: [
-                                                                                Text('Job: ${applicant['jobTitle'] ?? 'Unknown Job'}'),
-                                                                                Text('Skills: ${(resume['skills'] as List<dynamic>?)?.cast<String>().join(', ') ?? 'N/A'}'),
-                                                                                Text('Education: ${resume['education'] ?? 'N/A'}'),
-                                                                                Text('Experience: ${resume['experience'] ?? 'N/A'}'),
-                                                                                Text('Specialization: ${resume['specialization'] ?? 'N/A'}'),
-                                                                                Text('Email: ${resume['email'] ?? 'N/A'}'),
-                                                                                Text('Mobile: ${resume['mobileNumber'] ?? 'N/A'}'),
-                                                                                Text('Current Company: ${resume['currentCompany'] ?? 'N/A'}'),
-                                                                                Text('Current CTC: ${resume['currentCtc'] ?? 'N/A'}'),
-                                                                                Text('Expected CTC: ${resume['expectedCtc'] ?? 'N/A'}'),
-                                                                                Text('Cover Letter: ${applicant['coverLetter'] ?? 'N/A'}'),
-                                                                                if (resume['photoUrl']?.isNotEmpty ?? false)
-                                                                                  Padding(
-                                                                                    padding: EdgeInsets.only(top: 8.h),
-                                                                                    child: ClipRRect(
-                                                                                      borderRadius: BorderRadius.circular(8.r),
-                                                                                      child: Image.network(resume['photoUrl'], height: 100.h, fit: BoxFit.cover),
-                                                                                    ),
-                                                                                  ),
-                                                                              ],
-                                                                            ),
-                                                                          ),
-                                                                          actions: [
-                                                                            TextButton(
-                                                                              onPressed: () => Navigator.pop(context),
-                                                                              child: const Text('Close', style: TextStyle(color: Colors.teal)),
-                                                                            ),
-                                                                          ],
-                                                                        ),
-                                                                      );
-                                                                    },
-                                                                  ),
-                                                                ),
-                                                              ),
-                                                            );
-                                                          },
-                                                        );
-                                                      },
-                                                    ),
-                                                  ],
-                                                ),
-                                              if (FirebaseAuth.instance.currentUser?.uid != _selectedJob?['recruiterId']?.toString() && _isJobVisible)
+                                            ),
+                                          SizedBox(height: 20.h),
+                                          if (FirebaseAuth.instance.currentUser?.uid == _selectedJob?['recruiterId']?.toString())
+                                            Row(
+                                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                              children: [
                                                 AnimatedScaleButton(
-                                                  onPressed: isApplied ? null : () => _applyToJob(_selectedJob!),
+                                                  onPressed: () {
+                                                    Navigator.push(
+                                                      context,
+                                                      MaterialPageRoute(
+                                                        builder: (context) => EditJobScreen(
+                                                          jobId: _selectedJob!['jobId']?.toString() ?? '',
+                                                          jobData: _jobData ?? _selectedJob!,
+                                                        ),
+                                                      ),
+                                                    );
+                                                  },
                                                   child: Container(
                                                     padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
                                                     decoration: BoxDecoration(
                                                       gradient: LinearGradient(
-                                                        colors: isApplied
-                                                            ? [Colors.red.shade700, Colors.green.shade400]
-                                                            : [Colors.blue.shade700, Colors.teal.shade400],
+                                                        colors: [Colors.blue.shade700, Colors.teal.shade400],
                                                         begin: Alignment.topLeft,
                                                         end: Alignment.bottomRight,
                                                       ),
@@ -923,22 +732,225 @@ class JobScreenState extends State<JobScreen> {
                                                         ),
                                                       ],
                                                     ),
-                                                    child: Text(
-                                                      isApplied ? 'Applied' : 'Apply Now',
-                                                      style: TextStyle(
-                                                        color: Colors.white,
-                                                        fontSize: 16.sp,
-                                                        fontWeight: FontWeight.bold,
-                                                      ),
+                                                    child: Row(
+                                                      mainAxisSize: MainAxisSize.min,
+                                                      children: [
+                                                        const Icon(Icons.edit, color: Colors.white),
+                                                        SizedBox(width: 8.w),
+                                                        const Text(
+                                                          'Edit',
+                                                          style: TextStyle(
+                                                            color: Colors.white,
+                                                            fontSize: 16,
+                                                            fontWeight: FontWeight.bold,
+                                                          ),
+                                                        ),
+                                                      ],
                                                     ),
                                                   ),
                                                 ),
-                                            ],
-                                          ),
-                                        ),
+                                                AnimatedScaleButton(
+                                                  onPressed: _deleteJob,
+                                                  child: Container(
+                                                    padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
+                                                    decoration: BoxDecoration(
+                                                      gradient: LinearGradient(
+                                                        colors: [Colors.red.shade600, Colors.red.shade800],
+                                                        begin: Alignment.topLeft,
+                                                        end: Alignment.bottomRight,
+                                                      ),
+                                                      borderRadius: BorderRadius.circular(12.r),
+                                                      boxShadow: [
+                                                        BoxShadow(
+                                                          color: Colors.black.withValues(alpha: 0.2),
+                                                          blurRadius: 4.r,
+                                                          offset: Offset(0, 2.h),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                    child: Row(
+                                                      mainAxisSize: MainAxisSize.min,
+                                                      children: [
+                                                        const Icon(Icons.delete, color: Colors.white),
+                                                        SizedBox(width: 8.w),
+                                                        const Text(
+                                                          'Delete',
+                                                          style: TextStyle(
+                                                            color: Colors.white,
+                                                            fontSize: 16,
+                                                            fontWeight: FontWeight.bold,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          if (FirebaseAuth.instance.currentUser?.uid == _selectedJob?['recruiterId']?.toString() && _applicantsStream != null)
+                                            Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                SizedBox(height: 20.h),
+                                                Text(
+                                                  'Applicants',
+                                                  style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold, color: Colors.blue.shade900),
+                                                ),
+                                                SizedBox(height: 10.h),
+                                                StreamBuilder<QuerySnapshot>(
+                                                  stream: _applicantsStream,
+                                                  builder: (context, snapshot) {
+                                                    if (snapshot.connectionState == ConnectionState.waiting) {
+                                                      return const Center(
+                                                        child: CircularProgressIndicator(
+                                                          valueColor: AlwaysStoppedAnimation<Color>(Colors.teal),
+                                                        ),
+                                                      );
+                                                    }
+                                                    if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                                                      return const Text('No applicants yet.', style: TextStyle(fontSize: 16, color: Colors.grey));
+                                                    }
+                                                    return ListView.builder(
+                                                      shrinkWrap: true,
+                                                      physics: const NeverScrollableScrollPhysics(),
+                                                      itemCount: snapshot.data!.docs.length,
+                                                      itemBuilder: (context, index) {
+                                                        final applicant = snapshot.data!.docs[index].data() as Map<String, dynamic>;
+                                                        final resume = applicant['resume'] as Map<String, dynamic>? ?? {};
+                                                        return AnimatedListItem(
+                                                          child: Card(
+                                                            elevation: 3,
+                                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                                                            child: Container(
+                                                              decoration: BoxDecoration(
+                                                                gradient: LinearGradient(
+                                                                  colors: [Colors.blue.shade50, Colors.blue.shade100],
+                                                                  begin: Alignment.topLeft,
+                                                                  end: Alignment.bottomRight,
+                                                                ),
+                                                                borderRadius: BorderRadius.circular(12.r),
+                                                              ),
+                                                              child: ListTile(
+                                                                contentPadding: EdgeInsets.all(16.w),
+                                                                title: Text(
+                                                                  resume['name'] ?? 'Unknown Applicant',
+                                                                  style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.black87),
+                                                                ),
+                                                                subtitle: Column(
+                                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                                  children: [
+                                                                    Text('Job: ${applicant['jobTitle'] ?? 'Unknown Job'}'),
+                                                                    Text('Skills: ${(resume['skills'] as List<dynamic>?)?.cast<String>().join(', ') ?? 'N/A'}'),
+                                                                    Text('Education: ${resume['education'] ?? 'N/A'}'),
+                                                                    Text('Experience: ${resume['experience'] ?? 'N/A'}'),
+                                                                    Text('Specialization: ${resume['specialization'] ?? 'N/A'}'),
+                                                                    Text('Email: ${resume['email'] ?? 'N/A'}'),
+                                                                    Text('Mobile: ${resume['mobileNumber'] ?? 'N/A'}'),
+                                                                  ],
+                                                                ),
+                                                                onTap: () {
+                                                                  showDialog(
+                                                                    context: context,
+                                                                    builder: (context) => AlertDialog(
+                                                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+                                                                      title: Container(
+                                                                        padding: EdgeInsets.all(16.w),
+                                                                        decoration: BoxDecoration(
+                                                                          gradient: LinearGradient(
+                                                                            colors: [Colors.blue.shade700, Colors.blue.shade900],
+                                                                            begin: Alignment.topLeft,
+                                                                            end: Alignment.bottomRight,
+                                                                          ),
+                                                                          borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                                                                        ),
+                                                                        child: Text(
+                                                                          'Applicant: ${resume['name'] ?? 'Unknown'}',
+                                                                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                                                        ),
+                                                                      ),
+                                                                      content: SingleChildScrollView(
+                                                                        child: Column(
+                                                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                                                          children: [
+                                                                            Text('Job: ${applicant['jobTitle'] ?? 'Unknown Job'}'),
+                                                                            Text('Skills: ${(resume['skills'] as List<dynamic>?)?.cast<String>().join(', ') ?? 'N/A'}'),
+                                                                            Text('Education: ${resume['education'] ?? 'N/A'}'),
+                                                                            Text('Experience: ${resume['experience'] ?? 'N/A'}'),
+                                                                            Text('Specialization: ${resume['specialization'] ?? 'N/A'}'),
+                                                                            Text('Email: ${resume['email'] ?? 'N/A'}'),
+                                                                            Text('Mobile: ${resume['mobileNumber'] ?? 'N/A'}'),
+                                                                            Text('Current Company: ${resume['currentCompany'] ?? 'N/A'}'),
+                                                                            Text('Current CTC: ${resume['currentCtc'] ?? 'N/A'}'),
+                                                                            Text('Expected CTC: ${resume['expectedCtc'] ?? 'N/A'}'),
+                                                                            Text('Cover Letter: ${applicant['coverLetter'] ?? 'N/A'}'),
+                                                                            if (resume['photoUrl']?.isNotEmpty ?? false)
+                                                                              Padding(
+                                                                                padding: EdgeInsets.only(top: 8.h),
+                                                                                child: ClipRRect(
+                                                                                  borderRadius: BorderRadius.circular(8.r),
+                                                                                  child: Image.network(resume['photoUrl'], height: 100.h, fit: BoxFit.cover),
+                                                                                ),
+                                                                              ),
+                                                                          ],
+                                                                        ),
+                                                                      ),
+                                                                      actions: [
+                                                                        TextButton(
+                                                                          onPressed: () => Navigator.pop(context),
+                                                                          child: const Text('Close', style: TextStyle(color: Colors.teal)),
+                                                                        ),
+                                                                      ],
+                                                                    ),
+                                                                  );
+                                                                },
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        );
+                                                      },
+                                                    );
+                                                  },
+                                                ),
+                                              ],
+                                            ),
+                                          if (FirebaseAuth.instance.currentUser?.uid != _selectedJob?['recruiterId']?.toString() && _isEligible)
+                                            AnimatedScaleButton(
+                                              onPressed: isApplied ? null : () => _applyToJob(_selectedJob!),
+                                              child: Container(
+                                                padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
+                                                decoration: BoxDecoration(
+                                                  gradient: LinearGradient(
+                                                    colors: isApplied
+                                                        ? [Colors.red.shade700, Colors.green.shade400]
+                                                        : [Colors.blue.shade700, Colors.teal.shade400],
+                                                    begin: Alignment.topLeft,
+                                                    end: Alignment.bottomRight,
+                                                  ),
+                                                  borderRadius: BorderRadius.circular(12.r),
+                                                  boxShadow: [
+                                                    BoxShadow(
+                                                      color: Colors.black.withValues(alpha: 0.2),
+                                                      blurRadius: 4.r,
+                                                      offset: Offset(0, 2.h),
+                                                    ),
+                                                  ],
+                                                ),
+                                                child: Text(
+                                                  isApplied ? 'Applied' : 'Apply Now',
+                                                  style: TextStyle(
+                                                    color: Colors.white,
+                                                    fontSize: 16.sp,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                        ],
                                       ),
                                     ),
-                      ],
+                                  ),
+                              )
+                              ],
                     );
                   },
                 ),
@@ -1040,4 +1052,3 @@ class AnimatedListItemState extends State<AnimatedListItem> with SingleTickerPro
     );
   }
 }
-

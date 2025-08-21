@@ -275,7 +275,7 @@ class _SeekerDashboardState extends State<SeekerDashboard> {
       ),
       onTap: onTap,
       contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 4.h),
-      tileColor: Colors.transparent,
+      tileColor: Colors.white,
       hoverColor: Colors.white12,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(10.r),
@@ -287,12 +287,28 @@ class _SeekerDashboardState extends State<SeekerDashboard> {
     dev.log('Building tab: $label', name: 'SeekerDashboard');
     return Tab(
       child: Container(
-        constraints: BoxConstraints(maxWidth: 40.w),
-        padding: EdgeInsets.symmetric(vertical: 6.h, horizontal: 4.w),
+        constraints: BoxConstraints(maxWidth: 120.w),
+        padding: EdgeInsets.symmetric(vertical: 6.h, horizontal: 8.w),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20.r),
         ),
-        child: Icon(icon, size: 16.sp),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16.sp, color: Colors.white),
+            SizedBox(width: 4.w),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 14.sp,
+                color: Colors.white,
+                fontWeight: FontWeight.w500,
+              ),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
+            ),
+          ],
+        ),
       ),
     );
   }

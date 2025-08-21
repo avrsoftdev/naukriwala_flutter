@@ -4,7 +4,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:naukariwala/screens/recruiter_dashboard.dart';
 import 'package:naukariwala/screens/seeker_dashboard.dart';
-import 'package:multi_select_flutter/multi_select_flutter.dart';
 import '../services/auth_service.dart';
 import 'dart:developer' as dev;
 
@@ -31,95 +30,8 @@ class UnifiedScreenState extends State<UnifiedScreen> {
 
   final _formKey = GlobalKey<FormState>();
   final Map<String, dynamic> _formData = {};
-  List<String> _selectedSkills = [];
-
+  
   final AuthService _authService = AuthService();
-  final List<String> educationOptions = [
-    'High School',
-    'Associate Degree',
-    'Bachelor’s Degree',
-    'Master’s Degree',
-    'Doctorate/PhD',
-    'Diploma',
-    'Other',
-  ];
-  final List<String> specializationOptions = [
-    'Computer Science / IT',
-    'Electronics / Electrical / Robotics',
-    'Mechanical / Civil / Architecture',
-    'Business / Finance / Management',
-    'Medicine / Healthcare / Pharma',
-    'Law / Political Science / Public Administration',
-    'Arts / Humanities / Education',
-    'Design / Media / Communication',
-    'Hotel / Travel / Event Management',
-    'Science / Research / Environment',
-    'Others',
-  ];
-
-  final Map<String, List<String>> skillsBySpecialization = {
-    'Computer Science / IT': [
-      'Java', 'Python', 'C++', 'C#', 'Dart', 'Flutter', 'Android Development',
-      'iOS Development', 'React', 'Angular', 'Vue.js', 'Node.js', 'Firebase',
-      'AWS', 'Docker', 'Kubernetes', 'SQL', 'MongoDB', 'REST APIs', 'GraphQL',
-      'Machine Learning', 'Data Structures & Algorithms', 'DevOps', 'Cybersecurity',
-      'System Design',
-    ],
-    'Electronics / Electrical / Robotics': [
-      'Embedded Systems', 'PCB Design', 'VLSI', 'MATLAB', 'Simulink', 'Verilog',
-      'FPGA Programming', 'Arduino', 'Raspberry Pi', 'IoT Development',
-      'Signal Processing', 'Power Systems', 'Automation', 'SCADA',
-    ],
-    'Mechanical / Civil / Architecture': [
-      'AutoCAD', 'SolidWorks', 'CATIA', 'ANSYS', 'STAAD Pro', 'Revit',
-      'Structural Analysis', 'Thermodynamics', 'Manufacturing Processes',
-      'Fluid Mechanics', 'Construction Management', 'Urban Planning',
-    ],
-    'Business / Finance / Management': [
-      'Financial Analysis', 'Accounting', 'MS Excel', 'Tally', 'Business Intelligence',
-      'SAP', 'QuickBooks', 'Digital Marketing', 'Google Ads', 'SEO',
-      'Social Media Marketing', 'Project Management', 'Agile', 'Scrum',
-      'Business Strategy', 'Market Research', 'Customer Relationship Management (CRM)',
-      'Salesforce',
-    ],
-    'Medicine / Healthcare / Pharma': [
-      'Clinical Research', 'Patient Care', 'Surgical Assistance', 'Nursing Procedures',
-      'Medical Coding', 'Public Health', 'Pharmacology', 'First Aid', 'CPR',
-      'Health Education', 'Lab Testing', 'Radiology', 'Therapeutic Skills',
-    ],
-    'Law / Political Science / Public Administration': [
-      'Legal Research', 'Case Analysis', 'Contract Drafting', 'Litigation',
-      'Legal Compliance', 'Constitutional Law', 'Criminal Law', 'International Law',
-      'Arbitration', 'Policy Analysis', 'Public Speaking',
-    ],
-    'Arts / Humanities / Education': [
-      'Creative Writing', 'Content Writing', 'Linguistics', 'Public Speaking',
-      'Editing & Proofreading', 'Critical Thinking', 'Classroom Management',
-      'Curriculum Development', 'E-Learning Tools', 'Art History', 'Philosophical Analysis',
-    ],
-    'Design / Media / Communication': [
-      'Adobe Photoshop', 'Adobe Illustrator', 'Adobe XD', 'Figma', 'Canva',
-      'UI/UX Design', 'Video Editing', '3D Modeling', 'Motion Graphics', 'Photography',
-      'Copywriting', 'Branding', 'Social Media Content Creation', 'Typography', 'Storyboarding',
-      'Final Cut Pro', 'Lightroom',
-    ],
-    'Hotel / Travel / Event Management': [
-      'Event Planning', 'Hospitality Management', 'Customer Service', 'Bartending',
-      'Housekeeping', 'Food & Beverage Service', 'Travel Planning', 'Ticketing & Reservations',
-      'Catering Services', 'Inventory Management', 'Public Relations', 'Vendor Management',
-    ],
-    'Science / Research / Environment': [
-      'Laboratory Techniques', 'Statistical Analysis', 'Research Writing', 'Data Collection',
-      'Environmental Impact Assessment', 'Geographic Information System (GIS)', 'Microscopy',
-      'Chemical Analysis', 'Climate Modeling', 'Bioinformatics',
-    ],
-    'Others': [
-      'Communication Skills', 'Problem Solving', 'Teamwork', 'Leadership', 'Time Management',
-      'Adaptability', 'Creativity', 'Conflict Resolution', 'Critical Thinking', 'Customer Support',
-      'Basic Computer Skills', 'Typing', 'Remote Work Tools (Zoom, Slack, Trello)', 'Virtual Assistant',
-      'Content Moderation',
-    ],
-  };
 
   @override
   void initState() {
@@ -284,11 +196,6 @@ class UnifiedScreenState extends State<UnifiedScreen> {
       return;
     }
 
-    if (_selectedRole == 'seeker' && _selectedSkills.isEmpty) {
-      _showSnack("Please select at least one skill.");
-      return;
-    }
-
     _formKey.currentState!.save();
     setState(() => _isLoading = true);
 
@@ -310,10 +217,6 @@ class UnifiedScreenState extends State<UnifiedScreen> {
       };
       if (_currentState == ScreenState.recruiterSignup) {
         signupData['companyName'] = _formData['Company Name']?.toString().trim() ?? '';
-      } else if (_currentState == ScreenState.seekerSignup) {
-        signupData['education'] = _formData['Education']?.toString().trim() ?? '';
-        signupData['specialization'] = _formData['specialization']?.toString().trim() ?? '';
-        signupData['skills'] = _selectedSkills;
       }
 
       await _authService.storeSignupData(
@@ -324,7 +227,6 @@ class UnifiedScreenState extends State<UnifiedScreen> {
       _showSnack('Signup successful!');
       setState(() {
         _formData.clear();
-        _selectedSkills.clear();
       });
       await _redirectBasedOnRole();
     } catch (e) {
@@ -393,157 +295,6 @@ class UnifiedScreenState extends State<UnifiedScreen> {
         },
         onSaved: (value) => _formData[label] = value!.trim(),
         style: TextStyle(fontSize: 16.sp),
-      ),
-    );
-  }
-
-  Widget _buildEducationDropdown() {
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: 8.h),
-      child: DropdownButtonFormField<String>(
-        decoration: InputDecoration(
-          labelText: 'Education',
-          labelStyle: TextStyle(color: Colors.grey.shade600, fontSize: 14.sp),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12.r),
-            borderSide: BorderSide(color: Colors.grey.shade400),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12.r),
-            borderSide: BorderSide(color: Colors.teal, width: 2.w),
-          ),
-          filled: true,
-          fillColor: Colors.white,
-        ),
-        value: _formData['Education'] ?? educationOptions.first,
-        items: educationOptions.map((edu) {
-          return DropdownMenuItem(
-            value: edu,
-            child: Text(edu, style: TextStyle(color: Colors.black87, fontSize: 14.sp)),
-          );
-        }).toList(),
-        onChanged: (value) {
-          setState(() {
-            _formData['Education'] = value!;
-          });
-        },
-        validator: (value) => value == null ? 'Please select an education level' : null,
-        onSaved: (value) => _formData['Education'] = value!,
-      ),
-    );
-  }
-
-  Widget _buildSpecializationDropdown() {
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: 8.h),
-      child: DropdownButtonFormField<String>(
-        decoration: InputDecoration(
-          labelText: 'Specialization',
-          labelStyle: TextStyle(color: Colors.grey.shade600, fontSize: 14.sp),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12.r),
-            borderSide: BorderSide(color: Colors.grey.shade400),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12.r),
-            borderSide: BorderSide(color: Colors.teal, width: 2.w),
-          ),
-          filled: true,
-          fillColor: Colors.white,
-        ),
-        value: _formData['specialization'] ?? specializationOptions.last,
-        items: specializationOptions.map((spec) {
-          return DropdownMenuItem(
-            value: spec,
-            child: Text(spec, style: TextStyle(color: Colors.black87, fontSize: 14.sp)),
-          );
-        }).toList(),
-        onChanged: (value) {
-          setState(() {
-            _formData['specialization'] = value!;
-            _selectedSkills = [];
-          });
-        },
-        validator: (value) => value == null ? 'Please select a specialization' : null,
-        onSaved: (value) => _formData['specialization'] = value!,
-      ),
-    );
-  }
-
-  Widget _buildSkillsMultiSelect() {
-    final specialization = _formData['specialization'] ?? specializationOptions.last;
-    final availableSkills = skillsBySpecialization[specialization] ?? [];
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: 8.h),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Skills',
-            style: TextStyle(fontSize: 16.sp, color: Colors.grey.shade600),
-          ),
-          SizedBox(height: 8.h),
-          AnimatedScaleButton(
-            onPressed: () {
-              showDialog(
-                context: context,
-                builder: (_) => MultiSelectDialog(
-                  items: availableSkills.map((skill) => MultiSelectItem(skill, skill)).toList(),
-                  initialValue: _selectedSkills,
-                  title: Text('Select Skills', style: TextStyle(color: Colors.black87, fontSize: 16.sp)),
-                  selectedColor: Colors.teal,
-                ),
-              ).then((selected) {
-                if (selected != null) {
-                  setState(() {
-                    _selectedSkills = selected.cast<String>();
-                  });
-                }
-              });
-            },
-            child: Container(
-              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey.shade400),
-                borderRadius: BorderRadius.circular(12.r),
-                color: Colors.white,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.1),
-                    blurRadius: 4.r,
-                    offset: Offset(0, 2.h),
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    _selectedSkills.isEmpty ? 'Select Skills' : 'Selected ${_selectedSkills.length} skill(s)',
-                    style: TextStyle(color: Colors.grey.shade600, fontSize: 14.sp),
-                  ),
-                  Icon(Icons.arrow_drop_down, color: Colors.teal, size: 24.sp),
-                ],
-              ),
-            ),
-          ),
-          if (_selectedSkills.isNotEmpty)
-            Padding(
-              padding: EdgeInsets.only(top: 8.h),
-              child: Text(
-                'Selected: ${_selectedSkills.join(', ')}',
-                style: TextStyle(color: Colors.black87, fontSize: 14.sp),
-              ),
-            ),
-          if (_formKey.currentState?.validate() == false && _selectedSkills.isEmpty)
-            Padding(
-              padding: EdgeInsets.only(top: 8.h),
-              child: Text(
-                'Please select at least one skill',
-                style: TextStyle(color: Colors.red, fontSize: 12.sp),
-              ),
-            ),
-        ],
       ),
     );
   }
@@ -931,12 +682,13 @@ class UnifiedScreenState extends State<UnifiedScreen> {
                           )
                         : _currentState == ScreenState.seekerSignup || _currentState == ScreenState.recruiterSignup
                             ? SingleChildScrollView(
-                                child: Form(
-                                  key: _formKey,
-                                  child: Padding(
-                                    padding: EdgeInsets.only(bottom: 20.h),
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                child: Container(
+                                  constraints: BoxConstraints(maxHeight: 500.h), // Optional height limit
+                                  child: Form(
+                                    key: _formKey,
+                                    child: ListView(
+                                      shrinkWrap: true,
+                                      padding: EdgeInsets.only(bottom: 20.h),
                                       children: [
                                         _buildTextField(
                                           'Name',
@@ -962,11 +714,6 @@ class UnifiedScreenState extends State<UnifiedScreen> {
                                             'Company Name',
                                             controller: _companyNameController,
                                           ),
-                                        if (_currentState == ScreenState.seekerSignup) ...[
-                                          _buildEducationDropdown(),
-                                          _buildSpecializationDropdown(),
-                                          _buildSkillsMultiSelect(),
-                                        ],
                                         SizedBox(height: 20.h),
                                         AnimatedScaleButton(
                                           onPressed: () {
