@@ -21,6 +21,10 @@
             "package_name": "com.example.naukariwala",
             "certificate_hash": "027e6001eec6ce671e7b2b8de13ce3d36c06bde8"
           }
+        },
+        {
+          "client_id": "307134434935-v3tut2t5huf1e911sih2d530pgqn5bj1.apps.googleusercontent.com",
+          "client_type": 3
         }
       ],
       "api_key": [
@@ -30,7 +34,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "307134434935-v3tut2t5huf1e911sih2d530pgqn5bj1.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "307134434935-ha0p9ailvnl06pluvov294ar81ttt930.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.naukariwala"
+              }
+            }
+          ]
         }
       }
     }

@@ -1,6 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:naukariwala/screens/recruiter_dashboard.dart';
 import 'package:naukariwala/screens/seeker_dashboard.dart';
@@ -16,16 +15,12 @@ class UnifiedScreen extends StatefulWidget {
 
 class UnifiedScreenState extends State<UnifiedScreen> {
   String? _selectedRole;
-  LoginMethod _method = LoginMethod.phone;
   ScreenState _currentState = ScreenState.roleSelection;
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController(text: "+91");
-  final _otpController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _companyNameController = TextEditingController();
-  String? _verificationId;
-  bool _otpSent = false;
   bool _isLoading = false;
 
   final _formKey = GlobalKey<FormState>();
@@ -84,72 +79,6 @@ class UnifiedScreenState extends State<UnifiedScreen> {
     }
   }
 
-  void _sendOTP() async {
-    final raw = _phoneController.text.trim();
-    if (!RegExp(r'^\+91[0-9]{10}$').hasMatch(raw)) {
-      _showSnack("Enter valid +91 followed by 10-digit number");
-      return;
-    }
-
-    setState(() => _isLoading = true);
-    dev.log('Sending OTP to $raw', name: 'UnifiedScreen');
-    await FirebaseAuth.instance.verifyPhoneNumber(
-      phoneNumber: raw,
-      timeout: const Duration(seconds: 60),
-      verificationCompleted: (cred) async {
-        dev.log('Phone verification completed, signing in', name: 'UnifiedScreen');
-        try {
-          await FirebaseAuth.instance.signInWithCredential(cred);
-          await _redirectBasedOnRole();
-        } catch (e) {
-          dev.log('Error signing in with credential: $e', name: 'UnifiedScreen');
-          _showSnack("Sign-in failed: ${e.toString()}");
-          setState(() => _isLoading = false);
-        }
-      },
-      verificationFailed: (e) {
-        dev.log('Phone verification failed: ${e.message}', name: 'UnifiedScreen');
-        _showSnack("Verification failed: ${e.message}");
-        setState(() => _isLoading = false);
-      },
-      codeSent: (verId, _) {
-        dev.log('OTP sent, verificationId: $verId', name: 'UnifiedScreen');
-        setState(() {
-          _verificationId = verId;
-          _otpSent = true;
-          _isLoading = false;
-        });
-      },
-      codeAutoRetrievalTimeout: (verId) {
-        dev.log('OTP auto retrieval timeout, verificationId: $verId', name: 'UnifiedScreen');
-        _verificationId = verId;
-      },
-    );
-  }
-
-  void _verifyOTP() async {
-    final otp = _otpController.text.trim();
-    if (!RegExp(r'^\d{6}$').hasMatch(otp)) {
-      _showSnack("Enter valid 6-digit OTP");
-      return;
-    }
-
-    setState(() => _isLoading = true);
-    try {
-      dev.log('Verifying OTP: $otp', name: 'UnifiedScreen');
-      final cred = PhoneAuthProvider.credential(
-        verificationId: _verificationId!,
-        smsCode: otp,
-      );
-      await FirebaseAuth.instance.signInWithCredential(cred);
-      await _redirectBasedOnRole();
-    } catch (e) {
-      dev.log('OTP verification error: $e', name: 'UnifiedScreen');
-      _showSnack("Invalid OTP. Try again.");
-      setState(() => _isLoading = false);
-    }
-  }
-
   Future<void> _signInWithEmail() async {
     final email = _emailController.text.trim();
     final pass = _passwordController.text.trim();
@@ -205,8 +134,9 @@ class UnifiedScreenState extends State<UnifiedScreen> {
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
+      final user = userCredential.user;
 
-      final uid = userCredential.user?.uid;
+      final uid = user?.uid;
       if (uid == null) throw Exception("Failed to register user.");
 
       final signupData = {
@@ -214,6 +144,7 @@ class UnifiedScreenState extends State<UnifiedScreen> {
         'Mobile Number': _phoneController.text.trim(),
         'Email Id': _emailController.text.trim(),
         'UID': uid,
+        'role': _selectedRole,
       };
       if (_currentState == ScreenState.recruiterSignup) {
         signupData['companyName'] = _formData['Company Name']?.toString().trim() ?? '';
@@ -258,11 +189,9 @@ class UnifiedScreenState extends State<UnifiedScreen> {
       child: TextFormField(
         controller: controller,
         obscureText: isPassword,
-        keyboardType: label == 'Mobile Number (+91xxxxxxxxxx)' || label == 'Enter OTP'
-            ? TextInputType.phone
-            : label == 'Email Id'
-                ? TextInputType.emailAddress
-                : keyboardType ?? TextInputType.text,
+        keyboardType: label == 'Email Id'
+            ? TextInputType.emailAddress
+            : keyboardType ?? TextInputType.text,
         decoration: InputDecoration(
           labelText: label,
           labelStyle: TextStyle(color: Colors.grey.shade600, fontSize: 14.sp),
@@ -278,17 +207,9 @@ class UnifiedScreenState extends State<UnifiedScreen> {
           fillColor: Colors.white,
           contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
         ),
-        inputFormatters: label == 'Mobile Number (+91xxxxxxxxxx)'
-            ? [_PhoneNumberFormatter()]
-            : label == 'Enter OTP'
-                ? [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(6)]
-                : null,
         validator: (value) {
           final trimmed = value?.trim() ?? '';
           if (trimmed.isEmpty) return 'This field is required';
-          if (label == 'Mobile Number (+91xxxxxxxxxx)' && !RegExp(r'^\+91[0-9]{10}$').hasMatch(trimmed)) {
-            return 'Please enter a valid mobile number in the format +911234567890';
-          }
           if (label == 'Email Id' && !trimmed.contains('@')) return 'Invalid email format';
           if (label == 'Password' && trimmed.length < 6) return 'Password must be at least 6 characters';
           return null;
@@ -495,7 +416,7 @@ class UnifiedScreenState extends State<UnifiedScreen> {
                                   ),
                                 ),
                               ),
-                              SizedBox(height: 20.h), // Added to ensure bottom padding
+                              SizedBox(height: 20.h),
                             ],
                           ),
                         ),
@@ -505,159 +426,67 @@ class UnifiedScreenState extends State<UnifiedScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                ToggleButtons(
-                                  isSelected: [_method == LoginMethod.phone, _method == LoginMethod.email],
-                                  onPressed: (i) {
-                                    setState(() {
-                                      _method = i == 0 ? LoginMethod.phone : LoginMethod.email;
-                                      _otpSent = false;
-                                      _isLoading = false;
-                                    });
-                                  },
-                                  borderRadius: BorderRadius.circular(12.r),
-                                  selectedColor: Colors.teal,
-                                  fillColor: Colors.teal.shade100,
-                                  color: Colors.grey.shade600,
-                                  constraints: BoxConstraints(minHeight: 40.h, minWidth: 120.w),
-                                  children: [
-                                    Padding(
-                                      padding: EdgeInsets.symmetric(horizontal: 16.w),
-                                      child: Text("Phone", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14.sp)),
-                                    ),
-                                    Padding(
-                                      padding: EdgeInsets.symmetric(horizontal: 16.w),
-                                      child: Text("Email", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14.sp)),
-                                    ),
-                                  ],
+                                _buildTextField(
+                                  'Email',
+                                  controller: _emailController,
+                                  keyboardType: TextInputType.emailAddress,
                                 ),
-                                SizedBox(height: 20.h),
-                                if (_method == LoginMethod.phone) ...[
-                                  _buildTextField(
-                                    'Mobile Number (+91xxxxxxxxxx)',
-                                    controller: _phoneController,
-                                    keyboardType: TextInputType.phone,
-                                  ),
-                                  if (_otpSent)
-                                    _buildTextField(
-                                      'Enter OTP',
-                                      controller: _otpController,
-                                      keyboardType: TextInputType.number,
+                                _buildTextField(
+                                  'Password',
+                                  controller: _passwordController,
+                                  isPassword: true,
+                                ),
+                                SizedBox(height: 8.h),
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: TextButton(
+                                    onPressed: _isLoading ? null : _resetPassword,
+                                    child: Text(
+                                      'Forgot Password?',
+                                      style: TextStyle(color: Colors.teal.shade700, fontWeight: FontWeight.w600, fontSize: 14.sp),
                                     ),
-                                  SizedBox(height: 16.h),
-                                  AnimatedScaleButton(
-                                    onPressed: () {
-                                      if (_isLoading) return;
-                                      if (_otpSent) {
-                                        _verifyOTP();
-                                      } else {
-                                        _sendOTP();
-                                      }
-                                    },
-                                    child: Container(
-                                      width: double.infinity,
-                                      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
-                                      decoration: BoxDecoration(
-                                        gradient: LinearGradient(
-                                          colors: [Colors.blue.shade700, Colors.teal.shade400],
-                                          begin: Alignment.topLeft,
-                                          end: Alignment.bottomRight,
+                                  ),
+                                ),
+                                SizedBox(height: 16.h),
+                                AnimatedScaleButton(
+                                  onPressed: () {
+                                    if (_isLoading) return;
+                                    _signInWithEmail();
+                                  },
+                                  child: Container(
+                                    width: double.infinity,
+                                    padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: [Colors.blue.shade700, Colors.teal.shade400],
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                      ),
+                                      borderRadius: BorderRadius.circular(12.r),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withValues(alpha: 0.2),
+                                          blurRadius: 4.r,
+                                          offset: Offset(0, 2.h),
                                         ),
-                                        borderRadius: BorderRadius.circular(12.r),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: Colors.black.withValues(alpha: 0.2),
-                                            blurRadius: 4.r,
-                                            offset: Offset(0, 2.h),
-                                          ),
-                                        ],
-                                      ),
-                                      child: _isLoading
-                                          ? CircularProgressIndicator(
-                                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                              strokeWidth: 4.w,
-                                            )
-                                          : Text(
-                                              _otpSent ? 'Verify OTP' : 'Send OTP',
-                                              style: TextStyle(
-                                                color: Colors.white,
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 16.sp,
-                                              ),
-                                              textAlign: TextAlign.center,
+                                      ],
+                                    ),
+                                    child: _isLoading
+                                        ? CircularProgressIndicator(
+                                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                            strokeWidth: 4.w,
+                                          )
+                                        : Text(
+                                            'Login with Email',
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 16.sp,
                                             ),
-                                    ),
-                                  ),
-                                  if (_otpSent)
-                                    TextButton(
-                                      onPressed: _isLoading ? null : _sendOTP,
-                                      child: Text(
-                                        'Resend OTP',
-                                        style: TextStyle(color: Colors.teal.shade700, fontWeight: FontWeight.w600, fontSize: 14.sp),
-                                      ),
-                                    ),
-                                ] else ...[
-                                  _buildTextField(
-                                    'Email',
-                                    controller: _emailController,
-                                    keyboardType: TextInputType.emailAddress,
-                                  ),
-                                  _buildTextField(
-                                    'Password',
-                                    controller: _passwordController,
-                                    isPassword: true,
-                                  ),
-                                  SizedBox(height: 8.h),
-                                  Align(
-                                    alignment: Alignment.centerRight,
-                                    child: TextButton(
-                                      onPressed: _isLoading ? null : _resetPassword,
-                                      child: Text(
-                                        'Forgot Password?',
-                                        style: TextStyle(color: Colors.teal.shade700, fontWeight: FontWeight.w600, fontSize: 14.sp),
-                                      ),
-                                    ),
-                                  ),
-                                  SizedBox(height: 16.h),
-                                  AnimatedScaleButton(
-                                    onPressed: () {
-                                      if (_isLoading) return;
-                                      _signInWithEmail();
-                                    },
-                                    child: Container(
-                                      width: double.infinity,
-                                      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
-                                      decoration: BoxDecoration(
-                                        gradient: LinearGradient(
-                                          colors: [Colors.blue.shade700, Colors.teal.shade400],
-                                          begin: Alignment.topLeft,
-                                          end: Alignment.bottomRight,
-                                        ),
-                                        borderRadius: BorderRadius.circular(12.r),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: Colors.black.withValues(alpha: 0.2),
-                                            blurRadius: 4.r,
-                                            offset: Offset(0, 2.h),
+                                            textAlign: TextAlign.center,
                                           ),
-                                        ],
-                                      ),
-                                      child: _isLoading
-                                          ? CircularProgressIndicator(
-                                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                              strokeWidth: 4.w,
-                                            )
-                                          : Text(
-                                              'Login with Email',
-                                              style: TextStyle(
-                                                color: Colors.white,
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 16.sp,
-                                              ),
-                                              textAlign: TextAlign.center,
-                                            ),
-                                    ),
                                   ),
-                                ],
+                                ),
                                 SizedBox(height: 24.h),
                                 AnimatedScaleButton(
                                   onPressed: () {
@@ -676,14 +505,14 @@ class UnifiedScreenState extends State<UnifiedScreen> {
                                     ),
                                   ),
                                 ),
-                                SizedBox(height: 20.h), // Added to ensure bottom padding
+                                SizedBox(height: 20.h),
                               ],
                             ),
                           )
                         : _currentState == ScreenState.seekerSignup || _currentState == ScreenState.recruiterSignup
                             ? SingleChildScrollView(
                                 child: Container(
-                                  constraints: BoxConstraints(maxHeight: 500.h), // Optional height limit
+                                  constraints: BoxConstraints(maxHeight: 500.h),
                                   child: Form(
                                     key: _formKey,
                                     child: ListView(
@@ -765,52 +594,10 @@ class UnifiedScreenState extends State<UnifiedScreen> {
   void dispose() {
     _nameController.dispose();
     _phoneController.dispose();
-    _otpController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     _companyNameController.dispose();
     super.dispose();
-  }
-}
-
-// Custom TextInputFormatter to preserve +91 prefix
-class _PhoneNumberFormatter extends TextInputFormatter {
-  @override
-  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
-    String newText = newValue.text;
-
-    // If the input is empty, reset to "+91"
-    if (newText.isEmpty) {
-      return const TextEditingValue(
-        text: '+91',
-        selection: TextSelection.collapsed(offset: 3),
-      );
-    }
-
-    // Ensure the input starts with "+91"
-    if (!newText.startsWith('+91')) {
-      newText = '+91${newText.replaceAll(RegExp(r'^\+91|[^0-9]'), '')}';
-    }
-
-    // Limit to +91 followed by up to 10 digits
-    String digits = newText.replaceAll('+91', '');
-    if (digits.length > 10) {
-      digits = digits.substring(0, 10);
-      newText = '+91$digits';
-    }
-
-    // Update cursor position
-    int cursorOffset = newValue.selection.baseOffset;
-    if (cursorOffset < 3) {
-      cursorOffset = 3; // Keep cursor after +91
-    } else if (cursorOffset > newText.length) {
-      cursorOffset = newText.length;
-    }
-
-    return TextEditingValue(
-      text: newText,
-      selection: TextSelection.collapsed(offset: cursorOffset),
-    );
   }
 }
 
@@ -861,5 +648,5 @@ class AnimatedScaleButtonState extends State<AnimatedScaleButton> with SingleTic
   }
 }
 
-enum LoginMethod { phone, email }
+enum LoginMethod { email }
 enum ScreenState { roleSelection, login, seekerSignup, recruiterSignup }
