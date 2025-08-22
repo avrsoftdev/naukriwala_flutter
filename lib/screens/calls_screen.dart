@@ -1,3 +1,5 @@
+// ignore_for_file: deprecated_member_use
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -72,163 +74,165 @@ class _CallsScreenState extends State<CallsScreen> {
           ),
           body: Padding(
             padding: EdgeInsets.all(16.w),
-            child: Column(
-              children: [
-                TextField(
-                  decoration: InputDecoration(
-                    labelText: 'Search by name or date...',
-                    labelStyle: const TextStyle(color: Colors.grey),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12.r),
-                      borderSide: BorderSide(color: Colors.grey.shade400),
+            child: SingleChildScrollView(  // Added to prevent overflow
+              child: Column(
+                children: [
+                  TextField(
+                    decoration: InputDecoration(
+                      labelText: 'Search by name or date...',
+                      labelStyle: const TextStyle(color: Colors.grey),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12.r),
+                        borderSide: BorderSide(color: Colors.grey.shade400),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12.r),
+                        borderSide: const BorderSide(color: Colors.teal, width: 2),
+                      ),
+                      prefixIcon: const Icon(Icons.search, color: Colors.teal),
+                      filled: true,
+                      contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
                     ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12.r),
-                      borderSide: const BorderSide(color: Colors.teal, width: 2),
-                    ),
-                    prefixIcon: const Icon(Icons.search, color: Colors.teal),
-                    filled: true,
-                    contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+                    onChanged: (value) {
+                      setState(() {
+                        _searchQuery = value.toLowerCase();
+                      });
+                    },
                   ),
-                  onChanged: (value) {
-                    setState(() {
-                      _searchQuery = value.toLowerCase();
-                    });
-                  },
-                ),
-                SizedBox(height: 12.h),
-                Expanded(
-                  child: StreamBuilder<QuerySnapshot>(
-                    stream: _firestore
-                        .collection('Applications')
-                        .where('recruiterId', isEqualTo: recruiterId)
-                        .where('status', isEqualTo: 'Interview Scheduled')
-                        .orderBy('interviewDate', descending: false)
-                        .snapshots(),
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Center(
-                          child: CircularProgressIndicator(
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.teal),
-                          ),
-                        );
-                      }
-                      if (snapshot.hasError) {
-                        dev.log('[2025-08-09 00:33 IST] Error loading calls for recruiter $recruiterId: ${snapshot.error}', name: 'CallsScreen');
-                        String errorMessage = 'Error loading calls: ${snapshot.error}. Contact support.';
-                        if (snapshot.error.toString().contains('FAILED_PRECONDITION')) {
-                          errorMessage = 'Error loading calls: Index required. Create it here: https://console.firebase.google.com/v1/r/project/naukriwala-455909/firestore/indexes';
-                        } else if (snapshot.error.toString().contains('PERMISSION_DENIED')) {
-                          errorMessage = 'Permission denied: Ensure /Applications documents have recruiterId=$recruiterId and status=Interview Scheduled.';
-                        }
-                        return Center(
-                          child: Card(
-                            elevation: 4,
-                            color: Colors.red.shade50,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
-                            child: Padding(
-                              padding: EdgeInsets.all(16.w),
-                              child: Text(
-                                errorMessage,
-                                style: TextStyle(color: Colors.red.shade700, fontSize: 16.sp),
-                                textAlign: TextAlign.center,
-                              ),
+                  SizedBox(height: 12.h),
+                  SizedBox(  // Wrapped Expanded in SizedBox with height constraint
+                    height: MediaQuery.of(context).size.height * 0.7,  // 70% of screen height for the list
+                    child: StreamBuilder<QuerySnapshot>(
+                      stream: _firestore
+                          .collection('Applications')
+                          .where('recruiterId', isEqualTo: recruiterId)
+                          .where('status', isEqualTo: 'Interview Scheduled')
+                          .orderBy('interviewDate', descending: false)
+                          .snapshots(),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return const Center(
+                            child: CircularProgressIndicator(
+                              valueColor: AlwaysStoppedAnimation<Color>(Colors.teal),
                             ),
-                          ),
-                        );
-                      }
-                      final calls = snapshot.data?.docs ?? [];
-                      if (calls.isEmpty) {
-                        dev.log('[2025-08-09 00:33 IST] No scheduled calls found for recruiter $recruiterId', name: 'CallsScreen');
-                        return const Center(
-                          child: Text(
-                            'No scheduled calls found.',
-                            style: TextStyle(fontSize: 16, color: Colors.grey),
-                          ),
-                        );
-                      }
-
-                      final filteredCalls = calls.where((doc) {
-                        final data = doc.data() as Map<String, dynamic>;
-                        final name = (data['resume']?['name'] ?? data['name'] ?? '').toLowerCase();
-                        final date = data['interviewDate'] as Timestamp?;
-                        final dateStr = date != null ? DateFormat('dd MMM yyyy').format(date.toDate()).toLowerCase() : '';
-                        return name.contains(_searchQuery) || dateStr.contains(_searchQuery);
-                      }).toList();
-
-                      return ListView.builder(
-                        itemCount: filteredCalls.length,
-                        itemBuilder: (_, index) {
-                          final data = filteredCalls[index].data() as Map<String, dynamic>;
-                          final seekerId = data['seekerId'] as String? ?? 'Unknown';
-                          final jobId = data['jobId'] as String? ?? 'Unknown';
-                          final resume = data['resume'] as Map<String, dynamic>? ?? {};
-                          final interviewDate = data['interviewDate'] as Timestamp?;
-                          final dateStr = interviewDate != null ? DateFormat('dd MMM yyyy, hh:mm a').format(interviewDate.toDate()) : 'N/A';
-
-                          return AnimatedListItem(
+                          );
+                        }
+                        if (snapshot.hasError) {
+                          dev.log('[2025-08-09 00:33 IST] Error loading calls for recruiter $recruiterId: ${snapshot.error}', name: 'CallsScreen');
+                          String errorMessage = 'Error loading calls: ${snapshot.error}. Contact support.';
+                          if (snapshot.error.toString().contains('FAILED_PRECONDITION')) {
+                            errorMessage = 'Error loading calls: Index required. Create it here: https://console.firebase.google.com/v1/r/project/naukriwala-455909/firestore/indexes';
+                          } else if (snapshot.error.toString().contains('PERMISSION_DENIED')) {
+                            errorMessage = 'Permission denied: Ensure /Applications documents have recruiterId=$recruiterId and status=Interview Scheduled.';
+                          }
+                          return Center(
                             child: Card(
-                              elevation: 3,
+                              elevation: 4,
+                              color: Colors.red.shade50,
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [Colors.blue.shade50, Colors.blue.shade100],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                  ),
-                                  borderRadius: BorderRadius.circular(12.r),
-                                ),
-                                child: ListTile(
-                                  contentPadding: EdgeInsets.all(16.w),
-                                  leading: const Icon(Icons.event, color: Colors.teal, size: 28),
-                                  title: Text(
-                                    resume['name'] ?? 'Unknown Applicant',
-                                    style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.black87),
-                                  ),
-                                  subtitle: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text('Job: ${data['jobTitle'] ?? 'Unknown Job'}'),
-                                      Text('Date: $dateStr'),
-                                      Text('Seeker ID: $seekerId'),
-                                      Text('Job ID: $jobId'),
-                                    ],
-                                  ),
-                                  trailing: AnimatedScaleButton(
-                                    onPressed: interviewDate != null
-                                        ? () => _addToCalendar(
-                                              'Interview with ${resume['name'] ?? 'Applicant'} for ${data['jobTitle'] ?? 'Job'}',
-                                              interviewDate.toDate(),
-                                            )
-                                        : null,
-                                    child: Container(
-                                      padding: EdgeInsets.all(8.w),
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        color: interviewDate != null ? Colors.teal : Colors.grey,
-                                        boxShadow: [
-                                          BoxShadow(
-                                            // ignore: deprecated_member_use
-                                            color: Colors.black.withOpacity(0.2),
-                                            blurRadius: 4,
-                                            offset: const Offset(0, 2),
-                                          ),
-                                        ],
-                                      ),
-                                      child: const Icon(Icons.calendar_today, color: Colors.white, size: 24),
-                                    ),
-                                  ),
+                              child: Padding(
+                                padding: EdgeInsets.all(16.w),
+                                child: Text(
+                                  errorMessage,
+                                  style: TextStyle(color: Colors.red.shade700, fontSize: 16.sp),
+                                  textAlign: TextAlign.center,
                                 ),
                               ),
                             ),
                           );
-                        },
-                      );
-                    },
+                        }
+                        final calls = snapshot.data?.docs ?? [];
+                        if (calls.isEmpty) {
+                          dev.log('[2025-08-09 00:33 IST] No scheduled calls found for recruiter $recruiterId', name: 'CallsScreen');
+                          return const Center(
+                            child: Text(
+                              'No scheduled calls found.',
+                              style: TextStyle(fontSize: 16, color: Colors.grey),
+                            ),
+                          );
+                        }
+
+                        final filteredCalls = calls.where((doc) {
+                          final data = doc.data() as Map<String, dynamic>;
+                          final name = (data['resume']?['name'] ?? data['name'] ?? '').toLowerCase();
+                          final date = data['interviewDate'] as Timestamp?;
+                          final dateStr = date != null ? DateFormat('dd MMM yyyy').format(date.toDate()).toLowerCase() : '';
+                          return name.contains(_searchQuery) || dateStr.contains(_searchQuery);
+                        }).toList();
+
+                        return ListView.builder(
+                          itemCount: filteredCalls.length,
+                          itemBuilder: (_, index) {
+                            final data = filteredCalls[index].data() as Map<String, dynamic>;
+                            final seekerId = data['seekerId'] as String? ?? 'Unknown';
+                            final jobId = data['jobId'] as String? ?? 'Unknown';
+                            final resume = data['resume'] as Map<String, dynamic>? ?? {};
+                            final interviewDate = data['interviewDate'] as Timestamp?;
+                            final dateStr = interviewDate != null ? DateFormat('dd MMM yyyy, hh:mm a').format(interviewDate.toDate()) : 'N/A';
+
+                            return AnimatedListItem(
+                              child: Card(
+                                elevation: 3,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [Colors.blue.shade50, Colors.blue.shade100],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    ),
+                                    borderRadius: BorderRadius.circular(12.r),
+                                  ),
+                                  child: ListTile(
+                                    contentPadding: EdgeInsets.all(16.w),
+                                    leading: const Icon(Icons.event, color: Colors.teal, size: 28),
+                                    title: Text(
+                                      resume['name'] ?? 'Unknown Applicant',
+                                      style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.black87),
+                                    ),
+                                    subtitle: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text('Job: ${data['jobTitle'] ?? 'Unknown Job'}'),
+                                        Text('Date: $dateStr'),
+                                        Text('Seeker ID: $seekerId'),
+                                        Text('Job ID: $jobId'),
+                                      ],
+                                    ),
+                                    trailing: AnimatedScaleButton(
+                                      onPressed: interviewDate != null
+                                          ? () => _addToCalendar(
+                                                'Interview with ${resume['name'] ?? 'Applicant'} for ${data['jobTitle'] ?? 'Job'}',
+                                                interviewDate.toDate(),
+                                              )
+                                          : null,
+                                      child: Container(
+                                        padding: EdgeInsets.all(8.w),
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: interviewDate != null ? Colors.teal : Colors.grey,
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.black.withOpacity(0.2),
+                                              blurRadius: 4,
+                                              offset: const Offset(0, 2),
+                                            ),
+                                          ],
+                                        ),
+                                        child: const Icon(Icons.calendar_today, color: Colors.white, size: 24),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         );

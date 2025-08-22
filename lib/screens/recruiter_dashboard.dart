@@ -26,6 +26,7 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
   final FirebaseMessaging _messaging = FirebaseMessaging.instance;
   final String? recruiterId = FirebaseAuth.instance.currentUser?.uid;
   final AuthService _authService = AuthService();
+  String? recruiterName; // State variable to store the recruiter's name
 
   @override
   void initState() {
@@ -36,7 +37,7 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
       dev.log('[2025-08-08 21:25 IST] Recruiter ID: $recruiterId', name: 'RecruiterDashboard');
     }
     _requestNotificationPermissions();
-    _checkRole();
+    _checkRoleAndFetchName();
   }
 
   void _requestNotificationPermissions() async {
@@ -52,7 +53,7 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
     }
   }
 
-  Future<void> _checkRole() async {
+  Future<void> _checkRoleAndFetchName() async {
     try {
       final role = await _authService.getUserRole();
       dev.log('[2025-08-08 21:25 IST] Role for UID ${FirebaseAuth.instance.currentUser!.uid}: $role', name: 'RecruiterDashboard');
@@ -66,9 +67,18 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
             ),
           );
         }
+      } else {
+        // Fetch recruiter name from Firestore
+        final doc = await _firestore.collection('Recruiters').doc(recruiterId).get();
+        final data = doc.data();
+        if (data != null && mounted) {
+          setState(() {
+            recruiterName = data['name']?.toString() ?? 'Recruiter';
+          });
+        }
       }
     } catch (e) {
-      dev.log('[2025-08-08 21:25 IST] Error checking role: $e', name: 'RecruiterDashboard', error: e);
+      dev.log('[2025-08-08 21:25 IST] Error checking role or fetching name: $e', name: 'RecruiterDashboard', error: e);
     }
   }
 
@@ -99,9 +109,9 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
             backgroundColor: Colors.white,
             elevation: 2,
             title: Text(
-              'Recruiter Dashboard',
+              'Hi, ${recruiterName ?? 'Recruiter'}',
               style: TextStyle(
-                color: Colors.black87,
+                color: const Color.fromARGB(221, 12, 20, 108),
                 fontWeight: FontWeight.bold,
                 fontSize: 22.sp,
               ),
@@ -145,19 +155,18 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
                     ),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        CircleAvatar(
-                          radius: 40.r,
-                          backgroundColor: Colors.white.withOpacity(0.2),
-                          child: const Icon(Icons.person, size: 50, color: Colors.white),
-                        ),
-                        SizedBox(height: 10.h),
-                        Text(
-                          'Recruiter',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 20.sp,
-                            fontWeight: FontWeight.bold,
+                        SizedBox(height: 8.h),
+                        Flexible(
+                          child: Text(
+                            recruiterName ?? 'Recruiter',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 18.sp,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],
@@ -251,62 +260,62 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
               ),
             ),
           ),
-          body: DefaultTabController(
-            length: 5,
-            child: Column(
-              children: [
-                Container(
-                  padding: EdgeInsets.symmetric(vertical: 8.h, horizontal: 8.w),
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Color(0xFF4A00E0), Color(0xFF8E2DE2)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black12,
-                        blurRadius: 8,
-                        offset: Offset(0, 4),
+          body: SingleChildScrollView(
+            child: DefaultTabController(
+              length: 5,
+              child: Column(
+                children: [
+                  Container(
+                    padding: EdgeInsets.symmetric(vertical: 8.h, horizontal: 8.w),
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Color(0xFF4A00E0), Color(0xFF8E2DE2)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
                       ),
-                    ],
-                  ),
-                  child: TabBar(
-                    isScrollable: true,
-                    labelColor: Colors.white,
-                    unselectedLabelColor: Colors.white70,
-                    indicator: const BoxDecoration(
-                      borderRadius: BorderRadius.all(Radius.circular(20)),
-                      color: Colors.white24,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black12,
+                          blurRadius: 8,
+                          offset: Offset(0, 4),
+                        ),
+                      ],
                     ),
-                    tabs: [
-                      _buildTab(Icons.person, 'Profile'),
-                      _buildTab(Icons.work, 'Jobs'),
-                      _buildTab(Icons.group_add, 'Seekers'),
-                      _buildTab(Icons.call, 'Calls'),
-                      _buildTab(Icons.post_add, 'Post Job'),
-                    ],
+                    child: TabBar(
+                      isScrollable: true,
+                      labelColor: Colors.white,
+                      unselectedLabelColor: Colors.white70,
+                      indicator: const BoxDecoration(
+                        borderRadius: BorderRadius.all(Radius.circular(20)),
+                        color: Colors.white24,
+                      ),
+                      tabs: [
+                        _buildTab(Icons.person, 'Profile'),
+                        _buildTab(Icons.work, 'Jobs'),
+                        _buildTab(Icons.group_add, 'Seekers'),
+                        _buildTab(Icons.call, 'Calls'),
+                        _buildTab(Icons.post_add, 'Post Job'),
+                      ],
+                    ),
                   ),
-                ),
-                Expanded(
-                  child: Container(
-                    color: Colors.grey[100],
+                  SizedBox(
+                    height: MediaQuery.of(context).size.height * 0.7,
                     child: TabBarView(
                       children: [
-                        ProfileScreen(isRecruiter: true),
-                        PostedJobsScreen(),
+                        const ProfileScreen(isRecruiter: true),
+                        const PostedJobsScreen(),
                         AppliedSeekersScreen(
                           authService: _authService,
                           jobId: '',
                           jobTitle: '',
                         ),
-                        CallsScreen(),
-                        PostJobScreen(),
+                        const CallsScreen(),
+                        const PostJobScreen(),
                       ],
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         );

@@ -324,288 +324,282 @@ class PostJobScreenState extends State<PostJobScreen> {
     super.dispose();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final isEditMode = widget.editJobData != null;
-    final availableSkills = _selectedSpecialization != null
-        ? skillsBySpecialization[_selectedSpecialization] ?? skillsBySpecialization['Others']!
-        : skillsBySpecialization['Others']!;
+ @override
+Widget build(BuildContext context) {
+  final isEditMode = widget.editJobData != null;
+  final availableSkills = _selectedSpecialization != null
+      ? skillsBySpecialization[_selectedSpecialization] ?? skillsBySpecialization['Others']!
+      : skillsBySpecialization['Others']!;
 
-    return ScreenUtilInit(
-      designSize: const Size(360, 690),
-      minTextAdapt: true,
-      splitScreenMode: true,
-      builder: (context, child) {
-        return Scaffold(
-          appBar: AppBar(
-            title: Text(
-              isEditMode ? 'Edit Job' : 'Post a Job',
-              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
-            ),
-            flexibleSpace: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Colors.blue.shade700, Colors.blue.shade900],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
+  return ScreenUtilInit(
+    designSize: const Size(360, 690),
+    minTextAdapt: true,
+    splitScreenMode: true,
+    builder: (context, child) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text(
+            isEditMode ? 'Edit Job' : 'Post a Job',
+            style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+          ),
+          flexibleSpace: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Colors.blue.shade700, Colors.blue.shade900],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
             ),
-            elevation: 4,
           ),
-          body: isLoading
-              ? const Center(
-                  child: CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.teal),
-                  ),
-                )
-              : Padding(
-                  padding: EdgeInsets.all(16.w),
-                  child: Form(
-                    key: _formKey,
-                    child: ListView(
-                      children: [
-                        _buildTextField(
-                          controller: _titleController,
-                          labelText: 'Job Title',
-                          validator: (value) => value == null || value.trim().isEmpty ? 'Please enter Job Title' : null,
-                        ),
-                        _buildTextField(
-                          controller: _companyController,
-                          labelText: 'Company Name',
-                        ),
-                        _buildTextField(
-                          controller: _locationController,
-                          labelText: 'Location (City,State)',
-                        ),
-                        Padding(
-                          padding: EdgeInsets.symmetric(vertical: 8.h),
-                          child: Expanded(
-                            child: DropdownButtonFormField<String>(
-                              decoration: InputDecoration(
-                                labelText: 'Experience Required',
-                                labelStyle: TextStyle(color: Colors.grey.shade600, fontSize: 14.sp),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12.r),
-                                  borderSide: BorderSide(color: Colors.grey.shade400),
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12.r),
-                                  borderSide: const BorderSide(color: Colors.teal, width: 2),
-                                ),
-                                filled: true,
-                                fillColor: Colors.white,
-                              ),
-                              value: _selectedExperience,
-                              items: experienceOptions.map((String option) {
-                                return DropdownMenuItem<String>(
-                                  value: option,
-                                  child: Text(
-                                    option,
-                                    style: TextStyle(color: Colors.black87, fontSize: 14.sp),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                );
-                              }).toList(),
-                              onChanged: (newValue) {
-                                setState(() {
-                                  _selectedExperience = newValue;
-                                });
-                              },
-                              validator: (value) => value == null ? 'Please select an experience level' : null,
-                              dropdownColor: Colors.white,
-                              isExpanded: true,
+          elevation: 4,
+        ),
+        body: isLoading
+            ? const Center(
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.teal),
+                ),
+              )
+            : Padding(
+                padding: EdgeInsets.all(16.w),
+                child: Form(
+                  key: _formKey,
+                  child: ListView(
+                    children: [
+                      _buildTextField(
+                        controller: _titleController,
+                        labelText: 'Job Title',
+                        validator: (value) => value == null || value.trim().isEmpty ? 'Please enter Job Title' : null,
+                      ),
+                      _buildTextField(
+                        controller: _companyController,
+                        labelText: 'Company Name',
+                      ),
+                      _buildTextField(
+                        controller: _locationController,
+                        labelText: 'Location (City,State)',
+                      ),
+                      Padding(
+                        padding: EdgeInsets.symmetric(vertical: 8.h),
+                        child: DropdownButtonFormField<String>(
+                          decoration: InputDecoration(
+                            labelText: 'Experience Required',
+                            labelStyle: TextStyle(color: Colors.grey.shade600, fontSize: 14.sp),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12.r),
+                              borderSide: BorderSide(color: Colors.grey.shade400),
                             ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12.r),
+                              borderSide: const BorderSide(color: Colors.teal, width: 2),
+                            ),
+                            filled: true,
+                            fillColor: Colors.white,
                           ),
+                          value: _selectedExperience,
+                          items: experienceOptions.map((String option) {
+                            return DropdownMenuItem<String>(
+                              value: option,
+                              child: Text(
+                                option,
+                                style: TextStyle(color: Colors.black87, fontSize: 14.sp),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: (newValue) {
+                            setState(() {
+                              _selectedExperience = newValue;
+                            });
+                          },
+                          validator: (value) => value == null ? 'Please select an experience level' : null,
+                          dropdownColor: Colors.white,
+                          isExpanded: true,
                         ),
-                        _buildTextField(
-                          controller: _salaryController,
-                          labelText: 'Salary Range',
-                          keyboardType: TextInputType.number,
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return 'Please enter Salary Range';
-                            }
-                            final parts = value.trim().split('-');
-                            if (parts.length != 2) {
-                              return 'Please enter in format: min-max LPA';
-                            }
-                            final min = double.tryParse(parts[0].trim().replaceAll(' LPA', ''));
-                            final max = double.tryParse(parts[1].trim().replaceAll(' LPA', ''));
-                            if (min == null || max == null) {
-                              return 'Please enter valid numbers for min and max';
-                            }
-                            if (min > max) {
-                              return 'Min salary cannot be greater than max salary';
-                            }
-                            return null;
+                      ),
+                      _buildTextField(
+                        controller: _salaryController,
+                        labelText: 'Salary Range',
+                        keyboardType: TextInputType.number,
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Please enter Salary Range';
+                          }
+                          final parts = value.trim().split('-');
+                          if (parts.length != 2) {
+                            return 'Please enter in format: min-max LPA';
+                          }
+                          final min = double.tryParse(parts[0].trim().replaceAll(' LPA', ''));
+                          final max = double.tryParse(parts[1].trim().replaceAll(' LPA', ''));
+                          if (min == null || max == null) {
+                            return 'Please enter valid numbers for min and max';
+                          }
+                          if (min > max) {
+                            return 'Min salary cannot be greater than max salary';
+                          }
+                          return null;
+                        },
+                      ),
+                      _buildTextField(
+                        controller: _jobTypeController,
+                        labelText: 'Job Type (Full-time, Part-time)',
+                      ),
+                      Padding(
+                        padding: EdgeInsets.symmetric(vertical: 8.h),
+                        child: DropdownButtonFormField<String>(
+                          decoration: InputDecoration(
+                            labelText: 'Education Required',
+                            labelStyle: TextStyle(color: Colors.grey.shade600, fontSize: 14.sp),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12.r),
+                              borderSide: BorderSide(color: Colors.grey.shade400),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12.r),
+                              borderSide: const BorderSide(color: Colors.teal, width: 2),
+                            ),
+                            filled: true,
+                            fillColor: Colors.white,
+                          ),
+                          value: _selectedEducation,
+                          items: educationOptions.map((String option) {
+                            return DropdownMenuItem<String>(
+                              value: option,
+                              child: Text(
+                                option,
+                                style: TextStyle(color: Colors.black87, fontSize: 14.sp),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: (newValue) {
+                            setState(() {
+                              _selectedEducation = newValue;
+                            });
+                          },
+                          validator: (value) => value == null ? 'Please select an education level' : null,
+                          dropdownColor: Colors.white,
+                          isExpanded: true,
+                        ),
+                      ),
+                      Padding(
+                        padding: EdgeInsets.symmetric(vertical: 8.h),
+                        child: DropdownButtonFormField<String>(
+                          decoration: InputDecoration(
+                            labelText: 'Specialization',
+                            labelStyle: TextStyle(color: Colors.grey.shade600, fontSize: 14.sp),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12.r),
+                              borderSide: BorderSide(color: Colors.grey.shade400),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12.r),
+                              borderSide: const BorderSide(color: Colors.teal, width: 2),
+                            ),
+                            filled: true,
+                            fillColor: Colors.white,
+                          ),
+                          value: _selectedSpecialization,
+                          items: specializationOptions.map((String option) {
+                            return DropdownMenuItem<String>(
+                              value: option,
+                              child: Text(
+                                option,
+                                style: TextStyle(color: Colors.black87, fontSize: 14.sp),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: (newValue) {
+                            setState(() {
+                              _selectedSpecialization = newValue;
+                              _selectedSkills = []; // Reset skills when specialization changes
+                            });
+                          },
+                          validator: (value) => value == null ? 'Please select a specialization' : null,
+                          dropdownColor: Colors.white,
+                          isExpanded: true,
+                        ),
+                      ),
+                      Padding(
+                        padding: EdgeInsets.symmetric(vertical: 8.h),
+                        child: MultiSelectDialogField(
+                          items: availableSkills
+                              .map((skill) => MultiSelectItem<String>(skill, skill))
+                              .toList(),
+                          initialValue: _selectedSkills,
+                          title: Text('Required Skills', style: TextStyle(color: Colors.black87, fontSize: 16.sp)),
+                          selectedColor: Colors.teal,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            border: Border.all(color: Colors.grey.shade400),
+                            borderRadius: BorderRadius.circular(12.r),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.1),
+                                blurRadius: 4.r,
+                                offset: Offset(0, 2.h),
+                              ),
+                            ],
+                          ),
+                          buttonText: Text(
+                            'Select Required Skills',
+                            style: TextStyle(color: Colors.grey.shade600, fontSize: 14.sp),
+                          ),
+                          buttonIcon: const Icon(Icons.arrow_drop_down, color: Colors.teal),
+                          validator: (values) =>
+                              values == null || values.isEmpty ? 'Please select at least one skill' : null,
+                          onConfirm: (values) {
+                            setState(() {
+                              _selectedSkills = values.cast<String>();
+                            });
                           },
                         ),
-                        _buildTextField(
-                          controller: _jobTypeController,
-                          labelText: 'Job Type (Full-time, Part-time)',
-                        ),
-                        Padding(
-                          padding: EdgeInsets.symmetric(vertical: 8.h),
-                          child: Expanded(
-                            child: DropdownButtonFormField<String>(
-                              decoration: InputDecoration(
-                                labelText: 'Education Required',
-                                labelStyle: TextStyle(color: Colors.grey.shade600, fontSize: 14.sp),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12.r),
-                                  borderSide: BorderSide(color: Colors.grey.shade400),
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12.r),
-                                  borderSide: const BorderSide(color: Colors.teal, width: 2),
-                                ),
-                                filled: true,
-                                fillColor: Colors.white,
-                              ),
-                              value: _selectedEducation,
-                              items: educationOptions.map((String option) {
-                                return DropdownMenuItem<String>(
-                                  value: option,
-                                  child: Text(
-                                    option,
-                                    style: TextStyle(color: Colors.black87, fontSize: 14.sp),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                );
-                              }).toList(),
-                              onChanged: (newValue) {
-                                setState(() {
-                                  _selectedEducation = newValue;
-                                });
-                              },
-                              validator: (value) => value == null ? 'Please select an education level' : null,
-                              dropdownColor: Colors.white,
-                              isExpanded: true,
+                      ),
+                      _buildTextField(
+                        controller: _descriptionController,
+                        labelText: 'Job Description',
+                        maxLines: 4,
+                      ),
+                      SizedBox(height: 20.h),
+                      AnimatedScaleButton(
+                        onPressed: _submitJob,
+                        child: Container(
+                          width: double.infinity,
+                          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [Colors.blue.shade700, Colors.teal.shade400],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
                             ),
-                          ),
-                        ),
-                        Padding(
-                          padding: EdgeInsets.symmetric(vertical: 8.h),
-                          child: Expanded(
-                            child: DropdownButtonFormField<String>(
-                              decoration: InputDecoration(
-                                labelText: 'Specialization',
-                                labelStyle: TextStyle(color: Colors.grey.shade600, fontSize: 14.sp),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12.r),
-                                  borderSide: BorderSide(color: Colors.grey.shade400),
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12.r),
-                                  borderSide: const BorderSide(color: Colors.teal, width: 2),
-                                ),
-                                filled: true,
-                                fillColor: Colors.white,
+                            borderRadius: BorderRadius.circular(12.r),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.2),
+                                blurRadius: 4.r,
+                                offset: Offset(0, 2.h),
                               ),
-                              value: _selectedSpecialization,
-                              items: specializationOptions.map((String option) {
-                                return DropdownMenuItem<String>(
-                                  value: option,
-                                  child: Text(
-                                    option,
-                                    style: TextStyle(color: Colors.black87, fontSize: 14.sp),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                );
-                              }).toList(),
-                              onChanged: (newValue) {
-                                setState(() {
-                                  _selectedSpecialization = newValue;
-                                  _selectedSkills = []; // Reset skills when specialization changes
-                                });
-                              },
-                              validator: (value) => value == null ? 'Please select a specialization' : null,
-                              dropdownColor: Colors.white,
-                              isExpanded: true,
-                            ),
+                            ],
                           ),
-                        ),
-                        Padding(
-                          padding: EdgeInsets.symmetric(vertical: 8.h),
-                          child: MultiSelectDialogField(
-                            items: availableSkills
-                                .map((skill) => MultiSelectItem<String>(skill, skill))
-                                .toList(),
-                            initialValue: _selectedSkills,
-                            title: Text('Required Skills', style: TextStyle(color: Colors.black87, fontSize: 16.sp)),
-                            selectedColor: Colors.teal,
-                            decoration: BoxDecoration(
+                          child: Text(
+                            isEditMode ? 'Update Job' : 'Preview & Post',
+                            style: const TextStyle(
                               color: Colors.white,
-                              border: Border.all(color: Colors.grey.shade400),
-                              borderRadius: BorderRadius.circular(12.r),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.1),
-                                  blurRadius: 4.r,
-                                  offset: Offset(0, 2.h),
-                                ),
-                              ],
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
                             ),
-                            buttonText: Text(
-                              'Select Required Skills',
-                              style: TextStyle(color: Colors.grey.shade600, fontSize: 14.sp),
-                            ),
-                            buttonIcon: const Icon(Icons.arrow_drop_down, color: Colors.teal),
-                            validator: (values) =>
-                                values == null || values.isEmpty ? 'Please select at least one skill' : null,
-                            onConfirm: (values) {
-                              setState(() {
-                                _selectedSkills = values.cast<String>();
-                              });
-                            },
+                            textAlign: TextAlign.center,
                           ),
                         ),
-                        _buildTextField(
-                          controller: _descriptionController,
-                          labelText: 'Job Description',
-                          maxLines: 4,
-                        ),
-                        SizedBox(height: 20.h),
-                        AnimatedScaleButton(
-                          onPressed: _submitJob,
-                          child: Container(
-                            width: double.infinity,
-                            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [Colors.blue.shade700, Colors.teal.shade400],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              borderRadius: BorderRadius.circular(12.r),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.2),
-                                  blurRadius: 4.r,
-                                  offset: Offset(0, 2.h),
-                                ),
-                              ],
-                            ),
-                            child: Text(
-                              isEditMode ? 'Update Job' : 'Preview & Post',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
-        );
-      },
-    );
-  }
+              ),
+      );
+    },
+  );
+}
 
   Widget _buildTextField({
     required TextEditingController controller,

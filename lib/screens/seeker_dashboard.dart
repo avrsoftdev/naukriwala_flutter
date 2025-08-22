@@ -51,7 +51,14 @@ class _SeekerDashboardState extends State<SeekerDashboard> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 2,
-        title: null,
+        title: Text(
+          'Hi, ${widget.seekerName ?? 'Seeker'}',
+          style: TextStyle(
+            color: const Color.fromARGB(221, 12, 20, 108),
+            fontWeight: FontWeight.bold,
+            fontSize: 22.sp,
+          ),
+        ),
         centerTitle: true,
         leading: Builder(
           builder: (context) => IconButton(
@@ -95,20 +102,11 @@ class _SeekerDashboardState extends State<SeekerDashboard> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    CircleAvatar(
-                      radius: 40.r,
-                      backgroundImage: widget.photoUrl != null ? NetworkImage(widget.photoUrl!) : null,
-                      // ignore: deprecated_member_use
-                      backgroundColor: Colors.grey.withOpacity(0.2),
-                      child: widget.photoUrl == null
-                          ? Icon(Icons.person, size: 50.sp, color: Colors.white)
-                          : null,
-                    ),
                     SizedBox(height: 10.h),
                     Container(
                       constraints: BoxConstraints(maxWidth: 200.w),
                       child: Text(
-                        widget.seekerName ?? 'Seeker',
+                        'Hi ${widget.seekerName ?? 'Seeker'}',
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 18.sp,

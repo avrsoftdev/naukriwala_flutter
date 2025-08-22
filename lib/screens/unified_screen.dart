@@ -92,8 +92,16 @@ class UnifiedScreenState extends State<UnifiedScreen> {
       dev.log('Signing in with email: $email', name: 'UnifiedScreen');
       await FirebaseAuth.instance.signInWithEmailAndPassword(email: email, password: pass);
       await _redirectBasedOnRole();
-    } catch (e) {
+    } on FirebaseAuthException catch (e) {
       dev.log('Email sign-in error: $e', name: 'UnifiedScreen');
+      if (e.code == 'invalid-credential') {
+        _showSnack("You are not registered, kindly register first or check emailId and Password");
+      } else {
+        _showSnack("Login failed: ${e.message}");
+      }
+      setState(() => _isLoading = false);
+    } catch (e) {
+      dev.log('Unexpected error during sign-in: $e', name: 'UnifiedScreen');
       _showSnack("Login failed: ${e.toString()}");
       setState(() => _isLoading = false);
     }
