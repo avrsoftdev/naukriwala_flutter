@@ -24,22 +24,23 @@ class _ChatScreenState extends State<ChatScreen> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   bool isNewChat = true;
   Map<String, dynamic>? _chatDetails;
-  late Future<void> _initializationFuture = Future.value(); // Default initialized
+  late Future<void> _initializationFuture = Future.value();
   bool _showInitialMessagePrompt = false;
   bool? _isRecruiter;
+  Timestamp? _lastSeenMessageTimestamp; // Track the last seen message
 
   @override
   void initState() {
     super.initState();
     _determineRole().then((_) {
       setState(() {
-        _initializationFuture = _initializeChat(); // Assign after role determination
+        _initializationFuture = _initializeChat();
       });
     }).catchError((e) {
       dev.log('[ChatScreen] Error determining role: $e');
       setState(() {
-        _isRecruiter = false; // Default to non-recruiter if role determination fails
-        _initializationFuture = _initializeChat(); // Proceed with initialization
+        _isRecruiter = false;
+        _initializationFuture = _initializeChat();
       });
     });
   }
@@ -55,12 +56,12 @@ class _ChatScreenState extends State<ChatScreen> {
       } catch (e) {
         dev.log('[ChatScreen] Firestore error in _determineRole: $e');
         setState(() {
-          _isRecruiter = false; // Default to non-recruiter on error
+          _isRecruiter = false;
         });
       }
     } else {
       setState(() {
-        _isRecruiter = false; // Default if no user
+        _isRecruiter = false;
       });
     }
   }
@@ -140,17 +141,15 @@ class _ChatScreenState extends State<ChatScreen> {
     while (retryCount < maxRetries) {
       try {
         if (_isRecruiter == true) {
-          // Recruiter chatting with seeker
           final appDoc = await _firestore.collection('Applications').doc('${widget.recipientId}_${widget.jobId}').get();
           if (appDoc.exists) {
             final resume = appDoc.data()?['resume'] as Map<String, dynamic>? ?? {};
-            recipientName = resume['name'] ?? recipientName; // Prioritize resume name
-            company = appDoc.data()?['company'] ?? company; // Update company
+            recipientName = resume['name'] ?? recipientName;
+            company = appDoc.data()?['company'] ?? company;
             dev.log('[ChatScreen] Application data for ${widget.recipientId}_${widget.jobId}: ${appDoc.data()}');
           } else {
             dev.log('[ChatScreen] No application data found for ${widget.recipientId}_${widget.jobId}');
           }
-          // Optional check for UsersIndex as secondary fallback
           final seekerDoc = await _firestore.collection('UsersIndex').doc(widget.recipientId).get();
           if (seekerDoc.exists) {
             final data = seekerDoc.data()!;
@@ -160,14 +159,13 @@ class _ChatScreenState extends State<ChatScreen> {
             dev.log('[ChatScreen] No seeker data found in UsersIndex for ${widget.recipientId}');
           }
         } else {
-          // Seeker chatting with recruiter
           final appDoc = await _firestore.collection('Applications').doc('${uid}_${widget.jobId}').get();
           if (appDoc.exists) {
             company = appDoc.data()?['company'] ?? 'Unknown';
             dev.log('[ChatScreen] Fallback company from Applications: $company');
           }
         }
-        break; // Exit loop if successful
+        break;
       } catch (e) {
         retryCount++;
         dev.log('[ChatScreen] Error fetching chat details for ${widget.chatId} (Attempt $retryCount): $e');
@@ -175,7 +173,7 @@ class _ChatScreenState extends State<ChatScreen> {
           dev.log('[ChatScreen] Max retries reached, using fallback values');
           return {'recipientName': 'Unknown', 'company': 'Unknown'};
         }
-        await Future.delayed(retryDelay * retryCount); // Exponential backoff
+        await Future.delayed(retryDelay * retryCount);
       }
     }
 
@@ -299,6 +297,27 @@ class _ChatScreenState extends State<ChatScreen> {
                           return const Center(child: CircularProgressIndicator());
                         }
                         final messages = snapshot.data?.docs ?? [];
+                        if (messages.isNotEmpty) {
+                          final latestMessage = messages.first.data() as Map<String, dynamic>;
+                          final latestTimestamp = latestMessage['timestamp'] as Timestamp?;
+                          if (_lastSeenMessageTimestamp == null || (latestTimestamp != null && latestTimestamp.compareTo(_lastSeenMessageTimestamp!) > 0)) {
+                            _lastSeenMessageTimestamp = latestTimestamp;
+                            if (latestMessage['senderId'] != _auth.currentUser?.uid) { // Only notify for other's messages
+                              WidgetsBinding.instance.addPostFrameCallback((_) {
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('New message received!'),
+                                      backgroundColor: Colors.teal,
+                                      behavior: SnackBarBehavior.floating,
+                                      duration: Duration(seconds: 2),
+                                    ),
+                                  );
+                                }
+                              });
+                            }
+                          }
+                        }
                         return ListView.builder(
                           reverse: true,
                           itemCount: messages.length,
@@ -519,7 +538,7 @@ class AnimatedListItemState extends State<AnimatedListItem> with SingleTickerPro
       child: SlideTransition(
         position: _slideAnimation,
         child: Container(
-          color: Colors.white.withValues(alpha: 0.0), // Added to fix deprecated usage
+          color: Colors.white.withValues(alpha: 0.0),
           child: widget.child,
         ),
       ),
