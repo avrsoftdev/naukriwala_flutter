@@ -29,119 +29,139 @@ class PostJobScreenState extends State<PostJobScreen> {
   final TextEditingController _companyController = TextEditingController();
   final TextEditingController _locationController = TextEditingController();
   final TextEditingController _experienceController = TextEditingController();
-  final TextEditingController _salaryController = TextEditingController();
-  final TextEditingController _jobTypeController = TextEditingController();
+  final TextEditingController _minSalaryController = TextEditingController();
+  final TextEditingController _maxSalaryController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
 
   // State variables for spinners and multi-select
   String? _selectedEducation;
   String? _selectedExperience;
   String? _selectedSpecialization;
+  String? _selectedJobType;
   List<String> _selectedSkills = [];
 
+  // Job Type options
+  final List<String> jobTypeOptions = ['Full-Time', 'Part-Time', 'Freelancer'];
+
   // Experience options
-  final List<String> experienceOptions = [
-    'Fresher',
-    '1-2 years',
-    '2-4 years',
-    '4-6 years',
-    '6-8 years',
-    '8-10 years',
-    '10-12 years',
-  ];
+final List<String> experienceOptions = [
+  'Fresher',
+  '1-2 years',
+  '2-4 years',
+  '4-6 years',
+  '6-8 years',
+  '8-10 years',
+  '10-12 years',
+  '12+ years', // Added to cover more experienced candidates
+];
 
-  // Education options
-  final List<String> educationOptions = [
-    'High School (10th)',
-    'Higher Secondary (12th)',
-    'Diploma',
-    'Bachelor\'s Degree',
-    'Master\'s Degree',
-    'Doctorate (PhD)',
-    'Post Doctorate',
-    'Professional Certification',
-    'Other',
-  ];
+// Education options
+final List<String> educationOptions = [
+  'High School (Class 10)',
+  'Senior Secondary (Class 12)', // Updated to reflect Indian system
+  'Diploma',
+  'Associate Degree',
+  'Bachelor\'s Degree',
+  'Postgraduate Diploma', // Added for Indian and global relevance
+  'Master\'s Degree',
+  'Doctorate/PhD',
+  'Professional Certification',
+  'Other',
+];
 
-  // Specialization options
-  final List<String> specializationOptions = [
-    'Computer Science / IT',
-    'Electronics / Electrical / Robotics',
-    'Mechanical / Civil / Architecture',
-    'Business / Finance / Management',
-    'Medicine / Healthcare / Pharma',
-    'Law / Political Science / Public Administration',
-    'Arts / Humanities / Education',
-    'Design / Media / Communication',
-    'Hotel / Travel / Event Management',
-    'Science / Research / Environment',
-    'Others',
-  ];
+// Specialization options
+final List<String> specializationOptions = [
+  'Computer Science / IT',
+  'Electronics / Electrical / Robotics',
+  'Mechanical / Civil / Architecture',
+  'Business / Finance / Management',
+  'Medicine / Healthcare / Pharma',
+  'Law / Political Science / Public Administration',
+  'Arts / Humanities / Education',
+  'Design / Media / Communication',
+  'Hotel / Travel / Event Management',
+  'Science / Research / Environment',
+  'Vocational/Domestic Services', // Added for driving, househelp, etc.
+  'Others',
+];
 
-  // Skills by specialization
-  final Map<String, List<String>> skillsBySpecialization = {
-    'Computer Science / IT': [
-      'Java', 'Python', 'C++', 'C#', 'Dart', 'Flutter', 'Android Development',
-      'iOS Development', 'React', 'Angular', 'Vue.js', 'Node.js', 'Firebase',
-      'AWS', 'Docker', 'Kubernetes', 'SQL', 'MongoDB', 'REST APIs', 'GraphQL',
-      'Machine Learning', 'Data Structures & Algorithms', 'DevOps', 'Cybersecurity',
-      'System Design',
-    ],
-    'Electronics / Electrical / Robotics': [
-      'Embedded Systems', 'PCB Design', 'VLSI', 'MATLAB', 'Simulink', 'Verilog',
-      'FPGA Programming', 'Arduino', 'Raspberry Pi', 'IoT Development',
-      'Signal Processing', 'Power Systems', 'Automation', 'SCADA',
-    ],
-    'Mechanical / Civil / Architecture': [
-      'AutoCAD', 'SolidWorks', 'CATIA', 'ANSYS', 'STAAD Pro', 'Revit',
-      'Structural Analysis', 'Thermodynamics', 'Manufacturing Processes',
-      'Fluid Mechanics', 'Construction Management', 'Urban Planning',
-    ],
-    'Business / Finance / Management': [
-      'Financial Analysis', 'Accounting', 'MS Excel', 'Tally', 'Business Intelligence',
-      'SAP', 'QuickBooks', 'Digital Marketing', 'Google Ads', 'SEO',
-      'Social Media Marketing', 'Project Management', 'Agile', 'Scrum',
-      'Business Strategy', 'Market Research', 'Customer Relationship Management (CRM)',
-      'Salesforce',
-    ],
-    'Medicine / Healthcare / Pharma': [
-      'Clinical Research', 'Patient Care', 'Surgical Assistance', 'Nursing Procedures',
-      'Medical Coding', 'Public Health', 'Pharmacology', 'First Aid', 'CPR',
-      'Health Education', 'Lab Testing', 'Radiology', 'Therapeutic Skills',
-    ],
-    'Law / Political Science / Public Administration': [
-      'Legal Research', 'Case Analysis', 'Contract Drafting', 'Litigation',
-      'Legal Compliance', 'Constitutional Law', 'Criminal Law', 'International Law',
-      'Arbitration', 'Policy Analysis', 'Public Speaking',
-    ],
-    'Arts / Humanities / Education': [
-      'Creative Writing', 'Content Writing', 'Linguistics', 'Public Speaking',
-      'Editing & Proofreading', 'Critical Thinking', 'Classroom Management',
-      'Curriculum Development', 'E-Learning Tools', 'Art History', 'Philosophical Analysis',
-    ],
-    'Design / Media / Communication': [
-      'Adobe Photoshop', 'Adobe Illustrator', 'Adobe XD', 'Figma', 'Canva',
-      'UI/UX Design', 'Video Editing', '3D Modeling', 'Motion Graphics', 'Photography',
-      'Copywriting', 'Branding', 'Social Media Content Creation', 'Typography', 'Storyboarding',
-      'Final Cut Pro', 'Lightroom',
-    ],
-    'Hotel / Travel / Event Management': [
-      'Event Planning', 'Hospitality Management', 'Customer Service', 'Bartending',
-      'Housekeeping', 'Food & Beverage Service', 'Travel Planning', 'Ticketing & Reservations',
-      'Catering Services', 'Inventory Management', 'Public Relations', 'Vendor Management',
-    ],
-    'Science / Research / Environment': [
-      'Laboratory Techniques', 'Statistical Analysis', 'Research Writing', 'Data Collection',
-      'Environmental Impact Assessment', 'Geographic Information System (GIS)', 'Microscopy',
-      'Chemical Analysis', 'Climate Modeling', 'Bioinformatics',
-    ],
-    'Others': [
-      'Communication Skills', 'Problem Solving', 'Teamwork', 'Leadership', 'Time Management',
-      'Adaptability', 'Creativity', 'Conflict Resolution', 'Critical Thinking', 'Customer Support',
-      'Basic Computer Skills', 'Typing', 'Remote Work Tools (Zoom, Slack, Trello)', 'Virtual Assistant',
-      'Content Moderation',
-    ],
-  };
+// Skills by specialization
+final Map<String, List<String>> skillsBySpecialization = {
+  'Computer Science / IT': [
+    'Java', 'Python', 'C++', 'C#', 'Dart', 'Flutter', 'Android Development',
+    'iOS Development', 'React', 'Angular', 'Vue.js', 'Node.js', 'Firebase',
+    'AWS', 'Docker', 'Kubernetes', 'SQL', 'MongoDB', 'REST APIs', 'GraphQL',
+    'Machine Learning', 'Data Structures & Algorithms', 'DevOps', 'Cybersecurity',
+    'System Design',
+  ],
+  'Electronics / Electrical / Robotics': [
+    'Embedded Systems', 'PCB Design', 'VLSI', 'MATLAB', 'Simulink', 'Verilog',
+    'FPGA Programming', 'Arduino', 'Raspberry Pi', 'IoT Development',
+    'Signal Processing', 'Power Systems', 'Automation', 'SCADA',
+  ],
+  'Mechanical / Civil / Architecture': [
+    'AutoCAD', 'SolidWorks', 'CATIA', 'ANSYS', 'STAAD Pro', 'Revit',
+    'Structural Analysis', 'Thermodynamics', 'Manufacturing Processes',
+    'Fluid Mechanics', 'Construction Management', 'Urban Planning',
+  ],
+  'Business / Finance / Management': [
+    'Financial Analysis', 'Accounting', 'MS Excel', 'Tally', 'Business Intelligence',
+    'SAP', 'QuickBooks', 'Digital Marketing', 'Google Ads', 'SEO',
+    'Social Media Marketing', 'Project Management', 'Agile', 'Scrum',
+    'Business Strategy', 'Market Research', 'Customer Relationship Management (CRM)',
+    'Salesforce',
+  ],
+  'Medicine / Healthcare / Pharma': [
+    'Clinical Research', 'Patient Care', 'Surgical Assistance', 'Nursing Procedures',
+    'Medical Coding', 'Public Health', 'Pharmacology', 'First Aid', 'CPR',
+    'Health Education', 'Lab Testing', 'Radiology', 'Therapeutic Skills',
+  ],
+  'Law / Political Science / Public Administration': [
+    'Legal Research', 'Case Analysis', 'Contract Drafting', 'Litigation',
+    'Legal Compliance', 'Constitutional Law', 'Criminal Law', 'International Law',
+    'Arbitration', 'Policy Analysis', 'Public Speaking',
+  ],
+  'Arts / Humanities / Education': [
+    'Creative Writing', 'Content Writing', 'Linguistics', 'Public Speaking',
+    'Editing & Proofreading', 'Critical Thinking', 'Classroom Management',
+    'Curriculum Development', 'E-Learning Tools', 'Art History', 'Philosophical Analysis',
+  ],
+  'Design / Media / Communication': [
+    'Adobe Photoshop', 'Adobe Illustrator', 'Adobe XD', 'Figma', 'Canva',
+    'UI/UX Design', 'Video Editing', '3D Modeling', 'Motion Graphics', 'Photography',
+    'Copywriting', 'Branding', 'Social Media Content Creation', 'Typography', 'Storyboarding',
+    'Final Cut Pro', 'Lightroom',
+  ],
+  'Hotel / Travel / Event Management': [
+    'Event Planning', 'Hospitality Management', 'Customer Service', 'Bartending',
+    'Housekeeping', 'Food & Beverage Service', 'Travel Planning', 'Ticketing & Reservations',
+    'Catering Services', 'Inventory Management', 'Public Relations', 'Vendor Management',
+  ],
+  'Science / Research / Environment': [
+    'Laboratory Techniques', 'Statistical Analysis', 'Research Writing', 'Data Collection',
+    'Environmental Impact Assessment', 'Geographic Information System (GIS)', 'Microscopy',
+    'Chemical Analysis', 'Climate Modeling', 'Bioinformatics',
+  ],
+  'Vocational/Domestic Services': [
+    'Driving', // Car, motorcycle, or commercial vehicle driving
+    'Housekeeping', // Cleaning, laundry, household management
+    'Cooking', // Meal preparation, dietary planning
+    'Childcare', // Babysitting, child supervision, tutoring
+    'Elderly Care', // Assisting elderly with daily tasks
+    'Gardening', // Plant care, landscaping
+    'Basic Maintenance', // Minor household repairs (plumbing, electrical)
+    'Customer Service', // Handling client interactions
+    'Inventory Management', // Managing household supplies
+    'Event Assistance', // Supporting events (e.g., catering, setup)
+  ],
+  'Others': [
+    'Communication Skills', 'Problem Solving', 'Teamwork', 'Leadership', 'Time Management',
+    'Adaptability', 'Creativity', 'Conflict Resolution', 'Critical Thinking', 'Customer Support',
+    'Basic Computer Skills', 'Typing', 'Remote Work Tools (Zoom, Slack, Trello)', 'Virtual Assistant',
+    'Content Moderation', 'Driving', 'Housekeeping', 'Cooking', 'Childcare', 'Gardening',
+    'Basic Maintenance',
+  ],
+};
 
   @override
   void initState() {
@@ -150,8 +170,11 @@ class PostJobScreenState extends State<PostJobScreen> {
       _mapEditData();
     } else {
       _loadRecruiterLocation();
-      _salaryController.text = '0.0-0.0 LPA'; // Default to editable range with fixed LPA
+      _minSalaryController.text = '0.0';
+      _maxSalaryController.text = '0.0';
     }
+    _minSalaryController.addListener(_formatSalaryOnChange);
+    _maxSalaryController.addListener(_formatSalaryOnChange);
   }
 
   void _mapEditData() {
@@ -159,8 +182,16 @@ class PostJobScreenState extends State<PostJobScreen> {
     _companyController.text = widget.editJobData!['company']?.toString() ?? widget.editJobData!['Company Name']?.toString() ?? '';
     _locationController.text = widget.editJobData!['location']?.toString() ?? widget.editJobData!['Location (Remote, On-site, Hybrid)']?.toString() ?? '';
     _selectedExperience = widget.editJobData!['experience']?.toString() ?? widget.editJobData!['Experience Required']?.toString();
-    _salaryController.text = widget.editJobData!['salary']?.toString() ?? widget.editJobData!['Salary Range']?.toString() ?? '0.0-0.0 LPA';
-    _jobTypeController.text = widget.editJobData!['jobType']?.toString() ?? widget.editJobData!['Job Type (Full-time, Part-time)']?.toString() ?? '';
+    final salary = widget.editJobData!['salary']?.toString() ?? widget.editJobData!['Salary Range']?.toString() ?? '0.0-0.0 LPA (INR)';
+    final parts = salary.split('-');
+    if (parts.length == 2) {
+      _minSalaryController.text = parts[0].trim().replaceAll(' LPA (INR)', '');
+      _maxSalaryController.text = parts[1].trim().replaceAll(' LPA (INR)', '');
+    } else {
+      _minSalaryController.text = '0.0';
+      _maxSalaryController.text = '0.0';
+    }
+    _selectedJobType = widget.editJobData!['jobType']?.toString() ?? widget.editJobData!['Job Type (Full-time, Part-time)']?.toString();
     _descriptionController.text = widget.editJobData!['description']?.toString() ?? widget.editJobData!['Job Description']?.toString() ?? '';
     _selectedSkills = (widget.editJobData!['skills'] as List<dynamic>?)?.cast<String>() ?? [];
     _selectedEducation = widget.editJobData!['education']?.toString();
@@ -174,6 +205,9 @@ class PostJobScreenState extends State<PostJobScreen> {
     }
     if (_selectedSpecialization != null && !specializationOptions.contains(_selectedSpecialization)) {
       _selectedSpecialization = null;
+    }
+    if (_selectedJobType != null && !jobTypeOptions.contains(_selectedJobType)) {
+      _selectedJobType = null;
     }
     dev.log('Mapped edit data: ${_getFormData()}', name: 'PostJobScreen');
   }
@@ -194,14 +228,38 @@ class PostJobScreenState extends State<PostJobScreen> {
     }
   }
 
+  String _formatSalary(String value) {
+    value = value.replaceAll(' LPA (INR)', '').trim();
+    double? number = double.tryParse(value);
+    if (number == null) {
+      return '0.0';
+    }
+    return number.toStringAsFixed(1);
+  }
+
+  void _formatSalaryOnChange() {
+    final controllers = [_minSalaryController, _maxSalaryController];
+    for (var controller in controllers) {
+      final value = controller.text;
+      final formattedValue = _formatSalary(value);
+      if (controller.text != formattedValue) {
+        final selection = controller.selection;
+        controller.text = formattedValue;
+        controller.selection = selection.extent.offset == value.length
+            ? TextSelection.fromPosition(TextPosition(offset: formattedValue.length))
+            : TextSelection.collapsed(offset: selection.extent.offset);
+      }
+    }
+  }
+
   Map<String, dynamic> _getFormData() {
     return {
       'title': _titleController.text.trim(),
       'company': _companyController.text.trim(),
       'location': _locationController.text.trim(),
       'experience': _selectedExperience ?? '',
-      'salary': _salaryController.text.trim(),
-      'jobType': _jobTypeController.text.trim(),
+      'salary': '${_minSalaryController.text.trim()}-${_maxSalaryController.text.trim()} LPA (INR)',
+      'jobType': _selectedJobType ?? '',
       'description': _descriptionController.text.trim(),
       'skills': _selectedSkills,
       'education': _selectedEducation ?? '',
@@ -318,288 +376,335 @@ class PostJobScreenState extends State<PostJobScreen> {
     _companyController.dispose();
     _locationController.dispose();
     _experienceController.dispose();
-    _salaryController.dispose();
-    _jobTypeController.dispose();
+    _minSalaryController.removeListener(_formatSalaryOnChange);
+    _maxSalaryController.removeListener(_formatSalaryOnChange);
+    _minSalaryController.dispose();
+    _maxSalaryController.dispose();
     _descriptionController.dispose();
     super.dispose();
   }
 
- @override
-Widget build(BuildContext context) {
-  final isEditMode = widget.editJobData != null;
-  final availableSkills = _selectedSpecialization != null
-      ? skillsBySpecialization[_selectedSpecialization] ?? skillsBySpecialization['Others']!
-      : skillsBySpecialization['Others']!;
+  @override
+  Widget build(BuildContext context) {
+    final isEditMode = widget.editJobData != null;
+    final availableSkills = _selectedSpecialization != null
+        ? skillsBySpecialization[_selectedSpecialization] ?? skillsBySpecialization['Others']!
+        : skillsBySpecialization['Others']!;
 
-  return ScreenUtilInit(
-    designSize: const Size(360, 690),
-    minTextAdapt: true,
-    splitScreenMode: true,
-    builder: (context, child) {
-      return Scaffold(
-        appBar: AppBar(
-          title: Text(
-            isEditMode ? 'Edit Job' : 'Post a Job',
-            style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
-          ),
-          flexibleSpace: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Colors.blue.shade700, Colors.blue.shade900],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+    return ScreenUtilInit(
+      designSize: const Size(360, 690),
+      minTextAdapt: true,
+      splitScreenMode: true,
+      builder: (context, child) {
+        return Scaffold(
+          appBar: AppBar(
+            title: Text(
+              isEditMode ? 'Edit Job' : 'Post a Job',
+              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+            ),
+            flexibleSpace: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.blue.shade700, Colors.blue.shade900],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
               ),
             ),
+            elevation: 4,
           ),
-          elevation: 4,
-        ),
-        body: isLoading
-            ? const Center(
-                child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.teal),
-                ),
-              )
-            : Padding(
-                padding: EdgeInsets.all(16.w),
-                child: Form(
-                  key: _formKey,
-                  child: ListView(
-                    children: [
-                      _buildTextField(
-                        controller: _titleController,
-                        labelText: 'Job Title',
-                        validator: (value) => value == null || value.trim().isEmpty ? 'Please enter Job Title' : null,
-                      ),
-                      _buildTextField(
-                        controller: _companyController,
-                        labelText: 'Company Name',
-                      ),
-                      _buildTextField(
-                        controller: _locationController,
-                        labelText: 'Location (City,State)',
-                      ),
-                      Padding(
-                        padding: EdgeInsets.symmetric(vertical: 8.h),
-                        child: DropdownButtonFormField<String>(
-                          decoration: InputDecoration(
-                            labelText: 'Experience Required',
-                            labelStyle: TextStyle(color: Colors.grey.shade600, fontSize: 14.sp),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12.r),
-                              borderSide: BorderSide(color: Colors.grey.shade400),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12.r),
-                              borderSide: const BorderSide(color: Colors.teal, width: 2),
-                            ),
-                            filled: true,
-                            fillColor: Colors.white,
-                          ),
-                          value: _selectedExperience,
-                          items: experienceOptions.map((String option) {
-                            return DropdownMenuItem<String>(
-                              value: option,
-                              child: Text(
-                                option,
-                                style: TextStyle(color: Colors.black87, fontSize: 14.sp),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            );
-                          }).toList(),
-                          onChanged: (newValue) {
-                            setState(() {
-                              _selectedExperience = newValue;
-                            });
-                          },
-                          validator: (value) => value == null ? 'Please select an experience level' : null,
-                          dropdownColor: Colors.white,
-                          isExpanded: true,
+          body: isLoading
+              ? const Center(
+                  child: CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.teal),
+                  ),
+                )
+              : Padding(
+                  padding: EdgeInsets.all(16.w),
+                  child: Form(
+                    key: _formKey,
+                    child: ListView(
+                      children: [
+                        _buildTextField(
+                          controller: _titleController,
+                          labelText: 'Job Title',
+                          validator: (value) => value == null || value.trim().isEmpty ? 'Please enter Job Title' : null,
                         ),
-                      ),
-                      _buildTextField(
-                        controller: _salaryController,
-                        labelText: 'Salary Range',
-                        keyboardType: TextInputType.number,
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'Please enter Salary Range';
-                          }
-                          final parts = value.trim().split('-');
-                          if (parts.length != 2) {
-                            return 'Please enter in format: min-max LPA';
-                          }
-                          final min = double.tryParse(parts[0].trim().replaceAll(' LPA', ''));
-                          final max = double.tryParse(parts[1].trim().replaceAll(' LPA', ''));
-                          if (min == null || max == null) {
-                            return 'Please enter valid numbers for min and max';
-                          }
-                          if (min > max) {
-                            return 'Min salary cannot be greater than max salary';
-                          }
-                          return null;
-                        },
-                      ),
-                      _buildTextField(
-                        controller: _jobTypeController,
-                        labelText: 'Job Type (Full-time, Part-time)',
-                      ),
-                      Padding(
-                        padding: EdgeInsets.symmetric(vertical: 8.h),
-                        child: DropdownButtonFormField<String>(
-                          decoration: InputDecoration(
-                            labelText: 'Education Required',
-                            labelStyle: TextStyle(color: Colors.grey.shade600, fontSize: 14.sp),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12.r),
-                              borderSide: BorderSide(color: Colors.grey.shade400),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12.r),
-                              borderSide: const BorderSide(color: Colors.teal, width: 2),
-                            ),
-                            filled: true,
-                            fillColor: Colors.white,
-                          ),
-                          value: _selectedEducation,
-                          items: educationOptions.map((String option) {
-                            return DropdownMenuItem<String>(
-                              value: option,
-                              child: Text(
-                                option,
-                                style: TextStyle(color: Colors.black87, fontSize: 14.sp),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            );
-                          }).toList(),
-                          onChanged: (newValue) {
-                            setState(() {
-                              _selectedEducation = newValue;
-                            });
-                          },
-                          validator: (value) => value == null ? 'Please select an education level' : null,
-                          dropdownColor: Colors.white,
-                          isExpanded: true,
+                        _buildTextField(
+                          controller: _companyController,
+                          labelText: 'Company Name',
                         ),
-                      ),
-                      Padding(
-                        padding: EdgeInsets.symmetric(vertical: 8.h),
-                        child: DropdownButtonFormField<String>(
-                          decoration: InputDecoration(
-                            labelText: 'Specialization',
-                            labelStyle: TextStyle(color: Colors.grey.shade600, fontSize: 14.sp),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12.r),
-                              borderSide: BorderSide(color: Colors.grey.shade400),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12.r),
-                              borderSide: const BorderSide(color: Colors.teal, width: 2),
-                            ),
-                            filled: true,
-                            fillColor: Colors.white,
-                          ),
-                          value: _selectedSpecialization,
-                          items: specializationOptions.map((String option) {
-                            return DropdownMenuItem<String>(
-                              value: option,
-                              child: Text(
-                                option,
-                                style: TextStyle(color: Colors.black87, fontSize: 14.sp),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            );
-                          }).toList(),
-                          onChanged: (newValue) {
-                            setState(() {
-                              _selectedSpecialization = newValue;
-                              _selectedSkills = []; // Reset skills when specialization changes
-                            });
-                          },
-                          validator: (value) => value == null ? 'Please select a specialization' : null,
-                          dropdownColor: Colors.white,
-                          isExpanded: true,
+                        _buildTextField(
+                          controller: _locationController,
+                          labelText: 'Location (City, State)',
                         ),
-                      ),
-                      Padding(
-                        padding: EdgeInsets.symmetric(vertical: 8.h),
-                        child: MultiSelectDialogField(
-                          items: availableSkills
-                              .map((skill) => MultiSelectItem<String>(skill, skill))
-                              .toList(),
-                          initialValue: _selectedSkills,
-                          title: Text('Required Skills', style: TextStyle(color: Colors.black87, fontSize: 16.sp)),
-                          selectedColor: Colors.teal,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            border: Border.all(color: Colors.grey.shade400),
-                            borderRadius: BorderRadius.circular(12.r),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.1),
-                                blurRadius: 4.r,
-                                offset: Offset(0, 2.h),
+                        Padding(
+                          padding: EdgeInsets.symmetric(vertical: 8.h),
+                          child: DropdownButtonFormField<String>(
+                            decoration: InputDecoration(
+                              labelText: 'Experience Required',
+                              labelStyle: TextStyle(color: Colors.grey.shade600, fontSize: 14.sp),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12.r),
+                                borderSide: BorderSide(color: Colors.grey.shade400),
                               ),
-                            ],
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12.r),
+                                borderSide: const BorderSide(color: Colors.teal, width: 2),
+                              ),
+                              filled: true,
+                              fillColor: Colors.white,
+                            ),
+                            value: _selectedExperience,
+                            items: experienceOptions.map((String option) {
+                              return DropdownMenuItem<String>(
+                                value: option,
+                                child: Text(
+                                  option,
+                                  style: TextStyle(color: Colors.black87, fontSize: 14.sp),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              );
+                            }).toList(),
+                            onChanged: (newValue) {
+                              setState(() {
+                                _selectedExperience = newValue;
+                              });
+                            },
+                            validator: (value) => value == null ? 'Please select an experience level' : null,
+                            dropdownColor: Colors.white,
+                            isExpanded: true,
                           ),
-                          buttonText: Text(
-                            'Select Required Skills',
-                            style: TextStyle(color: Colors.grey.shade600, fontSize: 14.sp),
-                          ),
-                          buttonIcon: const Icon(Icons.arrow_drop_down, color: Colors.teal),
-                          validator: (values) =>
-                              values == null || values.isEmpty ? 'Please select at least one skill' : null,
-                          onConfirm: (values) {
-                            setState(() {
-                              _selectedSkills = values.cast<String>();
-                            });
+                        ),
+                        _buildTextField(
+                          controller: _minSalaryController,
+                          labelText: 'Minimum Salary (LPA (INR))',
+                          keyboardType: TextInputType.number,
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Please enter Minimum Salary';
+                            }
+                            final min = double.tryParse(value.trim());
+                            if (min == null) {
+                              return 'Please enter a valid number';
+                            }
+                            final max = double.tryParse(_maxSalaryController.text.trim()) ?? 0.0;
+                            if (min > max && _maxSalaryController.text.isNotEmpty) {
+                              return 'Min salary cannot be greater than max salary';
+                            }
+                            return null;
                           },
                         ),
-                      ),
-                      _buildTextField(
-                        controller: _descriptionController,
-                        labelText: 'Job Description',
-                        maxLines: 4,
-                      ),
-                      SizedBox(height: 20.h),
-                      AnimatedScaleButton(
-                        onPressed: _submitJob,
-                        child: Container(
-                          width: double.infinity,
-                          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [Colors.blue.shade700, Colors.teal.shade400],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            borderRadius: BorderRadius.circular(12.r),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.2),
-                                blurRadius: 4.r,
-                                offset: Offset(0, 2.h),
+                        _buildTextField(
+                          controller: _maxSalaryController,
+                          labelText: 'Maximum Salary (LPA (INR))',
+                          keyboardType: TextInputType.number,
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Please enter Maximum Salary';
+                            }
+                            final max = double.tryParse(value.trim());
+                            if (max == null) {
+                              return 'Please enter a valid number';
+                            }
+                            return null;
+                          },
+                        ),
+                        Padding(
+                          padding: EdgeInsets.symmetric(vertical: 8.h),
+                          child: DropdownButtonFormField<String>(
+                            decoration: InputDecoration(
+                              labelText: 'Job Type',
+                              labelStyle: TextStyle(color: Colors.grey.shade600, fontSize: 14.sp),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12.r),
+                                borderSide: BorderSide(color: Colors.grey.shade400),
                               ),
-                            ],
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12.r),
+                                borderSide: const BorderSide(color: Colors.teal, width: 2),
+                              ),
+                              filled: true,
+                              fillColor: Colors.white,
+                            ),
+                            value: _selectedJobType,
+                            items: jobTypeOptions.map((String option) {
+                              return DropdownMenuItem<String>(
+                                value: option,
+                                child: Text(
+                                  option,
+                                  style: TextStyle(color: Colors.black87, fontSize: 14.sp),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              );
+                            }).toList(),
+                            onChanged: (newValue) {
+                              setState(() {
+                                _selectedJobType = newValue;
+                              });
+                            },
+                            validator: (value) => value == null ? 'Please select a job type' : null,
+                            dropdownColor: Colors.white,
+                            isExpanded: true,
                           ),
-                          child: Text(
-                            isEditMode ? 'Update Job' : 'Preview & Post',
-                            style: const TextStyle(
+                        ),
+                        Padding(
+                          padding: EdgeInsets.symmetric(vertical: 8.h),
+                          child: DropdownButtonFormField<String>(
+                            decoration: InputDecoration(
+                              labelText: 'Education Required',
+                              labelStyle: TextStyle(color: Colors.grey.shade600, fontSize: 14.sp),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12.r),
+                                borderSide: BorderSide(color: Colors.grey.shade400),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12.r),
+                                borderSide: const BorderSide(color: Colors.teal, width: 2),
+                              ),
+                              filled: true,
+                              fillColor: Colors.white,
+                            ),
+                            value: _selectedEducation,
+                            items: educationOptions.map((String option) {
+                              return DropdownMenuItem<String>(
+                                value: option,
+                                child: Text(
+                                  option,
+                                  style: TextStyle(color: Colors.black87, fontSize: 14.sp),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              );
+                            }).toList(),
+                            onChanged: (newValue) {
+                              setState(() {
+                                _selectedEducation = newValue;
+                              });
+                            },
+                            validator: (value) => value == null ? 'Please select an education level' : null,
+                            dropdownColor: Colors.white,
+                            isExpanded: true,
+                          ),
+                        ),
+                        Padding(
+                          padding: EdgeInsets.symmetric(vertical: 8.h),
+                          child: DropdownButtonFormField<String>(
+                            decoration: InputDecoration(
+                              labelText: 'Specialization',
+                              labelStyle: TextStyle(color: Colors.grey.shade600, fontSize: 14.sp),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12.r),
+                                borderSide: BorderSide(color: Colors.grey.shade400),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12.r),
+                                borderSide: const BorderSide(color: Colors.teal, width: 2),
+                              ),
+                              filled: true,
+                              fillColor: Colors.white,
+                            ),
+                            value: _selectedSpecialization,
+                            items: specializationOptions.map((String option) {
+                              return DropdownMenuItem<String>(
+                                value: option,
+                                child: Text(
+                                  option,
+                                  style: TextStyle(color: Colors.black87, fontSize: 14.sp),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              );
+                            }).toList(),
+                            onChanged: (newValue) {
+                              setState(() {
+                                _selectedSpecialization = newValue;
+                                _selectedSkills = []; // Reset skills when specialization changes
+                              });
+                            },
+                            validator: (value) => value == null ? 'Please select a specialization' : null,
+                            dropdownColor: Colors.white,
+                            isExpanded: true,
+                          ),
+                        ),
+                        Padding(
+                          padding: EdgeInsets.symmetric(vertical: 8.h),
+                          child: MultiSelectDialogField(
+                            items: availableSkills
+                                .map((skill) => MultiSelectItem<String>(skill, skill))
+                                .toList(),
+                            initialValue: _selectedSkills,
+                            title: Text('Required Skills', style: TextStyle(color: Colors.black87, fontSize: 16.sp)),
+                            selectedColor: Colors.teal,
+                            decoration: BoxDecoration(
                               color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
+                              border: Border.all(color: Colors.grey.shade400),
+                              borderRadius: BorderRadius.circular(12.r),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.1),
+                                  blurRadius: 4.r,
+                                  offset: Offset(0, 2.h),
+                                ),
+                              ],
                             ),
-                            textAlign: TextAlign.center,
+                            buttonText: Text(
+                              'Select Required Skills',
+                              style: TextStyle(color: Colors.grey.shade600, fontSize: 14.sp),
+                            ),
+                            buttonIcon: const Icon(Icons.arrow_drop_down, color: Colors.teal),
+                            validator: (values) =>
+                                values == null || values.isEmpty ? 'Please select at least one skill' : null,
+                            onConfirm: (values) {
+                              setState(() {
+                                _selectedSkills = values.cast<String>();
+                              });
+                            },
                           ),
                         ),
-                      ),
-                    ],
+                        _buildTextField(
+                          controller: _descriptionController,
+                          labelText: 'Job Description',
+                          maxLines: 4,
+                        ),
+                        SizedBox(height: 20.h),
+                        AnimatedScaleButton(
+                          onPressed: _submitJob,
+                          child: Container(
+                            width: double.infinity,
+                            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [Colors.blue.shade700, Colors.teal.shade400],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              borderRadius: BorderRadius.circular(12.r),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.2),
+                                  blurRadius: 4.r,
+                                  offset: Offset(0, 2.h),
+                                ),
+                              ],
+                            ),
+                            child: Text(
+                              isEditMode ? 'Update Job' : 'Preview & Post',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-      );
-    },
-  );
-}
+        );
+      },
+    );
+  }
 
   Widget _buildTextField({
     required TextEditingController controller,
@@ -626,6 +731,8 @@ Widget build(BuildContext context) {
           filled: true,
           fillColor: Colors.white,
           contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+          suffixText: labelText.contains('Salary') ? ' LPA (INR)' : null,
+          suffixStyle: TextStyle(color: Colors.grey.shade600, fontSize: 14.sp),
         ),
         maxLines: maxLines,
         keyboardType: keyboardType,

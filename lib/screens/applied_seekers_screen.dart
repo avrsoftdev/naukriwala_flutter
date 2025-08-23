@@ -33,85 +33,124 @@ class _AppliedSeekersScreenState extends State<AppliedSeekersScreen> {
   final String? recruiterId = FirebaseAuth.instance.currentUser?.uid;
   String _searchQuery = '';
 
-  // Specialization options (same as ProfileScreen and AuthService)
-  final List<String> specializationOptions = [
-    'Computer Science / IT',
-    'Electronics / Electrical / Robotics',
-    'Mechanical / Civil / Architecture',
-    'Business / Finance / Management',
-    'Medicine / Healthcare / Pharma',
-    'Law / Political Science / Public Administration',
-    'Arts / Humanities / Education',
-    'Design / Media / Communication',
-    'Hotel / Travel / Event Management',
-    'Science / Research / Environment',
-    'Others',
-  ];
+  final List<String> experienceOptions = [
+  'Fresher',
+  '1-2 years',
+  '2-4 years',
+  '4-6 years',
+  '6-8 years',
+  '8-10 years',
+  '10-12 years',
+  '12+ years', // Added to cover more experienced candidates
+];
 
-  // Skills by specialization (same as ProfileScreen and AuthService)
-  final Map<String, List<String>> skillsBySpecialization = {
-    'Computer Science / IT': [
-      'Java', 'Python', 'C++', 'C#', 'Dart', 'Flutter', 'Android Development',
-      'iOS Development', 'React', 'Angular', 'Vue.js', 'Node.js', 'Firebase',
-      'AWS', 'Docker', 'Kubernetes', 'SQL', 'MongoDB', 'REST APIs', 'GraphQL',
-      'Machine Learning', 'Data Structures & Algorithms', 'DevOps', 'Cybersecurity',
-      'System Design',
-    ],
-    'Electronics / Electrical / Robotics': [
-      'Embedded Systems', 'PCB Design', 'VLSI', 'MATLAB', 'Simulink', 'Verilog',
-      'FPGA Programming', 'Arduino', 'Raspberry Pi', 'IoT Development',
-      'Signal Processing', 'Power Systems', 'Automation', 'SCADA',
-    ],
-    'Mechanical / Civil / Architecture': [
-      'AutoCAD', 'SolidWorks', 'CATIA', 'ANSYS', 'STAAD Pro', 'Revit',
-      'Structural Analysis', 'Thermodynamics', 'Manufacturing Processes',
-      'Fluid Mechanics', 'Construction Management', 'Urban Planning',
-    ],
-    'Business / Finance / Management': [
-      'Financial Analysis', 'Accounting', 'MS Excel', 'Tally', 'Business Intelligence',
-      'SAP', 'QuickBooks', 'Digital Marketing', 'Google Ads', 'SEO',
-      'Social Media Marketing', 'Project Management', 'Agile', 'Scrum',
-      'Business Strategy', 'Market Research', 'Customer Relationship Management (CRM)',
-      'Salesforce',
-    ],
-    'Medicine / Healthcare / Pharma': [
-      'Clinical Research', 'Patient Care', 'Surgical Assistance', 'Nursing Procedures',
-      'Medical Coding', 'Public Health', 'Pharmacology', 'First Aid', 'CPR',
-      'Health Education', 'Lab Testing', 'Radiology', 'Therapeutic Skills',
-    ],
-    'Law / Political Science / Public Administration': [
-      'Legal Research', 'Case Analysis', 'Contract Drafting', 'Litigation',
-      'Legal Compliance', 'Constitutional Law', 'Criminal Law', 'International Law',
-      'Arbitration', 'Policy Analysis', 'Public Speaking',
-    ],
-    'Arts / Humanities / Education': [
-      'Creative Writing', 'Content Writing', 'Linguistics', 'Public Speaking',
-      'Editing & Proofreading', 'Critical Thinking', 'Classroom Management',
-      'Curriculum Development', 'E-Learning Tools', 'Art History', 'Philosophical Analysis',
-    ],
-    'Design / Media / Communication': [
-      'Adobe Photoshop', 'Adobe Illustrator', 'Adobe XD', 'Figma', 'Canva',
-      'UI/UX Design', 'Video Editing', '3D Modeling', 'Motion Graphics', 'Photography',
-      'Copywriting', 'Branding', 'Social Media Content Creation', 'Typography', 'Storyboarding',
-      'Final Cut Pro', 'Lightroom',
-    ],
-    'Hotel / Travel / Event Management': [
-      'Event Planning', 'Hospitality Management', 'Customer Service', 'Bartending',
-      'Housekeeping', 'Food & Beverage Service', 'Travel Planning', 'Ticketing & Reservations',
-      'Catering Services', 'Inventory Management', 'Public Relations', 'Vendor Management',
-    ],
-    'Science / Research / Environment': [
-      'Laboratory Techniques', 'Statistical Analysis', 'Research Writing', 'Data Collection',
-      'Environmental Impact Assessment', 'Geographic Information System (GIS)', 'Microscopy',
-      'Chemical Analysis', 'Climate Modeling', 'Bioinformatics',
-    ],
-    'Others': [
-      'Communication Skills', 'Problem Solving', 'Teamwork', 'Leadership', 'Time Management',
-      'Adaptability', 'Creativity', 'Conflict Resolution', 'Critical Thinking', 'Customer Support',
-      'Basic Computer Skills', 'Typing', 'Remote Work Tools (Zoom, Slack, Trello)', 'Virtual Assistant',
-      'Content Moderation',
-    ],
-  };
+// Education options
+final List<String> educationOptions = [
+  'High School (Class 10)',
+  'Senior Secondary (Class 12)', // Updated to reflect Indian system
+  'Diploma',
+  'Associate Degree',
+  'Bachelor\'s Degree',
+  'Postgraduate Diploma', // Added for Indian and global relevance
+  'Master\'s Degree',
+  'Doctorate/PhD',
+  'Professional Certification',
+  'Other',
+];
+
+// Specialization options
+final List<String> specializationOptions = [
+  'Computer Science / IT',
+  'Electronics / Electrical / Robotics',
+  'Mechanical / Civil / Architecture',
+  'Business / Finance / Management',
+  'Medicine / Healthcare / Pharma',
+  'Law / Political Science / Public Administration',
+  'Arts / Humanities / Education',
+  'Design / Media / Communication',
+  'Hotel / Travel / Event Management',
+  'Science / Research / Environment',
+  'Vocational/Domestic Services', // Added for driving, househelp, etc.
+  'Others',
+];
+
+// Skills by specialization
+final Map<String, List<String>> skillsBySpecialization = {
+  'Computer Science / IT': [
+    'Java', 'Python', 'C++', 'C#', 'Dart', 'Flutter', 'Android Development',
+    'iOS Development', 'React', 'Angular', 'Vue.js', 'Node.js', 'Firebase',
+    'AWS', 'Docker', 'Kubernetes', 'SQL', 'MongoDB', 'REST APIs', 'GraphQL',
+    'Machine Learning', 'Data Structures & Algorithms', 'DevOps', 'Cybersecurity',
+    'System Design',
+  ],
+  'Electronics / Electrical / Robotics': [
+    'Embedded Systems', 'PCB Design', 'VLSI', 'MATLAB', 'Simulink', 'Verilog',
+    'FPGA Programming', 'Arduino', 'Raspberry Pi', 'IoT Development',
+    'Signal Processing', 'Power Systems', 'Automation', 'SCADA',
+  ],
+  'Mechanical / Civil / Architecture': [
+    'AutoCAD', 'SolidWorks', 'CATIA', 'ANSYS', 'STAAD Pro', 'Revit',
+    'Structural Analysis', 'Thermodynamics', 'Manufacturing Processes',
+    'Fluid Mechanics', 'Construction Management', 'Urban Planning',
+  ],
+  'Business / Finance / Management': [
+    'Financial Analysis', 'Accounting', 'MS Excel', 'Tally', 'Business Intelligence',
+    'SAP', 'QuickBooks', 'Digital Marketing', 'Google Ads', 'SEO',
+    'Social Media Marketing', 'Project Management', 'Agile', 'Scrum',
+    'Business Strategy', 'Market Research', 'Customer Relationship Management (CRM)',
+    'Salesforce',
+  ],
+  'Medicine / Healthcare / Pharma': [
+    'Clinical Research', 'Patient Care', 'Surgical Assistance', 'Nursing Procedures',
+    'Medical Coding', 'Public Health', 'Pharmacology', 'First Aid', 'CPR',
+    'Health Education', 'Lab Testing', 'Radiology', 'Therapeutic Skills',
+  ],
+  'Law / Political Science / Public Administration': [
+    'Legal Research', 'Case Analysis', 'Contract Drafting', 'Litigation',
+    'Legal Compliance', 'Constitutional Law', 'Criminal Law', 'International Law',
+    'Arbitration', 'Policy Analysis', 'Public Speaking',
+  ],
+  'Arts / Humanities / Education': [
+    'Creative Writing', 'Content Writing', 'Linguistics', 'Public Speaking',
+    'Editing & Proofreading', 'Critical Thinking', 'Classroom Management',
+    'Curriculum Development', 'E-Learning Tools', 'Art History', 'Philosophical Analysis',
+  ],
+  'Design / Media / Communication': [
+    'Adobe Photoshop', 'Adobe Illustrator', 'Adobe XD', 'Figma', 'Canva',
+    'UI/UX Design', 'Video Editing', '3D Modeling', 'Motion Graphics', 'Photography',
+    'Copywriting', 'Branding', 'Social Media Content Creation', 'Typography', 'Storyboarding',
+    'Final Cut Pro', 'Lightroom',
+  ],
+  'Hotel / Travel / Event Management': [
+    'Event Planning', 'Hospitality Management', 'Customer Service', 'Bartending',
+    'Housekeeping', 'Food & Beverage Service', 'Travel Planning', 'Ticketing & Reservations',
+    'Catering Services', 'Inventory Management', 'Public Relations', 'Vendor Management',
+  ],
+  'Science / Research / Environment': [
+    'Laboratory Techniques', 'Statistical Analysis', 'Research Writing', 'Data Collection',
+    'Environmental Impact Assessment', 'Geographic Information System (GIS)', 'Microscopy',
+    'Chemical Analysis', 'Climate Modeling', 'Bioinformatics',
+  ],
+  'Vocational/Domestic Services': [
+    'Driving', // Car, motorcycle, or commercial vehicle driving
+    'Housekeeping', // Cleaning, laundry, household management
+    'Cooking', // Meal preparation, dietary planning
+    'Childcare', // Babysitting, child supervision, tutoring
+    'Elderly Care', // Assisting elderly with daily tasks
+    'Gardening', // Plant care, landscaping
+    'Basic Maintenance', // Minor household repairs (plumbing, electrical)
+    'Customer Service', // Handling client interactions
+    'Inventory Management', // Managing household supplies
+    'Event Assistance', // Supporting events (e.g., catering, setup)
+  ],
+  'Others': [
+    'Communication Skills', 'Problem Solving', 'Teamwork', 'Leadership', 'Time Management',
+    'Adaptability', 'Creativity', 'Conflict Resolution', 'Critical Thinking', 'Customer Support',
+    'Basic Computer Skills', 'Typing', 'Remote Work Tools (Zoom, Slack, Trello)', 'Virtual Assistant',
+    'Content Moderation', 'Driving', 'Housekeeping', 'Cooking', 'Childcare', 'Gardening',
+    'Basic Maintenance',
+  ],
+};
 
   void _addToCalendar(String title, DateTime date) {
     final event = Event(

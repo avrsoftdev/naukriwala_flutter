@@ -320,7 +320,7 @@ class UnifiedScreenState extends State<UnifiedScreen> {
                               ),
                               SizedBox(height: 8.h),
                               Text(
-                                'Powered by AVR Softwares Pvt. Ltd.',
+                                'Powered by AVR SofDev Pvt. Ltd.',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   fontSize: 14.sp,
