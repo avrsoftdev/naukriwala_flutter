@@ -21,96 +21,87 @@ class AuthService {
   final FirebaseStorage _storage = FirebaseStorage.instance;
 
   final List<String> specializationOptions = [
-  'Computer Science / IT',
-  'Electronics / Electrical / Robotics',
-  'Mechanical / Civil / Architecture',
-  'Business / Finance / Management',
-  'Medicine / Healthcare / Pharma',
-  'Law / Political Science / Public Administration',
-  'Arts / Humanities / Education',
-  'Design / Media / Communication',
-  'Hotel / Travel / Event Management',
-  'Science / Research / Environment',
-  'Vocational/Domestic Services', // Added for driving, househelp, etc.
-  'Others',
-];
+    'Computer Science / IT',
+    'Electronics / Electrical / Robotics',
+    'Mechanical / Civil / Architecture',
+    'Business / Finance / Management',
+    'Medicine / Healthcare / Pharma',
+    'Law / Political Science / Public Administration',
+    'Arts / Humanities / Education',
+    'Design / Media / Communication',
+    'Hotel / Travel / Event Management',
+    'Science / Research / Environment',
+    'Vocational/Domestic Services',
+    'Others',
+  ];
 
-// Skills by specialization
-final Map<String, List<String>> skillsBySpecialization = {
-  'Computer Science / IT': [
-    'Java', 'Python', 'C++', 'C#', 'Dart', 'Flutter', 'Android Development',
-    'iOS Development', 'React', 'Angular', 'Vue.js', 'Node.js', 'Firebase',
-    'AWS', 'Docker', 'Kubernetes', 'SQL', 'MongoDB', 'REST APIs', 'GraphQL',
-    'Machine Learning', 'Data Structures & Algorithms', 'DevOps', 'Cybersecurity',
-    'System Design',
-  ],
-  'Electronics / Electrical / Robotics': [
-    'Embedded Systems', 'PCB Design', 'VLSI', 'MATLAB', 'Simulink', 'Verilog',
-    'FPGA Programming', 'Arduino', 'Raspberry Pi', 'IoT Development',
-    'Signal Processing', 'Power Systems', 'Automation', 'SCADA',
-  ],
-  'Mechanical / Civil / Architecture': [
-    'AutoCAD', 'SolidWorks', 'CATIA', 'ANSYS', 'STAAD Pro', 'Revit',
-    'Structural Analysis', 'Thermodynamics', 'Manufacturing Processes',
-    'Fluid Mechanics', 'Construction Management', 'Urban Planning',
-  ],
-  'Business / Finance / Management': [
-    'Financial Analysis', 'Accounting', 'MS Excel', 'Tally', 'Business Intelligence',
-    'SAP', 'QuickBooks', 'Digital Marketing', 'Google Ads', 'SEO',
-    'Social Media Marketing', 'Project Management', 'Agile', 'Scrum',
-    'Business Strategy', 'Market Research', 'Customer Relationship Management (CRM)',
-    'Salesforce',
-  ],
-  'Medicine / Healthcare / Pharma': [
-    'Clinical Research', 'Patient Care', 'Surgical Assistance', 'Nursing Procedures',
-    'Medical Coding', 'Public Health', 'Pharmacology', 'First Aid', 'CPR',
-    'Health Education', 'Lab Testing', 'Radiology', 'Therapeutic Skills',
-  ],
-  'Law / Political Science / Public Administration': [
-    'Legal Research', 'Case Analysis', 'Contract Drafting', 'Litigation',
-    'Legal Compliance', 'Constitutional Law', 'Criminal Law', 'International Law',
-    'Arbitration', 'Policy Analysis', 'Public Speaking',
-  ],
-  'Arts / Humanities / Education': [
-    'Creative Writing', 'Content Writing', 'Linguistics', 'Public Speaking',
-    'Editing & Proofreading', 'Critical Thinking', 'Classroom Management',
-    'Curriculum Development', 'E-Learning Tools', 'Art History', 'Philosophical Analysis',
-  ],
-  'Design / Media / Communication': [
-    'Adobe Photoshop', 'Adobe Illustrator', 'Adobe XD', 'Figma', 'Canva',
-    'UI/UX Design', 'Video Editing', '3D Modeling', 'Motion Graphics', 'Photography',
-    'Copywriting', 'Branding', 'Social Media Content Creation', 'Typography', 'Storyboarding',
-    'Final Cut Pro', 'Lightroom',
-  ],
-  'Hotel / Travel / Event Management': [
-    'Event Planning', 'Hospitality Management', 'Customer Service', 'Bartending',
-    'Housekeeping', 'Food & Beverage Service', 'Travel Planning', 'Ticketing & Reservations',
-    'Catering Services', 'Inventory Management', 'Public Relations', 'Vendor Management',
-  ],
-  'Science / Research / Environment': [
-    'Laboratory Techniques', 'Statistical Analysis', 'Research Writing', 'Data Collection',
-    'Environmental Impact Assessment', 'Geographic Information System (GIS)', 'Microscopy',
-    'Chemical Analysis', 'Climate Modeling', 'Bioinformatics',
-  ],
-  'Vocational/Domestic Services': [
-    'Driving', // Car, motorcycle, or commercial vehicle driving
-    'Housekeeping', // Cleaning, laundry, household management
-    'Cooking', // Meal preparation, dietary planning
-    'Childcare', // Babysitting, child supervision, tutoring
-    'Elderly Care', // Assisting elderly with daily tasks
-    'Gardening', // Plant care, landscaping
-    'Basic Maintenance', // Minor household repairs (plumbing, electrical)
-    'Customer Service', // Handling client interactions
-    'Inventory Management', // Managing household supplies
-    'Event Assistance', // Supporting events (e.g., catering, setup)
-  ],
-  'Others': [
-    'Communication Skills', 'Problem Solving', 'Teamwork', 'Leadership', 'Time Management',
-    'Adaptability', 'Creativity', 'Conflict Resolution', 'Critical Thinking', 'Customer Support',
-    'Basic Computer Skills', 'Typing', 'Remote Work Tools (Zoom, Slack, Trello)', 'Virtual Assistant',
-    'Content Moderation', 'Driving', 'Housekeeping', 'Cooking', 'Childcare', 'Gardening',
-    'Basic Maintenance',
-  ],
+  final Map<String, List<String>> skillsBySpecialization = {
+    'Computer Science / IT': [
+      'Java', 'Python', 'C++', 'C#', 'Dart', 'Flutter', 'Android Development',
+      'iOS Development', 'React', 'Angular', 'Vue.js', 'Node.js', 'Firebase',
+      'AWS', 'Docker', 'Kubernetes', 'SQL', 'MongoDB', 'REST APIs', 'GraphQL',
+      'Machine Learning', 'Data Structures & Algorithms', 'DevOps', 'Cybersecurity',
+      'System Design',
+    ],
+    'Electronics / Electrical / Robotics': [
+      'Embedded Systems', 'PCB Design', 'VLSI', 'MATLAB', 'Simulink', 'Verilog',
+      'FPGA Programming', 'Arduino', 'Raspberry Pi', 'IoT Development',
+      'Signal Processing', 'Power Systems', 'Automation', 'SCADA',
+    ],
+    'Mechanical / Civil / Architecture': [
+      'AutoCAD', 'SolidWorks', 'CATIA', 'ANSYS', 'STAAD Pro', 'Revit',
+      'Structural Analysis', 'Thermodynamics', 'Manufacturing Processes',
+      'Fluid Mechanics', 'Construction Management', 'Urban Planning',
+    ],
+    'Business / Finance / Management': [
+      'Financial Analysis', 'Accounting', 'MS Excel', 'Tally', 'Business Intelligence',
+      'SAP', 'QuickBooks', 'Digital Marketing', 'Google Ads', 'SEO',
+      'Social Media Marketing', 'Project Management', 'Agile', 'Scrum',
+      'Business Strategy', 'Market Research', 'Customer Relationship Management (CRM)',
+      'Salesforce',
+    ],
+    'Medicine / Healthcare / Pharma': [
+      'Clinical Research', 'Patient Care', 'Surgical Assistance', 'Nursing Procedures',
+      'Medical Coding', 'Public Health', 'Pharmacology', 'First Aid', 'CPR',
+      'Health Education', 'Lab Testing', 'Radiology', 'Therapeutic Skills',
+    ],
+    'Law / Political Science / Public Administration': [
+      'Legal Research', 'Case Analysis', 'Contract Drafting', 'Litigation',
+      'Legal Compliance', 'Constitutional Law', 'Criminal Law', 'International Law',
+      'Arbitration', 'Policy Analysis', 'Public Speaking',
+    ],
+    'Arts / Humanities / Education': [
+      'Creative Writing', 'Content Writing', 'Linguistics', 'Public Speaking',
+      'Editing & Proofreading', 'Critical Thinking', 'Classroom Management',
+      'Curriculum Development', 'E-Learning Tools', 'Art History', 'Philosophical Analysis',
+    ],
+    'Design / Media / Communication': [
+      'Adobe Photoshop', 'Adobe Illustrator', 'Adobe XD', 'Figma', 'Canva',
+      'UI/UX Design', 'Video Editing', '3D Modeling', 'Motion Graphics', 'Photography',
+      'Copywriting', 'Branding', 'Social Media Content Creation', 'Typography', 'Storyboarding',
+      'Final Cut Pro', 'Lightroom',
+    ],
+    'Hotel / Travel / Event Management': [
+      'Event Planning', 'Hospitality Management', 'Customer Service', 'Bartending',
+      'Housekeeping', 'Food & Beverage Service', 'Travel Planning', 'Ticketing & Reservations',
+      'Catering Services', 'Inventory Management', 'Public Relations', 'Vendor Management',
+    ],
+    'Science / Research / Environment': [
+      'Laboratory Techniques', 'Statistical Analysis', 'Research Writing', 'Data Collection',
+      'Environmental Impact Assessment', 'Geographic Information System (GIS)', 'Microscopy',
+      'Chemical Analysis', 'Climate Modeling', 'Bioinformatics',
+    ],
+    'Vocational/Domestic Services': [
+      'Driving', 'Housekeeping', 'Cooking', 'Childcare', 'Elderly Care', 'Gardening',
+      'Basic Maintenance', 'Customer Service', 'Inventory Management', 'Event Assistance',
+    ],
+    'Others': [
+      'Communication Skills', 'Problem Solving', 'Teamwork', 'Leadership', 'Time Management',
+      'Adaptability', 'Creativity', 'Conflict Resolution', 'Critical Thinking', 'Customer Support',
+      'Basic Computer Skills', 'Typing', 'Remote Work Tools (Zoom, Slack, Trello)', 'Virtual Assistant',
+      'Content Moderation', 'Driving', 'Housekeeping', 'Cooking', 'Childcare', 'Gardening',
+      'Basic Maintenance',
+    ],
   };
 
   Future<void> storeSignupData({
@@ -647,7 +638,7 @@ final Map<String, List<String>> skillsBySpecialization = {
     }
   }
 
-  Future<void> sendMessage(String recipientId, String jobId, String message) async {
+ Future<void> sendMessage(String recipientId, String jobId, String message, {String status = 'sent'}) async {
     final senderId = FirebaseAuth.instance.currentUser!.uid;
     try {
       String seekerId;
@@ -668,7 +659,7 @@ final Map<String, List<String>> skillsBySpecialization = {
             .doc('${recipientId}_$jobId')
             .get();
         if (!recipientAppDoc.exists) {
-          dev.log('[2025-08-12 16:00 IST] Application ${recipientId}_$jobId not found', name: 'AuthService');
+          dev.log('[2025-08-28 15:31 IST] Application ${recipientId}_$jobId not found', name: 'AuthService');
           throw Exception('Application does not exist');
         }
         seekerId = recipientId;
@@ -680,36 +671,37 @@ final Map<String, List<String>> skillsBySpecialization = {
           .doc(applicationId)
           .get();
       if (!appDoc.exists) {
-        dev.log('[2025-08-12 16:00 IST] Application $applicationId not found', name: 'AuthService');
+        dev.log('[2025-08-28 15:31 IST] Application $applicationId not found', name: 'AuthService');
         throw Exception('Application does not exist');
       }
       final appData = appDoc.data()!;
       if (appData['jobId'] != jobId || appData['seekerId'] != seekerId || appData['recruiterId'] is! String) {
-        dev.log('[2025-08-12 16:00 IST] Invalid application data for $applicationId: $appData', name: 'AuthService');
+        dev.log('[2025-08-28 15:31 IST] Invalid application data for $applicationId: $appData', name: 'AuthService');
         throw Exception('Invalid application data');
       }
 
       final participants = [senderId, recipientId];
       participants.sort();
       final chatId = '${participants[0]}_${participants[1]}';
-      await FirebaseFirestore.instance
+      final messageDocRef = _firestore
           .collection('Messages')
           .doc(chatId)
           .collection('Chats')
-          .add({
-            'senderId': senderId,
-            'recipientId': recipientId,
-            'jobId': jobId,
-            'message': message,
-            'timestamp': Timestamp.now(),
-          });
-      dev.log('[2025-08-12 16:00 IST] Message sent from $senderId to $recipientId for job $jobId with chatId $chatId', name: 'AuthService');
+          .doc(); // Generate doc ID for message
+      await messageDocRef.set({
+        'senderId': senderId,
+        'recipientId': recipientId,
+        'jobId': jobId,
+        'message': message,
+        'timestamp': FieldValue.serverTimestamp(),
+        'status': status,
+      });
+      dev.log('[2025-08-28 15:31 IST] Message sent from $senderId to $recipientId for job $jobId with chatId $chatId, status: $status', name: 'AuthService');
     } catch (e) {
-      dev.log('[2025-08-12 16:00 IST] Error sending message from $senderId to $recipientId for job $jobId: $e', name: 'AuthService', error: e);
-      throw AuthException('Application does not exist');
+      dev.log('[2025-08-28 15:31 IST] Error sending message from $senderId to $recipientId for job $jobId: $e', name: 'AuthService', error: e);
+      throw AuthException('Failed to send message: $e');
     }
   }
-
   Future<bool> isSignedIn() async => _auth.currentUser != null;
 
   User? getCurrentUser() => _auth.currentUser;

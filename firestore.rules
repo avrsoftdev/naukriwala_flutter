@@ -28,7 +28,6 @@ service cloud.firestore {
              isValidRecipient(ids[0]) &&
              isValidRecipient(ids[1]);
     }
-
     // Recruiters rule (unchanged)
     match /Recruiters/{uid} {
       allow read: if request.auth != null && (request.auth.uid == uid || isAdmin());
@@ -37,7 +36,6 @@ service cloud.firestore {
                  resource.data.keys().hasAll(['name', 'companyName']);
       allow write: if request.auth != null && request.auth.uid == uid;
     }
-
     // Unchanged collections
     match /Seekers/{uid} {
       allow read: if request.auth != null && (request.auth.uid == uid || isAdmin());
@@ -71,7 +69,8 @@ service cloud.firestore {
                      request.resource.data.type is string &&
                      request.resource.data.read is bool &&
                      request.resource.data.from == request.auth.uid &&
-                     request.resource.data.timestamp is timestamp;
+                     request.resource.data.timestamp is timestamp &&
+                     exists(/databases/$(database)/documents/Applications/$(request.auth.uid + '_' + request.resource.data.jobId));
       allow update: if request.auth != null &&
                       request.auth.uid == recruiterId &&
                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
@@ -89,7 +88,8 @@ service cloud.firestore {
                       request.resource.data.type is string &&
                       request.resource.data.read is bool &&
                       request.resource.data.from == request.auth.uid &&
-                      request.resource.data.timestamp is timestamp;
+                      request.resource.data.timestamp is timestamp &&
+                      exists(/databases/$(database)/documents/Applications/$(seekerId + '_' + request.resource.data.jobId));
       allow update: if request.auth != null &&
                       request.auth.uid == seekerId &&
                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
@@ -146,6 +146,12 @@ service cloud.firestore {
                       request.resource.data.message is string &&
                       request.resource.data.timestamp is timestamp &&
                       request.resource.data.jobId is string;
+        allow update: if request.auth != null &&
+                      isValidChatParticipant(chatId) &&
+                      request.auth.uid == resource.data.recipientId &&
+                      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) &&
+                      resource.data.status != 'read' &&
+                      request.resource.data.status == 'read';
       }
     }
     match /Bookmarks/{uid}/SavedJobs/{jobId} {

@@ -88,6 +88,24 @@
     {"fieldPath": "interviewDate", "order": "ASCENDING"}
   ]
 },
+{
+      "collectionGroup": "Chats",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "recipientId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "ASCENDING"
+        }
+      ]
+    },
     {
       "collectionGroup": "Applications",
       "queryScope": "COLLECTION",
