@@ -145,43 +145,43 @@ class NotificationsScreenState extends State<NotificationsScreen> {
     }
   }
 
-  Future<void> _clearAllNotifications() async {
-    if (uid == null) return;
-    try {
-      final batch = FirebaseFirestore.instance.batch();
-      final notifications = await FirebaseFirestore.instance
-          .collection(collectionPath)
-          .doc(uid)
-          .collection('Notifications')
-          .where('to', isEqualTo: uid)
-          .get();
-      for (var doc in notifications.docs) {
-        batch.delete(doc.reference);
-      }
-      await batch.commit();
-      dev.log('[2025-08-29 16:23 IST] Cleared all notifications for UID $uid in $collectionPath', name: 'NotificationsScreen');
-      if (mounted) {
-        setState(() {}); // Force UI refresh
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('All notifications cleared'), backgroundColor: Colors.green),
-        );
-      }
-    } catch (e) {
-      dev.log('[2025-08-29 16:23 IST] Error clearing notifications: $e', name: 'NotificationsScreen', error: e);
-      if (e is FirebaseException && e.code == 'permission-denied') {
-        dev.log('[2025-08-29 16:23 IST] Permission denied clearing $collectionPath/$uid/Notifications', name: 'NotificationsScreen');
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Permission denied: Cannot clear notifications.'), backgroundColor: Colors.red),
-          );
-        }
-      } else if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Error clearing notifications'), backgroundColor: Colors.red),
-        );
-      }
-    }
-  }
+  // Future<void> _clearAllNotifications() async {
+  //   if (uid == null) return;
+  //   try {
+  //     final batch = FirebaseFirestore.instance.batch();
+  //     final notifications = await FirebaseFirestore.instance
+  //         .collection(collectionPath)
+  //         .doc(uid)
+  //         .collection('Notifications')
+  //         .where('to', isEqualTo: uid)
+  //         .get();
+  //     for (var doc in notifications.docs) {
+  //       batch.delete(doc.reference);
+  //     }
+  //     await batch.commit();
+  //     dev.log('[2025-08-29 16:23 IST] Cleared all notifications for UID $uid in $collectionPath', name: 'NotificationsScreen');
+  //     if (mounted) {
+  //       setState(() {}); // Force UI refresh
+  //       ScaffoldMessenger.of(context).showSnackBar(
+  //         const SnackBar(content: Text('All notifications cleared'), backgroundColor: Colors.green),
+  //       );
+  //     }
+  //   } catch (e) {
+  //     dev.log('[2025-08-29 16:23 IST] Error clearing notifications: $e', name: 'NotificationsScreen', error: e);
+  //     if (e is FirebaseException && e.code == 'permission-denied') {
+  //       dev.log('[2025-08-29 16:23 IST] Permission denied clearing $collectionPath/$uid/Notifications', name: 'NotificationsScreen');
+  //       if (mounted) {
+  //         ScaffoldMessenger.of(context).showSnackBar(
+  //           const SnackBar(content: Text('Permission denied: Cannot clear notifications.'), backgroundColor: Colors.red),
+  //         );
+  //       }
+  //     } else if (mounted) {
+  //       ScaffoldMessenger.of(context).showSnackBar(
+  //         const SnackBar(content: Text('Error clearing notifications'), backgroundColor: Colors.red),
+  //       );
+  //     }
+  //   }
+  // }
 
   Future<void> _markSelectedAsRead() async {
     if (uid == null || _selectedNotifications.isEmpty) return;
@@ -250,15 +250,15 @@ class NotificationsScreenState extends State<NotificationsScreen> {
     });
   }
 
-  void _selectAll(List<DocumentSnapshot> docs) {
-    setState(() {
-      _selectedNotifications.clear();
-      for (var doc in docs) {
-        _selectedNotifications.add(doc.id);
-      }
-      _isSelectionMode = true;
-    });
-  }
+  // void _selectAll(List<DocumentSnapshot> docs) {
+  //   setState(() {
+  //     _selectedNotifications.clear();
+  //     for (var doc in docs) {
+  //       _selectedNotifications.add(doc.id);
+  //     }
+  //     _isSelectionMode = true;
+  //   });
+  // }
 
   Future<String?> _getResumeUrl(String jobId, String seekerId) async {
     try {
