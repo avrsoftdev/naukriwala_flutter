@@ -23,6 +23,7 @@ class PostJobScreenState extends State<PostJobScreen> {
   final _formKey = GlobalKey<FormState>();
   final Map<String, String> jobData = {};
   bool isLoading = false;
+  bool _isFeatured = false; // New state variable for featured status
 
   // Controllers for form fields
   final TextEditingController _titleController = TextEditingController();
@@ -44,124 +45,124 @@ class PostJobScreenState extends State<PostJobScreen> {
   final List<String> jobTypeOptions = ['Full-Time', 'Part-Time', 'Freelancer'];
 
   // Experience options
-final List<String> experienceOptions = [
-  'Fresher',
-  '1-2 years',
-  '2-4 years',
-  '4-6 years',
-  '6-8 years',
-  '8-10 years',
-  '10-12 years',
-  '12+ years', // Added to cover more experienced candidates
-];
+  final List<String> experienceOptions = [
+    'Fresher',
+    '1-2 years',
+    '2-4 years',
+    '4-6 years',
+    '6-8 years',
+    '8-10 years',
+    '10-12 years',
+    '12+ years',
+  ];
 
-// Education options
-final List<String> educationOptions = [
-  'High School (Class 10)',
-  'Senior Secondary (Class 12)', // Updated to reflect Indian system
-  'Diploma',
-  'Associate Degree',
-  'Bachelor\'s Degree',
-  'Postgraduate Diploma', // Added for Indian and global relevance
-  'Master\'s Degree',
-  'Doctorate/PhD',
-  'Professional Certification',
-  'Other',
-];
+  // Education options
+  final List<String> educationOptions = [
+    'High School (Class 10)',
+    'Senior Secondary (Class 12)',
+    'Diploma',
+    'Associate Degree',
+    'Bachelor\'s Degree',
+    'Postgraduate Diploma',
+    'Master\'s Degree',
+    'Doctorate/PhD',
+    'Professional Certification',
+    'Other',
+  ];
 
-// Specialization options
-final List<String> specializationOptions = [
-  'Computer Science / IT',
-  'Electronics / Electrical / Robotics',
-  'Mechanical / Civil / Architecture',
-  'Business / Finance / Management',
-  'Medicine / Healthcare / Pharma',
-  'Law / Political Science / Public Administration',
-  'Arts / Humanities / Education',
-  'Design / Media / Communication',
-  'Hotel / Travel / Event Management',
-  'Science / Research / Environment',
-  'Vocational/Domestic Services', // Added for driving, househelp, etc.
-  'Others',
-];
+  // Specialization options
+  final List<String> specializationOptions = [
+    'Computer Science / IT',
+    'Electronics / Electrical / Robotics',
+    'Mechanical / Civil / Architecture',
+    'Business / Finance / Management',
+    'Medicine / Healthcare / Pharma',
+    'Law / Political Science / Public Administration',
+    'Arts / Humanities / Education',
+    'Design / Media / Communication',
+    'Hotel / Travel / Event Management',
+    'Science / Research / Environment',
+    'Vocational/Domestic Services',
+    'Others',
+  ];
 
-// Skills by specialization
-final Map<String, List<String>> skillsBySpecialization = {
-  'Computer Science / IT': [
-    'Java', 'Python', 'C++', 'C#', 'Dart', 'Flutter', 'Android Development',
-    'iOS Development', 'React', 'Angular', 'Vue.js', 'Node.js', 'Firebase',
-    'AWS', 'Docker', 'Kubernetes', 'SQL', 'MongoDB', 'REST APIs', 'GraphQL',
-    'Machine Learning', 'Data Structures & Algorithms', 'DevOps', 'Cybersecurity',
-    'System Design',
-  ],
-  'Electronics / Electrical / Robotics': [
-    'Embedded Systems', 'PCB Design', 'VLSI', 'MATLAB', 'Simulink', 'Verilog',
-    'FPGA Programming', 'Arduino', 'Raspberry Pi', 'IoT Development',
-    'Signal Processing', 'Power Systems', 'Automation', 'SCADA',
-  ],
-  'Mechanical / Civil / Architecture': [
-    'AutoCAD', 'SolidWorks', 'CATIA', 'ANSYS', 'STAAD Pro', 'Revit',
-    'Structural Analysis', 'Thermodynamics', 'Manufacturing Processes',
-    'Fluid Mechanics', 'Construction Management', 'Urban Planning',
-  ],
-  'Business / Finance / Management': [
-    'Financial Analysis', 'Accounting', 'MS Excel', 'Tally', 'Business Intelligence',
-    'SAP', 'QuickBooks', 'Digital Marketing', 'Google Ads', 'SEO',
-    'Social Media Marketing', 'Project Management', 'Agile', 'Scrum',
-    'Business Strategy', 'Market Research', 'Customer Relationship Management (CRM)',
-    'Salesforce',
-  ],
-  'Medicine / Healthcare / Pharma': [
-    'Clinical Research', 'Patient Care', 'Surgical Assistance', 'Nursing Procedures',
-    'Medical Coding', 'Public Health', 'Pharmacology', 'First Aid', 'CPR',
-    'Health Education', 'Lab Testing', 'Radiology', 'Therapeutic Skills',
-  ],
-  'Law / Political Science / Public Administration': [
-    'Legal Research', 'Case Analysis', 'Contract Drafting', 'Litigation',
-    'Legal Compliance', 'Constitutional Law', 'Criminal Law', 'International Law',
-    'Arbitration', 'Policy Analysis', 'Public Speaking',
-  ],
-  'Arts / Humanities / Education': [
-    'Creative Writing', 'Content Writing', 'Linguistics', 'Public Speaking',
-    'Editing & Proofreading', 'Critical Thinking', 'Classroom Management',
-    'Curriculum Development', 'E-Learning Tools', 'Art History', 'Philosophical Analysis',
-  ],
-  'Design / Media / Communication': [
-    'Adobe Photoshop', 'Adobe Illustrator', 'Adobe XD', 'Figma', 'Canva',
-    'UI/UX Design', 'Video Editing', '3D Modeling', 'Motion Graphics', 'Photography',
-    'Copywriting', 'Branding', 'Social Media Content Creation', 'Typography', 'Storyboarding',
-    'Final Cut Pro', 'Lightroom',
-  ],
-  'Hotel / Travel / Event Management': [
-    'Event Planning', 'Hospitality Management', 'Customer Service', 'Bartending',
-    'Housekeeping', 'Food & Beverage Service', 'Travel Planning', 'Ticketing & Reservations',
-    'Catering Services', 'Inventory Management', 'Public Relations', 'Vendor Management',
-  ],
-  'Science / Research / Environment': [
-    'Laboratory Techniques', 'Statistical Analysis', 'Research Writing', 'Data Collection',
-    'Environmental Impact Assessment', 'Geographic Information System (GIS)', 'Microscopy',
-    'Chemical Analysis', 'Climate Modeling', 'Bioinformatics',
-  ],
-  'Vocational/Domestic Services': [
-    'Driving', // Car, motorcycle, or commercial vehicle driving
-    'Housekeeping', // Cleaning, laundry, household management
-    'Cooking', // Meal preparation, dietary planning
-    'Childcare', // Babysitting, child supervision, tutoring
-    'Elderly Care', // Assisting elderly with daily tasks
-    'Gardening', // Plant care, landscaping
-    'Basic Maintenance', // Minor household repairs (plumbing, electrical)
-    'Customer Service', // Handling client interactions
-    'Inventory Management', // Managing household supplies
-    'Event Assistance', // Supporting events (e.g., catering, setup)
-  ],
-  'Others': [
-    'Communication Skills', 'Problem Solving', 'Teamwork', 'Leadership', 'Time Management',
-    'Adaptability', 'Creativity', 'Conflict Resolution', 'Critical Thinking', 'Customer Support',
-    'Basic Computer Skills', 'Typing', 'Remote Work Tools (Zoom, Slack, Trello)', 'Virtual Assistant',
-    'Content Moderation', 'Driving', 'Housekeeping', 'Cooking', 'Childcare', 'Gardening',
-    'Basic Maintenance',
-  ],
-};
+  // Skills by specialization
+  final Map<String, List<String>> skillsBySpecialization = {
+    'Computer Science / IT': [
+      'Java', 'Python', 'C++', 'C#', 'Dart', 'Flutter', 'Android Development',
+      'iOS Development', 'React', 'Angular', 'Vue.js', 'Node.js', 'Firebase',
+      'AWS', 'Docker', 'Kubernetes', 'SQL', 'MongoDB', 'REST APIs', 'GraphQL',
+      'Machine Learning', 'Data Structures & Algorithms', 'DevOps', 'Cybersecurity',
+      'System Design',
+    ],
+    'Electronics / Electrical / Robotics': [
+      'Embedded Systems', 'PCB Design', 'VLSI', 'MATLAB', 'Simulink', 'Verilog',
+      'FPGA Programming', 'Arduino', 'Raspberry Pi', 'IoT Development',
+      'Signal Processing', 'Power Systems', 'Automation', 'SCADA',
+    ],
+    'Mechanical / Civil / Architecture': [
+      'AutoCAD', 'SolidWorks', 'CATIA', 'ANSYS', 'STAAD Pro', 'Revit',
+      'Structural Analysis', 'Thermodynamics', 'Manufacturing Processes',
+      'Fluid Mechanics', 'Construction Management', 'Urban Planning',
+    ],
+    'Business / Finance / Management': [
+      'Financial Analysis', 'Accounting', 'MS Excel', 'Tally', 'Business Intelligence',
+      'SAP', 'QuickBooks', 'Digital Marketing', 'Google Ads', 'SEO',
+      'Social Media Marketing', 'Project Management', 'Agile', 'Scrum',
+      'Business Strategy', 'Market Research', 'Customer Relationship Management (CRM)',
+      'Salesforce',
+    ],
+    'Medicine / Healthcare / Pharma': [
+      'Clinical Research', 'Patient Care', 'Surgical Assistance', 'Nursing Procedures',
+      'Medical Coding', 'Public Health', 'Pharmacology', 'First Aid', 'CPR',
+      'Health Education', 'Lab Testing', 'Radiology', 'Therapeutic Skills',
+    ],
+    'Law / Political Science / Public Administration': [
+      'Legal Research', 'Case Analysis', 'Contract Drafting', 'Litigation',
+      'Legal Compliance', 'Constitutional Law', 'Criminal Law', 'International Law',
+      'Arbitration', 'Policy Analysis', 'Public Speaking',
+    ],
+    'Arts / Humanities / Education': [
+      'Creative Writing', 'Content Writing', 'Linguistics', 'Public Speaking',
+      'Editing & Proofreading', 'Critical Thinking', 'Classroom Management',
+      'Curriculum Development', 'E-Learning Tools', 'Art History', 'Philosophical Analysis',
+    ],
+    'Design / Media / Communication': [
+      'Adobe Photoshop', 'Adobe Illustrator', 'Adobe XD', 'Figma', 'Canva',
+      'UI/UX Design', 'Video Editing', '3D Modeling', 'Motion Graphics', 'Photography',
+      'Copywriting', 'Branding', 'Social Media Content Creation', 'Typography', 'Storyboarding',
+      'Final Cut Pro', 'Lightroom',
+    ],
+    'Hotel / Travel / Event Management': [
+      'Event Planning', 'Hospitality Management', 'Customer Service', 'Bartending',
+      'Housekeeping', 'Food & Beverage Service', 'Travel Planning', 'Ticketing & Reservations',
+      'Catering Services', 'Inventory Management', 'Public Relations', 'Vendor Management',
+    ],
+    'Science / Research / Environment': [
+      'Laboratory Techniques', 'Statistical Analysis', 'Research Writing', 'Data Collection',
+      'Environmental Impact Assessment', 'Geographic Information System (GIS)', 'Microscopy',
+      'Chemical Analysis', 'Climate Modeling', 'Bioinformatics',
+    ],
+    'Vocational/Domestic Services': [
+      'Driving',
+      'Housekeeping',
+      'Cooking',
+      'Childcare',
+      'Elderly Care',
+      'Gardening',
+      'Basic Maintenance',
+      'Customer Service',
+      'Inventory Management',
+      'Event Assistance',
+    ],
+    'Others': [
+      'Communication Skills', 'Problem Solving', 'Teamwork', 'Leadership', 'Time Management',
+      'Adaptability', 'Creativity', 'Conflict Resolution', 'Critical Thinking', 'Customer Support',
+      'Basic Computer Skills', 'Typing', 'Remote Work Tools (Zoom, Slack, Trello)', 'Virtual Assistant',
+      'Content Moderation', 'Driving', 'Housekeeping', 'Cooking', 'Childcare', 'Gardening',
+      'Basic Maintenance',
+    ],
+  };
 
   @override
   void initState() {
@@ -196,6 +197,7 @@ final Map<String, List<String>> skillsBySpecialization = {
     _selectedSkills = (widget.editJobData!['skills'] as List<dynamic>?)?.cast<String>() ?? [];
     _selectedEducation = widget.editJobData!['education']?.toString();
     _selectedSpecialization = widget.editJobData!['specialization']?.toString();
+    _isFeatured = widget.editJobData!['isFeatured'] ?? false; // Initialize isFeatured from edit data
     // Ensure selected values are valid options
     if (_selectedExperience != null && !experienceOptions.contains(_selectedExperience)) {
       _selectedExperience = null;
@@ -264,6 +266,7 @@ final Map<String, List<String>> skillsBySpecialization = {
       'skills': _selectedSkills,
       'education': _selectedEducation ?? '',
       'specialization': _selectedSpecialization ?? '',
+      'isFeatured': _isFeatured, // Include isFeatured in form data
     };
   }
 
@@ -617,7 +620,7 @@ final Map<String, List<String>> skillsBySpecialization = {
                             onChanged: (newValue) {
                               setState(() {
                                 _selectedSpecialization = newValue;
-                                _selectedSkills = []; // Reset skills when specialization changes
+                                _selectedSkills = [];
                               });
                             },
                             validator: (value) => value == null ? 'Please select a specialization' : null,
@@ -664,6 +667,32 @@ final Map<String, List<String>> skillsBySpecialization = {
                           controller: _descriptionController,
                           labelText: 'Job Description',
                           maxLines: 4,
+                        ),
+                        Padding(
+                          padding: EdgeInsets.symmetric(vertical: 8.h),
+                          child: SwitchListTile(
+                            title: Text(
+                              'Feature this Job',
+                              style: TextStyle(fontSize: 16.sp, color: Colors.black87),
+                            ),
+                            subtitle: Text(
+                              'Make this job appear at the top of job listings',
+                              style: TextStyle(fontSize: 14.sp, color: Colors.grey.shade600),
+                            ),
+                            value: _isFeatured,
+                            onChanged: (value) {
+                              setState(() {
+                                _isFeatured = value;
+                              });
+                            },
+                            activeColor: Colors.teal,
+                            contentPadding: EdgeInsets.symmetric(horizontal: 16.w),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12.r),
+                              side: BorderSide(color: Colors.grey.shade400),
+                            ),
+                            tileColor: Colors.white,
+                          ),
                         ),
                         SizedBox(height: 20.h),
                         AnimatedScaleButton(

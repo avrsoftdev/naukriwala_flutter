@@ -15,6 +15,7 @@ class PostedJobsScreen extends StatefulWidget {
 
 class _PostedJobsScreenState extends State<PostedJobsScreen> {
   final user = FirebaseAuth.instance.currentUser;
+  String _filter = 'All Jobs'; // Filter state: All Jobs, Featured Jobs, Non-Featured Jobs
 
   @override
   Widget build(BuildContext context) {
@@ -37,13 +38,21 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
       );
     }
 
-    dev.log('[2025-08-20 11:47 IST] Current user UID: ${user!.uid}', name: 'PostedJobsScreen');
+    dev.log('[2025-09-01 15:05 IST] Current user UID: ${user!.uid}', name: 'PostedJobsScreen');
 
-    final jobsQuery = FirebaseFirestore.instance
+    Query<Map<String, dynamic>> jobsQuery = FirebaseFirestore.instance
         .collection('Recruiters')
         .doc(user!.uid)
         .collection('Jobs')
+        .orderBy('isFeatured', descending: true)
         .orderBy('createdAt', descending: true);
+
+    // Apply filter based on _filter value
+    if (_filter == 'Featured Jobs') {
+      jobsQuery = jobsQuery.where('isFeatured', isEqualTo: true);
+    } else if (_filter == 'Non-Featured Jobs') {
+      jobsQuery = jobsQuery.where('isFeatured', isEqualTo: false);
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -62,201 +71,256 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
         ),
         elevation: 4,
       ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: jobsQuery.snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.teal),
+      body: Column(
+        children: [
+          // Filter Dropdown
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+            child: DropdownButton<String>(
+              value: _filter,
+              isExpanded: true,
+              items: ['All Jobs', 'Featured Jobs', 'Non-Featured Jobs']
+                  .map((String value) => DropdownMenuItem<String>(
+                        value: value,
+                        child: Text(value, style: TextStyle(fontSize: 14.sp)),
+                      ))
+                  .toList(),
+              onChanged: (String? newValue) {
+                if (newValue != null) {
+                  setState(() {
+                    _filter = newValue;
+                  });
+                  dev.log('[2025-09-01 15:05 IST] Filter changed to: $_filter', name: 'PostedJobsScreen');
+                }
+              },
+              underline: Container(
+                height: 2.h,
+                color: Colors.teal,
               ),
-            );
-          }
+              icon: Icon(Icons.filter_list, size: 20.sp, color: Colors.teal),
+              style: TextStyle(color: Colors.black87, fontSize: 14.sp),
+              dropdownColor: Colors.white,
+              borderRadius: BorderRadius.circular(8.r),
+            ),
+          ),
+          Expanded(
+            child: StreamBuilder<QuerySnapshot>(
+              stream: jobsQuery.snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.teal),
+                    ),
+                  );
+                }
 
-          if (snapshot.hasError) {
-            dev.log('[2025-08-20 11:47 IST] Stream error for user ${user!.uid}: ${snapshot.error}', name: 'PostedJobsScreen', error: snapshot.error);
-            String errorMessage = 'Error loading jobs. Please verify Firestore permissions.';
-            if (snapshot.error is FirebaseException) {
-              final error = snapshot.error as FirebaseException;
-              errorMessage = 'Firebase error: ${error.code} - ${error.message}';
-              if (error.code == 'permission-denied') {
-                errorMessage += '\nEnsure /Recruiters/${user!.uid}/Jobs is accessible.';
-              }
-            }
-            return Center(
-              child: Card(
-                elevation: 4,
-                color: Colors.red.shade50,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
-                child: Padding(
-                  padding: EdgeInsets.all(16.w),
-                  child: Text(
-                    errorMessage,
-                    style: TextStyle(color: Colors.red.shade700, fontSize: 16.sp),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ),
-            );
-          }
-
-          final jobs = snapshot.data?.docs ?? [];
-
-          if (jobs.isEmpty) {
-            return Center(
-              child: Text(
-                'No jobs posted yet',
-                style: TextStyle(fontSize: 16.sp, color: Colors.grey.shade600),
-              ),
-            );
-          }
-
-          return ListView.builder(
-            itemCount: jobs.length,
-            itemBuilder: (context, index) {
-              final job = jobs[index].data() as Map<String, dynamic>;
-              final jobId = jobs[index].id;
-              dev.log('[2025-08-20 11:47 IST] Job $jobId data for user ${user!.uid}: $job', name: 'PostedJobsScreen');
-
-              final title = job['title'] ?? 'Untitled Job';
-              final company = job['company'] ?? 'Unknown Company';
-              final location = job['location'] ?? 'Unspecified';
-              final salary = job['salary'] ?? 'Not specified';
-              final skills = (job['skills'] as List<dynamic>?)?.join(', ') ?? 'N/A';
-              final education = job['education'] ?? 'N/A';
-              final experience = job['experience'] ?? 'N/A';
-              final specialization = job['specialization'] ?? 'N/A';
-              final status = job['status'] ?? 'unknown';
-              final timestamp = job['createdAt'] as Timestamp?;
-              final postedDate = timestamp != null
-                  ? DateFormat('dd MMM yyyy').format(timestamp.toDate())
-                  : 'N/A';
-
-              return FutureBuilder<Map<String, dynamic>>(
-                future: _getApplicantData(jobId),
-                builder: (context, applicantSnapshot) {
-                  final applicantCount = applicantSnapshot.data?['count'] ?? 0;
-                  final applicants = applicantSnapshot.data?['applicants'] ?? [];
-
-                  return AnimatedListItem(
+                if (snapshot.hasError) {
+                  dev.log('[2025-09-01 15:05 IST] Stream error for user ${user!.uid}: ${snapshot.error}', name: 'PostedJobsScreen', error: snapshot.error);
+                  String errorMessage = 'Error loading jobs. Please verify Firestore permissions.';
+                  if (snapshot.error is FirebaseException) {
+                    final error = snapshot.error as FirebaseException;
+                    errorMessage = 'Firebase error: ${error.code} - ${error.message}';
+                    if (error.code == 'permission-denied') {
+                      errorMessage += '\nEnsure /Recruiters/${user!.uid}/Jobs is accessible.';
+                    }
+                  }
+                  return Center(
                     child: Card(
-                      elevation: 3,
-                      margin: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+                      elevation: 4,
+                      color: Colors.red.shade50,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [Colors.blue.shade50, Colors.blue.shade100],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          borderRadius: BorderRadius.circular(12.r),
-                        ),
-                        child: ExpansionTile(
-                          title: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Flexible(
-                                child: Text(
-                                  title,
-                                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 18.sp, color: Colors.black87),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              Container(
-                                padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
-                                decoration: BoxDecoration(
-                                  color: status == 'open' ? Colors.green.shade100 : Colors.red.shade100,
-                                  borderRadius: BorderRadius.circular(12.r),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withValues(alpha: 0.1),
-                                      blurRadius: 2.r,
-                                      offset: Offset(0, 1.h),
-                                    ),
-                                  ],
-                                ),
-                                child: Text(
-                                  status.toUpperCase(),
-                                  style: TextStyle(
-                                    fontSize: 12.sp,
-                                    fontWeight: FontWeight.bold,
-                                    color: status == 'open' ? Colors.green.shade700 : Colors.red.shade700,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          subtitle: Padding(
-                            padding: EdgeInsets.only(top: 8.h),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('Company: $company', style: TextStyle(color: Colors.grey.shade700, fontSize: 14.sp)),
-                                Text('Location: $location', style: TextStyle(color: Colors.grey.shade700, fontSize: 14.sp)),
-                                Text('Salary: $salary', style: TextStyle(color: Colors.grey.shade700, fontSize: 14.sp)),
-                                Text('Skills: $skills', style: TextStyle(color: Colors.grey.shade700, fontSize: 14.sp)),
-                                Text('Education: $education', style: TextStyle(color: Colors.grey.shade700, fontSize: 14.sp)),
-                                Text('Experience: $experience', style: TextStyle(color: Colors.grey.shade700, fontSize: 14.sp)),
-                                Text('Specialization: $specialization', style: TextStyle(color: Colors.grey.shade700, fontSize: 14.sp)),
-                                Text('Posted: $postedDate', style: TextStyle(color: Colors.grey.shade700, fontSize: 14.sp)),
-                                Text('Applicants: $applicantCount', style: TextStyle(color: Colors.grey.shade700, fontSize: 14.sp)),
-                              ],
-                            ),
-                          ),
-                          children: applicantSnapshot.hasError
-                              ? [
-                                  ListTile(
-                                    title: Text(
-                                      'Error loading applicants',
-                                      style: TextStyle(color: Colors.red.shade700, fontSize: 14.sp),
-                                    ),
-                                  ),
-                                ]
-                              : applicants.isNotEmpty
-                                  ? applicants.map<Widget>((applicant) => ListTile(
-                                        title: Text(applicant['name'], style: TextStyle(color: Colors.black87, fontSize: 14.sp)),
-                                        subtitle: Text('Resume URL: ${applicant['resumeUrl'] ?? 'N/A'}', style: TextStyle(color: Colors.blue.shade600, fontSize: 12.sp)),
-                                      )).toList()
-                                  : [
-                                      const ListTile(
-                                        title: Text('No applicants yet', style: TextStyle(color: Colors.grey)),
-                                      ),
-                                    ],
-                          trailing: PopupMenuButton<String>(
-                            icon: const Icon(Icons.more_vert, color: Colors.teal),
-                            onSelected: (value) {
-                              if (value == 'edit') {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => PostJobScreen(editJobData: {...job, 'jobId': jobId}),
-                                  ),
-                                );
-                              } else if (value == 'delete') {
-                                _confirmDeleteJob(context, jobId);
-                              }
-                            },
-                            itemBuilder: (context) => [
-                              const PopupMenuItem(
-                                value: 'edit',
-                                child: Text('Edit', style: TextStyle(color: Colors.teal)),
-                              ),
-                              const PopupMenuItem(
-                                value: 'delete',
-                                child: Text('Delete', style: TextStyle(color: Colors.red)),
-                              ),
-                            ],
-                          ),
+                      child: Padding(
+                        padding: EdgeInsets.all(16.w),
+                        child: Text(
+                          errorMessage,
+                          style: TextStyle(color: Colors.red.shade700, fontSize: 16.sp),
+                          textAlign: TextAlign.center,
                         ),
                       ),
                     ),
                   );
-                },
-              );
-            },
-          );
-        },
+                }
+
+                final jobs = snapshot.data?.docs ?? [];
+
+                if (jobs.isEmpty) {
+                  return Center(
+                    child: Text(
+                      'No jobs posted yet',
+                      style: TextStyle(fontSize: 16.sp, color: Colors.grey.shade600),
+                    ),
+                  );
+                }
+
+                return ListView.builder(
+                  itemCount: jobs.length,
+                  itemBuilder: (context, index) {
+                    final job = jobs[index].data() as Map<String, dynamic>;
+                    final jobId = jobs[index].id;
+                    final isFeatured = job['isFeatured'] ?? false;
+                    dev.log('[2025-09-01 15:05 IST] Job $jobId data for user ${user!.uid}: isFeatured=$isFeatured, title=${job['title']}', name: 'PostedJobsScreen');
+
+                    final title = job['title'] ?? 'Untitled Job';
+                    final company = job['company'] ?? 'Unknown Company';
+                    final location = job['location'] ?? 'Unspecified';
+                    final salary = job['salary'] ?? 'Not specified';
+                    final skills = (job['skills'] as List<dynamic>?)?.join(', ') ?? 'N/A';
+                    final education = job['education'] ?? 'N/A';
+                    final experience = job['experience'] ?? 'N/A';
+                    final specialization = job['specialization'] ?? 'N/A';
+                    final status = job['status'] ?? 'unknown';
+                    final timestamp = job['createdAt'] as Timestamp?;
+                    final postedDate = timestamp != null
+                        ? DateFormat('dd MMM yyyy').format(timestamp.toDate())
+                        : 'N/A';
+
+                    return FutureBuilder<Map<String, dynamic>>(
+                      future: _getApplicantData(jobId),
+                      builder: (context, applicantSnapshot) {
+                        final applicantCount = applicantSnapshot.data?['count'] ?? 0;
+                        final applicants = applicantSnapshot.data?['applicants'] ?? [];
+
+                        return AnimatedListItem(
+                          child: Card(
+                            elevation: 3,
+                            margin: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [Colors.blue.shade50, Colors.blue.shade100],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                borderRadius: BorderRadius.circular(12.r),
+                              ),
+                              child: ExpansionTile(
+                                title: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Flexible(
+                                      child: Row(
+                                        children: [
+                                          Flexible(
+                                            child: Text(
+                                              title,
+                                              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 18.sp, color: Colors.black87),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                          if (isFeatured)
+                                            Padding(
+                                              padding: EdgeInsets.only(left: 8.w),
+                                              child: Chip(
+                                                label: Text(
+                                                  'Featured',
+                                                  style: TextStyle(fontSize: 12.sp, color: Colors.white),
+                                                ),
+                                                backgroundColor: Colors.blue.shade600,
+                                                padding: EdgeInsets.symmetric(horizontal: 8.w),
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    ),
+                                    Container(
+                                      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+                                      decoration: BoxDecoration(
+                                        color: status == 'open' ? Colors.green.shade100 : Colors.red.shade100,
+                                        borderRadius: BorderRadius.circular(12.r),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black.withValues(alpha: 0.1),
+                                            blurRadius: 2.r,
+                                            offset: Offset(0, 1.h),
+                                          ),
+                                        ],
+                                      ),
+                                      child: Text(
+                                        status.toUpperCase(),
+                                        style: TextStyle(
+                                          fontSize: 12.sp,
+                                          fontWeight: FontWeight.bold,
+                                          color: status == 'open' ? Colors.green.shade700 : Colors.red.shade700,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                subtitle: Padding(
+                                  padding: EdgeInsets.only(top: 8.h),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text('Company: $company', style: TextStyle(color: Colors.grey.shade700, fontSize: 14.sp)),
+                                      Text('Location: $location', style: TextStyle(color: Colors.grey.shade700, fontSize: 14.sp)),
+                                      Text('Salary: $salary', style: TextStyle(color: Colors.grey.shade700, fontSize: 14.sp)),
+                                      Text('Skills: $skills', style: TextStyle(color: Colors.grey.shade700, fontSize: 14.sp)),
+                                      Text('Education: $education', style: TextStyle(color: Colors.grey.shade700, fontSize: 14.sp)),
+                                      Text('Experience: $experience', style: TextStyle(color: Colors.grey.shade700, fontSize: 14.sp)),
+                                      Text('Specialization: $specialization', style: TextStyle(color: Colors.grey.shade700, fontSize: 14.sp)),
+                                      Text('Posted: $postedDate', style: TextStyle(color: Colors.grey.shade700, fontSize: 14.sp)),
+                                      Text('Applicants: $applicantCount', style: TextStyle(color: Colors.grey.shade700, fontSize: 14.sp)),
+                                    ],
+                                  ),
+                                ),
+                                children: applicantSnapshot.hasError
+                                    ? [
+                                        ListTile(
+                                          title: Text(
+                                            'Error loading applicants',
+                                            style: TextStyle(color: Colors.red.shade700, fontSize: 14.sp),
+                                          ),
+                                        ),
+                                      ]
+                                    : applicants.isNotEmpty
+                                        ? applicants.map<Widget>((applicant) => ListTile(
+                                              title: Text(applicant['name'], style: TextStyle(color: Colors.black87, fontSize: 14.sp)),
+                                              subtitle: Text('Resume URL: ${applicant['resumeUrl'] ?? 'N/A'}', style: TextStyle(color: Colors.blue.shade600, fontSize: 12.sp)),
+                                            )).toList()
+                                        : [
+                                            const ListTile(
+                                              title: Text('No applicants yet', style: TextStyle(color: Colors.grey)),
+                                            ),
+                                          ],
+                                trailing: PopupMenuButton<String>(
+                                  icon: const Icon(Icons.more_vert, color: Colors.teal),
+                                  onSelected: (value) {
+                                    if (value == 'edit') {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => PostJobScreen(editJobData: {...job, 'jobId': jobId}),
+                                        ),
+                                      );
+                                    } else if (value == 'delete') {
+                                      _confirmDeleteJob(context, jobId);
+                                    }
+                                  },
+                                  itemBuilder: (context) => [
+                                    const PopupMenuItem(
+                                      value: 'edit',
+                                      child: Text('Edit', style: TextStyle(color: Colors.teal)),
+                                    ),
+                                    const PopupMenuItem(
+                                      value: 'delete',
+                                      child: Text('Delete', style: TextStyle(color: Colors.red)),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -269,7 +333,7 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
           .where('recruiterId', isEqualTo: user!.uid)
           .get();
 
-      dev.log('[2025-08-20 11:47 IST] Fetched ${snapshot.docs.length} applicants for job $jobId by user ${user!.uid}', name: 'PostedJobsScreen');
+      dev.log('[2025-09-01 15:05 IST] Fetched ${snapshot.docs.length} applicants for job $jobId by user ${user!.uid}', name: 'PostedJobsScreen');
 
       final applicants = snapshot.docs.map((doc) {
         final data = doc.data();
@@ -281,11 +345,11 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
 
       return {'count': snapshot.docs.length, 'applicants': applicants};
     } catch (e, stackTrace) {
-      dev.log('[2025-08-20 11:47 IST] Error fetching applicant data for job $jobId by user ${user!.uid}: $e', name: 'PostedJobsScreen', error: e, stackTrace: stackTrace);
+      dev.log('[2025-09-01 15:05 IST] Error fetching applicant data for job $jobId by user ${user!.uid}: $e', name: 'PostedJobsScreen', error: e, stackTrace: stackTrace);
       if (e is FirebaseException) {
-        dev.log('[2025-08-20 11:47 IST] Firebase error details: ${e.code} - ${e.message}', name: 'PostedJobsScreen');
+        dev.log('[2025-09-01 15:05 IST] Firebase error details: ${e.code} - ${e.message}', name: 'PostedJobsScreen');
         if (e.code == 'permission-denied') {
-          dev.log('[2025-08-20 11:47 IST] Permission denied accessing Applications for job $jobId', name: 'PostedJobsScreen');
+          dev.log('[2025-09-01 15:05 IST] Permission denied accessing Applications for job $jobId', name: 'PostedJobsScreen');
         }
       }
       return {'count': 0, 'applicants': []};
@@ -330,7 +394,7 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
                     .doc(jobId);
                 batch.delete(jobRef);
 
-                dev.log('[2025-08-20 11:47 IST] Deleting job document at ${jobRef.path}', name: 'PostedJobsScreen');
+                dev.log('[2025-09-01 15:05 IST] Deleting job document at ${jobRef.path}', name: 'PostedJobsScreen');
 
                 final appsSnapshot = await FirebaseFirestore.instance
                     .collection('Applications')
@@ -339,7 +403,7 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
                     .get();
                 for (var doc in appsSnapshot.docs) {
                   batch.delete(doc.reference);
-                  dev.log('[2025-08-20 11:47 IST] Queued delete for application at ${doc.reference.path}', name: 'PostedJobsScreen');
+                  dev.log('[2025-09-01 15:05 IST] Queued delete for application at ${doc.reference.path}', name: 'PostedJobsScreen');
                 }
 
                 final recruiterNotifsSnapshot = await FirebaseFirestore.instance
@@ -350,7 +414,7 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
                     .get();
                 for (var doc in recruiterNotifsSnapshot.docs) {
                   batch.delete(doc.reference);
-                  dev.log('[2025-08-20 11:47 IST] Queued delete for recruiter notification at ${doc.reference.path}', name: 'PostedJobsScreen');
+                  dev.log('[2025-09-01 15:05 IST] Queued delete for recruiter notification at ${doc.reference.path}', name: 'PostedJobsScreen');
                 }
 
                 // Attempt to delete seeker notifications, handle permission errors gracefully
@@ -361,14 +425,14 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
                       .get();
                   for (var doc in seekerNotifsSnapshot.docs) {
                     batch.delete(doc.reference);
-                    dev.log('[2025-08-20 11:47 IST] Queued delete for seeker notification at ${doc.reference.path}', name: 'PostedJobsScreen');
+                    dev.log('[2025-09-01 15:05 IST] Queued delete for seeker notification at ${doc.reference.path}', name: 'PostedJobsScreen');
                   }
                 } catch (e) {
-                  dev.log('[2025-08-20 11:47 IST] Failed to delete seeker notifications for job $jobId: $e', name: 'PostedJobsScreen', error: e);
+                  dev.log('[2025-09-01 15:05 IST] Failed to delete seeker notifications for job $jobId: $e', name: 'PostedJobsScreen', error: e);
                 }
 
                 await batch.commit();
-                dev.log('[2025-08-20 11:47 IST] Batch commit completed for job $jobId', name: 'PostedJobsScreen');
+                dev.log('[2025-09-01 15:05 IST] Batch commit completed for job $jobId', name: 'PostedJobsScreen');
 
                 if (!context.mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -378,13 +442,13 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
                     behavior: SnackBarBehavior.floating,
                   ),
                 );
-                dev.log('[2025-08-20 11:47 IST] Job $jobId and related data deleted by user ${user!.uid}', name: 'PostedJobsScreen');
+                dev.log('[2025-09-01 15:05 IST] Job $jobId and related data deleted by user ${user!.uid}', name: 'PostedJobsScreen');
               } catch (e, stackTrace) {
-                dev.log('[2025-08-20 11:47 IST] Error deleting job $jobId: $e', name: 'PostedJobsScreen', error: e, stackTrace: stackTrace);
+                dev.log('[2025-09-01 15:05 IST] Error deleting job $jobId: $e', name: 'PostedJobsScreen', error: e, stackTrace: stackTrace);
                 if (e is FirebaseException) {
-                  dev.log('[2025-08-20 11:47 IST] Firebase error details: ${e.code} - ${e.message}', name: 'PostedJobsScreen');
+                  dev.log('[2025-09-01 15:05 IST] Firebase error details: ${e.code} - ${e.message}', name: 'PostedJobsScreen');
                   if (e.code == 'permission-denied') {
-                    dev.log('[2025-08-20 11:47 IST] Permission denied deleting job $jobId or related data', name: 'PostedJobsScreen');
+                    dev.log('[2025-09-01 15:05 IST] Permission denied deleting job $jobId or related data', name: 'PostedJobsScreen');
                   }
                 }
                 if (!context.mounted) return;
@@ -423,14 +487,13 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
                 ),
               ),
             ),
-          ),
+          )
         ],
       ),
     );
   }
 }
 
-// Custom Animated Button Widget
 class AnimatedScaleButton extends StatefulWidget {
   final VoidCallback onPressed;
   final Widget child;
@@ -442,43 +505,42 @@ class AnimatedScaleButton extends StatefulWidget {
 }
 
 class AnimatedScaleButtonState extends State<AnimatedScaleButton> with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _scaleAnimation;
+  late AnimationController controller;
+  late Animation<double> scaleAnimation;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
+    controller = AnimationController(
       duration: const Duration(milliseconds: 100),
       vsync: this,
     );
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(_controller);
+    scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(controller);
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    controller.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTapDown: (_) => _controller.forward(),
+      onTapDown: (_) => controller.forward(),
       onTapUp: (_) {
-        _controller.reverse();
+        controller.reverse();
         widget.onPressed();
       },
-      onTapCancel: () => _controller.reverse(),
+      onTapCancel: () => controller.reverse(),
       child: ScaleTransition(
-        scale: _scaleAnimation,
+        scale: scaleAnimation,
         child: widget.child,
       ),
     );
   }
 }
 
-// Custom Animated List Item Widget
 class AnimatedListItem extends StatefulWidget {
   final Widget child;
 
@@ -489,34 +551,34 @@ class AnimatedListItem extends StatefulWidget {
 }
 
 class AnimatedListItemState extends State<AnimatedListItem> with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _fadeAnimation;
-  late Animation<Offset> _slideAnimation;
+  late AnimationController controller;
+  late Animation<double> fadeAnimation;
+  late Animation<Offset> slideAnimation;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
+    controller = AnimationController(
       duration: const Duration(milliseconds: 500),
       vsync: this,
     );
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(_controller);
-    _slideAnimation = Tween<Offset>(begin: const Offset(0.2, 0), end: Offset.zero).animate(_controller);
-    _controller.forward();
+    fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(controller);
+    slideAnimation = Tween<Offset>(begin: const Offset(0.2, 0), end: Offset.zero).animate(controller);
+    controller.forward();
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    controller.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return FadeTransition(
-      opacity: _fadeAnimation,
+      opacity: fadeAnimation,
       child: SlideTransition(
-        position: _slideAnimation,
+        position: slideAnimation,
         child: widget.child,
       ),
     );

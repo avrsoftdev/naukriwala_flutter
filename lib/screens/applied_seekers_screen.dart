@@ -1,3 +1,5 @@
+// ignore_for_file: unnecessary_brace_in_string_interps, use_build_context_synchronously
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -34,123 +36,112 @@ class _AppliedSeekersScreenState extends State<AppliedSeekersScreen> {
   String _searchQuery = '';
 
   final List<String> experienceOptions = [
-  'Fresher',
-  '1-2 years',
-  '2-4 years',
-  '4-6 years',
-  '6-8 years',
-  '8-10 years',
-  '10-12 years',
-  '12+ years', // Added to cover more experienced candidates
-];
+    'Fresher',
+    '1-2 years',
+    '2-4 years',
+    '4-6 years',
+    '6-8 years',
+    '8-10 years',
+    '10-12 years',
+    '12+ years',
+  ];
 
-// Education options
-final List<String> educationOptions = [
-  'High School (Class 10)',
-  'Senior Secondary (Class 12)', // Updated to reflect Indian system
-  'Diploma',
-  'Associate Degree',
-  'Bachelor\'s Degree',
-  'Postgraduate Diploma', // Added for Indian and global relevance
-  'Master\'s Degree',
-  'Doctorate/PhD',
-  'Professional Certification',
-  'Other',
-];
+  final List<String> educationOptions = [
+    'High School (Class 10)',
+    'Senior Secondary (Class 12)',
+    'Diploma',
+    'Associate Degree',
+    'Bachelor\'s Degree',
+    'Postgraduate Diploma',
+    'Master\'s Degree',
+    'Doctorate/PhD',
+    'Professional Certification',
+    'Other',
+  ];
 
-// Specialization options
-final List<String> specializationOptions = [
-  'Computer Science / IT',
-  'Electronics / Electrical / Robotics',
-  'Mechanical / Civil / Architecture',
-  'Business / Finance / Management',
-  'Medicine / Healthcare / Pharma',
-  'Law / Political Science / Public Administration',
-  'Arts / Humanities / Education',
-  'Design / Media / Communication',
-  'Hotel / Travel / Event Management',
-  'Science / Research / Environment',
-  'Vocational/Domestic Services', // Added for driving, househelp, etc.
-  'Others',
-];
+  final List<String> specializationOptions = [
+    'Computer Science / IT',
+    'Electronics / Electrical / Robotics',
+    'Mechanical / Civil / Architecture',
+    'Business / Finance / Management',
+    'Medicine / Healthcare / Pharma',
+    'Law / Political Science / Public Administration',
+    'Arts / Humanities / Education',
+    'Design / Media / Communication',
+    'Hotel / Travel / Event Management',
+    'Science / Research / Environment',
+    'Vocational/Domestic Services',
+    'Others',
+  ];
 
-// Skills by specialization
-final Map<String, List<String>> skillsBySpecialization = {
-  'Computer Science / IT': [
-    'Java', 'Python', 'C++', 'C#', 'Dart', 'Flutter', 'Android Development',
-    'iOS Development', 'React', 'Angular', 'Vue.js', 'Node.js', 'Firebase',
-    'AWS', 'Docker', 'Kubernetes', 'SQL', 'MongoDB', 'REST APIs', 'GraphQL',
-    'Machine Learning', 'Data Structures & Algorithms', 'DevOps', 'Cybersecurity',
-    'System Design',
-  ],
-  'Electronics / Electrical / Robotics': [
-    'Embedded Systems', 'PCB Design', 'VLSI', 'MATLAB', 'Simulink', 'Verilog',
-    'FPGA Programming', 'Arduino', 'Raspberry Pi', 'IoT Development',
-    'Signal Processing', 'Power Systems', 'Automation', 'SCADA',
-  ],
-  'Mechanical / Civil / Architecture': [
-    'AutoCAD', 'SolidWorks', 'CATIA', 'ANSYS', 'STAAD Pro', 'Revit',
-    'Structural Analysis', 'Thermodynamics', 'Manufacturing Processes',
-    'Fluid Mechanics', 'Construction Management', 'Urban Planning',
-  ],
-  'Business / Finance / Management': [
-    'Financial Analysis', 'Accounting', 'MS Excel', 'Tally', 'Business Intelligence',
-    'SAP', 'QuickBooks', 'Digital Marketing', 'Google Ads', 'SEO',
-    'Social Media Marketing', 'Project Management', 'Agile', 'Scrum',
-    'Business Strategy', 'Market Research', 'Customer Relationship Management (CRM)',
-    'Salesforce',
-  ],
-  'Medicine / Healthcare / Pharma': [
-    'Clinical Research', 'Patient Care', 'Surgical Assistance', 'Nursing Procedures',
-    'Medical Coding', 'Public Health', 'Pharmacology', 'First Aid', 'CPR',
-    'Health Education', 'Lab Testing', 'Radiology', 'Therapeutic Skills',
-  ],
-  'Law / Political Science / Public Administration': [
-    'Legal Research', 'Case Analysis', 'Contract Drafting', 'Litigation',
-    'Legal Compliance', 'Constitutional Law', 'Criminal Law', 'International Law',
-    'Arbitration', 'Policy Analysis', 'Public Speaking',
-  ],
-  'Arts / Humanities / Education': [
-    'Creative Writing', 'Content Writing', 'Linguistics', 'Public Speaking',
-    'Editing & Proofreading', 'Critical Thinking', 'Classroom Management',
-    'Curriculum Development', 'E-Learning Tools', 'Art History', 'Philosophical Analysis',
-  ],
-  'Design / Media / Communication': [
-    'Adobe Photoshop', 'Adobe Illustrator', 'Adobe XD', 'Figma', 'Canva',
-    'UI/UX Design', 'Video Editing', '3D Modeling', 'Motion Graphics', 'Photography',
-    'Copywriting', 'Branding', 'Social Media Content Creation', 'Typography', 'Storyboarding',
-    'Final Cut Pro', 'Lightroom',
-  ],
-  'Hotel / Travel / Event Management': [
-    'Event Planning', 'Hospitality Management', 'Customer Service', 'Bartending',
-    'Housekeeping', 'Food & Beverage Service', 'Travel Planning', 'Ticketing & Reservations',
-    'Catering Services', 'Inventory Management', 'Public Relations', 'Vendor Management',
-  ],
-  'Science / Research / Environment': [
-    'Laboratory Techniques', 'Statistical Analysis', 'Research Writing', 'Data Collection',
-    'Environmental Impact Assessment', 'Geographic Information System (GIS)', 'Microscopy',
-    'Chemical Analysis', 'Climate Modeling', 'Bioinformatics',
-  ],
-  'Vocational/Domestic Services': [
-    'Driving', // Car, motorcycle, or commercial vehicle driving
-    'Housekeeping', // Cleaning, laundry, household management
-    'Cooking', // Meal preparation, dietary planning
-    'Childcare', // Babysitting, child supervision, tutoring
-    'Elderly Care', // Assisting elderly with daily tasks
-    'Gardening', // Plant care, landscaping
-    'Basic Maintenance', // Minor household repairs (plumbing, electrical)
-    'Customer Service', // Handling client interactions
-    'Inventory Management', // Managing household supplies
-    'Event Assistance', // Supporting events (e.g., catering, setup)
-  ],
-  'Others': [
-    'Communication Skills', 'Problem Solving', 'Teamwork', 'Leadership', 'Time Management',
-    'Adaptability', 'Creativity', 'Conflict Resolution', 'Critical Thinking', 'Customer Support',
-    'Basic Computer Skills', 'Typing', 'Remote Work Tools (Zoom, Slack, Trello)', 'Virtual Assistant',
-    'Content Moderation', 'Driving', 'Housekeeping', 'Cooking', 'Childcare', 'Gardening',
-    'Basic Maintenance',
-  ],
-};
+  final Map<String, List<String>> skillsBySpecialization = {
+    'Computer Science / IT': [
+      'Java', 'Python', 'C++', 'C#', 'Dart', 'Flutter', 'Android Development',
+      'iOS Development', 'React', 'Angular', 'Vue.js', 'Node.js', 'Firebase',
+      'AWS', 'Docker', 'Kubernetes', 'SQL', 'MongoDB', 'REST APIs', 'GraphQL',
+      'Machine Learning', 'Data Structures & Algorithms', 'DevOps', 'Cybersecurity',
+      'System Design',
+    ],
+    'Electronics / Electrical / Robotics': [
+      'Embedded Systems', 'PCB Design', 'VLSI', 'MATLAB', 'Simulink', 'Verilog',
+      'FPGA Programming', 'Arduino', 'Raspberry Pi', 'IoT Development',
+      'Signal Processing', 'Power Systems', 'Automation', 'SCADA',
+    ],
+    'Mechanical / Civil / Architecture': [
+      'AutoCAD', 'SolidWorks', 'CATIA', 'ANSYS', 'STAAD Pro', 'Revit',
+      'Structural Analysis', 'Thermodynamics', 'Manufacturing Processes',
+      'Fluid Mechanics', 'Construction Management', 'Urban Planning',
+    ],
+    'Business / Finance / Management': [
+      'Financial Analysis', 'Accounting', 'MS Excel', 'Tally', 'Business Intelligence',
+      'SAP', 'QuickBooks', 'Digital Marketing', 'Google Ads', 'SEO',
+      'Social Media Marketing', 'Project Management', 'Agile', 'Scrum',
+      'Business Strategy', 'Market Research', 'Customer Relationship Management (CRM)',
+      'Salesforce',
+    ],
+    'Medicine / Healthcare / Pharma': [
+      'Clinical Research', 'Patient Care', 'Surgical Assistance', 'Nursing Procedures',
+      'Medical Coding', 'Public Health', 'Pharmacology', 'First Aid', 'CPR',
+      'Health Education', 'Lab Testing', 'Radiology', 'Therapeutic Skills',
+    ],
+    'Law / Political Science / Public Administration': [
+      'Legal Research', 'Case Analysis', 'Contract Drafting', 'Litigation',
+      'Legal Compliance', 'Constitutional Law', 'Criminal Law', 'International Law',
+      'Arbitration', 'Policy Analysis', 'Public Speaking',
+    ],
+    'Arts / Humanities / Education': [
+      'Creative Writing', 'Content Writing', 'Linguistics', 'Public Speaking',
+      'Editing & Proofreading', 'Critical Thinking', 'Classroom Management',
+      'Curriculum Development', 'E-Learning Tools', 'Art History', 'Philosophical Analysis',
+    ],
+    'Design / Media / Communication': [
+      'Adobe Photoshop', 'Adobe Illustrator', 'Adobe XD', 'Figma', 'Canva',
+      'UI/UX Design', 'Video Editing', '3D Modeling', 'Motion Graphics', 'Photography',
+      'Copywriting', 'Branding', 'Social Media Content Creation', 'Typography', 'Storyboarding',
+      'Final Cut Pro', 'Lightroom',
+    ],
+    'Hotel / Travel / Event Management': [
+      'Event Planning', 'Hospitality Management', 'Customer Service', 'Bartending',
+      'Housekeeping', 'Food & Beverage Service', 'Travel Planning', 'Ticketing & Reservations',
+      'Catering Services', 'Inventory Management', 'Public Relations', 'Vendor Management',
+    ],
+    'Science / Research / Environment': [
+      'Laboratory Techniques', 'Statistical Analysis', 'Research Writing', 'Data Collection',
+      'Environmental Impact Assessment', 'Geographic Information System (GIS)', 'Microscopy',
+      'Chemical Analysis', 'Climate Modeling', 'Bioinformatics',
+    ],
+    'Vocational/Domestic Services': [
+      'Driving', 'Housekeeping', 'Cooking', 'Childcare', 'Elderly Care', 'Gardening',
+      'Basic Maintenance', 'Customer Service', 'Inventory Management', 'Event Assistance',
+    ],
+    'Others': [
+      'Communication Skills', 'Problem Solving', 'Teamwork', 'Leadership', 'Time Management',
+      'Adaptability', 'Creativity', 'Conflict Resolution', 'Critical Thinking', 'Customer Support',
+      'Basic Computer Skills', 'Typing', 'Remote Work Tools (Zoom, Slack, Trello)', 'Virtual Assistant',
+      'Content Moderation', 'Driving', 'Housekeeping', 'Cooking', 'Childcare', 'Gardening',
+      'Basic Maintenance',
+    ],
+  };
 
   void _addToCalendar(String title, DateTime date) {
     final event = Event(
@@ -161,7 +152,7 @@ final Map<String, List<String>> skillsBySpecialization = {
       endDate: date.add(const Duration(hours: 1)),
     );
     Add2Calendar.addEvent2Cal(event);
-    dev.log('[2025-08-19 04:25 IST] Added calendar event: $title on ${DateFormat('dd MMM yyyy').format(date)}', name: 'AppliedSeekersScreen');
+    dev.log('[2025-09-01 14:37 IST] Added calendar event: $title on ${DateFormat('dd MMM yyyy').format(date)}', name: 'AppliedSeekersScreen');
   }
 
   void _handleAction(String action, String jobId, String seekerId, Map<String, dynamic> applicant) async {
@@ -174,7 +165,7 @@ final Map<String, List<String>> skillsBySpecialization = {
           .doc(jobId)
           .get();
       if (!jobDoc.exists || jobDoc.data()?['recruiterId'] != recruiterId) {
-        dev.log('[2025-08-19 04:25 IST] Job $jobId not owned by recruiter $recruiterId: ${jobDoc.data()}', name: 'AppliedSeekersScreen');
+        dev.log('[2025-09-01 14:37 IST] Job $jobId not owned by recruiter $recruiterId: ${jobDoc.data()}', name: 'AppliedSeekersScreen');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -188,14 +179,13 @@ final Map<String, List<String>> skillsBySpecialization = {
       }
 
       // Verify application exists
-      // ignore: unnecessary_brace_in_string_interps
       final applicationId = '${seekerId}_${jobId}';
       final appDoc = await FirebaseFirestore.instance
           .collection('Applications')
           .doc(applicationId)
           .get();
       if (!appDoc.exists || appDoc.data()?['recruiterId'] != recruiterId) {
-        dev.log('[2025-08-19 04:25 IST] Application $applicationId not found or not owned by recruiter $recruiterId', name: 'AppliedSeekersScreen');
+        dev.log('[2025-09-01 14:37 IST] Application $applicationId not found or not owned by recruiter $recruiterId', name: 'AppliedSeekersScreen');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -212,12 +202,12 @@ final Map<String, List<String>> skillsBySpecialization = {
         final participants = [seekerId, recruiterId!];
         participants.sort();
         final chatId = '${participants[0]}_${participants[1]}';
-        dev.log('[2025-08-19 04:25 IST] Initiating chat with seeker $seekerId for job $jobId', name: 'AppliedSeekersScreen');
+        dev.log('[2025-09-01 14:37 IST] Initiating chat with seeker $seekerId for job $jobId', name: 'AppliedSeekersScreen');
         if (!mounted) {
-          dev.log('[2025-08-19 04:25 IST] Widget not mounted, cannot navigate to ChatScreen', name: 'AppliedSeekersScreen');
+          dev.log('[2025-09-01 14:37 IST] Widget not mounted, cannot navigate to ChatScreen', name: 'AppliedSeekersScreen');
           return;
         }
-        dev.log('[2025-08-19 04:25 IST] Navigating to ChatScreen for seeker $seekerId', name: 'AppliedSeekersScreen');
+        dev.log('[2025-09-01 14:37 IST] Navigating to ChatScreen for seeker $seekerId', name: 'AppliedSeekersScreen');
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -230,7 +220,6 @@ final Map<String, List<String>> skillsBySpecialization = {
         );
       } else if (action == 'schedule') {
         final pickedDate = await showDatePicker(
-          // ignore: use_build_context_synchronously
           context: context,
           initialDate: DateTime.now().add(const Duration(days: 1)),
           firstDate: DateTime.now(),
@@ -261,9 +250,9 @@ final Map<String, List<String>> skillsBySpecialization = {
         final url = resume['cvUrl'] as String? ?? '';
         if (url.isNotEmpty && await canLaunchUrl(Uri.parse(url))) {
           await launchUrl(Uri.parse(url));
-          dev.log('[2025-08-19 04:25 IST] Downloaded CV for seeker $seekerId: $url', name: 'AppliedSeekersScreen');
+          dev.log('[2025-09-01 14:37 IST] Downloaded CV for seeker $seekerId: $url', name: 'AppliedSeekersScreen');
         } else {
-          dev.log('[2025-08-19 04:25 IST] No CV available for seeker $seekerId', name: 'AppliedSeekersScreen');
+          dev.log('[2025-09-01 14:37 IST] No CV available for seeker $seekerId', name: 'AppliedSeekersScreen');
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
@@ -291,7 +280,7 @@ final Map<String, List<String>> skillsBySpecialization = {
         );
       }
     } catch (e) {
-      dev.log('[2025-08-19 04:25 IST] Error handling action $action for seeker $seekerId, job $jobId: $e', name: 'AppliedSeekersScreen', error: e);
+      dev.log('[2025-09-01 14:37 IST] Error handling action $action for seeker $seekerId, job $jobId: $e', name: 'AppliedSeekersScreen', error: e);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -314,16 +303,23 @@ final Map<String, List<String>> skillsBySpecialization = {
         final specialization = specializationOptions.contains(resume['specialization'] ?? a['specialization'])
             ? (resume['specialization'] ?? a['specialization'] ?? 'N/A')
             : 'N/A';
-        final skillsList = (resume['skills'] as List<dynamic>?)?.cast<String>() ?? (a['skills'] is String ? a['skills'].split(', ') : a['skills'] ?? []);
-        final validSkills = skillsBySpecialization[specialization] ?? skillsBySpecialization['Others']!;
-        final filteredSkills = skillsList.where((skill) => validSkills.contains(skill)).join(', ');
+        // Prioritize applicant.skills if available, fall back to resume.skills
+        final skillsList = (a['skills'] is List<dynamic> && a['skills'].isNotEmpty)
+            ? a['skills'].cast<String>()
+            : (resume['skills'] is List<dynamic> && resume['skills'].isNotEmpty)
+                ? resume['skills'].cast<String>()
+                : (a['skills'] is String && a['skills'].isNotEmpty)
+                    ? a['skills'].split(', ')
+                    : [];
+        final skillsDisplay = skillsList.isNotEmpty ? skillsList.join(', ') : 'N/A';
+
         sheet.appendRow([
           resume['name'] ?? a['name'] ?? '',
           resume['mobileNumber'] ?? a['mobile'] ?? '',
           specialization,
           resume['education'] ?? a['education'] ?? '',
           resume['experience'] ?? a['experience'] ?? '',
-          filteredSkills.isEmpty ? 'N/A' : filteredSkills,
+          skillsDisplay,
           a['status'] ?? '',
           a['jobTitle'] ?? '',
         ]);
@@ -335,9 +331,9 @@ final Map<String, List<String>> skillsBySpecialization = {
       await file.writeAsBytes(Uint8List.fromList(bytes!));
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Exported to $path')));
-      dev.log('[2025-08-19 04:25 IST] Exported applicants to $path', name: 'AppliedSeekersScreen');
+      dev.log('[2025-09-01 14:37 IST] Exported applicants to $path', name: 'AppliedSeekersScreen');
     } catch (e) {
-      dev.log('[2025-08-19 04:25 IST] Error exporting to Excel: $e', name: 'AppliedSeekersScreen', error: e);
+      dev.log('[2025-09-01 14:37 IST] Error exporting to Excel: $e', name: 'AppliedSeekersScreen', error: e);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Error exporting applicants. Check logs.')));
       }
@@ -397,9 +393,8 @@ final Map<String, List<String>> skillsBySpecialization = {
                         try {
                           final applicants = await widget.authService.fetchAppliedSeekers();
                           if (applicants.isEmpty) {
-                            dev.log('[2025-08-19 04:25 IST] No applicants to export for recruiter $recruiterId', name: 'AppliedSeekersScreen');
+                            dev.log('[2025-09-01 14:37 IST] No applicants to export for recruiter $recruiterId', name: 'AppliedSeekersScreen');
                             if (mounted) {
-                              // ignore: use_build_context_synchronously
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(content: Text('No applicants available to export.')),
                               );
@@ -408,9 +403,8 @@ final Map<String, List<String>> skillsBySpecialization = {
                           }
                           await _exportToExcel(applicants);
                         } catch (e) {
-                          dev.log('[2025-08-19 04:25 IST] Error exporting applicants for recruiter $recruiterId: $e', name: 'AppliedSeekersScreen', error: e);
+                          dev.log('[2025-09-01 14:37 IST] Error exporting applicants for recruiter $recruiterId: $e', name: 'AppliedSeekersScreen', error: e);
                           if (mounted) {
-                            // ignore: use_build_context_synchronously
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(content: Text('Error exporting applicants. Check logs.')),
                             );
@@ -439,16 +433,16 @@ final Map<String, List<String>> skillsBySpecialization = {
                           if (error.code == 'permission-denied') {
                             errorMessage +=
                                 '\nEnsure /Applications/{jobId} exists with recruiterId=$recruiterId and job exists in /Recruiters/$recruiterId/Jobs/{jobId}.';
-                            dev.log('[2025-08-19 04:25 IST] Permission denied in fetchAppliedSeekers. Check /Applications/{jobId} and /Recruiters/$recruiterId/Jobs for recruiter $recruiterId', name: 'AppliedSeekersScreen');
+                            dev.log('[2025-09-01 14:37 IST] Permission denied in fetchAppliedSeekers. Check /Applications/{jobId} and /Recruiters/$recruiterId/Jobs for recruiter $recruiterId', name: 'AppliedSeekersScreen');
                           }
                         }
-                        dev.log('[2025-08-19 04:25 IST] Error loading applied seekers for recruiter $recruiterId: $error', name: 'AppliedSeekersScreen', error: error, stackTrace: snapshot.stackTrace);
+                        dev.log('[2025-09-01 14:37 IST] Error loading applied seekers for recruiter $recruiterId: $error', name: 'AppliedSeekersScreen', error: error, stackTrace: snapshot.stackTrace);
                         return Center(child: Text(errorMessage, textAlign: TextAlign.center, style: TextStyle(fontSize: 14.sp)));
                       }
                       final applicants = snapshot.data ?? [];
 
                       if (applicants.isEmpty) {
-                        dev.log('[2025-08-19 04:25 IST] No applicants found for recruiter $recruiterId. Verify /Applications/{jobId} exists with correct recruiterId.', name: 'AppliedSeekersScreen');
+                        dev.log('[2025-09-01 14:37 IST] No applicants found for recruiter $recruiterId. Verify /Applications/{jobId} exists with correct recruiterId.', name: 'AppliedSeekersScreen');
                         return const Center(
                           child: Text(
                             'No applied seekers found',
@@ -473,9 +467,15 @@ final Map<String, List<String>> skillsBySpecialization = {
                           final specialization = specializationOptions.contains(resume['specialization'] ?? applicant['specialization'])
                               ? (resume['specialization'] ?? applicant['specialization'] ?? 'N/A')
                               : 'N/A';
-                          final skillsList = (resume['skills'] as List<dynamic>?)?.cast<String>() ?? (applicant['skills'] is String ? applicant['skills'].split(', ') : applicant['skills'] ?? []);
-                          final validSkills = skillsBySpecialization[specialization] ?? skillsBySpecialization['Others']!;
-                          final filteredSkills = skillsList.where((skill) => validSkills.contains(skill)).join(', ');
+                          // Prioritize applicant.skills if available, fall back to resume.skills
+                          final skillsList = (applicant['skills'] is List<dynamic> && applicant['skills'].isNotEmpty)
+                              ? applicant['skills'].cast<String>()
+                              : (resume['skills'] is List<dynamic> && resume['skills'].isNotEmpty)
+                                  ? resume['skills'].cast<String>()
+                                  : (applicant['skills'] is String && applicant['skills'].isNotEmpty)
+                                      ? applicant['skills'].split(', ')
+                                      : [];
+                          final skillsDisplay = skillsList.isNotEmpty ? skillsList.join(', ') : 'N/A';
 
                           return Card(
                             elevation: 2,
@@ -488,7 +488,7 @@ final Map<String, List<String>> skillsBySpecialization = {
                                   Text('Job: ${applicant['jobTitle'] ?? jobId}', style: TextStyle(fontSize: 14.sp)),
                                   Text('Name: ${resume['name'] ?? 'N/A'}', style: TextStyle(fontSize: 14.sp)),
                                   Text('Email: ${resume['email'] ?? 'N/A'}', style: TextStyle(fontSize: 14.sp)),
-                                  Text('Skills: ${filteredSkills.isEmpty ? 'N/A' : filteredSkills}', style: TextStyle(fontSize: 14.sp)),
+                                  Text('Skills: $skillsDisplay', style: TextStyle(fontSize: 14.sp)),
                                   Text('Specialization: $specialization', style: TextStyle(fontSize: 14.sp)),
                                   Text('Education: ${resume['education'] ?? applicant['education'] ?? 'N/A'}', style: TextStyle(fontSize: 14.sp)),
                                   Text('Experience: ${resume['experience'] ?? applicant['experience'] ?? 'N/A'}', style: TextStyle(fontSize: 14.sp)),

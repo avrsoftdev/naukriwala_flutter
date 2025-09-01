@@ -1,4 +1,4 @@
-// ignore_for_file: deprecated_member_use, unnecessary_null_comparison
+// ignore_for_file: unnecessary_null_comparison
 
 import 'dart:developer' as dev;
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -34,131 +34,128 @@ class JobScreenState extends State<JobScreen> {
   bool _isEligible = false;
   String? _ineligibilityReason;
 
-final List<String> experienceOptions = [
-  'Fresher',
-  '1-2 years',
-  '2-4 years',
-  '4-6 years',
-  '6-8 years',
-  '8-10 years',
-  '10-12 years',
-  '12+ years', // Added to cover more experienced candidates
-];
+  final List<String> experienceOptions = [
+    'Fresher',
+    '1-2 years',
+    '2-4 years',
+    '4-6 years',
+    '6-8 years',
+    '8-10 years',
+    '10-12 years',
+    '12+ years',
+  ];
 
-// Education options
-final List<String> educationOptions = [
-  'High School (Class 10)',
-  'Senior Secondary (Class 12)', // Updated to reflect Indian system
-  'Diploma',
-  'Associate Degree',
-  'Bachelor\'s Degree',
-  'Postgraduate Diploma', // Added for Indian and global relevance
-  'Master\'s Degree',
-  'Doctorate/PhD',
-  'Professional Certification',
-  'Other',
-];
+  final List<String> educationOptions = [
+    'High School (Class 10)',
+    'Senior Secondary (Class 12)',
+    'Diploma',
+    'Associate Degree',
+    'Bachelor\'s Degree',
+    'Postgraduate Diploma',
+    'Master\'s Degree',
+    'Doctorate/PhD',
+    'Professional Certification',
+    'Other',
+  ];
 
-// Specialization options
-final List<String> specializationOptions = [
-  'Computer Science / IT',
-  'Electronics / Electrical / Robotics',
-  'Mechanical / Civil / Architecture',
-  'Business / Finance / Management',
-  'Medicine / Healthcare / Pharma',
-  'Law / Political Science / Public Administration',
-  'Arts / Humanities / Education',
-  'Design / Media / Communication',
-  'Hotel / Travel / Event Management',
-  'Science / Research / Environment',
-  'Vocational/Domestic Services', // Added for driving, househelp, etc.
-  'Others',
-];
+  final List<String> specializationOptions = [
+    'Computer Science / IT',
+    'Electronics / Electrical / Robotics',
+    'Mechanical / Civil / Architecture',
+    'Business / Finance / Management',
+    'Medicine / Healthcare / Pharma',
+    'Law / Political Science / Public Administration',
+    'Arts / Humanities / Education',
+    'Design / Media / Communication',
+    'Hotel / Travel / Event Management',
+    'Science / Research / Environment',
+    'Vocational/Domestic Services',
+    'Others',
+  ];
 
-// Skills by specialization
-final Map<String, List<String>> skillsBySpecialization = {
-  'Computer Science / IT': [
-    'Java', 'Python', 'C++', 'C#', 'Dart', 'Flutter', 'Android Development',
-    'iOS Development', 'React', 'Angular', 'Vue.js', 'Node.js', 'Firebase',
-    'AWS', 'Docker', 'Kubernetes', 'SQL', 'MongoDB', 'REST APIs', 'GraphQL',
-    'Machine Learning', 'Data Structures & Algorithms', 'DevOps', 'Cybersecurity',
-    'System Design',
-  ],
-  'Electronics / Electrical / Robotics': [
-    'Embedded Systems', 'PCB Design', 'VLSI', 'MATLAB', 'Simulink', 'Verilog',
-    'FPGA Programming', 'Arduino', 'Raspberry Pi', 'IoT Development',
-    'Signal Processing', 'Power Systems', 'Automation', 'SCADA',
-  ],
-  'Mechanical / Civil / Architecture': [
-    'AutoCAD', 'SolidWorks', 'CATIA', 'ANSYS', 'STAAD Pro', 'Revit',
-    'Structural Analysis', 'Thermodynamics', 'Manufacturing Processes',
-    'Fluid Mechanics', 'Construction Management', 'Urban Planning',
-  ],
-  'Business / Finance / Management': [
-    'Financial Analysis', 'Accounting', 'MS Excel', 'Tally', 'Business Intelligence',
-    'SAP', 'QuickBooks', 'Digital Marketing', 'Google Ads', 'SEO',
-    'Social Media Marketing', 'Project Management', 'Agile', 'Scrum',
-    'Business Strategy', 'Market Research', 'Customer Relationship Management (CRM)',
-    'Salesforce',
-  ],
-  'Medicine / Healthcare / Pharma': [
-    'Clinical Research', 'Patient Care', 'Surgical Assistance', 'Nursing Procedures',
-    'Medical Coding', 'Public Health', 'Pharmacology', 'First Aid', 'CPR',
-    'Health Education', 'Lab Testing', 'Radiology', 'Therapeutic Skills',
-  ],
-  'Law / Political Science / Public Administration': [
-    'Legal Research', 'Case Analysis', 'Contract Drafting', 'Litigation',
-    'Legal Compliance', 'Constitutional Law', 'Criminal Law', 'International Law',
-    'Arbitration', 'Policy Analysis', 'Public Speaking',
-  ],
-  'Arts / Humanities / Education': [
-    'Creative Writing', 'Content Writing', 'Linguistics', 'Public Speaking',
-    'Editing & Proofreading', 'Critical Thinking', 'Classroom Management',
-    'Curriculum Development', 'E-Learning Tools', 'Art History', 'Philosophical Analysis',
-  ],
-  'Design / Media / Communication': [
-    'Adobe Photoshop', 'Adobe Illustrator', 'Adobe XD', 'Figma', 'Canva',
-    'UI/UX Design', 'Video Editing', '3D Modeling', 'Motion Graphics', 'Photography',
-    'Copywriting', 'Branding', 'Social Media Content Creation', 'Typography', 'Storyboarding',
-    'Final Cut Pro', 'Lightroom',
-  ],
-  'Hotel / Travel / Event Management': [
-    'Event Planning', 'Hospitality Management', 'Customer Service', 'Bartending',
-    'Housekeeping', 'Food & Beverage Service', 'Travel Planning', 'Ticketing & Reservations',
-    'Catering Services', 'Inventory Management', 'Public Relations', 'Vendor Management',
-  ],
-  'Science / Research / Environment': [
-    'Laboratory Techniques', 'Statistical Analysis', 'Research Writing', 'Data Collection',
-    'Environmental Impact Assessment', 'Geographic Information System (GIS)', 'Microscopy',
-    'Chemical Analysis', 'Climate Modeling', 'Bioinformatics',
-  ],
-  'Vocational/Domestic Services': [
-    'Driving', // Car, motorcycle, or commercial vehicle driving
-    'Housekeeping', // Cleaning, laundry, household management
-    'Cooking', // Meal preparation, dietary planning
-    'Childcare', // Babysitting, child supervision, tutoring
-    'Elderly Care', // Assisting elderly with daily tasks
-    'Gardening', // Plant care, landscaping
-    'Basic Maintenance', // Minor household repairs (plumbing, electrical)
-    'Customer Service', // Handling client interactions
-    'Inventory Management', // Managing household supplies
-    'Event Assistance', // Supporting events (e.g., catering, setup)
-  ],
-  'Others': [
-    'Communication Skills', 'Problem Solving', 'Teamwork', 'Leadership', 'Time Management',
-    'Adaptability', 'Creativity', 'Conflict Resolution', 'Critical Thinking', 'Customer Support',
-    'Basic Computer Skills', 'Typing', 'Remote Work Tools (Zoom, Slack, Trello)', 'Virtual Assistant',
-    'Content Moderation', 'Driving', 'Housekeeping', 'Cooking', 'Childcare', 'Gardening',
-    'Basic Maintenance',
-  ],
-};
+  final Map<String, List<String>> skillsBySpecialization = {
+    'Computer Science / IT': [
+      'Java', 'Python', 'C++', 'C#', 'Dart', 'Flutter', 'Android Development',
+      'iOS Development', 'React', 'Angular', 'Vue.js', 'Node.js', 'Firebase',
+      'AWS', 'Docker', 'Kubernetes', 'SQL', 'MongoDB', 'REST APIs', 'GraphQL',
+      'Machine Learning', 'Data Structures & Algorithms', 'DevOps', 'Cybersecurity',
+      'System Design',
+    ],
+    'Electronics / Electrical / Robotics': [
+      'Embedded Systems', 'PCB Design', 'VLSI', 'MATLAB', 'Simulink', 'Verilog',
+      'FPGA Programming', 'Arduino', 'Raspberry Pi', 'IoT Development',
+      'Signal Processing', 'Power Systems', 'Automation', 'SCADA',
+    ],
+    'Mechanical / Civil / Architecture': [
+      'AutoCAD', 'SolidWorks', 'CATIA', 'ANSYS', 'STAAD Pro', 'Revit',
+      'Structural Analysis', 'Thermodynamics', 'Manufacturing Processes',
+      'Fluid Mechanics', 'Construction Management', 'Urban Planning',
+    ],
+    'Business / Finance / Management': [
+      'Financial Analysis', 'Accounting', 'MS Excel', 'Tally', 'Business Intelligence',
+      'SAP', 'QuickBooks', 'Digital Marketing', 'Google Ads', 'SEO',
+      'Social Media Marketing', 'Project Management', 'Agile', 'Scrum',
+      'Business Strategy', 'Market Research', 'Customer Relationship Management (CRM)',
+      'Salesforce',
+    ],
+    'Medicine / Healthcare / Pharma': [
+      'Clinical Research', 'Patient Care', 'Surgical Assistance', 'Nursing Procedures',
+      'Medical Coding', 'Public Health', 'Pharmacology', 'First Aid', 'CPR',
+      'Health Education', 'Lab Testing', 'Radiology', 'Therapeutic Skills',
+    ],
+    'Law / Political Science / Public Administration': [
+      'Legal Research', 'Case Analysis', 'Contract Drafting', 'Litigation',
+      'Legal Compliance', 'Constitutional Law', 'Criminal Law', 'International Law',
+      'Arbitration', 'Policy Analysis', 'Public Speaking',
+    ],
+    'Arts / Humanities / Education': [
+      'Creative Writing', 'Content Writing', 'Linguistics', 'Public Speaking',
+      'Editing & Proofreading', 'Critical Thinking', 'Classroom Management',
+      'Curriculum Development', 'E-Learning Tools', 'Art History', 'Philosophical Analysis',
+    ],
+    'Design / Media / Communication': [
+      'Adobe Photoshop', 'Adobe Illustrator', 'Adobe XD', 'Figma', 'Canva',
+      'UI/UX Design', 'Video Editing', '3D Modeling', 'Motion Graphics', 'Photography',
+      'Copywriting', 'Branding', 'Social Media Content Creation', 'Typography', 'Storyboarding',
+      'Final Cut Pro', 'Lightroom',
+    ],
+    'Hotel / Travel / Event Management': [
+      'Event Planning', 'Hospitality Management', 'Customer Service', 'Bartending',
+      'Housekeeping', 'Food & Beverage Service', 'Travel Planning', 'Ticketing & Reservations',
+      'Catering Services', 'Inventory Management', 'Public Relations', 'Vendor Management',
+    ],
+    'Science / Research / Environment': [
+      'Laboratory Techniques', 'Statistical Analysis', 'Research Writing', 'Data Collection',
+      'Environmental Impact Assessment', 'Geographic Information System (GIS)', 'Microscopy',
+      'Chemical Analysis', 'Climate Modeling', 'Bioinformatics',
+    ],
+    'Vocational/Domestic Services': [
+      'Driving',
+      'Housekeeping',
+      'Cooking',
+      'Childcare',
+      'Elderly Care',
+      'Gardening',
+      'Basic Maintenance',
+      'Customer Service',
+      'Inventory Management',
+      'Event Assistance',
+    ],
+    'Others': [
+      'Communication Skills', 'Problem Solving', 'Teamwork', 'Leadership', 'Time Management',
+      'Adaptability', 'Creativity', 'Conflict Resolution', 'Critical Thinking', 'Customer Support',
+      'Basic Computer Skills', 'Typing', 'Remote Work Tools (Zoom, Slack, Trello)', 'Virtual Assistant',
+      'Content Moderation', 'Driving', 'Housekeeping', 'Cooking', 'Childcare', 'Gardening',
+      'Basic Maintenance',
+    ],
+  };
 
   @override
   void initState() {
     super.initState();
     _initializeData();
     _searchController.addListener(() => _filterJobs(_searchController.text));
-    dev.log('[2025-08-21 12:55 IST] JobScreen initialized, isSeekerProfileView: ${widget.isSeekerProfileView}', name: 'JobScreen');
+    dev.log('[2025-09-01 14:44 IST] JobScreen initialized, isSeekerProfileView: ${widget.isSeekerProfileView}', name: 'JobScreen');
   }
 
   Future<void> _initializeData() async {
@@ -171,7 +168,7 @@ final Map<String, List<String>> skillsBySpecialization = {
   Future<void> fetchSeekerProfile() async {
     final currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser == null) {
-      dev.log('[2025-08-21 12:55 IST] No authenticated user', name: 'JobScreen');
+      dev.log('[2025-09-01 14:44 IST] No authenticated user', name: 'JobScreen');
       if (mounted) {
         setState(() {
           isLoading = false;
@@ -202,12 +199,12 @@ final Map<String, List<String>> skillsBySpecialization = {
           setState(() {
             _appliedJobIds.addAll(applications.docs.map((doc) => doc['jobId'] as String));
           });
-          dev.log('[2025-08-21 12:55 IST] Fetched seeker profile for ${currentUser.uid}', name: 'JobScreen');
+          dev.log('[2025-09-01 14:44 IST] Fetched seeker profile for ${currentUser.uid}', name: 'JobScreen');
           if (mounted && isLoading) {
             await fetchJobsFromFirestore();
           }
         } else {
-          dev.log('[2025-08-21 12:55 IST] No seeker profile found for ${currentUser.uid}', name: 'JobScreen');
+          dev.log('[2025-09-01 14:44 IST] No seeker profile found for ${currentUser.uid}', name: 'JobScreen');
           if (mounted) {
             setState(() {
               isLoading = false;
@@ -216,7 +213,7 @@ final Map<String, List<String>> skillsBySpecialization = {
         }
       }
     } catch (e, stackTrace) {
-      dev.log('[2025-08-21 12:55 IST] Error fetching seeker profile: $e', name: 'JobScreen', error: e, stackTrace: stackTrace);
+      dev.log('[2025-09-01 14:44 IST] Error fetching seeker profile: $e', name: 'JobScreen', error: e, stackTrace: stackTrace);
       if (mounted) {
         setState(() {
           isLoading = false;
@@ -234,7 +231,7 @@ final Map<String, List<String>> skillsBySpecialization = {
 
   Future<void> fetchJobsFromFirestore() async {
     try {
-      dev.log('[2025-08-21 12:55 IST] Fetching jobs with collection group query, emulator: ${kDebugMode ? "localhost:8080" : "default"}', name: 'JobScreen');
+      dev.log('[2025-09-01 14:44 IST] Fetching jobs with collection group query, emulator: ${kDebugMode ? "localhost:8080" : "default"}', name: 'JobScreen');
       if (kDebugMode) {
         FirebaseFirestore.instance.settings = const Settings(
           host: 'localhost:8080',
@@ -245,20 +242,25 @@ final Map<String, List<String>> skillsBySpecialization = {
       final snapshot = await FirebaseFirestore.instance
           .collectionGroup('Jobs')
           .where('status', isEqualTo: 'open')
+          .orderBy('isFeatured', descending: true)
           .orderBy('createdAt', descending: true)
           .get();
 
-      dev.log('[2025-08-21 12:55 IST] Fetched ${snapshot.docs.length} jobs, docs: ${snapshot.docs.map((d) => d.id).toList()}', name: 'JobScreen');
       final jobList = snapshot.docs.map((doc) {
         final data = doc.data();
+        final isFeatured = data['isFeatured'] ?? false; // Explicitly handle null
+        dev.log('[2025-09-01 14:44 IST] Job ${doc.id}: isFeatured=$isFeatured, title=${data['title']}, company=${data['company']}', name: 'JobScreen');
         return {
           ...data,
           'jobId': doc.id,
           'recruiterId': data['recruiterId'],
+          'isFeatured': isFeatured,
           'postedAt': (data['createdAt'] as Timestamp?)?.toDate(),
-          'isEligible': _seekerProfile != null ? _checkJobCompatibilityForJob(data) : false, // Default to false if no profile
+          'isEligible': _seekerProfile != null ? _checkJobCompatibilityForJob(data) : false,
         };
       }).toList();
+
+      dev.log('[2025-09-01 14:44 IST] Fetched ${snapshot.docs.length} jobs, featured: ${jobList.where((j) => j['isFeatured'] == true).length}, non-featured: ${jobList.where((j) => j['isFeatured'] == false).length}', name: 'JobScreen');
 
       if (mounted) {
         setState(() {
@@ -269,7 +271,7 @@ final Map<String, List<String>> skillsBySpecialization = {
         });
       }
     } catch (e, stackTrace) {
-      dev.log('[2025-08-21 12:55 IST] Error fetching jobs: $e', name: 'JobScreen', error: e, stackTrace: stackTrace);
+      dev.log('[2025-09-01 14:44 IST] Error fetching jobs: $e', name: 'JobScreen', error: e, stackTrace: stackTrace);
       if (mounted) {
         setState(() {
           isLoading = false;
@@ -302,6 +304,7 @@ final Map<String, List<String>> skillsBySpecialization = {
           location.contains(_searchQuery);
     }).toList();
 
+    dev.log('[2025-09-01 14:44 IST] Filtered jobs: ${results.length} found for query "$_searchQuery"', name: 'JobScreen');
     setState(() => filteredJobs = results);
   }
 
@@ -345,7 +348,7 @@ final Map<String, List<String>> skillsBySpecialization = {
       if (currentUser.uid == job['recruiterId']?.toString()) {
         setState(() {
           isJobDetailsLoading = false;
-          _isEligible = true; // Recruiters are always eligible to view
+          _isEligible = true;
         });
         _fetchApplicants();
         return;
@@ -377,7 +380,7 @@ final Map<String, List<String>> skillsBySpecialization = {
       });
       _fetchApplicants();
     } catch (e, stackTrace) {
-      dev.log('[2025-08-21 12:55 IST] Error fetching job details: $e', name: 'JobScreen', error: e, stackTrace: stackTrace);
+      dev.log('[2025-09-01 14:44 IST] Error fetching job details: $e', name: 'JobScreen', error: e, stackTrace: stackTrace);
       setState(() {
         isJobDetailsLoading = false;
         _isEligible = false;
@@ -417,7 +420,7 @@ final Map<String, List<String>> skillsBySpecialization = {
     final specializationMatch = jobSpecialization.isEmpty || jobSpecialization == seekerSpecialization;
     final experienceMatch = seekerExperience >= jobExperience;
 
-    dev.log('[2025-08-21 12:55 IST] Pre-check compatibility for job ${jobData['jobId']}: Skills match=$skillsMatch ($skillMatchPercentage%), Education match=$educationMatch, Specialization match=$specializationMatch, Experience match=$experienceMatch',
+    dev.log('[2025-09-01 14:44 IST] Pre-check compatibility for job ${jobData['jobId']}: Skills match=$skillsMatch ($skillMatchPercentage%), Education match=$educationMatch, Specialization match=$specializationMatch, Experience match=$experienceMatch',
         name: 'JobScreen');
     return skillsMatch && educationMatch && specializationMatch && experienceMatch;
   }
@@ -441,7 +444,7 @@ final Map<String, List<String>> skillsBySpecialization = {
     final specializationMatch = jobSpecialization.isEmpty || jobSpecialization == seekerSpecialization;
     final experienceMatch = seekerExperience >= jobExperience;
 
-    dev.log('[2025-08-21 12:55 IST] Compatibility check for job ${_jobData!['jobId']}: Skills match=$skillsMatch ($skillMatchPercentage%), Education match=$educationMatch, Specialization match=$specializationMatch, Experience match=$experienceMatch',
+    dev.log('[2025-09-01 14:44 IST] Compatibility check for job ${_jobData!['jobId']}: Skills match=$skillsMatch ($skillMatchPercentage%), Education match=$educationMatch, Specialization match=$specializationMatch, Experience match=$experienceMatch',
         name: 'JobScreen');
     return skillsMatch && educationMatch && specializationMatch && experienceMatch;
   }
@@ -537,7 +540,7 @@ final Map<String, List<String>> skillsBySpecialization = {
         );
       }
     } catch (e, stackTrace) {
-      dev.log('[2025-08-21 12:55 IST] Error navigating to ApplyJobScreen: $e', name: 'JobScreen', error: e, stackTrace: stackTrace);
+      dev.log('[2025-09-01 14:44 IST] Error navigating to ApplyJobScreen: $e', name: 'JobScreen', error: e, stackTrace: stackTrace);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -573,12 +576,13 @@ final Map<String, List<String>> skillsBySpecialization = {
           ),
         );
         setState(() {
-          _selectedJob = null;
+          jobs = jobs.where((job) => job['jobId'] != _selectedJob?['jobId']).toList();
           filteredJobs = filteredJobs.where((job) => job['jobId'] != _selectedJob?['jobId']).toList();
+          _selectedJob = null;
         });
       }
     } catch (e, stackTrace) {
-      dev.log('[2025-08-21 12:55 IST] Error deleting job: $e', name: 'JobScreen', error: e, stackTrace: stackTrace);
+      dev.log('[2025-09-01 14:44 IST] Error deleting job: $e', name: 'JobScreen', error: e, stackTrace: stackTrace);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -639,363 +643,434 @@ final Map<String, List<String>> skillsBySpecialization = {
                     ),
                   ),
                 )
-              : ListView.builder(
-                  itemCount: filteredJobs.length,
-                  itemBuilder: (context, index) {
-                    final job = filteredJobs[index];
-                    final isApplied = _appliedJobIds.contains(job['jobId']);
-                    Color cardColor = _seekerProfile != null ? (job['isEligible'] == true ? Colors.green.shade100 : Colors.red.shade100) : Colors.grey.shade200;
-                    return Column(
-                      children: [
-                        AnimatedListItem(
-                          child: Card(
-                            elevation: 3,
-                            margin: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
-                            color: cardColor,
-                            child: Container(
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [cardColor, cardColor.withOpacity(0.8)],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                ),
-                                borderRadius: BorderRadius.circular(12.r),
-                              ),
-                              child: ListTile(
-                                contentPadding: EdgeInsets.all(16.r),
-                                title: Text(
-                                  job['title'] ?? 'Untitled',
-                                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 18.sp, color: Colors.black87),
-                                ),
-                                subtitle: Padding(
-                                  padding: EdgeInsets.only(top: 8.h),
-                                  child: Text(
-                                    '${job['company'] ?? ''} • ${job['location'] ?? ''} • ${job['jobType'] ?? ''}',
-                                    style: TextStyle(color: Colors.grey.shade700, fontSize: 14.sp),
-                                  ),
-                                ),
-                                onTap: () => _selectJob(job),
-                              ),
-                            ),
+              : Column(
+                  children: [
+                    Padding(
+                      padding: EdgeInsets.all(16.w),
+                      child: TextField(
+                        controller: _searchController,
+                        decoration: InputDecoration(
+                          hintText: 'Search jobs by title, company, or location...',
+                          prefixIcon: Icon(Icons.search, size: 20.sp),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12.r),
                           ),
+                          filled: true,
+                          fillColor: Colors.grey.shade100,
                         ),
-                        if (_selectedJob != null && _selectedJob!['jobId'] == job['jobId'])
-                          isJobDetailsLoading
-                              ? Center(
-                                  child: CircularProgressIndicator(
-                                    valueColor: const AlwaysStoppedAnimation<Color>(Colors.teal),
-                                  ),
-                                )
-                              : Padding(
-                                  padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
-                                  child: Card(
-                                    elevation: 4,
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
-                                    child: Padding(
-                                      padding: EdgeInsets.all(16.w),
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            _jobData?['title']?.toString() ?? _selectedJob!['title']?.toString() ?? 'Job Details',
-                                            style: TextStyle(fontSize: 24.sp, fontWeight: FontWeight.bold, color: Colors.blue.shade900),
-                                          ),
-                                          SizedBox(height: 12.h),
-                                          Text(
-                                            '${_jobData?['company']?.toString() ?? _selectedJob!['company']?.toString() ?? 'Unknown Company'} • '
-                                            '${_jobData?['location']?.toString() ?? _selectedJob!['location']?.toString() ?? 'Unknown Location'} • '
-                                            '${_jobData?['jobType']?.toString() ?? _selectedJob!['jobType']?.toString() ?? 'Unknown Type'}',
-                                            style: TextStyle(fontSize: 16.sp, color: Colors.grey.shade700),
-                                          ),
-                                          SizedBox(height: 12.h),
-                                          Text('Salary: ${_jobData?['salary']?.toString() ?? _selectedJob!['salary']?.toString() ?? 'Not specified'}', style: TextStyle(fontSize: 16.sp)),
-                                          Text('Experience Required: ${_jobData?['experience']?.toString() ?? _selectedJob!['experience']?.toString() ?? 'N/A'}', style: TextStyle(fontSize: 16.sp)),
-                                          Text('Skills: ${(_jobData?['skills'] as List<dynamic>?)?.cast<String>().join(', ') ?? _selectedJob!['skills']?.toString() ?? 'N/A'}', style: TextStyle(fontSize: 16.sp)),
-                                          Text('Education: ${_jobData?['education']?.toString() ?? _selectedJob!['education']?.toString() ?? 'N/A'}', style: TextStyle(fontSize: 16.sp)),
-                                          Text('Specialization: ${_jobData?['specialization']?.toString() ?? _selectedJob!['specialization']?.toString() ?? 'N/A'}', style: TextStyle(fontSize: 16.sp)),
-                                          SizedBox(height: 20.h),
-                                          Text(
-                                            'Job Description',
-                                            style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold, color: Colors.blue.shade900),
-                                          ),
-                                          SizedBox(height: 8.h),
-                                          Text(
-                                            _jobData?['description']?.toString() ?? _selectedJob!['description']?.toString() ?? 'No description provided',
-                                            style: TextStyle(fontSize: 16.sp),
-                                          ),
-                                          SizedBox(height: 20.h),
-                                          Text(
-                                            _isEligible ? 'Eligible' : 'Non-Eligible',
-                                            style: TextStyle(
-                                              fontSize: 18.sp,
-                                              fontWeight: FontWeight.bold,
-                                              color: _isEligible ? Colors.green : Colors.red,
+                      ),
+                    ),
+                    Expanded(
+                      child: filteredJobs.isEmpty
+                          ? Center(
+                              child: Text(
+                                'No jobs found matching your criteria.',
+                                style: TextStyle(fontSize: 16.sp, color: Colors.grey.shade700),
+                                textAlign: TextAlign.center,
+                              ),
+                            )
+                          : ListView.builder(
+                              itemCount: filteredJobs.length,
+                              itemBuilder: (context, index) {
+                                final job = filteredJobs[index];
+                                final isApplied = _appliedJobIds.contains(job['jobId']);
+                                final isFeatured = job['isFeatured'] ?? false;
+                                Color cardColor = _seekerProfile != null
+                                    ? (job['isEligible'] == true ? Colors.green.shade100 : Colors.red.shade100)
+                                    : Colors.grey.shade200;
+                                return Column(
+                                  children: [
+                                    AnimatedListItem(
+                                      child: Card(
+                                        elevation: 3,
+                                        margin: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                                        color: cardColor,
+                                        child: Container(
+                                          decoration: BoxDecoration(
+                                            gradient: LinearGradient(
+                                              // ignore: deprecated_member_use
+                                              colors: [cardColor, cardColor.withOpacity(0.8)],
+                                              begin: Alignment.topLeft,
+                                              end: Alignment.bottomRight,
                                             ),
+                                            borderRadius: BorderRadius.circular(12.r),
                                           ),
-                                          if (_ineligibilityReason != null)
-                                            Padding(
-                                              padding: EdgeInsets.only(top: 8.h),
-                                              child: Text(
-                                                _ineligibilityReason!,
-                                                style: TextStyle(fontSize: 14.sp, color: Colors.red.shade700),
-                                              ),
-                                            ),
-                                          SizedBox(height: 20.h),
-                                          if (FirebaseAuth.instance.currentUser?.uid == _selectedJob?['recruiterId']?.toString())
-                                            Row(
-                                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                          child: ListTile(
+                                            contentPadding: EdgeInsets.all(16.r),
+                                            title: Row(
                                               children: [
-                                                AnimatedScaleButton(
-                                                  onPressed: () {
-                                                    Navigator.push(
-                                                      context,
-                                                      MaterialPageRoute(
-                                                        builder: (context) => EditJobScreen(
-                                                          jobId: _selectedJob!['jobId']?.toString() ?? '',
-                                                          jobData: _jobData ?? _selectedJob!,
-                                                        ),
-                                                      ),
-                                                    );
-                                                  },
-                                                  child: Container(
-                                                    padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
-                                                    decoration: BoxDecoration(
-                                                      gradient: LinearGradient(
-                                                        colors: [Colors.blue.shade700, Colors.teal.shade400],
-                                                        begin: Alignment.topLeft,
-                                                        end: Alignment.bottomRight,
-                                                      ),
-                                                      borderRadius: BorderRadius.circular(12.r),
-                                                      boxShadow: [
-                                                        BoxShadow(
-                                                          color: Colors.black.withValues(alpha: 0.2),
-                                                          blurRadius: 4.r,
-                                                          offset: Offset(0, 2.h),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                    child: Row(
-                                                      mainAxisSize: MainAxisSize.min,
-                                                      children: [
-                                                        const Icon(Icons.edit, color: Colors.white),
-                                                        SizedBox(width: 8.w),
-                                                        const Text(
-                                                          'Edit',
-                                                          style: TextStyle(
-                                                            color: Colors.white,
-                                                            fontSize: 16,
-                                                            fontWeight: FontWeight.bold,
-                                                          ),
-                                                        ),
-                                                      ],
-                                                    ),
+                                                Flexible(
+                                                  child: Text(
+                                                    job['title'] ?? 'Untitled',
+                                                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 18.sp, color: Colors.black87),
+                                                    overflow: TextOverflow.ellipsis,
                                                   ),
                                                 ),
-                                                AnimatedScaleButton(
-                                                  onPressed: _deleteJob,
-                                                  child: Container(
-                                                    padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
-                                                    decoration: BoxDecoration(
-                                                      gradient: LinearGradient(
-                                                        colors: [Colors.red.shade600, Colors.red.shade800],
-                                                        begin: Alignment.topLeft,
-                                                        end: Alignment.bottomRight,
+                                                if (isFeatured)
+                                                  Padding(
+                                                    padding: EdgeInsets.only(left: 8.w),
+                                                    child: Chip(
+                                                      label: Text(
+                                                        'Featured',
+                                                        style: TextStyle(fontSize: 12.sp, color: Colors.white),
                                                       ),
-                                                      borderRadius: BorderRadius.circular(12.r),
-                                                      boxShadow: [
-                                                        BoxShadow(
-                                                          color: Colors.black.withValues(alpha: 0.2),
-                                                          blurRadius: 4.r,
-                                                          offset: Offset(0, 2.h),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                    child: Row(
-                                                      mainAxisSize: MainAxisSize.min,
-                                                      children: [
-                                                        const Icon(Icons.delete, color: Colors.white),
-                                                        SizedBox(width: 8.w),
-                                                        const Text(
-                                                          'Delete',
-                                                          style: TextStyle(
-                                                            color: Colors.white,
-                                                            fontSize: 16,
-                                                            fontWeight: FontWeight.bold,
-                                                          ),
-                                                        ),
-                                                      ],
+                                                      backgroundColor: Colors.blue.shade600,
+                                                      padding: EdgeInsets.symmetric(horizontal: 8.w),
                                                     ),
                                                   ),
-                                                ),
                                               ],
                                             ),
-                                          if (FirebaseAuth.instance.currentUser?.uid == _selectedJob?['recruiterId']?.toString() && _applicantsStream != null)
-                                            Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                SizedBox(height: 20.h),
-                                                Text(
-                                                  'Applicants',
-                                                  style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold, color: Colors.blue.shade900),
-                                                ),
-                                                SizedBox(height: 10.h),
-                                                StreamBuilder<QuerySnapshot>(
-                                                  stream: _applicantsStream,
-                                                  builder: (context, snapshot) {
-                                                    if (snapshot.connectionState == ConnectionState.waiting) {
-                                                      return const Center(
-                                                        child: CircularProgressIndicator(
-                                                          valueColor: AlwaysStoppedAnimation<Color>(Colors.teal),
-                                                        ),
-                                                      );
-                                                    }
-                                                    if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                                                      return const Text('No applicants yet.', style: TextStyle(fontSize: 16, color: Colors.grey));
-                                                    }
-                                                    return ListView.builder(
-                                                      shrinkWrap: true,
-                                                      physics: const NeverScrollableScrollPhysics(),
-                                                      itemCount: snapshot.data!.docs.length,
-                                                      itemBuilder: (context, index) {
-                                                        final applicant = snapshot.data!.docs[index].data() as Map<String, dynamic>;
-                                                        final resume = applicant['resume'] as Map<String, dynamic>? ?? {};
-                                                        return AnimatedListItem(
-                                                          child: Card(
-                                                            elevation: 3,
-                                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
-                                                            child: Container(
-                                                              decoration: BoxDecoration(
-                                                                gradient: LinearGradient(
-                                                                  colors: [Colors.blue.shade50, Colors.blue.shade100],
-                                                                  begin: Alignment.topLeft,
-                                                                  end: Alignment.bottomRight,
+                                            subtitle: Padding(
+                                              padding: EdgeInsets.only(top: 8.h),
+                                              child: Text(
+                                                '${job['company'] ?? ''} • ${job['location'] ?? ''} • ${job['jobType'] ?? ''}',
+                                                style: TextStyle(color: Colors.grey.shade700, fontSize: 14.sp),
+                                              ),
+                                            ),
+                                            onTap: () => _selectJob(job),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    if (_selectedJob != null && _selectedJob!['jobId'] == job['jobId'])
+                                      isJobDetailsLoading
+                                          ? Center(
+                                              child: CircularProgressIndicator(
+                                                valueColor: const AlwaysStoppedAnimation<Color>(Colors.teal),
+                                              ),
+                                            )
+                                          : Padding(
+                                              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+                                              child: Card(
+                                                elevation: 4,
+                                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                                                child: Padding(
+                                                  padding: EdgeInsets.all(16.w),
+                                                  child: Column(
+                                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                                    children: [
+                                                      Row(
+                                                        children: [
+                                                          Flexible(
+                                                            child: Text(
+                                                              _jobData?['title']?.toString() ?? _selectedJob!['title']?.toString() ?? 'Job Details',
+                                                              style: TextStyle(fontSize: 24.sp, fontWeight: FontWeight.bold, color: Colors.blue.shade900),
+                                                              overflow: TextOverflow.ellipsis,
+                                                            ),
+                                                          ),
+                                                          if (_jobData?['isFeatured'] ?? _selectedJob!['isFeatured'] ?? false)
+                                                            Padding(
+                                                              padding: EdgeInsets.only(left: 8.w),
+                                                              child: Chip(
+                                                                label: Text(
+                                                                  'Featured',
+                                                                  style: TextStyle(fontSize: 12.sp, color: Colors.white),
                                                                 ),
-                                                                borderRadius: BorderRadius.circular(12.r),
+                                                                backgroundColor: Colors.blue.shade600,
+                                                                padding: EdgeInsets.symmetric(horizontal: 8.w),
                                                               ),
-                                                              child: ListTile(
-                                                                contentPadding: EdgeInsets.all(16.w),
-                                                                title: Text(
-                                                                  resume['name'] ?? 'Unknown Applicant',
-                                                                  style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.black87),
-                                                                ),
-                                                                subtitle: Column(
-                                                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                                                  children: [
-                                                                    Text('Job: ${applicant['jobTitle'] ?? 'Unknown Job'}'),
-                                                                    Text('Skills: ${(resume['skills'] as List<dynamic>?)?.cast<String>().join(', ') ?? 'N/A'}'),
-                                                                    Text('Education: ${resume['education'] ?? 'N/A'}'),
-                                                                    Text('Experience: ${resume['experience'] ?? 'N/A'}'),
-                                                                    Text('Specialization: ${resume['specialization'] ?? 'N/A'}'),
-                                                                    Text('Email: ${resume['email'] ?? 'N/A'}'),
-                                                                    Text('Mobile: ${resume['mobileNumber'] ?? 'N/A'}'),
+                                                            ),
+                                                        ],
+                                                      ),
+                                                      SizedBox(height: 12.h),
+                                                      Text(
+                                                        '${_jobData?['company']?.toString() ?? _selectedJob!['company']?.toString() ?? 'Unknown Company'} • '
+                                                        '${_jobData?['location']?.toString() ?? _selectedJob!['location']?.toString() ?? 'Unknown Location'} • '
+                                                        '${_jobData?['jobType']?.toString() ?? _selectedJob!['jobType']?.toString() ?? 'Unknown Type'}',
+                                                        style: TextStyle(fontSize: 16.sp, color: Colors.grey.shade700),
+                                                      ),
+                                                      SizedBox(height: 12.h),
+                                                      Text('Salary: ${_jobData?['salary']?.toString() ?? _selectedJob!['salary']?.toString() ?? 'Not specified'}', style: TextStyle(fontSize: 16.sp)),
+                                                      Text('Experience Required: ${_jobData?['experience']?.toString() ?? _selectedJob!['experience']?.toString() ?? 'N/A'}', style: TextStyle(fontSize: 16.sp)),
+                                                      Text('Skills: ${(_jobData?['skills'] as List<dynamic>?)?.cast<String>().join(', ') ?? _selectedJob!['skills']?.toString() ?? 'N/A'}', style: TextStyle(fontSize: 16.sp)),
+                                                      Text('Education: ${_jobData?['education']?.toString() ?? _selectedJob!['education']?.toString() ?? 'N/A'}', style: TextStyle(fontSize: 16.sp)),
+                                                      Text('Specialization: ${_jobData?['specialization']?.toString() ?? _selectedJob!['specialization']?.toString() ?? 'N/A'}', style: TextStyle(fontSize: 16.sp)),
+                                                      SizedBox(height: 20.h),
+                                                      Text(
+                                                        'Job Description',
+                                                        style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold, color: Colors.blue.shade900),
+                                                      ),
+                                                      SizedBox(height: 8.h),
+                                                      Text(
+                                                        _jobData?['description']?.toString() ?? _selectedJob!['description']?.toString() ?? 'No description provided',
+                                                        style: TextStyle(fontSize: 16.sp),
+                                                      ),
+                                                      SizedBox(height: 20.h),
+                                                      Text(
+                                                        _isEligible ? 'Eligible' : 'Non-Eligible',
+                                                        style: TextStyle(
+                                                          fontSize: 18.sp,
+                                                          fontWeight: FontWeight.bold,
+                                                          color: _isEligible ? Colors.green : Colors.red,
+                                                        ),
+                                                      ),
+                                                      if (_ineligibilityReason != null)
+                                                        Padding(
+                                                          padding: EdgeInsets.only(top: 8.h),
+                                                          child: Text(
+                                                            _ineligibilityReason!,
+                                                            style: TextStyle(fontSize: 14.sp, color: Colors.red.shade700),
+                                                          ),
+                                                        ),
+                                                      SizedBox(height: 20.h),
+                                                      if (FirebaseAuth.instance.currentUser?.uid == _selectedJob?['recruiterId']?.toString())
+                                                        Row(
+                                                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                                          children: [
+                                                            AnimatedScaleButton(
+                                                              onPressed: () {
+                                                                Navigator.push(
+                                                                  context,
+                                                                  MaterialPageRoute(
+                                                                    builder: (context) => EditJobScreen(
+                                                                      jobId: _selectedJob!['jobId']?.toString() ?? '',
+                                                                      jobData: _jobData ?? _selectedJob!,
+                                                                    ),
+                                                                  ),
+                                                                );
+                                                              },
+                                                              child: Container(
+                                                                padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
+                                                                decoration: BoxDecoration(
+                                                                  gradient: LinearGradient(
+                                                                    colors: [Colors.blue.shade700, Colors.teal.shade400],
+                                                                    begin: Alignment.topLeft,
+                                                                    end: Alignment.bottomRight,
+                                                                  ),
+                                                                  borderRadius: BorderRadius.circular(12.r),
+                                                                  boxShadow: [
+                                                                    BoxShadow(
+                                                                      color: Colors.black.withValues(alpha: 0.2),
+                                                                      blurRadius: 4.r,
+                                                                      offset: Offset(0, 2.h),
+                                                                    ),
                                                                   ],
                                                                 ),
-                                                                onTap: () {
-                                                                  showDialog(
-                                                                    context: context,
-                                                                    builder: (context) => AlertDialog(
-                                                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
-                                                                      title: Container(
-                                                                        padding: EdgeInsets.all(16.w),
-                                                                        decoration: BoxDecoration(
-                                                                          gradient: LinearGradient(
-                                                                            colors: [Colors.blue.shade700, Colors.blue.shade900],
-                                                                            begin: Alignment.topLeft,
-                                                                            end: Alignment.bottomRight,
-                                                                          ),
-                                                                          borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                                                                        ),
-                                                                        child: Text(
-                                                                          'Applicant: ${resume['name'] ?? 'Unknown'}',
-                                                                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                                                                        ),
+                                                                child: Row(
+                                                                  mainAxisSize: MainAxisSize.min,
+                                                                  children: [
+                                                                    const Icon(Icons.edit, color: Colors.white),
+                                                                    SizedBox(width: 8.w),
+                                                                    const Text(
+                                                                      'Edit',
+                                                                      style: TextStyle(
+                                                                        color: Colors.white,
+                                                                        fontSize: 16,
+                                                                        fontWeight: FontWeight.bold,
                                                                       ),
-                                                                      content: SingleChildScrollView(
-                                                                        child: Column(
-                                                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                                                          children: [
-                                                                            Text('Job: ${applicant['jobTitle'] ?? 'Unknown Job'}'),
-                                                                            Text('Skills: ${(resume['skills'] as List<dynamic>?)?.cast<String>().join(', ') ?? 'N/A'}'),
-                                                                            Text('Education: ${resume['education'] ?? 'N/A'}'),
-                                                                            Text('Experience: ${resume['experience'] ?? 'N/A'}'),
-                                                                            Text('Specialization: ${resume['specialization'] ?? 'N/A'}'),
-                                                                            Text('Email: ${resume['email'] ?? 'N/A'}'),
-                                                                            Text('Mobile: ${resume['mobileNumber'] ?? 'N/A'}'),
-                                                                            Text('Current Company: ${resume['currentCompany'] ?? 'N/A'}'),
-                                                                            Text('Current CTC: ${resume['currentCtc'] ?? 'N/A'}'),
-                                                                            Text('Expected CTC: ${resume['expectedCtc'] ?? 'N/A'}'),
-                                                                            Text('Cover Letter: ${applicant['coverLetter'] ?? 'N/A'}'),
-                                                                            if (resume['photoUrl']?.isNotEmpty ?? false)
-                                                                              Padding(
-                                                                                padding: EdgeInsets.only(top: 8.h),
-                                                                                child: ClipRRect(
-                                                                                  borderRadius: BorderRadius.circular(8.r),
-                                                                                  child: Image.network(resume['photoUrl'], height: 100.h, fit: BoxFit.cover),
-                                                                                ),
-                                                                              ),
-                                                                          ],
-                                                                        ),
+                                                                    ),
+                                                                  ],
+                                                                ),
+                                                              ),
+                                                            ),
+                                                            AnimatedScaleButton(
+                                                              onPressed: _deleteJob,
+                                                              child: Container(
+                                                                padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
+                                                                decoration: BoxDecoration(
+                                                                  gradient: LinearGradient(
+                                                                    colors: [Colors.red.shade600, Colors.red.shade800],
+                                                                    begin: Alignment.topLeft,
+                                                                    end: Alignment.bottomRight,
+                                                                  ),
+                                                                  borderRadius: BorderRadius.circular(12.r),
+                                                                  boxShadow: [
+                                                                    BoxShadow(
+                                                                      color: Colors.black.withValues(alpha: 0.2),
+                                                                      blurRadius: 4.r,
+                                                                      offset: Offset(0, 2.h),
+                                                                    ),
+                                                                  ],
+                                                                ),
+                                                                child: Row(
+                                                                  mainAxisSize: MainAxisSize.min,
+                                                                  children: [
+                                                                    const Icon(Icons.delete, color: Colors.white),
+                                                                    SizedBox(width: 8.w),
+                                                                    const Text(
+                                                                      'Delete',
+                                                                      style: TextStyle(
+                                                                        color: Colors.white,
+                                                                        fontSize: 16,
+                                                                        fontWeight: FontWeight.bold,
                                                                       ),
-                                                                      actions: [
-                                                                        TextButton(
-                                                                          onPressed: () => Navigator.pop(context),
-                                                                          child: const Text('Close', style: TextStyle(color: Colors.teal)),
-                                                                        ),
-                                                                      ],
+                                                                    ),
+                                                                  ],
+                                                                ),
+                                                              ),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                      if (FirebaseAuth.instance.currentUser?.uid == _selectedJob?['recruiterId']?.toString() && _applicantsStream != null)
+                                                        Column(
+                                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                                          children: [
+                                                            SizedBox(height: 20.h),
+                                                            Text(
+                                                              'Applicants',
+                                                              style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold, color: Colors.blue.shade900),
+                                                            ),
+                                                            SizedBox(height: 10.h),
+                                                            StreamBuilder<QuerySnapshot>(
+                                                              stream: _applicantsStream,
+                                                              builder: (context, snapshot) {
+                                                                if (snapshot.connectionState == ConnectionState.waiting) {
+                                                                  return const Center(
+                                                                    child: CircularProgressIndicator(
+                                                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.teal),
                                                                     ),
                                                                   );
-                                                                },
+                                                                }
+                                                                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                                                                  return const Text('No applicants yet.', style: TextStyle(fontSize: 16, color: Colors.grey));
+                                                                }
+                                                                return ListView.builder(
+                                                                  shrinkWrap: true,
+                                                                  physics: const NeverScrollableScrollPhysics(),
+                                                                  itemCount: snapshot.data!.docs.length,
+                                                                  itemBuilder: (context, index) {
+                                                                    final applicant = snapshot.data!.docs[index].data() as Map<String, dynamic>;
+                                                                    final resume = applicant['resume'] as Map<String, dynamic>? ?? {};
+                                                                    return AnimatedListItem(
+                                                                      child: Card(
+                                                                        elevation: 3,
+                                                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                                                                        child: Container(
+                                                                          decoration: BoxDecoration(
+                                                                            gradient: LinearGradient(
+                                                                              colors: [Colors.blue.shade50, Colors.blue.shade100],
+                                                                              begin: Alignment.topLeft,
+                                                                              end: Alignment.bottomRight,
+                                                                            ),
+                                                                            borderRadius: BorderRadius.circular(12.r),
+                                                                          ),
+                                                                          child: ListTile(
+                                                                            contentPadding: EdgeInsets.all(16.w),
+                                                                            title: Text(
+                                                                              resume['name'] ?? 'Unknown Applicant',
+                                                                              style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.black87),
+                                                                            ),
+                                                                            subtitle: Column(
+                                                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                                                              children: [
+                                                                                Text('Job: ${applicant['jobTitle'] ?? 'Unknown Job'}'),
+                                                                                Text('Skills: ${(applicant['skills'] as List<dynamic>?)?.cast<String>().join(', ') ?? resume['skills']?.join(', ') ?? 'N/A'}'),
+                                                                                Text('Education: ${resume['education'] ?? 'N/A'}'),
+                                                                                Text('Experience: ${resume['experience'] ?? 'N/A'}'),
+                                                                                Text('Specialization: ${resume['specialization'] ?? 'N/A'}'),
+                                                                                Text('Email: ${resume['email'] ?? 'N/A'}'),
+                                                                                Text('Mobile: ${resume['mobileNumber'] ?? 'N/A'}'),
+                                                                              ],
+                                                                            ),
+                                                                            onTap: () {
+                                                                              showDialog(
+                                                                                context: context,
+                                                                                builder: (context) => AlertDialog(
+                                                                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+                                                                                  title: Container(
+                                                                                    padding: EdgeInsets.all(16.w),
+                                                                                    decoration: BoxDecoration(
+                                                                                      gradient: LinearGradient(
+                                                                                        colors: [Colors.blue.shade700, Colors.blue.shade900],
+                                                                                        begin: Alignment.topLeft,
+                                                                                        end: Alignment.bottomRight,
+                                                                                      ),
+                                                                                      borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                                                                                    ),
+                                                                                    child: Text(
+                                                                                      'Applicant: ${resume['name'] ?? 'Unknown'}',
+                                                                                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                                                                    ),
+                                                                                  ),
+                                                                                  content: SingleChildScrollView(
+                                                                                    child: Column(
+                                                                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                                                                      children: [
+                                                                                        Text('Job: ${applicant['jobTitle'] ?? 'Unknown Job'}'),
+                                                                                        Text('Skills: ${(applicant['skills'] as List<dynamic>?)?.cast<String>().join(', ') ?? resume['skills']?.join(', ') ?? 'N/A'}'),
+                                                                                        Text('Education: ${resume['education'] ?? 'N/A'}'),
+                                                                                        Text('Experience: ${resume['experience'] ?? 'N/A'}'),
+                                                                                        Text('Specialization: ${resume['specialization'] ?? 'N/A'}'),
+                                                                                        Text('Email: ${resume['email'] ?? 'N/A'}'),
+                                                                                        Text('Mobile: ${resume['mobileNumber'] ?? 'N/A'}'),
+                                                                                        Text('Current Company: ${resume['currentCompany'] ?? 'N/A'}'),
+                                                                                        Text('Current CTC: ${resume['currentCtc'] ?? 'N/A'}'),
+                                                                                        Text('Expected CTC: ${resume['expectedCtc'] ?? 'N/A'}'),
+                                                                                        Text('Cover Letter: ${applicant['coverLetter'] ?? 'N/A'}'),
+                                                                                        if (resume['photoUrl']?.isNotEmpty ?? false)
+                                                                                          Padding(
+                                                                                            padding: EdgeInsets.only(top: 8.h),
+                                                                                            child: ClipRRect(
+                                                                                              borderRadius: BorderRadius.circular(8.r),
+                                                                                              child: Image.network(resume['photoUrl'], height: 100.h, fit: BoxFit.cover),
+                                                                                            ),
+                                                                                          ),
+                                                                                      ],
+                                                                                    ),
+                                                                                  ),
+                                                                                  actions: [
+                                                                                    TextButton(
+                                                                                      onPressed: () => Navigator.pop(context),
+                                                                                      child: const Text('Close', style: TextStyle(color: Colors.teal)),
+                                                                                    ),
+                                                                                  ],
+                                                                                ),
+                                                                              );
+                                                                            },
+                                                                          ),
+                                                                        ),
+                                                                      ),
+                                                                    );
+                                                                  },
+                                                                );
+                                                              },
+                                                            ),
+                                                          ],
+                                                        ),
+                                                      if (FirebaseAuth.instance.currentUser?.uid != _selectedJob?['recruiterId']?.toString() && _isEligible)
+                                                        AnimatedScaleButton(
+                                                          onPressed: isApplied ? null : () => _applyToJob(_selectedJob!),
+                                                          child: Container(
+                                                            padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
+                                                            decoration: BoxDecoration(
+                                                              gradient: LinearGradient(
+                                                                colors: isApplied
+                                                                    ? [Colors.red.shade700, Colors.green.shade400]
+                                                                    : [Colors.blue.shade700, Colors.teal.shade400],
+                                                                begin: Alignment.topLeft,
+                                                                end: Alignment.bottomRight,
+                                                              ),
+                                                              borderRadius: BorderRadius.circular(12.r),
+                                                              boxShadow: [
+                                                                BoxShadow(
+                                                                  color: Colors.black.withValues(alpha: 0.2),
+                                                                  blurRadius: 4.r,
+                                                                  offset: Offset(0, 2.h),
+                                                                ),
+                                                              ],
+                                                            ),
+                                                            child: Text(
+                                                              isApplied ? 'Applied' : 'Apply Now',
+                                                              style: TextStyle(
+                                                                color: Colors.white,
+                                                                fontSize: 16.sp,
+                                                                fontWeight: FontWeight.bold,
                                                               ),
                                                             ),
                                                           ),
-                                                        );
-                                                      },
-                                                    );
-                                                  },
-                                                ),
-                                              ],
-                                            ),
-                                          if (FirebaseAuth.instance.currentUser?.uid != _selectedJob?['recruiterId']?.toString() && _isEligible)
-                                            AnimatedScaleButton(
-                                              onPressed: isApplied ? null : () => _applyToJob(_selectedJob!),
-                                              child: Container(
-                                                padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
-                                                decoration: BoxDecoration(
-                                                  gradient: LinearGradient(
-                                                    colors: isApplied
-                                                        ? [Colors.red.shade700, Colors.green.shade400]
-                                                        : [Colors.blue.shade700, Colors.teal.shade400],
-                                                    begin: Alignment.topLeft,
-                                                    end: Alignment.bottomRight,
-                                                  ),
-                                                  borderRadius: BorderRadius.circular(12.r),
-                                                  boxShadow: [
-                                                    BoxShadow(
-                                                      color: Colors.black.withValues(alpha: 0.2),
-                                                      blurRadius: 4.r,
-                                                      offset: Offset(0, 2.h),
-                                                    ),
-                                                  ],
-                                                ),
-                                                child: Text(
-                                                  isApplied ? 'Applied' : 'Apply Now',
-                                                  style: TextStyle(
-                                                    color: Colors.white,
-                                                    fontSize: 16.sp,
-                                                    fontWeight: FontWeight.bold,
+                                                        ),
+                                                    ],
                                                   ),
                                                 ),
                                               ),
                                             ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                              )
-                              ],
-                    );
-                  },
+                                  ],
+                                );
+                              },
+                            ),
+                    ),
+                  ],
                 ),
     );
   }

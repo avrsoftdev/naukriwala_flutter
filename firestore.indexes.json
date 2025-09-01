@@ -17,14 +17,7 @@
         { "fieldPath": "timestamp", "order": "ASCENDING" }
       ]
     },
-    {
-      "collectionGroup": "Jobs",
-      "queryScope": "COLLECTION_GROUP",
-      "fields": [
-        { "fieldPath": "status", "order": "ASCENDING" },
-        { "fieldPath": "createdAt", "order": "ASCENDING" }
-      ]
-    },
+  
     {
       "collectionGroup": "Messages",
       "queryScope": "COLLECTION",
@@ -33,12 +26,12 @@
       ]
     },
     {
-  "collectionGroup": "Chats",
-  "queryScope": "COLLECTION",
-  "fields": [
-    { "fieldPath": "timestamp", "order": "DESCENDING" }
-  ]
-},
+      "collectionGroup": "Chats",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "timestamp", "order": "DESCENDING" }
+      ]
+    },
     {
       "collectionGroup": "Applications",
       "queryScope": "COLLECTION",
@@ -48,62 +41,53 @@
       ]
     },
     {
-        "collectionGroup": "Applications",
-        "queryScope": "COLLECTION",
-        "fields": [
-          {"fieldPath": "jobId", "order": "ASCENDING"},
-          {"fieldPath": "recruiterId", "order": "ASCENDING"}
-        ]
-      },
-      {
-  "collectionGroup": "Notifications",
-  "queryScope": "COLLECTION",
-  "fields": [
-    {"fieldPath": "to", "order": "ASCENDING"},
-    {"fieldPath": "type", "order": "ASCENDING"},
-    {"fieldPath": "timestamp", "order": "DESCENDING"}
-  ]
-},
-{
-  "collectionGroup": "Applications",
-  "queryScope": "COLLECTION",
-  "fields": [
-    {"fieldPath": "jobId", "order": "ASCENDING"},
-    {"fieldPath": "recruiterId", "order": "ASCENDING"}
-  ]
-},
-{
-  "collectionGroup": "Applications",
-  "queryScope": "COLLECTION",
-  "fields": [
-    {"fieldPath": "recruiterId", "order": "ASCENDING"}
-  ]
-},
-{
-  "collectionGroup": "Applications",
-  "queryScope": "COLLECTION",
-  "fields": [
-    {"fieldPath": "recruiterId", "order": "ASCENDING"},
-    {"fieldPath": "status", "order": "ASCENDING"},
-    {"fieldPath": "interviewDate", "order": "ASCENDING"}
-  ]
-},
-{
+      "collectionGroup": "Applications",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "jobId", "order": "ASCENDING" },
+        { "fieldPath": "recruiterId", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "Notifications",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "to", "order": "ASCENDING" },
+        { "fieldPath": "type", "order": "ASCENDING" },
+        { "fieldPath": "timestamp", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "Applications",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "jobId", "order": "ASCENDING" },
+        { "fieldPath": "recruiterId", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "Applications",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "recruiterId", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "Applications",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "recruiterId", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "interviewDate", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "Chats",
       "queryScope": "COLLECTION",
       "fields": [
-        {
-          "fieldPath": "recipientId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "status",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "__name__",
-          "order": "ASCENDING"
-        }
+        { "fieldPath": "recipientId", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "__name__", "order": "ASCENDING" }
       ]
     },
     {
@@ -112,6 +96,15 @@
       "fields": [
         { "fieldPath": "recruiterId", "order": "ASCENDING" },
         { "fieldPath": "appliedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "Jobs",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "isFeatured", "order": "DESCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
     }
   ],
