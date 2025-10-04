@@ -297,7 +297,17 @@ class _AppliedSeekersScreenState extends State<AppliedSeekersScreen> {
     try {
       var excel = Excel.createExcel();
       Sheet sheet = excel['Applicants'];
-      sheet.appendRow(['Name', 'Mobile', 'Specialization', 'Education', 'Experience', 'Skills', 'Status', 'Job Title']);
+      sheet.appendRow([
+       TextCellValue('Name'),
+       TextCellValue('Mobile'),
+       TextCellValue('Specialization'),
+       TextCellValue('Education'),
+       TextCellValue('Experience'),
+       TextCellValue('Skills'),
+       TextCellValue('Status'),
+       TextCellValue('Job Title'),
+]);
+
       for (var a in applicants) {
         final resume = a['resume'] as Map<String, dynamic>? ?? {};
         final specialization = specializationOptions.contains(resume['specialization'] ?? a['specialization'])
