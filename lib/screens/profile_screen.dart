@@ -543,7 +543,7 @@ final Map<String, List<String>> skillsBySpecialization = {
       child: Container(
         constraints: BoxConstraints(maxWidth: 300.w),
         child: DropdownButtonFormField<String>(
-          value: _selectedSpecialization,
+          initialValue: _selectedSpecialization,
           decoration: InputDecoration(
             labelText: 'Specialization',
             labelStyle: TextStyle(color: Colors.grey, fontSize: 12.sp),
@@ -597,7 +597,7 @@ final Map<String, List<String>> skillsBySpecialization = {
       child: Container(
         constraints: BoxConstraints(maxWidth: 300.w),
         child: DropdownButtonFormField<String>(
-          value: _selectedEducation,
+          initialValue: _selectedEducation,
           decoration: InputDecoration(
             labelText: 'Education',
             labelStyle: TextStyle(color: Colors.grey, fontSize: 12.sp),
@@ -650,7 +650,7 @@ final Map<String, List<String>> skillsBySpecialization = {
       child: Container(
         constraints: BoxConstraints(maxWidth: 300.w),
         child: DropdownButtonFormField<String>(
-          value: _experienceController.text.isNotEmpty &&
+          initialValue: _experienceController.text.isNotEmpty &&
                   experienceOptions.contains(_experienceController.text)
               ? _experienceController.text
               : null,
@@ -1182,7 +1182,7 @@ class ProfileDialogState extends State<ProfileDialog> {
                   child: Container(
                     constraints: BoxConstraints(maxWidth: 300.w),
                     child: DropdownButtonFormField<String>(
-                      value: _specialization,
+                      initialValue: _specialization,
                       decoration: InputDecoration(
                         labelText: 'Specialization',
                         labelStyle: TextStyle(color: Colors.grey, fontSize: 12.sp),
@@ -1297,7 +1297,7 @@ class ProfileDialogState extends State<ProfileDialog> {
                   child: Container(
                     constraints: BoxConstraints(maxWidth: 300.w),
                     child: DropdownButtonFormField<String>(
-                      value: _education,
+                      initialValue: _education,
                       decoration: InputDecoration(
                         labelText: 'Education',
                         labelStyle: TextStyle(color: Colors.grey, fontSize: 12.sp),
@@ -1343,7 +1343,7 @@ class ProfileDialogState extends State<ProfileDialog> {
                   child: Container(
                     constraints: BoxConstraints(maxWidth: 300.w),
                     child: DropdownButtonFormField<String>(
-                      value: _experienceController.text.isNotEmpty &&
+                      initialValue: _experienceController.text.isNotEmpty &&
                               widget.experienceOptions.contains(_experienceController.text)
                           ? _experienceController.text
                           : null,

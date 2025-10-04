@@ -537,7 +537,7 @@ final Map<String, List<String>> skillsBySpecialization = {
                               filled: true,
                               fillColor: Colors.white,
                             ),
-                            value: _selectedExperience,
+                            initialValue: _selectedExperience,
                             items: experienceOptions.map((String option) {
                               return DropdownMenuItem<String>(
                                 value: option,
@@ -609,7 +609,7 @@ final Map<String, List<String>> skillsBySpecialization = {
                               filled: true,
                               fillColor: Colors.white,
                             ),
-                            value: _selectedJobType,
+                            initialValue: _selectedJobType,
                             items: jobTypeOptions.map((String option) {
                               return DropdownMenuItem<String>(
                                 value: option,
@@ -647,7 +647,7 @@ final Map<String, List<String>> skillsBySpecialization = {
                               filled: true,
                               fillColor: Colors.white,
                             ),
-                            value: _selectedEducation,
+                            initialValue: _selectedEducation,
                             items: educationOptions.map((String option) {
                               return DropdownMenuItem<String>(
                                 value: option,
@@ -685,7 +685,7 @@ final Map<String, List<String>> skillsBySpecialization = {
                               filled: true,
                               fillColor: Colors.white,
                             ),
-                            value: _selectedSpecialization,
+                            initialValue: _selectedSpecialization,
                             items: specializationOptions.map((String option) {
                               return DropdownMenuItem<String>(
                                 value: option,
@@ -764,7 +764,7 @@ final Map<String, List<String>> skillsBySpecialization = {
                                 _isFeatured = value;
                               });
                             },
-                            activeColor: Colors.teal,
+                            activeThumbColor: Colors.teal,
                             contentPadding: EdgeInsets.symmetric(horizontal: 16.w),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12.r),
