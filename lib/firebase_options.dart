@@ -66,7 +66,7 @@ class DefaultFirebaseOptions {
     databaseURL: 'https://naukriwala-455909-default-rtdb.asia-southeast1.firebasedatabase.app',
     storageBucket: 'naukriwala-455909.firebasestorage.app',
     androidClientId: '307134434935-v7up21dbm3it15io8qecu8b0giufhohr.apps.googleusercontent.com',
-    iosBundleId: 'com.example.naukariwala',
+    iosBundleId: 'com.naukariwala.avr',
   );
 
 }

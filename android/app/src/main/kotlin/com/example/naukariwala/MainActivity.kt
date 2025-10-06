@@ -1,4 +1,4 @@
-package com.example.naukariwala
+package com.naukariwala.avr
 
 import io.flutter.embedding.android.FlutterActivity
 

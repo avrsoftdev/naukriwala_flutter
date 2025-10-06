@@ -70,10 +70,10 @@
 #########################################
 
 # Keep all models (adjust your package name if needed)
--keepclassmembers class com.example.naukariwala.model.** { *; }
+-keepclassmembers class com.naukariwala.avr.model.** { *; }
 
 # Keep everything public in your package (optional but safer for release builds)
--keep public class com.example.naukariwala.** { *; }
+-keep public class com.naukariwala.avr.** { *; }
 
 # Keep constructors for dependency injection
 -keepclassmembers class * {
