@@ -1,32 +1,65 @@
-/**
- * Import function triggers from their respective submodules:
- *
- * const {onCall} = require("firebase-functions/v2/https");
- * const {onDocumentWritten} = require("firebase-functions/v2/firestore");
- *
- * See a full list of supported triggers at https://firebase.google.com/docs/functions
- */
-
-const {setGlobalOptions} = require("firebase-functions");
-const {onRequest} = require("firebase-functions/https");
+const { onCall } = require("firebase-functions/v2/https");
+const { setGlobalOptions } = require("firebase-functions/v2");
+const admin = require("firebase-admin");
 const logger = require("firebase-functions/logger");
 
-// For cost control, you can set the maximum number of containers that can be
-// running at the same time. This helps mitigate the impact of unexpected
-// traffic spikes by instead downgrading performance. This limit is a
-// per-function limit. You can override the limit for each function using the
-// `maxInstances` option in the function's options, e.g.
-// `onRequest({ maxInstances: 5 }, (req, res) => { ... })`.
-// NOTE: setGlobalOptions does not apply to functions using the v1 API. V1
-// functions should each use functions.runWith({ maxInstances: 10 }) instead.
-// In the v1 API, each function can only serve one request per container, so
-// this will be the maximum concurrent request count.
+// Initialize Firebase Admin SDK
+admin.initializeApp();
 setGlobalOptions({ maxInstances: 10 });
 
-// Create and deploy your first functions
-// https://firebase.google.com/docs/functions/get-started
+exports.sendNotification = onCall(async (request) => {
+  // 🔐 Optional: Require auth
+  if (!request.auth) {
+    throw new Error("User must be authenticated to send notifications");
+  }
 
-// exports.helloWorld = onRequest((request, response) => {
-//   logger.info("Hello logs!", {structuredData: true});
-//   response.send("Hello from Firebase!");
-// });
+  const { token, title, body, data = {} } = request.data;
+
+  if (!token) {
+    throw new Error("FCM token is required");
+  }
+
+  try {
+    const message = {
+      token,
+      notification: {
+        title: title || "📢 New Notification",
+        body: body || "You have a new message",
+      },
+      data: {
+        click_action: "FLUTTER_NOTIFICATION_CLICK", // for Android navigation
+        type: data.type || "general",              // make sure "type" is present
+        chatId: data.chatId || "",
+        jobId: data.jobId || "",
+        seekerId: data.seekerId || "",
+        ...data, // include any other custom data
+      },
+      android: {
+        priority: "high",
+        notification: {
+          channelId: "fcm_default_channel",
+          clickAction: "FLUTTER_NOTIFICATION_CLICK",
+          sound: "default",
+        },
+      },
+      apns: {
+        headers: { "apns-priority": "10" },
+        payload: {
+          aps: {
+            sound: "default",
+            contentAvailable: true, // 📱 Ensures background delivery on iOS
+          },
+        },
+      },
+    };
+
+    // 🚀 Send notification
+    await admin.messaging().send(message);
+    logger.info(`✅ Notification sent successfully to: ${token}`);
+
+    return { success: true, message: "Notification sent successfully" };
+  } catch (error) {
+    logger.error("❌ Error sending notification:", error);
+    throw new Error(`Failed to send notification: ${error.message}`);
+  }
+});

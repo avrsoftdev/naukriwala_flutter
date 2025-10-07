@@ -3,6 +3,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:googleapis_auth/auth_io.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:flutter/services.dart' show rootBundle;
 import 'dart:developer' as dev;
 import 'package:intl/intl.dart';
 import 'dart:io';
@@ -19,192 +24,269 @@ class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseStorage _storage = FirebaseStorage.instance;
+  final FirebaseMessaging _messaging = FirebaseMessaging.instance;
 
-  // Education options
-final List<String> educationOptions = [
-  'Secondary (Class 10)',
-  'Higher Secondary (Class 12)',
-  'Diploma/Certificate',
-  'Undergraduate (Bachelor\'s Degree)',
-  'Postgraduate Diploma',
-  'Postgraduate (Master\'s Degree)',
-  'Doctorate/PhD/MPhil',
-  'Professional Certification',
-  'Vocational Training',
-];
+  static const String _serviceAccountJsonPath = 'assets/naukriwala-455909-firebase-adminsdk.json';
 
-// Specialization options
-final List<String> specializationOptions = [
-  'Computer Science / IT',
-  'Artificial Intelligence / Machine Learning / Data Science',
-  'Electronics / Electrical / Robotics',
-  'Mechanical / Civil / Architecture',
-  'Aerospace / Aeronautical / Automotive',
-  'Chemical / Petroleum / Environmental',
-  'Biomedical / Biotechnology / Nanotechnology',
-  'Business / Finance / Management',
-  'Medicine / Healthcare / Pharma',
-  'Physiotherapy / Public Health / Veterinary Science',
-  'Law / Political Science / Public Administration',
-  'Arts / Humanities / Education',
-  'Design / Media / Communication',
-  'Hotel / Travel / Event Management',
-  'Science / Research / Environment',
-  'Astronomy / Astrophysics / Planetary Science',
-  'Vocational/Domestic Services',
-  'Others',
-];
+  Future<String?> _getFcmToken(String recipientId) async {
+    try {
+      final doc = await _firestore.collection('UsersIndex').doc(recipientId).get();
+      final token = doc.data()?['fcmToken'] as String?;
+      if (token == null) {
+        dev.log('[2025-10-07 13:43 IST] No FCM token for recipient $recipientId', name: 'AuthService');
+      }
+      return token;
+    } catch (e) {
+      dev.log('[2025-10-07 13:43 IST] Error fetching FCM token for $recipientId: $e', name: 'AuthService', error: e);
+      return null;
+    }
+  }
 
-// Skills by specialization
-final Map<String, List<String>> skillsBySpecialization = {
-  'Computer Science / IT': [
-    'Java', 'Python', 'C++', 'C#', 'Dart', 'Flutter', 'Android Development',
-    'iOS Development', 'React', 'Angular', 'Vue.js', 'Node.js', 'Firebase',
-    'AWS', 'Azure', 'Google Cloud', 'Docker', 'Kubernetes', 'SQL', 'NoSQL',
-    'MongoDB', 'REST APIs', 'GraphQL', 'Data Structures & Algorithms', 'DevOps',
-    'Cybersecurity', 'System Design', 'Web Development', 'Unit Testing', 'Git',
-    'Jenkins', 'Agile Methodologies',
-  ],
-  'Artificial Intelligence / Machine Learning / Data Science': [
-    'Python', 'R', 'TensorFlow', 'PyTorch', 'Keras', 'Scikit-learn', 'Pandas',
-    'NumPy', 'Data Visualization', 'Tableau', 'Power BI', 'Big Data', 'Hadoop',
-    'Spark', 'Deep Learning', 'Natural Language Processing', 'Computer Vision',
-    'Statistical Modeling', 'Data Mining', 'Machine Learning Algorithms',
-    'Time Series Analysis', 'SQL', 'Feature Engineering', 'Model Deployment',
-    'Cloud Computing (AWS, Azure)', 'Jupyter Notebooks',
-  ],
-  'Electronics / Electrical / Robotics': [
-    'Embedded Systems', 'PCB Design', 'VLSI', 'MATLAB', 'Simulink', 'Verilog',
-    'VHDL', 'FPGA Programming', 'Arduino', 'Raspberry Pi', 'IoT Development',
-    'Signal Processing', 'Power Systems', 'Control Systems', 'SCADA', 'PLC Programming',
-    'Circuit Design', 'Robotics Programming', 'Sensor Integration', 'Microcontrollers',
-    'Power Electronics', 'Automation', 'Proteus', 'Multisim',
-    'Calculus', 'Algebra', 'Differential Equations', 'Electromagnetism',
-    'Circuit Theory', 'Ohm\'s Law', 'Basic Electrical Components',
-    'Power Systems Design', 'C Programming', 'C++ Programming', 'Python Programming',
-    'SPICE Simulation', 'System Design & Analysis', 'Troubleshooting Electronics',
-    'Microprocessor Design', 'Hardware Applications',
-    'Problem-Solving', 'Technical Communication', 'Team Collaboration',
-    'Attention to Detail', 'Critical Thinking', 'Creativity in Design',
-  ],
-  'Mechanical / Civil / Architecture': [
-    'AutoCAD', 'SolidWorks', 'CATIA', 'ANSYS', 'STAAD Pro', 'Revit', 'ETABS',
-    'Structural Analysis', 'Thermodynamics', 'Fluid Mechanics', 'Manufacturing Processes',
-    'Finite Element Analysis', 'Construction Management', 'Urban Planning', 'BIM (Building Information Modeling)',
-    'Geotechnical Engineering', 'Hydraulics', 'Surveying', 'CAD/CAM', 'HVAC Design',
-    '3D Printing', 'Project Estimation', 'Material Science',
-  ],
-  'Aerospace / Aeronautical / Automotive': [
-    'CATIA', 'ANSYS Fluent', 'SolidWorks', 'MATLAB', 'Aerodynamics', 'Propulsion Systems',
-    'Flight Mechanics', 'Automotive Design', 'Vehicle Dynamics', 'CFD (Computational Fluid Dynamics)',
-    'Finite Element Analysis', 'Aerospace Materials', 'Avionics', 'AutoCAD', 'Structural Design',
-    'Engine Testing', 'CAD/CAM', 'Thermal Analysis', 'Manufacturing Processes', 'Simulation Tools',
-  ],
-  'Chemical / Petroleum / Environmental': [
-    'Aspen HYSYS', 'MATLAB', 'Chemical Process Design', 'Petroleum Refining', 'Environmental Impact Assessment',
-    'Waste Management', 'Water Treatment', 'Process Simulation', 'Thermodynamics', 'Mass Transfer',
-    'Heat Transfer', 'Piping Design', 'HSE (Health, Safety, Environment)', 'Geochemical Analysis',
-    'Reservoir Engineering', 'Pollution Control', 'Sustainable Design', 'Chemical Safety',
-  ],
-  'Biomedical / Biotechnology / Nanotechnology': [
-    'Bioinformatics', 'Molecular Biology', 'Genetic Engineering', 'Cell Culture', 'PCR Techniques',
-    'Biomedical Instrumentation', 'Biomaterials', 'Nanoparticle Synthesis', 'Microscopy', 'Lab Techniques',
-    'Proteomics', 'Genomics', 'Biomedical Imaging', 'Tissue Engineering', 'Biosensors', 'MATLAB',
-    'Biostatistics', 'Drug Delivery Systems', 'Nanofabrication', 'Biochemical Analysis',
-  ],
-  'Business / Finance / Management': [
-    'Financial Analysis', 'Accounting', 'Tally ERP', 'QuickBooks', 'MS Excel', 'SAP FICO',
-    'Financial Modeling', 'Taxation', 'Auditing', 'Cost Accounting', 'Business Strategy',
-    'Market Research', 'Entrepreneurship Development', 'Investment Analysis', 'Risk Management',
-    'Corporate Finance', 'Budgeting', 'Financial Reporting', 'Business Plan Development',
-    'Venture Capital Analysis', 'GST Compliance', 'Digital Marketing', 'Google Ads', 'SEO',
-    'Social Media Marketing', 'Project Management', 'Agile', 'Scrum', 'Salesforce',
-    'Customer Relationship Management (CRM)',
-  ],
-  'Medicine / Healthcare / Pharma': [
-    'Clinical Diagnosis', 'Patient Care', 'Surgical Assistance', 'Nursing Procedures', 'Pharmacology',
-    'Medical Coding', 'First Aid', 'CPR', 'Dental Procedures', 'Orthodontics', 'Prescription Management',
-    'Clinical Pharmacy', 'Drug Dispensing', 'Wound Care', 'Vital Signs Monitoring', 'Patient Counseling',
-    'Anesthesia Administration', 'Infection Control', 'Medical Ethics', 'Health Education',
-  ],
-  'Physiotherapy / Public Health / Veterinary Science': [
-    'Manual Therapy', 'Exercise Prescription', 'Electrotherapy', 'Rehabilitation Techniques',
-    'Epidemiology', 'Public Health Policy', 'Health Program Management', 'Community Health',
-    'Veterinary Diagnosis', 'Animal Surgery', 'Veterinary Pharmacology', 'Animal Husbandry',
-    'Biostatistics', 'Health Promotion', 'Injury Assessment', 'Kinesiology', 'Vaccination Protocols',
-    'Zoonotic Disease Management', 'Public Health Surveillance',
-  ],
-  'Law / Political Science / Public Administration': [
-    'Legal Research', 'Case Analysis', 'Contract Drafting', 'Litigation', 'Legal Writing',
-    'Constitutional Law Analysis', 'International Law Compliance', 'Arbitration', 'Mediation',
-    'Intellectual Property Law', 'Criminal Law Practice', 'Corporate Law', 'Legal Compliance',
-    'Courtroom Advocacy', 'Policy Analysis', 'Public Speaking', 'Governance Studies',
-    'International Diplomacy', 'Conflict Resolution', 'Public Policy Formulation',
-    'Political Research', 'Legislative Analysis', 'International Trade Policy',
-    'Geopolitical Analysis', 'Public Administration Management',
-  ],
-  'Arts / Humanities / Education': [
-    'Creative Writing', 'Literary Analysis', 'Historical Research', 'Archival Studies',
-    'Philosophical Analysis', 'Critical Thinking', 'Content Writing', 'Editing & Proofreading',
-    'Cultural Studies', 'Art Criticism', 'Translation', 'Manuscript Analysis', 'Oral History',
-    'Ethnography', 'Research Methodologies', 'Academic Writing', 'Classroom Management',
-    'Curriculum Design', 'Lesson Planning', 'E-Learning Tools', 'Pedagogical Techniques',
-    'Special Education Strategies', 'Inclusive Education', 'Assessment Design',
-    'Educational Technology', 'Student Counseling',
-  ],
-  'Design / Media / Communication': [
-    'Adobe Photoshop', 'Adobe Illustrator', 'Figma', 'Adobe XD', 'Canva', 'UI/UX Design',
-    'Fashion Illustration', 'Pattern Making', 'Textile Design', '3D Modeling', 'Blender',
-    'SketchUp', 'Graphic Design', 'Typography', 'Branding', 'Motion Graphics', 'Color Theory',
-    'Video Editing', 'Adobe Premiere Pro', 'Final Cut Pro', 'Journalism Ethics', 'News Writing',
-    'Copywriting', 'Broadcast Journalism', 'Photojournalism', 'Social Media Content Creation',
-    'Public Relations', 'Storyboarding', 'Media Production', 'Podcast Production',
-  ],
-  'Hotel / Travel / Event Management': [
-    'Hospitality Management', 'Event Planning', 'Customer Service', 'Food & Beverage Service',
-    'Culinary Techniques', 'Menu Planning', 'Bartending', 'Housekeeping Management',
-    'Travel Planning', 'Tour Operations', 'Ticketing & Reservations', 'Catering Management',
-    'Hotel Operations', 'Guest Relations', 'Inventory Management', 'Sustainable Tourism',
-    'Vendor Management', 'Event Logistics', 'Budget Planning', 'Sponsorship Management',
-  ],
-  'Science / Research / Environment': [
-    'Laboratory Techniques', 'Chemical Analysis', 'Microscopy', 'Spectroscopy', 'Experimental Design',
-    'Data Analysis', 'Physics Modeling', 'Organic Chemistry', 'Molecular Biology', 'Biochemistry',
-    'Quantum Mechanics', 'Thermodynamics', 'Cell Biology', 'Scientific Writing', 'Lab Safety',
-    'Instrumentation', 'Environmental Impact Assessment', 'Geographic Information System (GIS)',
-    'Remote Sensing', 'Geological Mapping', 'Climate Modeling', 'Marine Biology', 'Oceanography',
-    'Environmental Monitoring', 'Soil Analysis', 'Hydrology', 'Biodiversity Conservation',
-  ],
-  'Astronomy / Astrophysics / Planetary Science': [
-    'Astrometry', 'Telescopic Observation', 'Data Analysis', 'Astrostatistics', 'Orbital Mechanics',
-    'Stellar Astrophysics', 'Planetary Geology', 'Spectroscopy', 'Computational Modeling',
-    'Space Mission Design', 'Astronomical Software (Stellarium, IRAF)', 'Exoplanet Research',
-    'Cosmology', 'Radio Astronomy', 'Image Processing',
-  ],
-  'Vocational/Domestic Services': [
-    'Driving', 'Vehicle Operation (Cars, Trucks, Buses)', 'Defensive Driving', 'Route Navigation',
-    'Vehicle Maintenance', 'Traffic Regulations', 'GPS Usage', 'Delivery Scheduling', 'Cargo Handling',
-    'Housekeeping', 'Cleaning & Sanitation', 'Inventory Stocking', 'Office Management',
-    'Document Handling', 'Filing & Organization', 'Basic Computer Skills (MS Office)', 'Errand Running',
-    'Office Equipment Maintenance', 'Mail Distribution', 'Reception Duties', 'Woodworking',
-    'Furniture Making', 'Carpentry Tools (Saws, Drills, Chisels)', 'Blueprint Reading', 'Wood Finishing',
-    'Cabinet Making', 'Framing', 'Joinery', 'Timber Measurement', 'Wood Carving', 'Cooking',
-    'Childcare', 'Elderly Care', 'Gardening', 'Landscaping', 'Basic Maintenance', 'Plumbing',
-    'Pipe Fitting', 'Electrical Wiring', 'Masonry', 'Painting', 'Welding', 'Construction Labor',
-    'Scaffolding', 'Heavy Machinery Operation', 'Forklift Operation', 'Pest Control',
-    'Customer Service', 'Time Management', 'Physical Stamina', 'Teamwork', 'Problem-Solving',
-    'Work Safety Practices',
-  ],
-  'Others': [
-    'Communication Skills', 'Problem Solving', 'Teamwork', 'Leadership', 'Time Management',
-    'Adaptability', 'Creativity', 'Conflict Resolution', 'Critical Thinking', 'Customer Support',
-    'Basic Computer Skills', 'Typing', 'Remote Work Tools (Zoom, Slack, Trello)', 'Virtual Assistant',
-    'Content Moderation', 'Ethical Analysis', 'Policy Formulation', 'Interdisciplinary Research',
-    'Digital Archiving', 'Data Ethics', 'Climate Policy Analysis', 'Stakeholder Engagement',
-    'Text Analysis', 'Digital Storytelling', 'Public Policy Research', 'AI Governance',
-    'Environmental Ethics', 'Cross-Cultural Analysis',
-  ],
-};
+  Future<void> _sendFcmNotification({
+    required String recipientFcmToken,
+    required String title,
+    required String body,
+    required Map<String, String> data,
+  }) async {
+    try {
+      final String serviceAccountJson = await rootBundle.loadString(_serviceAccountJsonPath);
+      var client = await clientViaServiceAccount(
+        ServiceAccountCredentials.fromJson(jsonDecode(serviceAccountJson)),
+        ['https://www.googleapis.com/auth/firebase.messaging'],
+      );
+
+      int retryCount = 0;
+      const maxRetries = 2;
+      bool success = false;
+      while (retryCount < maxRetries && !success) {
+        final response = await http.post(
+          Uri.parse('https://fcm.googleapis.com/v1/projects/naukriwala-455909/messages:send'),
+          headers: {
+            'Authorization': 'Bearer ${client.credentials.accessToken.data}',
+            'Content-Type': 'application/json',
+          },
+          body: jsonEncode({
+            'message': {
+              'token': recipientFcmToken,
+              'notification': {
+                'title': title,
+                'body': body,
+              },
+              'data': data,
+              'android': {'priority': 'high'},
+              'apns': {'headers': {'apns-priority': '10'}},
+            },
+          }),
+        );
+
+        if (response.statusCode == 200) {
+          success = true;
+          dev.log('[2025-10-07 13:43 IST] FCM notification sent to $recipientFcmToken: ${response.body}', name: 'AuthService');
+        } else {
+          dev.log('[2025-10-07 13:43 IST] FCM error (attempt ${retryCount + 1}): ${response.statusCode} - ${response.body}', name: 'AuthService');
+          if (response.statusCode == 401 && retryCount < maxRetries - 1) {
+            client.close();
+            client = await clientViaServiceAccount(
+              ServiceAccountCredentials.fromJson(jsonDecode(serviceAccountJson)),
+              ['https://www.googleapis.com/auth/firebase.messaging'],
+            );
+          }
+          retryCount++;
+        }
+      }
+
+      if (!success) {
+        dev.log('[2025-10-07 13:43 IST] Failed to send FCM notification after $maxRetries attempts', name: 'AuthService');
+      }
+
+      client.close();
+    } catch (e, stackTrace) {
+      dev.log('[2025-10-07 13:43 IST] Error sending FCM notification: $e', name: 'AuthService', error: e, stackTrace: stackTrace);
+    }
+  }
+
+  final List<String> educationOptions = [
+    'Secondary (Class 10)',
+    'Higher Secondary (Class 12)',
+    'Diploma/Certificate',
+    'Undergraduate (Bachelor\'s Degree)',
+    'Postgraduate Diploma',
+    'Postgraduate (Master\'s Degree)',
+    'Doctorate/PhD/MPhil',
+    'Professional Certification',
+    'Vocational Training',
+  ];
+
+  final List<String> specializationOptions = [
+    'Computer Science / IT',
+    'Artificial Intelligence / Machine Learning / Data Science',
+    'Electronics / Electrical / Robotics',
+    'Mechanical / Civil / Architecture',
+    'Aerospace / Aeronautical / Automotive',
+    'Chemical / Petroleum / Environmental',
+    'Biomedical / Biotechnology / Nanotechnology',
+    'Business / Finance / Management',
+    'Medicine / Healthcare / Pharma',
+    'Physiotherapy / Public Health / Veterinary Science',
+    'Law / Political Science / Public Administration',
+    'Arts / Humanities / Education',
+    'Design / Media / Communication',
+    'Hotel / Travel / Event Management',
+    'Science / Research / Environment',
+    'Astronomy / Astrophysics / Planetary Science',
+    'Vocational/Domestic Services',
+    'Others',
+  ];
+
+  final Map<String, List<String>> skillsBySpecialization = {
+    'Computer Science / IT': [
+      'Java', 'Python', 'C++', 'C#', 'Dart', 'Flutter', 'Android Development',
+      'iOS Development', 'React', 'Angular', 'Vue.js', 'Node.js', 'Firebase',
+      'AWS', 'Azure', 'Google Cloud', 'Docker', 'Kubernetes', 'SQL', 'NoSQL',
+      'MongoDB', 'REST APIs', 'GraphQL', 'Data Structures & Algorithms', 'DevOps',
+      'Cybersecurity', 'System Design', 'Web Development', 'Unit Testing', 'Git',
+      'Jenkins', 'Agile Methodologies',
+    ],
+    'Artificial Intelligence / Machine Learning / Data Science': [
+      'Python', 'R', 'TensorFlow', 'PyTorch', 'Keras', 'Scikit-learn', 'Pandas',
+      'NumPy', 'Data Visualization', 'Tableau', 'Power BI', 'Big Data', 'Hadoop',
+      'Spark', 'Deep Learning', 'Natural Language Processing', 'Computer Vision',
+      'Statistical Modeling', 'Data Mining', 'Machine Learning Algorithms',
+      'Time Series Analysis', 'SQL', 'Feature Engineering', 'Model Deployment',
+      'Cloud Computing (AWS, Azure)', 'Jupyter Notebooks',
+    ],
+    'Electronics / Electrical / Robotics': [
+      'Embedded Systems', 'PCB Design', 'VLSI', 'MATLAB', 'Simulink', 'Verilog',
+      'VHDL', 'FPGA Programming', 'Arduino', 'Raspberry Pi', 'IoT Development',
+      'Signal Processing', 'Power Systems', 'Control Systems', 'SCADA', 'PLC Programming',
+      'Circuit Design', 'Robotics Programming', 'Sensor Integration', 'Microcontrollers',
+      'Power Electronics', 'Automation', 'Proteus', 'Multisim',
+      'Calculus', 'Algebra', 'Differential Equations', 'Electromagnetism',
+      'Circuit Theory', 'Ohm\'s Law', 'Basic Electrical Components',
+      'Power Systems Design', 'C Programming', 'C++ Programming', 'Python Programming',
+      'SPICE Simulation', 'System Design & Analysis', 'Troubleshooting Electronics',
+      'Microprocessor Design', 'Hardware Applications',
+      'Problem-Solving', 'Technical Communication', 'Team Collaboration',
+      'Attention to Detail', 'Critical Thinking', 'Creativity in Design',
+    ],
+    'Mechanical / Civil / Architecture': [
+      'AutoCAD', 'SolidWorks', 'CATIA', 'ANSYS', 'STAAD Pro', 'Revit', 'ETABS',
+      'Structural Analysis', 'Thermodynamics', 'Fluid Mechanics', 'Manufacturing Processes',
+      'Finite Element Analysis', 'Construction Management', 'Urban Planning', 'BIM (Building Information Modeling)',
+      'Geotechnical Engineering', 'Hydraulics', 'Surveying', 'CAD/CAM', 'HVAC Design',
+      '3D Printing', 'Project Estimation', 'Material Science',
+    ],
+    'Aerospace / Aeronautical / Automotive': [
+      'CATIA', 'ANSYS Fluent', 'SolidWorks', 'MATLAB', 'Aerodynamics', 'Propulsion Systems',
+      'Flight Mechanics', 'Automotive Design', 'Vehicle Dynamics', 'CFD (Computational Fluid Dynamics)',
+      'Finite Element Analysis', 'Aerospace Materials', 'Avionics', 'AutoCAD', 'Structural Design',
+      'Engine Testing', 'CAD/CAM', 'Thermal Analysis', 'Manufacturing Processes', 'Simulation Tools',
+    ],
+    'Chemical / Petroleum / Environmental': [
+      'Aspen HYSYS', 'MATLAB', 'Chemical Process Design', 'Petroleum Refining', 'Environmental Impact Assessment',
+      'Waste Management', 'Water Treatment', 'Process Simulation', 'Thermodynamics', 'Mass Transfer',
+      'Heat Transfer', 'Piping Design', 'HSE (Health, Safety, Environment)', 'Geochemical Analysis',
+      'Reservoir Engineering', 'Pollution Control', 'Sustainable Design', 'Chemical Safety',
+    ],
+    'Biomedical / Biotechnology / Nanotechnology': [
+      'Bioinformatics', 'Molecular Biology', 'Genetic Engineering', 'Cell Culture', 'PCR Techniques',
+      'Biomedical Instrumentation', 'Biomaterials', 'Nanoparticle Synthesis', 'Microscopy', 'Lab Techniques',
+      'Proteomics', 'Genomics', 'Biomedical Imaging', 'Tissue Engineering', 'Biosensors', 'MATLAB',
+      'Biostatistics', 'Drug Delivery Systems', 'Nanofabrication', 'Biochemical Analysis',
+    ],
+    'Business / Finance / Management': [
+      'Financial Analysis', 'Accounting', 'Tally ERP', 'QuickBooks', 'MS Excel', 'SAP FICO',
+      'Financial Modeling', 'Taxation', 'Auditing', 'Cost Accounting', 'Business Strategy',
+      'Market Research', 'Entrepreneurship Development', 'Investment Analysis', 'Risk Management',
+      'Corporate Finance', 'Budgeting', 'Financial Reporting', 'Business Plan Development',
+      'Venture Capital Analysis', 'GST Compliance', 'Digital Marketing', 'Google Ads', 'SEO',
+      'Social Media Marketing', 'Project Management', 'Agile', 'Scrum', 'Salesforce',
+      'Customer Relationship Management (CRM)',
+    ],
+    'Medicine / Healthcare / Pharma': [
+      'Clinical Diagnosis', 'Patient Care', 'Surgical Assistance', 'Nursing Procedures', 'Pharmacology',
+      'Medical Coding', 'First Aid', 'CPR', 'Dental Procedures', 'Orthodontics', 'Prescription Management',
+      'Clinical Pharmacy', 'Drug Dispensing', 'Wound Care', 'Vital Signs Monitoring', 'Patient Counseling',
+      'Anesthesia Administration', 'Infection Control', 'Medical Ethics', 'Health Education',
+    ],
+    'Physiotherapy / Public Health / Veterinary Science': [
+      'Manual Therapy', 'Exercise Prescription', 'Electrotherapy', 'Rehabilitation Techniques',
+      'Epidemiology', 'Public Health Policy', 'Health Program Management', 'Community Health',
+      'Veterinary Diagnosis', 'Animal Surgery', 'Veterinary Pharmacology', 'Animal Husbandry',
+      'Biostatistics', 'Health Promotion', 'Injury Assessment', 'Kinesiology', 'Vaccination Protocols',
+      'Zoonotic Disease Management', 'Public Health Surveillance',
+    ],
+    'Law / Political Science / Public Administration': [
+      'Legal Research', 'Case Analysis', 'Contract Drafting', 'Litigation', 'Legal Writing',
+      'Constitutional Law Analysis', 'International Law Compliance', 'Arbitration', 'Mediation',
+      'Intellectual Property Law', 'Criminal Law Practice', 'Corporate Law', 'Legal Compliance',
+      'Courtroom Advocacy', 'Policy Analysis', 'Public Speaking', 'Governance Studies',
+      'International Diplomacy', 'Conflict Resolution', 'Public Policy Formulation',
+      'Political Research', 'Legislative Analysis', 'International Trade Policy',
+      'Geopolitical Analysis', 'Public Administration Management',
+    ],
+    'Arts / Humanities / Education': [
+      'Creative Writing', 'Literary Analysis', 'Historical Research', 'Archival Studies',
+      'Philosophical Analysis', 'Critical Thinking', 'Content Writing', 'Editing & Proofreading',
+      'Cultural Studies', 'Art Criticism', 'Translation', 'Manuscript Analysis', 'Oral History',
+      'Ethnography', 'Research Methodologies', 'Academic Writing', 'Classroom Management',
+      'Curriculum Design', 'Lesson Planning', 'E-Learning Tools', 'Pedagogical Techniques',
+      'Special Education Strategies', 'Inclusive Education', 'Assessment Design',
+      'Educational Technology', 'Student Counseling',
+    ],
+    'Design / Media / Communication': [
+      'Adobe Photoshop', 'Adobe Illustrator', 'Figma', 'Adobe XD', 'Canva', 'UI/UX Design',
+      'Fashion Illustration', 'Pattern Making', 'Textile Design', '3D Modeling', 'Blender',
+      'SketchUp', 'Graphic Design', 'Typography', 'Branding', 'Motion Graphics', 'Color Theory',
+      'Video Editing', 'Adobe Premiere Pro', 'Final Cut Pro', 'Journalism Ethics', 'News Writing',
+      'Copywriting', 'Broadcast Journalism', 'Photojournalism', 'Social Media Content Creation',
+      'Public Relations', 'Storyboarding', 'Media Production', 'Podcast Production',
+    ],
+    'Hotel / Travel / Event Management': [
+      'Hospitality Management', 'Event Planning', 'Customer Service', 'Food & Beverage Service',
+      'Culinary Techniques', 'Menu Planning', 'Bartending', 'Housekeeping Management',
+      'Travel Planning', 'Tour Operations', 'Ticketing & Reservations', 'Catering Management',
+      'Hotel Operations', 'Guest Relations', 'Inventory Management', 'Sustainable Tourism',
+      'Vendor Management', 'Event Logistics', 'Budget Planning', 'Sponsorship Management',
+    ],
+    'Science / Research / Environment': [
+      'Laboratory Techniques', 'Chemical Analysis', 'Microscopy', 'Spectroscopy', 'Experimental Design',
+      'Data Analysis', 'Physics Modeling', 'Organic Chemistry', 'Molecular Biology', 'Biochemistry',
+      'Quantum Mechanics', 'Thermodynamics', 'Cell Biology', 'Scientific Writing', 'Lab Safety',
+      'Instrumentation', 'Environmental Impact Assessment', 'Geographic Information System (GIS)',
+      'Remote Sensing', 'Geological Mapping', 'Climate Modeling', 'Marine Biology', 'Oceanography',
+      'Environmental Monitoring', 'Soil Analysis', 'Hydrology', 'Biodiversity Conservation',
+    ],
+    'Astronomy / Astrophysics / Planetary Science': [
+      'Astrometry', 'Telescopic Observation', 'Data Analysis', 'Astrostatistics', 'Orbital Mechanics',
+      'Stellar Astrophysics', 'Planetary Geology', 'Spectroscopy', 'Computational Modeling',
+      'Space Mission Design', 'Astronomical Software (Stellarium, IRAF)', 'Exoplanet Research',
+      'Cosmology', 'Radio Astronomy', 'Image Processing',
+    ],
+    'Vocational/Domestic Services': [
+      'Driving', 'Vehicle Operation (Cars, Trucks, Buses)', 'Defensive Driving', 'Route Navigation',
+      'Vehicle Maintenance', 'Traffic Regulations', 'GPS Usage', 'Delivery Scheduling', 'Cargo Handling',
+      'Housekeeping', 'Cleaning & Sanitation', 'Inventory Stocking', 'Office Management',
+      'Document Handling', 'Filing & Organization', 'Basic Computer Skills (MS Office)', 'Errand Running',
+      'Office Equipment Maintenance', 'Mail Distribution', 'Reception Duties', 'Woodworking',
+      'Furniture Making', 'Carpentry Tools (Saws, Drills, Chisels)', 'Blueprint Reading', 'Wood Finishing',
+      'Cabinet Making', 'Framing', 'Joinery', 'Timber Measurement', 'Wood Carving', 'Cooking',
+      'Childcare', 'Elderly Care', 'Gardening', 'Landscaping', 'Basic Maintenance', 'Plumbing',
+      'Pipe Fitting', 'Electrical Wiring', 'Masonry', 'Painting', 'Welding', 'Construction Labor',
+      'Scaffolding', 'Heavy Machinery Operation', 'Forklift Operation', 'Pest Control',
+      'Customer Service', 'Time Management', 'Physical Stamina', 'Teamwork', 'Problem-Solving',
+      'Work Safety Practices',
+    ],
+    'Others': [
+      'Communication Skills', 'Problem Solving', 'Teamwork', 'Leadership', 'Time Management',
+      'Adaptability', 'Creativity', 'Conflict Resolution', 'Critical Thinking', 'Customer Support',
+      'Basic Computer Skills', 'Typing', 'Remote Work Tools (Zoom, Slack, Trello)', 'Virtual Assistant',
+      'Content Moderation', 'Ethical Analysis', 'Policy Formulation', 'Interdisciplinary Research',
+      'Digital Archiving', 'Data Ethics', 'Climate Policy Analysis', 'Stakeholder Engagement',
+      'Text Analysis', 'Digital Storytelling', 'Public Policy Research', 'AI Governance',
+      'Environmental Ethics', 'Cross-Cultural Analysis',
+    ],
+  };
 
   Future<void> storeSignupData({
     required bool isRecruiter,
@@ -216,7 +298,7 @@ final Map<String, List<String>> skillsBySpecialization = {
     final collection = isRecruiter ? 'Recruiters' : 'Seekers';
 
     try {
-      dev.log("Writing to $collection/$uid", name: 'AuthService');
+      dev.log("[2025-10-07 13:43 IST] Writing to $collection/$uid", name: 'AuthService');
 
       String mobileNumber = data['Mobile Number']?.toString().trim() ??
           data['mobileNumber']?.toString().trim() ??
@@ -224,14 +306,22 @@ final Map<String, List<String>> skillsBySpecialization = {
           '';
 
       if (mobileNumber.isEmpty) {
-        dev.log("Mobile number is missing for UID: $uid. Input data: $data, FirebaseAuth phoneNumber: ${_auth.currentUser?.phoneNumber}", name: 'AuthService');
+        dev.log("[2025-10-07 13:43 IST] Mobile number is missing for UID: $uid. Input data: $data, FirebaseAuth phoneNumber: ${_auth.currentUser?.phoneNumber}", name: 'AuthService');
         throw const AuthException("Mobile number is required");
       }
 
       final mobileNumberRegex = RegExp(r'^\+\d{10,15}$');
       if (!mobileNumberRegex.hasMatch(mobileNumber)) {
-        dev.log("Invalid mobile number format for UID: $uid, mobileNumber: $mobileNumber", name: 'AuthService');
+        dev.log("[2025-10-07 13:43 IST] Invalid mobile number format for UID: $uid, mobileNumber: $mobileNumber", name: 'AuthService');
         throw const AuthException("Invalid mobile number format. Must start with '+' followed by 10-15 digits.");
+      }
+
+      String? fcmToken;
+      try {
+        fcmToken = await _messaging.getToken();
+        dev.log("[2025-10-07 13:43 IST] Fetched FCM token for $uid: $fcmToken", name: 'AuthService');
+      } catch (e) {
+        dev.log("[2025-10-07 13:43 IST] Error fetching FCM token for $uid: $e", name: 'AuthService', error: e);
       }
 
       final normalizedData = {
@@ -240,6 +330,7 @@ final Map<String, List<String>> skillsBySpecialization = {
         'mobileNumber': mobileNumber,
         'name': data['Name']?.toString().trim() ?? '',
         'role': isRecruiter ? 'recruiter' : 'seeker',
+        'fcmToken': fcmToken,
         ...data,
       };
 
@@ -252,7 +343,7 @@ final Map<String, List<String>> skillsBySpecialization = {
         final specialization = normalizedData['specialization'] as String?;
         if (specialization == null || !specializationOptions.contains(specialization)) {
           normalizedData['specialization'] = 'Others';
-          dev.log("Invalid or missing specialization '$specialization', defaulting to 'Others'", name: 'AuthService');
+          dev.log("[2025-10-07 13:43 IST] Invalid or missing specialization '$specialization', defaulting to 'Others'", name: 'AuthService');
         }
 
         final skills = normalizedData['skills'] is String
@@ -268,17 +359,17 @@ final Map<String, List<String>> skillsBySpecialization = {
             .where((skill) => validSkills.contains(skill))
             .toList();
         if (normalizedData['skills'].isEmpty) {
-          dev.log("No valid skills provided for UID: $uid, specialization: ${normalizedData['specialization']}", name: 'AuthService');
+          dev.log("[2025-10-07 13:43 IST] No valid skills provided for UID: $uid, specialization: ${normalizedData['specialization']}", name: 'AuthService');
         }
 
         if (normalizedData['education'] == null || normalizedData['education'] is! String) {
           normalizedData['education'] = '';
-          dev.log("Invalid or missing education for UID: $uid, defaulting to empty", name: 'AuthService');
+          dev.log("[2025-10-07 13:43 IST] Invalid or missing education for UID: $uid, defaulting to empty", name: 'AuthService');
         }
       }
 
       if (isRecruiter && normalizedData['companyName'] == null) {
-        dev.log("Missing company field for recruiter UID: $uid", name: 'AuthService');
+        dev.log("[2025-10-07 13:43 IST] Missing company field for recruiter UID: $uid", name: 'AuthService');
         throw const AuthException("Company name is required for recruiters");
       }
 
@@ -288,12 +379,14 @@ final Map<String, List<String>> skillsBySpecialization = {
         'uid': uid,
         'role': isRecruiter ? 'recruiter' : 'seeker',
         'mobileNumber': mobileNumber,
+        'name': normalizedData['name'],
+        'fcmToken': fcmToken,
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
 
-      dev.log("Successfully stored signup data for $collection/$uid", name: 'AuthService');
+      dev.log("[2025-10-07 13:43 IST] Successfully stored signup data for $collection/$uid", name: 'AuthService');
     } catch (e, stackTrace) {
-      dev.log("storeSignupData ERROR for UID: $uid, isRecruiter: $isRecruiter: $e", name: 'AuthService', error: e, stackTrace: stackTrace);
+      dev.log("[2025-10-07 13:43 IST] storeSignupData ERROR for UID: $uid, isRecruiter: $isRecruiter: $e", name: 'AuthService', error: e, stackTrace: stackTrace);
       if (e is FirebaseException) {
         throw AuthException('Failed to store signup data: ${e.code} - ${e.message}. Check Firestore permissions for $collection/$uid.');
       }
@@ -301,12 +394,29 @@ final Map<String, List<String>> skillsBySpecialization = {
     }
   }
 
+  void setupFcmTokenRefresh() {
+    _messaging.onTokenRefresh.listen((fcmToken) async {
+      final uid = _auth.currentUser?.uid;
+      if (uid != null) {
+        try {
+          await _firestore.collection('UsersIndex').doc(uid).set({
+            'fcmToken': fcmToken,
+            'updatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
+          dev.log("[2025-10-07 13:43 IST] Updated FCM token for $uid: $fcmToken", name: 'AuthService');
+        } catch (e) {
+          dev.log("[2025-10-07 13:43 IST] Error updating FCM token for $uid: $e", name: 'AuthService', error: e);
+        }
+      }
+    });
+  }
+
   Future<String> uploadCompanyLogo(File file) async {
     final uid = _auth.currentUser?.uid;
     if (uid == null) throw const AuthException("User not logged in");
 
     try {
-      dev.log('Uploading company logo for recruiter $uid', name: 'AuthService');
+      dev.log('[2025-10-07 13:43 IST] Uploading company logo for recruiter $uid', name: 'AuthService');
       final ref = _storage.ref().child('recruiters/$uid/logo_${DateTime.now().millisecondsSinceEpoch}.jpg');
       final uploadTask = await ref.putFile(file);
       final downloadUrl = await uploadTask.ref.getDownloadURL();
@@ -316,10 +426,10 @@ final Map<String, List<String>> skillsBySpecialization = {
         SetOptions(merge: true),
       );
 
-      dev.log('Company logo uploaded and saved for recruiter $uid: $downloadUrl', name: 'AuthService');
+      dev.log('[2025-10-07 13:43 IST] Company logo uploaded and saved for recruiter $uid: $downloadUrl', name: 'AuthService');
       return downloadUrl;
     } catch (e, stackTrace) {
-      dev.log('uploadCompanyLogo ERROR for UID: $uid: $e', name: 'AuthService', error: e, stackTrace: stackTrace);
+      dev.log('[2025-10-07 13:43 IST] uploadCompanyLogo ERROR for UID: $uid: $e', name: 'AuthService', error: e, stackTrace: stackTrace);
       if (e is FirebaseException) {
         throw AuthException('Failed to upload company logo: ${e.code} - ${e.message}');
       }
@@ -332,13 +442,14 @@ final Map<String, List<String>> skillsBySpecialization = {
     if (uid == null) throw const AuthException("User not logged in");
 
     try {
+      dev.log("[2025-10-07 13:43 IST] Uploading seeker photo for $uid", name: 'AuthService');
       final ref = _storage.ref("seeker_photos/$uid/photo.png");
       await ref.putFile(file);
       final url = await ref.getDownloadURL();
-      dev.log("Seeker photo uploaded for $uid: $url", name: 'AuthService');
+      dev.log("[2025-10-07 13:43 IST] Seeker photo uploaded for $uid: $url", name: 'AuthService');
       return url;
     } catch (e) {
-      dev.log("uploadSeekerPhoto ERROR: $e", name: 'AuthService', error: e);
+      dev.log("[2025-10-07 13:43 IST] uploadSeekerPhoto ERROR: $e", name: 'AuthService', error: e);
       if (e is FirebaseException) {
         throw AuthException("Upload failed: ${e.code} - ${e.message}. Check storage permissions or file format.");
       }
@@ -351,7 +462,7 @@ final Map<String, List<String>> skillsBySpecialization = {
     if (uid == null) throw const AuthException("User not logged in");
 
     try {
-      dev.log('Uploading resume for seeker $uid', name: 'AuthService');
+      dev.log('[2025-10-07 13:43 IST] Uploading resume for seeker $uid', name: 'AuthService');
       final ref = _storage.ref().child('seekers/$uid/resume_${DateTime.now().millisecondsSinceEpoch}.pdf');
       final uploadTask = await ref.putFile(file);
       final downloadUrl = await uploadTask.ref.getDownloadURL();
@@ -361,10 +472,10 @@ final Map<String, List<String>> skillsBySpecialization = {
         SetOptions(merge: true),
       );
 
-      dev.log('Resume uploaded and saved for seeker $uid: $downloadUrl', name: 'AuthService');
+      dev.log('[2025-10-07 13:43 IST] Resume uploaded and saved for seeker $uid: $downloadUrl', name: 'AuthService');
       return downloadUrl;
     } catch (e, stackTrace) {
-      dev.log('uploadSeekerResume ERROR for UID: $uid: $e', name: 'AuthService', error: e, stackTrace: stackTrace);
+      dev.log('[2025-10-07 13:43 IST] uploadSeekerResume ERROR for UID: $uid: $e', name: 'AuthService', error: e, stackTrace: stackTrace);
       if (e is FirebaseException) {
         throw AuthException('Failed to upload resume: ${e.code} - ${e.message}');
       }
@@ -380,13 +491,13 @@ final Map<String, List<String>> skillsBySpecialization = {
     try {
       final doc = await _firestore.collection(collection).doc(uid).get();
       if (doc.exists) {
-        dev.log("Fetched profile data for $collection/$uid", name: 'AuthService');
+        dev.log("[2025-10-07 13:43 IST] Fetched profile data for $collection/$uid", name: 'AuthService');
         return doc.data();
       }
-      dev.log("No profile found for $collection/$uid", name: 'AuthService');
+      dev.log("[2025-10-07 13:43 IST] No profile found for $collection/$uid", name: 'AuthService');
       return null;
     } catch (e, stackTrace) {
-      dev.log("fetchProfileData ERROR for $collection/$uid: $e", name: 'AuthService', error: e, stackTrace: stackTrace);
+      dev.log("[2025-10-07 13:43 IST] fetchProfileData ERROR for $collection/$uid: $e", name: 'AuthService', error: e, stackTrace: stackTrace);
       if (e is FirebaseException) {
         throw AuthException('Failed to fetch profile: ${e.code} - ${e.message}. Check Firestore permissions for $collection/$uid.');
       }
@@ -431,7 +542,7 @@ final Map<String, List<String>> skillsBySpecialization = {
 
     final seekerSkills = seekerProfile['skills'] is String
         ? seekerProfile['skills'].split(',').map((s) => s.trim().toLowerCase()).toList()
-        : (seekerProfile['skills'] as List<dynamic>?)?.cast<String>().map((s) => s.toLowerCase()).toList() ?? [];
+        : (seekerProfile['skills'] as List?)?.cast<String>().map((s) => s.toLowerCase()).toList() ?? [];
     final seekerExperience = double.tryParse(seekerProfile['experience']?.toString() ?? '0') ?? 0.0;
     final seekerEducation = (seekerProfile['education'] as String?)?.toLowerCase() ?? '';
     final seekerSpecialization = (seekerProfile['specialization'] as String?)?.toLowerCase() ?? '';
@@ -499,7 +610,23 @@ final Map<String, List<String>> skillsBySpecialization = {
     );
 
     await batch.commit();
-    dev.log('[2025-08-13 23:25 IST] Applied to job $jobId by seeker $uid', name: 'AuthService');
+    dev.log('[2025-10-07 13:43 IST] Applied to job $jobId by seeker $uid', name: 'AuthService');
+
+    final recruiterFcmToken = await _getFcmToken(recruiterId);
+    if (recruiterFcmToken != null) {
+      await _sendFcmNotification(
+        recipientFcmToken: recruiterFcmToken,
+        title: 'New Job Application',
+        body: 'New application for $jobTitle from ${seekerProfile['name'] ?? 'a seeker'}',
+        data: {
+          'notificationId': notificationId,
+          'jobId': jobId,
+          'seekerId': uid,
+          'from': uid,
+          'type': 'application',
+        },
+      );
+    }
   }
 
   Future<void> scheduleInterview({
@@ -546,13 +673,29 @@ final Map<String, List<String>> skillsBySpecialization = {
     );
 
     await batch.commit();
-    dev.log('[2025-08-09 01:05 IST] Scheduled interview for job $jobId, seeker $seekerId by recruiter $uid', name: 'AuthService');
+    dev.log('[2025-10-07 13:43 IST] Scheduled interview for job $jobId, seeker $seekerId by recruiter $uid', name: 'AuthService');
+
+    final seekerFcmToken = await _getFcmToken(seekerId);
+    if (seekerFcmToken != null) {
+      await _sendFcmNotification(
+        recipientFcmToken: seekerFcmToken,
+        title: 'Interview Scheduled',
+        body: 'Interview for ${appData['jobTitle']} scheduled on ${DateFormat('dd MMM yyyy, hh:mm a').format(interviewDate)}',
+        data: {
+          'notificationId': notificationId,
+          'jobId': jobId,
+          'seekerId': seekerId,
+          'from': uid,
+          'type': 'application',
+        },
+      );
+    }
   }
 
   Future<List<Map<String, dynamic>>> fetchAppliedSeekers() async {
     final uid = _auth.currentUser?.uid;
     if (uid == null) {
-      dev.log('[2025-08-09 00:33 IST] No authenticated user in fetchAppliedSeekers', name: 'AuthService');
+      dev.log('[2025-10-07 13:43 IST] No authenticated user in fetchAppliedSeekers', name: 'AuthService');
       throw const AuthException('User not logged in');
     }
 
@@ -561,10 +704,10 @@ final Map<String, List<String>> skillsBySpecialization = {
           .collection('Applications')
           .where('recruiterId', isEqualTo: uid)
           .get();
-      dev.log('[2025-08-09 00:33 IST] Fetched ${snapshot.docs.length} applicants for recruiter piqued', name: 'AuthService');
+      dev.log('[2025-10-07 13:43 IST] Fetched ${snapshot.docs.length} applicants for recruiter $uid', name: 'AuthService');
       return snapshot.docs.map((doc) => doc.data() as Map<String, dynamic>).toList();
     } catch (e) {
-      dev.log('[2025-08-09 00:33 IST] Error fetching applied seekers for $uid: $e', name: 'AuthService', error: e);
+      dev.log('[2025-10-07 13:43 IST] Error fetching applied seekers for $uid: $e', name: 'AuthService', error: e);
       rethrow;
     }
   }
@@ -586,7 +729,7 @@ final Map<String, List<String>> skillsBySpecialization = {
     final participants = [uid, recruiterId == uid ? seekerId : recruiterId];
     participants.sort();
     final chatId = '${participants[0]}_${participants[1]}';
-    dev.log('[2025-08-09 01:15 IST] Generated chatId $chatId for seeker $seekerId, job $jobId', name: 'AuthService');
+    dev.log('[2025-10-07 13:43 IST] Generated chatId $chatId for seeker $seekerId, job $jobId', name: 'AuthService');
     return chatId;
   }
 
@@ -599,24 +742,27 @@ final Map<String, List<String>> skillsBySpecialization = {
     final uid = _auth.currentUser?.uid;
     if (uid == null) throw const AuthException("User not logged in");
 
+    final applicationId = '${seekerId}_$jobId';
     try {
-      final applicationId = '${seekerId}_$jobId';
       final applicationRef = _firestore.collection('Applications').doc(applicationId);
       final appDoc = await applicationRef.get();
       if (!appDoc.exists) {
-        dev.log('Application $applicationId not found', name: 'AuthService');
+        dev.log('[2025-10-07 13:43 IST] Application $applicationId not found', name: 'AuthService');
         throw const AuthException('Application not found');
       }
       final jobTitle = appDoc.data()!['jobTitle']?.toString() ?? 'Untitled';
-      dev.log('Processing action $action for application $applicationId', name: 'AuthService');
+      dev.log('[2025-10-07 13:43 IST] Processing action $action for application $applicationId', name: 'AuthService');
 
       final batch = _firestore.batch();
       final notificationId = _firestore.collection('SeekerNotifications').doc(seekerId).collection('Notifications').doc().id;
       final notifRef = _firestore.collection('SeekerNotifications').doc(seekerId).collection('Notifications').doc(notificationId);
 
+      String notificationMessage = '';
+      String notificationType = 'status_update';
+
       switch (action.toLowerCase()) {
         case 'shortlist':
-          dev.log('Shortlisting seeker $seekerId for job $jobId', name: 'AuthService');
+          dev.log('[2025-10-07 13:43 IST] Shortlisting seeker $seekerId for job $jobId', name: 'AuthService');
           batch.set(_firestore.collection('Shortlisted').doc(jobId).collection('Seekers').doc(seekerId), {
             'seekerId': seekerId,
             'jobId': jobId,
@@ -624,40 +770,20 @@ final Map<String, List<String>> skillsBySpecialization = {
             'createdAt': FieldValue.serverTimestamp(),
           }, SetOptions(merge: true));
           batch.update(applicationRef, {'status': 'Shortlisted', 'interviewDate': null, 'updatedAt': FieldValue.serverTimestamp()});
-          batch.set(notifRef, {
-            'to': seekerId,
-            'from': uid,
-            'message': 'You have been shortlisted for "$jobTitle"!',
-            'timestamp': FieldValue.serverTimestamp(),
-            'read': false,
-            'type': 'status_update',
-            'jobId': jobId,
-            'jobTitle': jobTitle,
-            'notificationId': notificationId,
-          });
+          notificationMessage = 'You have been shortlisted for "$jobTitle"!';
           break;
 
         case 'reject':
-          dev.log('Rejecting seeker $seekerId for job $jobId', name: 'AuthService');
+          dev.log('[2025-10-07 13:43 IST] Rejecting seeker $seekerId for job $jobId', name: 'AuthService');
           batch.update(applicationRef, {'status': 'Rejected', 'interviewDate': null, 'updatedAt': FieldValue.serverTimestamp()});
-          batch.set(notifRef, {
-            'to': seekerId,
-            'from': uid,
-            'message': 'Your application for "$jobTitle" has been rejected.',
-            'timestamp': FieldValue.serverTimestamp(),
-            'read': false,
-            'type': 'status_update',
-            'jobId': jobId,
-            'jobTitle': jobTitle,
-            'notificationId': notificationId,
-          });
+          notificationMessage = 'Your application for "$jobTitle" has been rejected.';
           break;
 
         case 'schedule':
-          dev.log('Scheduling interview for seeker $seekerId, job $jobId', name: 'AuthService');
+          dev.log('[2025-10-07 13:43 IST] Scheduling interview for seeker $seekerId, job $jobId', name: 'AuthService');
           final interviewDate = additionalData?['interviewDate'] as Timestamp?;
           if (interviewDate == null) {
-            dev.log('Missing interviewDate for schedule action for application $applicationId', name: 'AuthService');
+            dev.log('[2025-10-07 13:43 IST] Missing interviewDate for schedule action for application $applicationId', name: 'AuthService');
             throw const AuthException('Interview date is required for scheduling');
           }
           batch.update(applicationRef, {
@@ -665,32 +791,50 @@ final Map<String, List<String>> skillsBySpecialization = {
             'interviewDate': interviewDate,
             'updatedAt': FieldValue.serverTimestamp(),
           });
-          batch.set(notifRef, {
-            'to': seekerId,
-            'from': uid,
-            'message': 'Interview for "$jobTitle" scheduled on ${DateFormat('dd MMM yyyy').format(interviewDate.toDate())}',
-            'timestamp': FieldValue.serverTimestamp(),
-            'read': false,
-            'type': 'interview_scheduled',
-            'jobId': jobId,
-            'jobTitle': jobTitle,
-            'notificationId': notificationId,
-          });
+          notificationMessage = 'Interview for "$jobTitle" scheduled on ${DateFormat('dd MMM yyyy').format(interviewDate.toDate())}';
+          notificationType = 'interview_scheduled';
           break;
 
         default:
-          dev.log('Invalid action: $action for application $applicationId', name: 'AuthService');
+          dev.log('[2025-10-07 13:43 IST] Invalid action: $action for application $applicationId', name: 'AuthService');
           throw const AuthException('Invalid action');
       }
 
+      batch.set(notifRef, {
+        'to': seekerId,
+        'from': uid,
+        'message': notificationMessage,
+        'timestamp': FieldValue.serverTimestamp(),
+        'read': false,
+        'type': notificationType,
+        'jobId': jobId,
+        'jobTitle': jobTitle,
+        'notificationId': notificationId,
+      });
+
       await batch.commit();
-      dev.log('Action $action completed for application $applicationId', name: 'AuthService');
+      dev.log('[2025-10-07 13:43 IST] Action $action completed for application $applicationId', name: 'AuthService');
+
+      final seekerFcmToken = await _getFcmToken(seekerId);
+      if (seekerFcmToken != null) {
+        await _sendFcmNotification(
+          recipientFcmToken: seekerFcmToken,
+          title: notificationType == 'interview_scheduled' ? 'Interview Scheduled' : 'Application Update',
+          body: notificationMessage,
+          data: {
+            'notificationId': notificationId,
+            'jobId': jobId,
+            'seekerId': seekerId,
+            'from': uid,
+            'type': notificationType,
+          },
+        );
+      }
     } catch (e, stackTrace) {
-      dev.log('handleAction ERROR for action $action, job $jobId, seeker $seekerId: $e', name: 'AuthService', error: e, stackTrace: stackTrace);
+      dev.log('[2025-10-07 13:43 IST] handleAction ERROR for action $action, job $jobId, seeker $seekerId: $e', name: 'AuthService', error: e, stackTrace: stackTrace);
       if (e is FirebaseException) {
-        final applicationId = '${seekerId}_$jobId';
-        dev.log('Firebase error details: code=${e.code}, message=${e.message}, path=Applications/$applicationId or Shortlisted/$jobId/Seekers/$seekerId or Messages', name: 'AuthService');
-        throw AuthException('Action failed: ${e.code} - ${e.message}. Check Firestore rules for Applications/$applicationId or Shortlisted/$jobId/Seekers/$seekerId or Messages.');
+        dev.log('[2025-10-07 13:43 IST] Firebase error details: code=${e.code}, message=${e.message}, path=Applications/$applicationId or Shortlisted/$jobId/Seekers/$seekerId or Notifications', name: 'AuthService');
+        throw AuthException('Action failed: ${e.code} - ${e.message}. Check Firestore rules.');
       }
       rethrow;
     }
@@ -703,7 +847,7 @@ final Map<String, List<String>> skillsBySpecialization = {
     try {
       final recruiterDoc = await _firestore.collection('Recruiters').doc(uid).get();
       if (!recruiterDoc.exists) {
-        dev.log('User $uid is not a recruiter', name: 'AuthService');
+        dev.log('[2025-10-07 13:43 IST] User $uid is not a recruiter', name: 'AuthService');
         throw const AuthException('User is not a recruiter');
       }
 
@@ -729,10 +873,10 @@ final Map<String, List<String>> skillsBySpecialization = {
           'name': name,
         });
       }
-      dev.log('Returning ${calls.length} scheduled calls for $uid', name: 'AuthService');
+      dev.log('[2025-10-07 13:43 IST] Returning ${calls.length} scheduled calls for $uid', name: 'AuthService');
       return calls;
     } catch (e, stackTrace) {
-      dev.log('fetchScheduledCalls ERROR: $e', name: 'AuthService', error: e, stackTrace: stackTrace);
+      dev.log('[2025-10-07 13:43 IST] fetchScheduledCalls ERROR: $e', name: 'AuthService', error: e, stackTrace: stackTrace);
       if (e is FirebaseException) {
         throw AuthException("Failed to fetch scheduled calls: ${e.code} - ${e.message}. Check Firestore permissions.");
       }
@@ -740,7 +884,7 @@ final Map<String, List<String>> skillsBySpecialization = {
     }
   }
 
- Future<void> sendMessage(String recipientId, String jobId, String message, {String status = 'sent'}) async {
+  Future<void> sendMessage(String recipientId, String jobId, String message, {String status = 'sent'}) async {
     final senderId = FirebaseAuth.instance.currentUser!.uid;
     try {
       String seekerId;
@@ -761,7 +905,7 @@ final Map<String, List<String>> skillsBySpecialization = {
             .doc('${recipientId}_$jobId')
             .get();
         if (!recipientAppDoc.exists) {
-          dev.log('[2025-08-28 15:31 IST] Application ${recipientId}_$jobId not found', name: 'AuthService');
+          dev.log('[2025-10-07 13:43 IST] Application ${recipientId}_$jobId not found', name: 'AuthService');
           throw Exception('Application does not exist');
         }
         seekerId = recipientId;
@@ -773,12 +917,12 @@ final Map<String, List<String>> skillsBySpecialization = {
           .doc(applicationId)
           .get();
       if (!appDoc.exists) {
-        dev.log('[2025-08-28 15:31 IST] Application $applicationId not found', name: 'AuthService');
+        dev.log('[2025-10-07 13:43 IST] Application $applicationId not found', name: 'AuthService');
         throw Exception('Application does not exist');
       }
       final appData = appDoc.data()!;
       if (appData['jobId'] != jobId || appData['seekerId'] != seekerId || appData['recruiterId'] is! String) {
-        dev.log('[2025-08-28 15:31 IST] Invalid application data for $applicationId: $appData', name: 'AuthService');
+        dev.log('[2025-10-07 13:43 IST] Invalid application data for $applicationId: $appData', name: 'AuthService');
         throw Exception('Invalid application data');
       }
 
@@ -789,7 +933,7 @@ final Map<String, List<String>> skillsBySpecialization = {
           .collection('Messages')
           .doc(chatId)
           .collection('Chats')
-          .doc(); // Generate doc ID for message
+          .doc();
       await messageDocRef.set({
         'senderId': senderId,
         'recipientId': recipientId,
@@ -798,12 +942,51 @@ final Map<String, List<String>> skillsBySpecialization = {
         'timestamp': FieldValue.serverTimestamp(),
         'status': status,
       });
-      dev.log('[2025-08-28 15:31 IST] Message sent from $senderId to $recipientId for job $jobId with chatId $chatId, status: $status', name: 'AuthService');
+
+      final notificationId = _firestore.collection('SeekerNotifications').doc(recipientId).collection('Notifications').doc().id;
+      await _firestore.collection(recipientId == seekerId ? 'SeekerNotifications' : 'RecruiterNotifications')
+          .doc(recipientId)
+          .collection('Notifications')
+          .doc(notificationId)
+          .set({
+        'to': recipientId,
+        'recipientId': recipientId,
+        'from': senderId,
+        'jobId': jobId,
+        'jobTitle': appData['jobTitle']?.toString() ?? 'Untitled',
+        'notificationId': notificationId,
+        'type': 'message',
+        'chatId': chatId,
+        'seekerId': seekerId,
+        'read': false,
+        'timestamp': FieldValue.serverTimestamp(),
+        'message': 'New message: $message',
+      });
+
+      dev.log('[2025-10-07 13:43 IST] Message sent from $senderId to $recipientId for job $jobId with chatId $chatId, status: $status', name: 'AuthService');
+
+      final recipientFcmToken = await _getFcmToken(recipientId);
+      if (recipientFcmToken != null) {
+        await _sendFcmNotification(
+          recipientFcmToken: recipientFcmToken,
+          title: 'New Message',
+          body: message,
+          data: {
+            'notificationId': notificationId,
+            'chatId': chatId,
+            'jobId': jobId,
+            'seekerId': seekerId,
+            'from': senderId,
+            'type': 'message',
+          },
+        );
+      }
     } catch (e) {
-      dev.log('[2025-08-28 15:31 IST] Error sending message from $senderId to $recipientId for job $jobId: $e', name: 'AuthService', error: e);
+      dev.log('[2025-10-07 13:43 IST] Error sending message from $senderId to $recipientId for job $jobId: $e', name: 'AuthService', error: e);
       throw AuthException('Failed to send message: $e');
     }
   }
+
   Future<bool> isSignedIn() async => _auth.currentUser != null;
 
   User? getCurrentUser() => _auth.currentUser;
@@ -818,13 +1001,13 @@ final Map<String, List<String>> skillsBySpecialization = {
       final userDoc = await _firestore.collection('UsersIndex').doc(uid).get();
       if (userDoc.exists) {
         final role = userDoc.data()?['role'] as String?;
-        dev.log("Role found for $uid: $role", name: 'AuthService');
+        dev.log("[2025-10-07 13:43 IST] Role found for $uid: $role", name: 'AuthService');
         return role;
       }
-      dev.log("No role found for $uid in UsersIndex", name: 'AuthService');
+      dev.log("[2025-10-07 13:43 IST] No role found for $uid in UsersIndex", name: 'AuthService');
       return null;
     } catch (e) {
-      dev.log("getUserRole ERROR: $e", name: 'AuthService', error: e);
+      dev.log("[2025-10-07 13:43 IST] getUserRole ERROR: $e", name: 'AuthService', error: e);
       return null;
     }
   }
