@@ -127,9 +127,212 @@ class UnifiedScreenState extends State<UnifiedScreen> {
     }
   }
 
+  Future<bool> showPolicyDialog() async {
+    bool accepted = false;
+    bool isChecked = false;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12.r),
+              ),
+              title: Text(
+                'Privacy Policy & Terms and Conditions',
+                style: TextStyle(
+                  fontSize: 18.sp,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blue.shade900,
+                ),
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Privacy Policy for Naukariwala App',
+                      style: TextStyle(
+                        fontSize: 16.sp,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    SizedBox(height: 8.h),
+                    Text(
+                      'Effective Date: October 3, 2025\n\n'
+                      'Naukariwala ("we," "us," or "our") respects your privacy and is committed to protecting your personal information. This Privacy Policy explains how we collect, use, disclose, and safeguard your data when you use our mobile app (the "App"). By downloading, installing, or using the App, you consent to the practices described herein. If you do not agree, please do not use the App.\n\n'
+                      '1. **Information We Collect** We collect information to provide and improve our services. This includes:\n'
+                      '- **Personal Information**: Name, email address, phone number, resume/CV details (e.g., education, work experience, skills), location (if enabled), and job preferences provided during registration or job applications.\n'
+                      '- **Device and Usage Data**: IP address, device type, operating system, app interactions (e.g., searches, applications viewed), and crash reports.\n'
+                      '- **Location Data**: Approximate location for job recommendations (e.g., jobs near you), only with your explicit permission via device settings.\n'
+                      '- **Third-Party Data**: Information from integrated services like social logins (e.g., Google or LinkedIn) or job boards.\n'
+                      'We do not collect sensitive data such as race, religion, or health information unless voluntarily provided in your resume.\n\n'
+                      '2. **How We Use Your Information** Your data helps us:\n'
+                      '- Create and manage your account.\n'
+                      '- Match you with relevant job opportunities using AI algorithms.\n'
+                      '- Process job applications and communicate with employers on your behalf (with consent).\n'
+                      '- Send personalized notifications, newsletters, or promotional content (you can opt out anytime).\n'
+                      '- Analyze usage trends to improve the App\'s features and performance.\n'
+                      '- Comply with legal obligations, prevent fraud, and enforce our Terms and Conditions.\n\n'
+                      '3. **How We Share Your Information** We do not sell your personal data. We may share it with:\n'
+                      '- **Service Providers**: Trusted third parties for hosting, analytics (e.g., Google Analytics), or payment processing, bound by confidentiality.\n'
+                      '- **Employers**: Resume and application details when you apply to a job, as needed for recruitment.\n'
+                      '- **Legal Authorities**: If required by law, subpoena, or to protect our rights/safety.\n'
+                      '- **Business Transfers**: In case of merger, acquisition, or sale of assets.\n'
+                      'For international users, data may be transferred to servers in India or the US, compliant with local laws.\n\n'
+                      '4. **Your Rights and Choices** Depending on your location (e.g., under GDPR for EU users or CCPA for California residents):\n'
+                      '- Access, update, or delete your data via App settings or by emailing privacy@naukariwala.com.\n'
+                      '- Opt out of marketing emails or data sharing.\n'
+                      '- Withdraw consent for location tracking anytime through device permissions.\n'
+                      '- Request data portability or restriction of processing.\n'
+                      'We retain your data only as long as necessary (e.g., 2 years post-last activity) or as required by law.\n\n'
+                      '5. **Children\'s Privacy** The App is not intended for users under 18. We do not knowingly collect data from children.\n\n'
+                      '6. **Security** We use industry-standard measures like encryption and secure servers to protect your data. However, no system is 100% secure, so we cannot guarantee absolute protection.\n\n'
+                      '7. **Changes to This Policy** We may update this policy periodically. Changes will be posted in the App with the new effective date. Continued use constitutes acceptance.\n\n'
+                      '8. **Contact Us** For questions, contact our Data Protection Officer at privacy@naukariwala.com.\n\n'
+                      'Your trust is our priority – thank you for choosing Naukariwala!',
+                      style: TextStyle(
+                        fontSize: 14.sp,
+                        color: Colors.grey.shade700,
+                      ),
+                    ),
+                    SizedBox(height: 16.h),
+                    Text(
+                      'Terms and Conditions for Naukariwala App',
+                      style: TextStyle(
+                        fontSize: 16.sp,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    SizedBox(height: 8.h),
+                    Text(
+                      'Effective Date: October 3, 2025\n\n'
+                      'These Terms and Conditions ("Terms") form a binding agreement between you ("User," "you," or "your") and Naukariwala Pvt. Ltd. ("we," "us," or "our"), a company incorporated under the laws of India, regarding your use of the Naukariwala mobile app (the "App"). By downloading, accessing, or using the App, you agree to these Terms. If you do not agree, do not use the App.\n\n'
+                      '1. **Eligibility** You must be at least 18 years old and legally capable of entering contracts to use the App. By using it, you represent that you meet these requirements.\n\n'
+                      '2. **App Description and License** The App is a job search platform allowing Users to create profiles, search/upload resumes, apply for jobs, and connect with employers. We grant you a limited, non-exclusive, non-transferable, revocable license to use the App for personal, non-commercial purposes on your mobile device. You may not:\n'
+                      '- Copy, modify, distribute, or reverse-engineer the App.\n'
+                      '- Use it for illegal activities, spam, or harassment.\n'
+                      '- Remove any copyrights or trademarks.\n\n'
+                      '3. **User Accounts and Content**\n'
+                      '- **Registration**: Provide accurate information during signup. You are responsible for maintaining confidentiality of your login credentials.\n'
+                      '- **User Content**: Resumes, profiles, and messages you post ("User Content") must be truthful, non-infringing, and compliant with laws. You retain ownership but grant us a worldwide, royalty-free license to use, display, and share it for App purposes (e.g., job matching).\n'
+                      '- **Our Content**: All App materials (e.g., job listings, algorithms) are our property or licensed to us. You may not use them without permission.\n'
+                      'We do not endorse or verify job listings or User Content and disclaim liability for inaccuracies or disputes.\n\n'
+                      '4. **Job Applications and Employer Interactions**\n'
+                      '- Applying to jobs via the App authorizes us to share your User Content with employers.\n'
+                      '- We are not an employment agency; we facilitate connections but do not guarantee hires.\n'
+                      '- Employers may contact you directly; any agreements are between you and them.\n\n'
+                      '5. **Prohibited Conduct** You agree not to:\n'
+                      '- Post false, misleading, or harmful content.\n'
+                      '- Violate privacy rights or intellectual property.\n'
+                      '- Use bots, scripts, or automated tools to access the App.\n'
+                      '- Interfere with other Users\' experiences.\n'
+                      'Violations may result in account suspension or termination.\n\n'
+                      '6. **Payments and Subscriptions** Certain features (e.g., premium job alerts) may require payment. All fees are non-refundable unless specified. We use third-party processors; you agree to their terms.\n\n'
+                      '7. **Disclaimers and Limitations of Liability** The App is provided "as is" without warranties. We disclaim liability for:\n'
+                      '- Job outcomes, employer actions, or User interactions.\n'
+                      '- Data loss, viruses, or interruptions.\n'
+                      'Our liability is limited to the fees you paid us in the last 12 months. No consequential damages.\n\n'
+                      '8. **Termination** We may terminate or suspend your access anytime for violations. Upon termination, your license ends, and you must delete the App.\n\n'
+                      '9. **Governing Law and Dispute Resolution** These Terms are governed by Indian law. Disputes shall be resolved exclusively in Mumbai courts. For informal resolution, contact support@naukariwala.com.\n\n'
+                      '10. **Changes to Terms** We may update these Terms; continued use constitutes acceptance. Check the App for the latest version.\n\n'
+                      '11. **Contact Us** Questions? Email legal@naukariwala.com.',
+                      style: TextStyle(
+                        fontSize: 14.sp,
+                        color: Colors.grey.shade700,
+                      ),
+                    ),
+                    SizedBox(height: 16.h),
+                    Row(
+                      children: [
+                        Checkbox(
+                          value: isChecked,
+                          onChanged: (value) {
+                            setDialogState(() {
+                              isChecked = value ?? false;
+                            });
+                          },
+                          activeColor: Colors.teal,
+                        ),
+                        Expanded(
+                          child: Text(
+                            'I agree to the Privacy Policy and Terms and Conditions',
+                            style: TextStyle(fontSize: 14.sp),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  child: Text(
+                    'Cancel',
+                    style: TextStyle(
+                      fontSize: 14.sp,
+                      color: Colors.grey.shade700,
+                    ),
+                  ),
+                ),
+                AnimatedScaleButton(
+                  onPressed: () {
+                    if (isChecked) {
+                      accepted = true;
+                      Navigator.of(context).pop();
+                    } else {
+                      _showSnack('Please agree to the Privacy Policy and Terms and Conditions.');
+                    }
+                  },
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Colors.blue.shade700, Colors.teal.shade400],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(8.r),
+                    ),
+                    child: Text(
+                      'Accept',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14.sp,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    return accepted;
+  }
+
   Future<void> _submitSignup() async {
     if (!_formKey.currentState!.validate()) {
       _showSnack("Please complete all required fields.");
+      return;
+    }
+
+    // Show policy dialog before proceeding with signup
+    bool accepted = await showPolicyDialog();
+    if (!accepted) {
+      dev.log('User did not accept policies, signup aborted', name: 'UnifiedScreen');
       return;
     }
 
