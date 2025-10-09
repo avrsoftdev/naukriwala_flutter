@@ -1,89 +1,74 @@
 #########################################
 # ✅ Flutter & Android Core
 #########################################
-
 -keep class io.flutter.** { *; }
 -keep class io.flutter.plugins.** { *; }
 -keep class io.flutter.embedding.** { *; }
-
-# Keep your app entry points
+# Keep app entry points and potential services
 -keep class **.MainApplication { *; }
 -keep class **.MainActivity { *; }
-
+-keep class * extends android.app.Service { *; }
 # Keep parcelable classes (used in Flutter channels)
 -keep class * implements android.os.Parcelable {
     public static final android.os.Parcelable$Creator *;
 }
-
 #########################################
 # ✅ Firebase SDKs
 #########################################
-
--keep class com.google.firebase.** { *; }
+# Keep only used Firebase services
+-keep class com.google.firebase.auth.** { *; }
+-keep class com.google.firebase.firestore.** { *; }
+-keep class com.google.firebase.messaging.** { *; }
+-keep class com.google.firebase.appcheck.** { *; }
 -dontwarn com.google.firebase.**
-
+# Keep Firestore and Realtime Database annotations
 -keepclassmembers class * {
     @com.google.firebase.firestore.PropertyName <fields>;
     @com.google.firebase.firestore.Exclude <fields>;
     @com.google.firebase.database.PropertyName <fields>;
     @com.google.firebase.database.Exclude <fields>;
 }
-
-# Firebase Messaging & AppCheck
+# Keep FCM and App Check services
 -keep class * extends com.google.firebase.messaging.FirebaseMessagingService { *; }
 -keep class * extends com.google.firebase.appcheck.** { *; }
-
 #########################################
 # ✅ Google Play Services & Play Core
 #########################################
-
 -keep class com.google.android.gms.** { *; }
 -dontwarn com.google.android.gms.**
-
-# ✅ Keep Play Core split install / dynamic feature classes
+# Keep Play Core split install and app update classes
 -keep class com.google.android.play.core.splitinstall.** { *; }
 -keep class com.google.android.play.core.splitcompat.** { *; }
 -keep class com.google.android.play.core.tasks.** { *; }
 -keep class com.google.android.play.core.common.** { *; }
-
+-keep class com.google.android.play.core.appupdate.** { *; }
 -dontwarn com.google.android.play.core.**
-
 #########################################
 # ✅ Kotlin & Coroutines
 #########################################
-
 -keep class kotlin.** { *; }
 -keep class kotlinx.** { *; }
 -dontwarn kotlin.**
 -dontwarn kotlinx.**
-
-#########################################
-# ✅ GSON / Serialization
-#########################################
-
--keepclassmembers class * {
-    @com.google.gson.annotations.SerializedName <fields>;
-}
-
 #########################################
 # ✅ App Models & Public API
 #########################################
-
-# Keep all models (adjust your package name if needed)
+# Keep specific model package (adjust if package name differs)
 -keepclassmembers class com.naukariwala.avr.model.** { *; }
-
-# Keep everything public in your package (optional but safer for release builds)
+# Keep public classes in your app package
 -keep public class com.naukariwala.avr.** { *; }
-
-# Keep constructors for dependency injection
+# Keep constructors for dependency injection or instantiation
 -keepclassmembers class * {
     public <init>(...);
 }
-
+# Keep custom exception class
+-keep class com.naukariwala.avr.AuthException { *; }
 #########################################
 # ✅ Misc Safe Defaults
 #########################################
-
 -dontwarn javax.annotation.**
 -dontwarn org.jetbrains.annotations.**
 -dontwarn sun.misc.Unsafe
+# Prevent removal of MultiDex-related classes
+-keep class androidx.multidex.** { *; }
+-dontwarn androidx.multidex.**

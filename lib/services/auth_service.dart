@@ -4,10 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:googleapis_auth/auth_io.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
-import 'package:flutter/services.dart' show rootBundle;
+import 'package:cloud_functions/cloud_functions.dart';
 import 'dart:developer' as dev;
 import 'package:intl/intl.dart';
 import 'dart:io';
@@ -26,18 +23,16 @@ class AuthService {
   final FirebaseStorage _storage = FirebaseStorage.instance;
   final FirebaseMessaging _messaging = FirebaseMessaging.instance;
 
-  static const String _serviceAccountJsonPath = 'assets/naukriwala-455909-firebase-adminsdk.json';
-
   Future<String?> _getFcmToken(String recipientId) async {
     try {
       final doc = await _firestore.collection('UsersIndex').doc(recipientId).get();
       final token = doc.data()?['fcmToken'] as String?;
       if (token == null) {
-        dev.log('[2025-10-07 13:43 IST] No FCM token for recipient $recipientId', name: 'AuthService');
+        dev.log('[2025-10-10 00:35 IST] No FCM token for recipient $recipientId', name: 'AuthService');
       }
       return token;
     } catch (e) {
-      dev.log('[2025-10-07 13:43 IST] Error fetching FCM token for $recipientId: $e', name: 'AuthService', error: e);
+      dev.log('[2025-10-10 00:35 IST] Error fetching FCM token for $recipientId: $e', name: 'AuthService', error: e);
       return null;
     }
   }
@@ -49,59 +44,30 @@ class AuthService {
     required Map<String, String> data,
   }) async {
     try {
-      final String serviceAccountJson = await rootBundle.loadString(_serviceAccountJsonPath);
-      var client = await clientViaServiceAccount(
-        ServiceAccountCredentials.fromJson(jsonDecode(serviceAccountJson)),
-        ['https://www.googleapis.com/auth/firebase.messaging'],
+      final callable = FirebaseFunctions.instance.httpsCallable(
+        'sendNotification',
+        options: HttpsCallableOptions(
+          timeout: const Duration(seconds: 30),
+        ),
       );
+      final response = await callable.call({
+        'token': recipientFcmToken,
+        'title': title,
+        'body': body,
+        'data': {
+          ...data,
+          'notificationId': data['notificationId'] ?? '', // Ensure notificationId is included
+          'message': data['message'] ?? '', // Include message for custom handling
+        },
+      });
 
-      int retryCount = 0;
-      const maxRetries = 2;
-      bool success = false;
-      while (retryCount < maxRetries && !success) {
-        final response = await http.post(
-          Uri.parse('https://fcm.googleapis.com/v1/projects/naukriwala-455909/messages:send'),
-          headers: {
-            'Authorization': 'Bearer ${client.credentials.accessToken.data}',
-            'Content-Type': 'application/json',
-          },
-          body: jsonEncode({
-            'message': {
-              'token': recipientFcmToken,
-              'notification': {
-                'title': title,
-                'body': body,
-              },
-              'data': data,
-              'android': {'priority': 'high'},
-              'apns': {'headers': {'apns-priority': '10'}},
-            },
-          }),
-        );
-
-        if (response.statusCode == 200) {
-          success = true;
-          dev.log('[2025-10-07 13:43 IST] FCM notification sent to $recipientFcmToken: ${response.body}', name: 'AuthService');
-        } else {
-          dev.log('[2025-10-07 13:43 IST] FCM error (attempt ${retryCount + 1}): ${response.statusCode} - ${response.body}', name: 'AuthService');
-          if (response.statusCode == 401 && retryCount < maxRetries - 1) {
-            client.close();
-            client = await clientViaServiceAccount(
-              ServiceAccountCredentials.fromJson(jsonDecode(serviceAccountJson)),
-              ['https://www.googleapis.com/auth/firebase.messaging'],
-            );
-          }
-          retryCount++;
-        }
+      if (response.data['success'] == true) {
+        dev.log('[2025-10-10 00:35 IST] FCM notification sent via Cloud Function to $recipientFcmToken', name: 'AuthService');
+      } else {
+        dev.log('[2025-10-10 00:35 IST] Cloud Function response: ${response.data}', name: 'AuthService');
       }
-
-      if (!success) {
-        dev.log('[2025-10-07 13:43 IST] Failed to send FCM notification after $maxRetries attempts', name: 'AuthService');
-      }
-
-      client.close();
     } catch (e, stackTrace) {
-      dev.log('[2025-10-07 13:43 IST] Error sending FCM notification: $e', name: 'AuthService', error: e, stackTrace: stackTrace);
+      dev.log('[2025-10-10 00:35 IST] Error sending FCM notification via Cloud Function: $e', name: 'AuthService', error: e, stackTrace: stackTrace);
     }
   }
 
@@ -298,7 +264,7 @@ class AuthService {
     final collection = isRecruiter ? 'Recruiters' : 'Seekers';
 
     try {
-      dev.log("[2025-10-07 13:43 IST] Writing to $collection/$uid", name: 'AuthService');
+      dev.log("[2025-10-10 00:35 IST] Writing to $collection/$uid", name: 'AuthService');
 
       String mobileNumber = data['Mobile Number']?.toString().trim() ??
           data['mobileNumber']?.toString().trim() ??
@@ -306,22 +272,22 @@ class AuthService {
           '';
 
       if (mobileNumber.isEmpty) {
-        dev.log("[2025-10-07 13:43 IST] Mobile number is missing for UID: $uid. Input data: $data, FirebaseAuth phoneNumber: ${_auth.currentUser?.phoneNumber}", name: 'AuthService');
+        dev.log("[2025-10-10 00:35 IST] Mobile number is missing for UID: $uid. Input data: $data, FirebaseAuth phoneNumber: ${_auth.currentUser?.phoneNumber}", name: 'AuthService');
         throw const AuthException("Mobile number is required");
       }
 
       final mobileNumberRegex = RegExp(r'^\+\d{10,15}$');
       if (!mobileNumberRegex.hasMatch(mobileNumber)) {
-        dev.log("[2025-10-07 13:43 IST] Invalid mobile number format for UID: $uid, mobileNumber: $mobileNumber", name: 'AuthService');
+        dev.log("[2025-10-10 00:35 IST] Invalid mobile number format for UID: $uid, mobileNumber: $mobileNumber", name: 'AuthService');
         throw const AuthException("Invalid mobile number format. Must start with '+' followed by 10-15 digits.");
       }
 
       String? fcmToken;
       try {
         fcmToken = await _messaging.getToken();
-        dev.log("[2025-10-07 13:43 IST] Fetched FCM token for $uid: $fcmToken", name: 'AuthService');
+        dev.log("[2025-10-10 00:35 IST] Fetched FCM token for $uid: $fcmToken", name: 'AuthService');
       } catch (e) {
-        dev.log("[2025-10-07 13:43 IST] Error fetching FCM token for $uid: $e", name: 'AuthService', error: e);
+        dev.log("[2025-10-10 00:35 IST] Error fetching FCM token for $uid: $e", name: 'AuthService', error: e);
       }
 
       final normalizedData = {
@@ -343,7 +309,7 @@ class AuthService {
         final specialization = normalizedData['specialization'] as String?;
         if (specialization == null || !specializationOptions.contains(specialization)) {
           normalizedData['specialization'] = 'Others';
-          dev.log("[2025-10-07 13:43 IST] Invalid or missing specialization '$specialization', defaulting to 'Others'", name: 'AuthService');
+          dev.log("[2025-10-10 00:35 IST] Invalid or missing specialization '$specialization', defaulting to 'Others'", name: 'AuthService');
         }
 
         final skills = normalizedData['skills'] is String
@@ -359,34 +325,39 @@ class AuthService {
             .where((skill) => validSkills.contains(skill))
             .toList();
         if (normalizedData['skills'].isEmpty) {
-          dev.log("[2025-10-07 13:43 IST] No valid skills provided for UID: $uid, specialization: ${normalizedData['specialization']}", name: 'AuthService');
+          dev.log("[2025-10-10 00:35 IST] No valid skills provided for UID: $uid, specialization: ${normalizedData['specialization']}", name: 'AuthService');
         }
 
         if (normalizedData['education'] == null || normalizedData['education'] is! String) {
           normalizedData['education'] = '';
-          dev.log("[2025-10-07 13:43 IST] Invalid or missing education for UID: $uid, defaulting to empty", name: 'AuthService');
+          dev.log("[2025-10-10 00:35 IST] Invalid or missing education for UID: $uid, defaulting to empty", name: 'AuthService');
         }
       }
 
       if (isRecruiter && normalizedData['companyName'] == null) {
-        dev.log("[2025-10-07 13:43 IST] Missing company field for recruiter UID: $uid", name: 'AuthService');
+        dev.log("[2025-10-10 00:35 IST] Missing company field for recruiter UID: $uid", name: 'AuthService');
         throw const AuthException("Company name is required for recruiters");
       }
 
-      await _firestore.collection(collection).doc(uid).set(normalizedData, SetOptions(merge: true));
+      final batch = _firestore.batch();
+      batch.set(_firestore.collection(collection).doc(uid), normalizedData, SetOptions(merge: true));
+      batch.set(
+        _firestore.collection('UsersIndex').doc(uid),
+        {
+          'uid': uid,
+          'role': isRecruiter ? 'recruiter' : 'seeker',
+          'mobileNumber': mobileNumber,
+          'name': normalizedData['name'],
+          'fcmToken': fcmToken,
+          'updatedAt': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true),
+      );
+      await batch.commit();
 
-      await _firestore.collection('UsersIndex').doc(uid).set({
-        'uid': uid,
-        'role': isRecruiter ? 'recruiter' : 'seeker',
-        'mobileNumber': mobileNumber,
-        'name': normalizedData['name'],
-        'fcmToken': fcmToken,
-        'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
-
-      dev.log("[2025-10-07 13:43 IST] Successfully stored signup data for $collection/$uid", name: 'AuthService');
+      dev.log("[2025-10-10 00:35 IST] Successfully stored signup data for $collection/$uid", name: 'AuthService');
     } catch (e, stackTrace) {
-      dev.log("[2025-10-07 13:43 IST] storeSignupData ERROR for UID: $uid, isRecruiter: $isRecruiter: $e", name: 'AuthService', error: e, stackTrace: stackTrace);
+      dev.log("[2025-10-10 00:35 IST] storeSignupData ERROR for UID: $uid, isRecruiter: $isRecruiter: $e", name: 'AuthService', error: e, stackTrace: stackTrace);
       if (e is FirebaseException) {
         throw AuthException('Failed to store signup data: ${e.code} - ${e.message}. Check Firestore permissions for $collection/$uid.');
       }
@@ -394,21 +365,38 @@ class AuthService {
     }
   }
 
-  void setupFcmTokenRefresh() {
-    _messaging.onTokenRefresh.listen((fcmToken) async {
+  Future<void> setupFcmTokenRefresh() async {
+    try {
       final uid = _auth.currentUser?.uid;
-      if (uid != null) {
-        try {
-          await _firestore.collection('UsersIndex').doc(uid).set({
-            'fcmToken': fcmToken,
-            'updatedAt': FieldValue.serverTimestamp(),
-          }, SetOptions(merge: true));
-          dev.log("[2025-10-07 13:43 IST] Updated FCM token for $uid: $fcmToken", name: 'AuthService');
-        } catch (e) {
-          dev.log("[2025-10-07 13:43 IST] Error updating FCM token for $uid: $e", name: 'AuthService', error: e);
-        }
+      if (uid == null) {
+        dev.log('[2025-10-10 00:35 IST] No user logged in, skipping FCM token refresh', name: 'AuthService');
+        return;
       }
-    });
+
+      String? currentToken = await _messaging.getToken();
+      if (currentToken != null) {
+        await _firestore.collection('UsersIndex').doc(uid).set(
+          {'fcmToken': currentToken},
+          SetOptions(merge: true),
+        );
+        dev.log('[2025-10-10 00:35 IST] Initial FCM token saved for $uid: $currentToken', name: 'AuthService');
+      }
+
+      _messaging.onTokenRefresh.listen((newToken) async {
+        if (newToken != currentToken) {
+          await _firestore.collection('UsersIndex').doc(uid).set(
+            {'fcmToken': newToken},
+            SetOptions(merge: true),
+          );
+          dev.log('[2025-10-10 00:35 IST] FCM token refreshed for $uid: $newToken', name: 'AuthService');
+          currentToken = newToken;
+        }
+      }, onError: (error) {
+        dev.log('[2025-10-10 00:35 IST] FCM token refresh error for $uid: $error', name: 'AuthService', error: error);
+      });
+    } catch (e) {
+      dev.log('[2025-10-10 00:35 IST] Error setting up FCM token refresh: $e', name: 'AuthService', error: e);
+    }
   }
 
   Future<String> uploadCompanyLogo(File file) async {
@@ -416,7 +404,7 @@ class AuthService {
     if (uid == null) throw const AuthException("User not logged in");
 
     try {
-      dev.log('[2025-10-07 13:43 IST] Uploading company logo for recruiter $uid', name: 'AuthService');
+      dev.log('[2025-10-10 00:35 IST] Uploading company logo for recruiter $uid', name: 'AuthService');
       final ref = _storage.ref().child('recruiters/$uid/logo_${DateTime.now().millisecondsSinceEpoch}.jpg');
       final uploadTask = await ref.putFile(file);
       final downloadUrl = await uploadTask.ref.getDownloadURL();
@@ -426,10 +414,10 @@ class AuthService {
         SetOptions(merge: true),
       );
 
-      dev.log('[2025-10-07 13:43 IST] Company logo uploaded and saved for recruiter $uid: $downloadUrl', name: 'AuthService');
+      dev.log('[2025-10-10 00:35 IST] Company logo uploaded and saved for recruiter $uid: $downloadUrl', name: 'AuthService');
       return downloadUrl;
     } catch (e, stackTrace) {
-      dev.log('[2025-10-07 13:43 IST] uploadCompanyLogo ERROR for UID: $uid: $e', name: 'AuthService', error: e, stackTrace: stackTrace);
+      dev.log('[2025-10-10 00:35 IST] uploadCompanyLogo ERROR for UID: $uid: $e', name: 'AuthService', error: e, stackTrace: stackTrace);
       if (e is FirebaseException) {
         throw AuthException('Failed to upload company logo: ${e.code} - ${e.message}');
       }
@@ -442,14 +430,14 @@ class AuthService {
     if (uid == null) throw const AuthException("User not logged in");
 
     try {
-      dev.log("[2025-10-07 13:43 IST] Uploading seeker photo for $uid", name: 'AuthService');
+      dev.log("[2025-10-10 00:35 IST] Uploading seeker photo for $uid", name: 'AuthService');
       final ref = _storage.ref("seeker_photos/$uid/photo.png");
       await ref.putFile(file);
       final url = await ref.getDownloadURL();
-      dev.log("[2025-10-07 13:43 IST] Seeker photo uploaded for $uid: $url", name: 'AuthService');
+      dev.log("[2025-10-10 00:35 IST] Seeker photo uploaded for $uid: $url", name: 'AuthService');
       return url;
     } catch (e) {
-      dev.log("[2025-10-07 13:43 IST] uploadSeekerPhoto ERROR: $e", name: 'AuthService', error: e);
+      dev.log("[2025-10-10 00:35 IST] uploadSeekerPhoto ERROR: $e", name: 'AuthService', error: e);
       if (e is FirebaseException) {
         throw AuthException("Upload failed: ${e.code} - ${e.message}. Check storage permissions or file format.");
       }
@@ -462,7 +450,7 @@ class AuthService {
     if (uid == null) throw const AuthException("User not logged in");
 
     try {
-      dev.log('[2025-10-07 13:43 IST] Uploading resume for seeker $uid', name: 'AuthService');
+      dev.log('[2025-10-10 00:35 IST] Uploading resume for seeker $uid', name: 'AuthService');
       final ref = _storage.ref().child('seekers/$uid/resume_${DateTime.now().millisecondsSinceEpoch}.pdf');
       final uploadTask = await ref.putFile(file);
       final downloadUrl = await uploadTask.ref.getDownloadURL();
@@ -472,10 +460,10 @@ class AuthService {
         SetOptions(merge: true),
       );
 
-      dev.log('[2025-10-07 13:43 IST] Resume uploaded and saved for seeker $uid: $downloadUrl', name: 'AuthService');
+      dev.log('[2025-10-10 00:35 IST] Resume uploaded and saved for seeker $uid: $downloadUrl', name: 'AuthService');
       return downloadUrl;
     } catch (e, stackTrace) {
-      dev.log('[2025-10-07 13:43 IST] uploadSeekerResume ERROR for UID: $uid: $e', name: 'AuthService', error: e, stackTrace: stackTrace);
+      dev.log('[2025-10-10 00:35 IST] uploadSeekerResume ERROR for UID: $uid: $e', name: 'AuthService', error: e, stackTrace: stackTrace);
       if (e is FirebaseException) {
         throw AuthException('Failed to upload resume: ${e.code} - ${e.message}');
       }
@@ -491,13 +479,13 @@ class AuthService {
     try {
       final doc = await _firestore.collection(collection).doc(uid).get();
       if (doc.exists) {
-        dev.log("[2025-10-07 13:43 IST] Fetched profile data for $collection/$uid", name: 'AuthService');
+        dev.log("[2025-10-10 00:35 IST] Fetched profile data for $collection/$uid", name: 'AuthService');
         return doc.data();
       }
-      dev.log("[2025-10-07 13:43 IST] No profile found for $collection/$uid", name: 'AuthService');
+      dev.log("[2025-10-10 00:35 IST] No profile found for $collection/$uid", name: 'AuthService');
       return null;
     } catch (e, stackTrace) {
-      dev.log("[2025-10-07 13:43 IST] fetchProfileData ERROR for $collection/$uid: $e", name: 'AuthService', error: e, stackTrace: stackTrace);
+      dev.log("[2025-10-10 00:35 IST] fetchProfileData ERROR for $collection/$uid: $e", name: 'AuthService', error: e, stackTrace: stackTrace);
       if (e is FirebaseException) {
         throw AuthException('Failed to fetch profile: ${e.code} - ${e.message}. Check Firestore permissions for $collection/$uid.');
       }
@@ -610,7 +598,7 @@ class AuthService {
     );
 
     await batch.commit();
-    dev.log('[2025-10-07 13:43 IST] Applied to job $jobId by seeker $uid', name: 'AuthService');
+    dev.log('[2025-10-10 00:35 IST] Applied to job $jobId by seeker $uid', name: 'AuthService');
 
     final recruiterFcmToken = await _getFcmToken(recruiterId);
     if (recruiterFcmToken != null) {
@@ -665,15 +653,15 @@ class AuthService {
         'from': uid,
         'jobId': jobId,
         'notificationId': notificationId,
-        'type': 'application',
+        'type': 'interview_scheduled',
         'read': false,
         'timestamp': FieldValue.serverTimestamp(),
-        'message': 'Interview scheduled for ${appData['jobTitle']} on ${DateFormat('dd MMM yyyy, hh:mm a').format(interviewDate)}',
+        'message': 'Interview for ${appData['jobTitle']} scheduled on ${DateFormat('dd MMM yyyy, hh:mm a').format(interviewDate)}',
       },
     );
 
     await batch.commit();
-    dev.log('[2025-10-07 13:43 IST] Scheduled interview for job $jobId, seeker $seekerId by recruiter $uid', name: 'AuthService');
+    dev.log('[2025-10-10 00:35 IST] Scheduled interview for job $jobId, seeker $seekerId by recruiter $uid', name: 'AuthService');
 
     final seekerFcmToken = await _getFcmToken(seekerId);
     if (seekerFcmToken != null) {
@@ -686,7 +674,7 @@ class AuthService {
           'jobId': jobId,
           'seekerId': seekerId,
           'from': uid,
-          'type': 'application',
+          'type': 'interview_scheduled',
         },
       );
     }
@@ -695,7 +683,7 @@ class AuthService {
   Future<List<Map<String, dynamic>>> fetchAppliedSeekers() async {
     final uid = _auth.currentUser?.uid;
     if (uid == null) {
-      dev.log('[2025-10-07 13:43 IST] No authenticated user in fetchAppliedSeekers', name: 'AuthService');
+      dev.log('[2025-10-10 00:35 IST] No authenticated user in fetchAppliedSeekers', name: 'AuthService');
       throw const AuthException('User not logged in');
     }
 
@@ -704,10 +692,10 @@ class AuthService {
           .collection('Applications')
           .where('recruiterId', isEqualTo: uid)
           .get();
-      dev.log('[2025-10-07 13:43 IST] Fetched ${snapshot.docs.length} applicants for recruiter $uid', name: 'AuthService');
+      dev.log('[2025-10-10 00:35 IST] Fetched ${snapshot.docs.length} applicants for recruiter $uid', name: 'AuthService');
       return snapshot.docs.map((doc) => doc.data() as Map<String, dynamic>).toList();
     } catch (e) {
-      dev.log('[2025-10-07 13:43 IST] Error fetching applied seekers for $uid: $e', name: 'AuthService', error: e);
+      dev.log('[2025-10-10 00:35 IST] Error fetching applied seekers for $uid: $e', name: 'AuthService', error: e);
       rethrow;
     }
   }
@@ -729,7 +717,7 @@ class AuthService {
     final participants = [uid, recruiterId == uid ? seekerId : recruiterId];
     participants.sort();
     final chatId = '${participants[0]}_${participants[1]}';
-    dev.log('[2025-10-07 13:43 IST] Generated chatId $chatId for seeker $seekerId, job $jobId', name: 'AuthService');
+    dev.log('[2025-10-10 00:35 IST] Generated chatId $chatId for seeker $seekerId, job $jobId', name: 'AuthService');
     return chatId;
   }
 
@@ -747,11 +735,11 @@ class AuthService {
       final applicationRef = _firestore.collection('Applications').doc(applicationId);
       final appDoc = await applicationRef.get();
       if (!appDoc.exists) {
-        dev.log('[2025-10-07 13:43 IST] Application $applicationId not found', name: 'AuthService');
+        dev.log('[2025-10-10 00:35 IST] Application $applicationId not found', name: 'AuthService');
         throw const AuthException('Application not found');
       }
       final jobTitle = appDoc.data()!['jobTitle']?.toString() ?? 'Untitled';
-      dev.log('[2025-10-07 13:43 IST] Processing action $action for application $applicationId', name: 'AuthService');
+      dev.log('[2025-10-10 00:35 IST] Processing action $action for application $applicationId', name: 'AuthService');
 
       final batch = _firestore.batch();
       final notificationId = _firestore.collection('SeekerNotifications').doc(seekerId).collection('Notifications').doc().id;
@@ -762,7 +750,7 @@ class AuthService {
 
       switch (action.toLowerCase()) {
         case 'shortlist':
-          dev.log('[2025-10-07 13:43 IST] Shortlisting seeker $seekerId for job $jobId', name: 'AuthService');
+          dev.log('[2025-10-10 00:35 IST] Shortlisting seeker $seekerId for job $jobId', name: 'AuthService');
           batch.set(_firestore.collection('Shortlisted').doc(jobId).collection('Seekers').doc(seekerId), {
             'seekerId': seekerId,
             'jobId': jobId,
@@ -774,16 +762,16 @@ class AuthService {
           break;
 
         case 'reject':
-          dev.log('[2025-10-07 13:43 IST] Rejecting seeker $seekerId for job $jobId', name: 'AuthService');
+          dev.log('[2025-10-10 00:35 IST] Rejecting seeker $seekerId for job $jobId', name: 'AuthService');
           batch.update(applicationRef, {'status': 'Rejected', 'interviewDate': null, 'updatedAt': FieldValue.serverTimestamp()});
           notificationMessage = 'Your application for "$jobTitle" has been rejected.';
           break;
 
         case 'schedule':
-          dev.log('[2025-10-07 13:43 IST] Scheduling interview for seeker $seekerId, job $jobId', name: 'AuthService');
+          dev.log('[2025-10-10 00:35 IST] Scheduling interview for seeker $seekerId, job $jobId', name: 'AuthService');
           final interviewDate = additionalData?['interviewDate'] as Timestamp?;
           if (interviewDate == null) {
-            dev.log('[2025-10-07 13:43 IST] Missing interviewDate for schedule action for application $applicationId', name: 'AuthService');
+            dev.log('[2025-10-10 00:35 IST] Missing interviewDate for schedule action for application $applicationId', name: 'AuthService');
             throw const AuthException('Interview date is required for scheduling');
           }
           batch.update(applicationRef, {
@@ -796,7 +784,7 @@ class AuthService {
           break;
 
         default:
-          dev.log('[2025-10-07 13:43 IST] Invalid action: $action for application $applicationId', name: 'AuthService');
+          dev.log('[2025-10-10 00:35 IST] Invalid action: $action for application $applicationId', name: 'AuthService');
           throw const AuthException('Invalid action');
       }
 
@@ -813,7 +801,7 @@ class AuthService {
       });
 
       await batch.commit();
-      dev.log('[2025-10-07 13:43 IST] Action $action completed for application $applicationId', name: 'AuthService');
+      dev.log('[2025-10-10 00:35 IST] Action $action completed for application $applicationId', name: 'AuthService');
 
       final seekerFcmToken = await _getFcmToken(seekerId);
       if (seekerFcmToken != null) {
@@ -831,9 +819,9 @@ class AuthService {
         );
       }
     } catch (e, stackTrace) {
-      dev.log('[2025-10-07 13:43 IST] handleAction ERROR for action $action, job $jobId, seeker $seekerId: $e', name: 'AuthService', error: e, stackTrace: stackTrace);
+      dev.log('[2025-10-10 00:35 IST] handleAction ERROR for action $action, job $jobId, seeker $seekerId: $e', name: 'AuthService', error: e, stackTrace: stackTrace);
       if (e is FirebaseException) {
-        dev.log('[2025-10-07 13:43 IST] Firebase error details: code=${e.code}, message=${e.message}, path=Applications/$applicationId or Shortlisted/$jobId/Seekers/$seekerId or Notifications', name: 'AuthService');
+        dev.log('[2025-10-10 00:35 IST] Firebase error details: code=${e.code}, message=${e.message}, path=Applications/$applicationId or Shortlisted/$jobId/Seekers/$seekerId or Notifications', name: 'AuthService');
         throw AuthException('Action failed: ${e.code} - ${e.message}. Check Firestore rules.');
       }
       rethrow;
@@ -847,7 +835,7 @@ class AuthService {
     try {
       final recruiterDoc = await _firestore.collection('Recruiters').doc(uid).get();
       if (!recruiterDoc.exists) {
-        dev.log('[2025-10-07 13:43 IST] User $uid is not a recruiter', name: 'AuthService');
+        dev.log('[2025-10-10 00:35 IST] User $uid is not a recruiter', name: 'AuthService');
         throw const AuthException('User is not a recruiter');
       }
 
@@ -873,10 +861,10 @@ class AuthService {
           'name': name,
         });
       }
-      dev.log('[2025-10-07 13:43 IST] Returning ${calls.length} scheduled calls for $uid', name: 'AuthService');
+      dev.log('[2025-10-10 00:35 IST] Returning ${calls.length} scheduled calls for $uid', name: 'AuthService');
       return calls;
     } catch (e, stackTrace) {
-      dev.log('[2025-10-07 13:43 IST] fetchScheduledCalls ERROR: $e', name: 'AuthService', error: e, stackTrace: stackTrace);
+      dev.log('[2025-10-10 00:35 IST] fetchScheduledCalls ERROR: $e', name: 'AuthService', error: e, stackTrace: stackTrace);
       if (e is FirebaseException) {
         throw AuthException("Failed to fetch scheduled calls: ${e.code} - ${e.message}. Check Firestore permissions.");
       }
@@ -905,7 +893,7 @@ class AuthService {
             .doc('${recipientId}_$jobId')
             .get();
         if (!recipientAppDoc.exists) {
-          dev.log('[2025-10-07 13:43 IST] Application ${recipientId}_$jobId not found', name: 'AuthService');
+          dev.log('[2025-10-10 00:35 IST] Application ${recipientId}_$jobId not found', name: 'AuthService');
           throw Exception('Application does not exist');
         }
         seekerId = recipientId;
@@ -917,12 +905,12 @@ class AuthService {
           .doc(applicationId)
           .get();
       if (!appDoc.exists) {
-        dev.log('[2025-10-07 13:43 IST] Application $applicationId not found', name: 'AuthService');
+        dev.log('[2025-10-10 00:35 IST] Application $applicationId not found', name: 'AuthService');
         throw Exception('Application does not exist');
       }
       final appData = appDoc.data()!;
       if (appData['jobId'] != jobId || appData['seekerId'] != seekerId || appData['recruiterId'] is! String) {
-        dev.log('[2025-10-07 13:43 IST] Invalid application data for $applicationId: $appData', name: 'AuthService');
+        dev.log('[2025-10-10 00:35 IST] Invalid application data for $applicationId: $appData', name: 'AuthService');
         throw Exception('Invalid application data');
       }
 
@@ -963,7 +951,7 @@ class AuthService {
         'message': 'New message: $message',
       });
 
-      dev.log('[2025-10-07 13:43 IST] Message sent from $senderId to $recipientId for job $jobId with chatId $chatId, status: $status', name: 'AuthService');
+      dev.log('[2025-10-10 00:35 IST] Message sent from $senderId to $recipientId for job $jobId with chatId $chatId, status: $status', name: 'AuthService');
 
       final recipientFcmToken = await _getFcmToken(recipientId);
       if (recipientFcmToken != null) {
@@ -982,7 +970,7 @@ class AuthService {
         );
       }
     } catch (e) {
-      dev.log('[2025-10-07 13:43 IST] Error sending message from $senderId to $recipientId for job $jobId: $e', name: 'AuthService', error: e);
+      dev.log('[2025-10-10 00:35 IST] Error sending message from $senderId to $recipientId for job $jobId: $e', name: 'AuthService', error: e);
       throw AuthException('Failed to send message: $e');
     }
   }
@@ -1001,13 +989,13 @@ class AuthService {
       final userDoc = await _firestore.collection('UsersIndex').doc(uid).get();
       if (userDoc.exists) {
         final role = userDoc.data()?['role'] as String?;
-        dev.log("[2025-10-07 13:43 IST] Role found for $uid: $role", name: 'AuthService');
+        dev.log("[2025-10-10 00:35 IST] Role found for $uid: $role", name: 'AuthService');
         return role;
       }
-      dev.log("[2025-10-07 13:43 IST] No role found for $uid in UsersIndex", name: 'AuthService');
+      dev.log("[2025-10-10 00:35 IST] No role found for $uid in UsersIndex", name: 'AuthService');
       return null;
     } catch (e) {
-      dev.log("[2025-10-07 13:43 IST] getUserRole ERROR: $e", name: 'AuthService', error: e);
+      dev.log("[2025-10-10 00:35 IST] getUserRole ERROR: $e", name: 'AuthService', error: e);
       return null;
     }
   }

@@ -268,8 +268,8 @@ final Map<String, List<String>> skillsBySpecialization = {
       _minSalaryController.text = parts[0].trim().replaceAll(' LPA (INR)', '');
       _maxSalaryController.text = parts[1].trim().replaceAll(' LPA (INR)', '');
     } else {
-      _minSalaryController.text = '0.0';
-      _maxSalaryController.text = '0.0';
+      _minSalaryController.text = '1.8';
+      _maxSalaryController.text = '2.0';
     }
     _selectedJobType = widget.editJobData!['jobType']?.toString() ?? widget.editJobData!['Job Type (Full-time, Part-time)']?.toString();
     _descriptionController.text = widget.editJobData!['description']?.toString() ?? widget.editJobData!['Job Description']?.toString() ?? '';

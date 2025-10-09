@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -17,11 +16,23 @@ import 'firebase_options.dart';
 import 'screens/unified_screen.dart';
 import 'screens/chat_screen.dart'; // Adjust path as needed
 import 'screens/notifications_screen.dart'; // Adjust path as needed
+import 'package:firebase_app_check/firebase_app_check.dart';
 
 // Background message handler
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
+  // Add App Check activation
+  try {
+    await FirebaseAppCheck.instance.activate(
+      androidProvider: kDebugMode ? AndroidProvider.debug : AndroidProvider.playIntegrity,
+      appleProvider: kDebugMode ? AppleProvider.debug : AppleProvider.appAttest,
+    );
+    dev.log('[2025-10-10 00:31 IST] App Check activated in background handler', name: 'FCM Background');
+  } catch (e) {
+    dev.log('[2025-10-10 00:31 IST] App Check activation failed in background: $e', name: 'FCM Background', error: e);
+  }
+
   dev.log('[2025-10-07 13:59 IST] Handling background message: ${message.messageId}', name: 'FCM Background');
 
   // Store notification in Firestore for display in NotificationsScreen
@@ -61,10 +72,18 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     }
   }
 
-  // Display local notification in background
-  if (message.notification != null) {
-    await _showLocalNotification(message);
-  }
+  // Display local notification in background, even for data-only payloads
+  String title = message.notification?.title ?? 'Naukariwala';
+  String body = message.notification?.body ?? 'New notification';
+  if (type == 'message') {
+    title = 'New Message';
+    body = data['message'] ?? 'You have a new message';
+  } else if (type == 'application') {
+    title = 'New Application';
+    body = data['message'] ?? 'A new application was submitted';
+  } // Add more types as needed
+
+  await _showLocalNotification(message, customTitle: title, customBody: body);
 }
 
 void main() async {
@@ -122,19 +141,26 @@ void main() async {
     dev.log('[2025-10-07 13:59 IST] App opened from terminated state via notification: ${initialMessage.messageId}', name: 'FCM Open');
     _handleNotificationNavigation(initialMessage);
   }
+try {
+  await FirebaseAppCheck.instance.activate(
+    androidProvider: kDebugMode
+        ? AndroidProvider.debug
+        : AndroidProvider.playIntegrity,
+    appleProvider: kDebugMode
+        ? AppleProvider.debug
+        : AppleProvider.appAttest,
+  );
 
-  // App Check
-  if (!kDebugMode) {
-    try {
-      await FirebaseAppCheck.instance.activate(
-        androidProvider: AndroidProvider.playIntegrity,
-        appleProvider: AppleProvider.appAttest,
-      );
-      dev.log('[2025-10-07 13:59 IST] Firebase App Check activated', name: 'Main');
-    } catch (e) {
-      dev.log('[2025-10-07 13:59 IST] App Check activation failed: $e', name: 'Main', error: e);
-    }
+  if (kDebugMode) {
+    // Print Debug Token to register it in Firebase Console
+    final debugToken = await FirebaseAppCheck.instance.getToken(true);
+    dev.log('[2025-10-09 11:45 IST] 🔥 App Check Debug Token: $debugToken', name: 'AppCheck');
   }
+
+  dev.log('[2025-10-09 11:45 IST] Firebase App Check activated successfully', name: 'AppCheck');
+} catch (e) {
+  dev.log('[2025-10-09 11:45 IST] App Check activation failed: $e', name: 'AppCheck', error: e);
+}
 
   // Emulator Setup
   if (kDebugMode) {
@@ -213,7 +239,7 @@ Future<void> _initializeLocalNotifications() async {
 }
 
 // Show local notification
-Future<void> _showLocalNotification(RemoteMessage message) async {
+Future<void> _showLocalNotification(RemoteMessage message, {String? customTitle, String? customBody}) async {
   const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
     'fcm_default_channel',
     'FCM Notifications',
@@ -233,8 +259,8 @@ Future<void> _showLocalNotification(RemoteMessage message) async {
   );
   await _localNotifications.show(
     message.hashCode,
-    message.notification?.title ?? 'Naukariwala',
-    message.notification?.body ?? 'New notification',
+    customTitle ?? message.notification?.title ?? 'Naukariwala',
+    customBody ?? message.notification?.body ?? 'New notification',
     details,
     payload: jsonEncode(message.data),
   );

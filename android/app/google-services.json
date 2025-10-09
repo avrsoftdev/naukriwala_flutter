@@ -8,50 +8,6 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:307134434935:android:ef91db9b571cb93b170072",
-        "android_client_info": {
-          "package_name": "com.example.naukariwala"
-        }
-      },
-      "oauth_client": [
-        {
-          "client_id": "307134434935-v7up21dbm3it15io8qecu8b0giufhohr.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.example.naukariwala",
-            "certificate_hash": "027e6001eec6ce671e7b2b8de13ce3d36c06bde8"
-          }
-        },
-        {
-          "client_id": "307134434935-v3tut2t5huf1e911sih2d530pgqn5bj1.apps.googleusercontent.com",
-          "client_type": 3
-        }
-      ],
-      "api_key": [
-        {
-          "current_key": "AIzaSyCKrXURTVygfYeQEEY1YMCHacYan66_-6A"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": [
-            {
-              "client_id": "307134434935-v3tut2t5huf1e911sih2d530pgqn5bj1.apps.googleusercontent.com",
-              "client_type": 3
-            },
-            {
-              "client_id": "307134434935-ha0p9ailvnl06pluvov294ar81ttt930.apps.googleusercontent.com",
-              "client_type": 2,
-              "ios_info": {
-                "bundle_id": "com.example.naukariwala"
-              }
-            }
-          ]
-        }
-      }
-    },
-    {
-      "client_info": {
         "mobilesdk_app_id": "1:307134434935:android:df336626f5184cdc170072",
         "android_client_info": {
           "package_name": "com.naukariwala.avr"
@@ -67,6 +23,14 @@
           }
         },
         {
+          "client_id": "307134434935-uj5742hvgjtsdhe04hnntb00lbhbs98u.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.naukariwala.avr",
+            "certificate_hash": "bb5992574378204ca2979eb0df6ec2ca0df64e84"
+          }
+        },
+        {
           "client_id": "307134434935-v3tut2t5huf1e911sih2d530pgqn5bj1.apps.googleusercontent.com",
           "client_type": 3
         }
@@ -80,7 +44,7 @@
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "307134434935-v3tut2t5huf1e911sih2d530pgqn5bj1.apps.googleusercontent.com",
+              "client_id": "116306016433669527944",
               "client_type": 3
             },
             {
