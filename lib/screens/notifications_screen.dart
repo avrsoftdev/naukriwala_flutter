@@ -1,11 +1,11 @@
-// ignore_for_file: use_build_context_synchronously, duplicate_ignore
+// ignore_for_file: use_build_context_synchronously
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'dart:developer' as dev;
-import 'package:firebase_messaging/firebase_messaging.dart'; // ADDED: For FCM tap handling
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../services/auth_service.dart';
 import './chat_screen.dart';
@@ -49,34 +49,72 @@ class NotificationsScreenState extends State<NotificationsScreen> {
           .orderBy('timestamp', descending: true)
           .snapshots();
 
-      dev.log('[2025-10-07 11:45 IST] Initialized notifications stream for ${widget.isRecruiter ? 'recruiter' : 'seeker'} UID: $uid in $collectionPath', name: 'NotificationsScreen');
+      dev.log('[2025-10-10 12:57 IST] Initialized notifications stream for ${widget.isRecruiter ? 'recruiter' : 'seeker'} UID: $uid in $collectionPath', name: 'NotificationsScreen');
 
-      // ADDED: Handle FCM notification taps
+      // Handle FCM notification taps
       _setupFCMListeners();
     } else {
-      dev.log('[2025-10-07 11:45 IST] No authenticated user found', name: 'NotificationsScreen');
+      dev.log('[2025-10-10 12:57 IST] No authenticated user found', name: 'NotificationsScreen');
     }
   }
 
-  // ADDED: Setup FCM listeners for notification taps
   void _setupFCMListeners() {
     // Handle notification taps from background/terminated state
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      dev.log('[2025-10-07 11:45 IST] Notification opened: ${message.messageId}', name: 'NotificationsScreen FCM');
-      // Ensure we're on NotificationsScreen; no navigation needed
-      // Optionally mark as read if notificationId is provided
-      if (message.data['notificationId'] != null) {
-        _markAsRead(message.data['notificationId']);
+      dev.log('[2025-10-10 12:57 IST] Notification opened: ${message.messageId}', name: 'NotificationsScreen FCM');
+      final data = message.data;
+      final type = data['type'] as String? ?? 'unknown';
+      final notificationId = data['notificationId'] as String?;
+      final jobId = data['jobId'] as String?;
+      final seekerId = data['seekerId'] as String?;
+      final chatId = data['chatId'] as String?;
+
+      if (notificationId != null) {
+        _markAsRead(notificationId);
+      }
+
+      if (type == 'message' && chatId != null && jobId != null && seekerId != null) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ChatScreen(
+              chatId: chatId,
+              recipientId: widget.isRecruiter ? seekerId : data['from'] ?? 'Unknown',
+              jobId: jobId,
+            ),
+          ),
+        );
+        dev.log('[2025-10-10 12:57 IST] Navigated to ChatScreen from FCM: chatId=$chatId', name: 'NotificationsScreen FCM');
       }
     });
 
     // Handle initial message (app opened via notification)
     FirebaseMessaging.instance.getInitialMessage().then((RemoteMessage? message) {
-      if (message != null) {
-        dev.log('[2025-10-07 11:45 IST] App opened via notification: ${message.messageId}', name: 'NotificationsScreen FCM');
-        // Already on NotificationsScreen; optionally mark as read
-        if (message.data['notificationId'] != null) {
-          _markAsRead(message.data['notificationId']);
+      if (message != null && mounted) {
+        dev.log('[2025-10-10 12:57 IST] App opened via notification: ${message.messageId}', name: 'NotificationsScreen FCM');
+        final data = message.data;
+        final type = data['type'] as String? ?? 'unknown';
+        final notificationId = data['notificationId'] as String?;
+        final jobId = data['jobId'] as String?;
+        final seekerId = data['seekerId'] as String?;
+        final chatId = data['chatId'] as String?;
+
+        if (notificationId != null) {
+          _markAsRead(notificationId);
+        }
+
+        if (type == 'message' && chatId != null && jobId != null && seekerId != null) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ChatScreen(
+                chatId: chatId,
+                recipientId: widget.isRecruiter ? seekerId : data['from'] ?? 'Unknown',
+                jobId: jobId,
+              ),
+            ),
+          );
+          dev.log('[2025-10-10 12:57 IST] Navigated to ChatScreen from initial message: chatId=$chatId', name: 'NotificationsScreen FCM');
         }
       }
     });
@@ -97,11 +135,11 @@ class NotificationsScreenState extends State<NotificationsScreen> {
           .collection('Notifications')
           .doc(notificationId)
           .update({'read': true});
-      dev.log('[2025-10-07 11:45 IST] Marked notification $notificationId as read for UID $uid in $collectionPath', name: 'NotificationsScreen');
+      dev.log('[2025-10-10 12:57 IST] Marked notification $notificationId as read for UID $uid in $collectionPath', name: 'NotificationsScreen');
     } catch (e) {
-      dev.log('[2025-10-07 11:45 IST] Error marking notification $notificationId as read: $e', name: 'NotificationsScreen', error: e);
+      dev.log('[2025-10-10 12:57 IST] Error marking notification $notificationId as read: $e', name: 'NotificationsScreen', error: e);
       if (e is FirebaseException && e.code == 'permission-denied') {
-        dev.log('[2025-10-07 11:45 IST] Permission denied updating $collectionPath/$uid/Notifications/$notificationId', name: 'NotificationsScreen');
+        dev.log('[2025-10-10 12:57 IST] Permission denied updating $collectionPath/$uid/Notifications/$notificationId', name: 'NotificationsScreen');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -123,11 +161,11 @@ class NotificationsScreenState extends State<NotificationsScreen> {
           .collection('Notifications')
           .doc(notificationId)
           .update({'read': false});
-      dev.log('[2025-10-07 11:45 IST] Marked notification $notificationId as unread for UID $uid in $collectionPath', name: 'NotificationsScreen');
+      dev.log('[2025-10-10 12:57 IST] Marked notification $notificationId as unread for UID $uid in $collectionPath', name: 'NotificationsScreen');
     } catch (e) {
-      dev.log('[2025-10-07 11:45 IST] Error marking notification $notificationId as unread: $e', name: 'NotificationsScreen', error: e);
+      dev.log('[2025-10-10 12:57 IST] Error marking notification $notificationId as unread: $e', name: 'NotificationsScreen', error: e);
       if (e is FirebaseException && e.code == 'permission-denied') {
-        dev.log('[2025-10-07 11:45 IST] Permission denied updating $collectionPath/$uid/Notifications/$notificationId', name: 'NotificationsScreen');
+        dev.log('[2025-10-10 12:57 IST] Permission denied updating $collectionPath/$uid/Notifications/$notificationId', name: 'NotificationsScreen');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -153,7 +191,7 @@ class NotificationsScreenState extends State<NotificationsScreen> {
         batch.delete(docRef);
       }
       await batch.commit();
-      dev.log('[2025-10-07 11:45 IST] Deleted selected notifications for UID $uid', name: 'NotificationsScreen');
+      dev.log('[2025-10-10 12:57 IST] Deleted selected notifications for UID $uid', name: 'NotificationsScreen');
       setState(() {
         _selectedNotifications.clear();
         _isSelectionMode = false;
@@ -164,7 +202,7 @@ class NotificationsScreenState extends State<NotificationsScreen> {
         );
       }
     } catch (e) {
-      dev.log('[2025-10-07 11:45 IST] Error deleting selected notifications: $e', name: 'NotificationsScreen', error: e);
+      dev.log('[2025-10-10 12:57 IST] Error deleting selected notifications: $e', name: 'NotificationsScreen', error: e);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Error deleting notifications'), backgroundColor: Colors.red),
@@ -186,13 +224,13 @@ class NotificationsScreenState extends State<NotificationsScreen> {
         batch.update(docRef, {'read': true});
       }
       await batch.commit();
-      dev.log('[2025-10-07 11:45 IST] Marked selected notifications as read for UID $uid', name: 'NotificationsScreen');
+      dev.log('[2025-10-10 12:57 IST] Marked selected notifications as read for UID $uid', name: 'NotificationsScreen');
       setState(() {
         _selectedNotifications.clear();
         _isSelectionMode = false;
       });
     } catch (e) {
-      dev.log('[2025-10-07 11:45 IST] Error marking selected notifications as read: $e', name: 'NotificationsScreen', error: e);
+      dev.log('[2025-10-10 12:57 IST] Error marking selected notifications as read: $e', name: 'NotificationsScreen', error: e);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Error updating notifications'), backgroundColor: Colors.red),
@@ -214,13 +252,13 @@ class NotificationsScreenState extends State<NotificationsScreen> {
         batch.update(docRef, {'read': false});
       }
       await batch.commit();
-      dev.log('[2025-10-07 11:45 IST] Marked selected notifications as unread for UID $uid', name: 'NotificationsScreen');
+      dev.log('[2025-10-10 12:57 IST] Marked selected notifications as unread for UID $uid', name: 'NotificationsScreen');
       setState(() {
         _selectedNotifications.clear();
         _isSelectionMode = false;
       });
     } catch (e) {
-      dev.log('[2025-10-07 11:45 IST] Error marking selected notifications as unread: $e', name: 'NotificationsScreen', error: e);
+      dev.log('[2025-10-10 12:57 IST] Error marking selected notifications as unread: $e', name: 'NotificationsScreen', error: e);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Error updating notifications'), backgroundColor: Colors.red),
@@ -251,7 +289,7 @@ class NotificationsScreenState extends State<NotificationsScreen> {
         return data['resume']?['cvUrl'] ?? 'N/A';
       }
     } catch (e) {
-      dev.log('[2025-10-07 11:45 IST] Error fetching resume URL for job $jobId, seeker $seekerId: $e', name: 'NotificationsScreen', error: e);
+      dev.log('[2025-10-10 12:57 IST] Error fetching resume URL for job $jobId, seeker $seekerId: $e', name: 'NotificationsScreen', error: e);
     }
     return null;
   }
@@ -259,7 +297,7 @@ class NotificationsScreenState extends State<NotificationsScreen> {
   @override
   Widget build(BuildContext context) {
     if (uid == null) {
-      dev.log('[2025-10-07 11:45 IST] Redirecting to login due to null UID', name: 'NotificationsScreen');
+      dev.log('[2025-10-10 12:57 IST] Redirecting to login due to null UID', name: 'NotificationsScreen');
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -330,7 +368,7 @@ class NotificationsScreenState extends State<NotificationsScreen> {
             stream: _notificationsStream,
             builder: (context, snapshot) {
               if (snapshot.hasError) {
-                dev.log('[2025-10-07 11:45 IST] Stream error for UID $uid: ${snapshot.error}', name: 'NotificationsScreen');
+                dev.log('[2025-10-10 12:57 IST] Stream error for UID $uid: ${snapshot.error}', name: 'NotificationsScreen');
                 String errorMessage = 'Error loading notifications. Please verify Firestore permissions or contact support.';
                 if (snapshot.error is FirebaseException) {
                   final error = snapshot.error as FirebaseException;
@@ -367,7 +405,7 @@ class NotificationsScreenState extends State<NotificationsScreen> {
 
               final docs = snapshot.data?.docs ?? [];
               if (docs.isEmpty) {
-                dev.log('[2025-10-07 11:45 IST] No notifications found for UID $uid in $collectionPath', name: 'NotificationsScreen');
+                dev.log('[2025-10-10 12:57 IST] No notifications found for UID $uid in $collectionPath', name: 'NotificationsScreen');
                 return Center(
                   child: Text(
                     'No notifications found.',
@@ -389,6 +427,7 @@ class NotificationsScreenState extends State<NotificationsScreen> {
                   final seekerId = data['seekerId'] as String? ?? 'Unknown';
                   final notificationId = data['notificationId'] as String? ?? docs[index].id;
                   final type = data['type'] as String? ?? 'Unknown';
+                  final jobTitle = data['jobTitle'] as String? ?? 'Untitled';
 
                   return FutureBuilder<String?>(
                     future: _getResumeUrl(jobId, seekerId),
@@ -439,7 +478,7 @@ class NotificationsScreenState extends State<NotificationsScreen> {
                                   },
                                 ),
                                 title: Text(
-                                  message,
+                                  '$jobTitle: $message',
                                   style: TextStyle(
                                     fontWeight: read ? FontWeight.normal : FontWeight.w600,
                                     color: Colors.black87,
@@ -454,9 +493,15 @@ class NotificationsScreenState extends State<NotificationsScreen> {
                                         style: TextStyle(color: Colors.grey.shade600, fontSize: 14.sp),
                                       ),
                                     if (resumeUrl != null && widget.isRecruiter)
-                                      Text(
-                                        'Resume URL: $resumeUrl',
-                                        style: TextStyle(color: Colors.blue.shade600, fontSize: 14.sp),
+                                      InkWell(
+                                        onTap: () {
+                                          // Implement resume URL opening logic if needed
+                                          dev.log('[2025-10-10 12:57 IST] Resume URL tapped: $resumeUrl', name: 'NotificationsScreen');
+                                        },
+                                        child: Text(
+                                          'Resume URL: $resumeUrl',
+                                          style: TextStyle(color: Colors.blue.shade600, fontSize: 14.sp),
+                                        ),
                                       ),
                                   ],
                                 ),
@@ -471,11 +516,10 @@ class NotificationsScreenState extends State<NotificationsScreen> {
                                     if (type == 'message') {
                                       try {
                                         if (jobId == 'Unknown' || seekerId == 'Unknown') {
-                                          dev.log('[2025-10-07 11:45 IST] Skipping chat navigation: Invalid jobId ($jobId) or seekerId ($seekerId)', name: 'NotificationsScreen');
+                                          dev.log('[2025-10-10 12:57 IST] Skipping chat navigation: Invalid jobId ($jobId) or seekerId ($seekerId)', name: 'NotificationsScreen');
                                           if (mounted) {
-                                            // ignore: use_build_context_synchronously
                                             ScaffoldMessenger.of(context).showSnackBar(
-                                              const SnackBar(content: Text('Open chat screen to see the message.'), backgroundColor: Color.fromARGB(255, 54, 244, 127)),
+                                              const SnackBar(content: Text('Invalid chat details. Please try again.'), backgroundColor: Colors.red),
                                             );
                                           }
                                           return;
@@ -494,7 +538,7 @@ class NotificationsScreenState extends State<NotificationsScreen> {
                                           );
                                         }
                                       } catch (e) {
-                                        dev.log('[2025-10-07 11:45 IST] Error navigating to ChatScreen for notification $notificationId: $e', name: 'NotificationsScreen', error: e);
+                                        dev.log('[2025-10-10 12:57 IST] Error navigating to ChatScreen for notification $notificationId: $e', name: 'NotificationsScreen', error: e);
                                         if (mounted) {
                                           ScaffoldMessenger.of(context).showSnackBar(
                                             SnackBar(content: Text('Error opening chat: $e'), backgroundColor: Colors.red),
@@ -547,11 +591,11 @@ class AnimatedListItemState extends State<AnimatedListItem> with SingleTickerPro
   void initState() {
     super.initState();
     _controller = AnimationController(
-      duration: const Duration(milliseconds: 500),
+      duration: const Duration(milliseconds: 300),
       vsync: this,
     );
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(_controller);
-    _slideAnimation = Tween<Offset>(begin: const Offset(0.2, 0), end: Offset.zero).animate(_controller);
+    _slideAnimation = Tween<Offset>(begin: const Offset(0.1, 0), end: Offset.zero).animate(_controller);
     _controller.forward();
   }
 

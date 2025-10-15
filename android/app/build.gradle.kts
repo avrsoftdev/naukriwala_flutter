@@ -94,6 +94,7 @@ dependencies {
     implementation("com.google.firebase:firebase-appcheck-debug") // Optional for testing
     implementation("com.google.android.play:app-update:2.1.0")
     implementation("com.google.android.play:app-update-ktx:2.1.0")
+    implementation ("com.google.auth:google-auth-library-oauth2-http:1.19.0")
     implementation("androidx.multidex:multidex:2.0.1")
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
 }

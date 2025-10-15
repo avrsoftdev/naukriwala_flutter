@@ -15,23 +15,23 @@
       },
       "oauth_client": [
         {
-          "client_id": "307134434935-th59jh2dbtqfgshcqoaua0nm0ul22adi.apps.googleusercontent.com",
+          "client_id": "307134434935-9cqgjnate0cai5n6hnhqku9826p84353.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.naukariwala.avr",
-            "certificate_hash": "027e6001eec6ce671e7b2b8de13ce3d36c06bde8"
+            "certificate_hash": "5c6e6cb3d07931e5fa2dcb46b24b7b4748b45a36"
           }
         },
         {
-          "client_id": "307134434935-uj5742hvgjtsdhe04hnntb00lbhbs98u.apps.googleusercontent.com",
+          "client_id": "307134434935-pikkldlkf80jsk7v0rgnesdru15f41ff.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.naukariwala.avr",
-            "certificate_hash": "bb5992574378204ca2979eb0df6ec2ca0df64e84"
+            "certificate_hash": "d937d3cc87538418b14c73dd6fb1038081f50e42"
           }
         },
         {
-          "client_id": "307134434935-v3tut2t5huf1e911sih2d530pgqn5bj1.apps.googleusercontent.com",
+          "client_id": "116749202314520008273",
           "client_type": 3
         }
       ],
@@ -44,14 +44,14 @@
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "116306016433669527944",
+              "client_id": "116749202314520008273",
               "client_type": 3
             },
             {
               "client_id": "307134434935-ha0p9ailvnl06pluvov294ar81ttt930.apps.googleusercontent.com",
               "client_type": 2,
               "ios_info": {
-                "bundle_id": "com.example.naukariwala"
+                "bundle_id": "com.naukariwala.avr"
               }
             }
           ]

@@ -2,12 +2,19 @@
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:flutter/material.dart';
 import 'dart:developer' as dev;
 import 'package:intl/intl.dart';
 import 'dart:io';
+import 'package:firebase_app_check/firebase_app_check.dart';
+import 'package:flutter/foundation.dart'; // For kDebugMode
+import 'dart:math';
+
+import 'package:naukariwala/main.dart'; // For exponential backoff
 
 class AuthException implements Exception {
   final String message;
@@ -44,7 +51,13 @@ class AuthService {
     required Map<String, String> data,
   }) async {
     try {
-      final callable = FirebaseFunctions.instance.httpsCallable(
+      final user = _auth.currentUser;
+      if (user == null) {
+        dev.log('[2025-10-10 00:35 IST] No authenticated user for FCM notification', name: 'AuthService');
+        return;
+      }
+      await user.getIdToken(); // Ensure token is refreshed
+      final callable = FirebaseFunctions.instanceFor(region: 'asia-south1').httpsCallable(
         'sendNotification',
         options: HttpsCallableOptions(
           timeout: const Duration(seconds: 30),
@@ -70,7 +83,6 @@ class AuthService {
       dev.log('[2025-10-10 00:35 IST] Error sending FCM notification via Cloud Function: $e', name: 'AuthService', error: e, stackTrace: stackTrace);
     }
   }
-
   final List<String> educationOptions = [
     'Secondary (Class 10)',
     'Higher Secondary (Class 12)',
@@ -999,4 +1011,45 @@ class AuthService {
       return null;
     }
   }
+}
+
+// Main function to initialize App Check (call before AuthService usage)
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
+
+  // Activate App Check with Play Integrity for production
+  await FirebaseAppCheck.instance.activate(
+    androidProvider: kDebugMode ? AndroidProvider.debug : AndroidProvider.playIntegrity,
+    appleProvider: AppleProvider.appAttest, // Optional, for iOS if needed
+  );
+
+  // Add retry logic for App Check token retrieval
+  await _initializeAppCheckWithRetry();
+
+  runApp(const NaukariwalaApp()); // Replace with your app's widget
+}
+
+Future<void> _initializeAppCheckWithRetry() async {
+  int attempts = 0;
+  const maxAttempts = 5;
+  while (attempts < maxAttempts) {
+    try {
+      final token = await FirebaseAppCheck.instance.getToken();
+      dev.log('[2025-10-10 00:35 IST] App Check token retrieved successfully: $token', name: 'AuthService');
+      return;
+    } catch (e) {
+      if (e.toString().contains('Too many attempts')) {
+        attempts++;
+        final delay = pow(2, attempts).toInt() * 1000; // Exponential backoff (2^attempts seconds)
+        dev.log('[2025-10-10 00:35 IST] App Check retry $attempts after $delay ms due to: $e', name: 'AuthService');
+        await Future.delayed(Duration(milliseconds: delay));
+      } else {
+        dev.log('[2025-10-10 00:35 IST] App Check error (non-rate-limit): $e', name: 'AuthService', error: e);
+        rethrow;
+      }
+    }
+  }
+  dev.log('[2025-10-10 00:35 IST] App Check failed after max retries', name: 'AuthService');
+  throw Exception('App Check initialization failed after max retries');
 }
