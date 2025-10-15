@@ -1,4 +1,4 @@
-// ignore_for_file: use_build_context_synchronously
+// ignore_for_file: use_build_context_synchronously, deprecated_member_use
 
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -23,7 +23,7 @@ class PostJobScreenState extends State<PostJobScreen> {
   final _formKey = GlobalKey<FormState>();
   final Map<String, String> jobData = {};
   bool isLoading = false;
-  bool _isFeatured = false; // New state variable for featured status
+  bool _isFeatured = false;
 
   // Controllers for form fields
   final TextEditingController _titleController = TextEditingController();
@@ -56,191 +56,190 @@ class PostJobScreenState extends State<PostJobScreen> {
     '12+ years',
   ];
 
-// Education options
-final List<String> educationOptions = [
-  'Secondary (Class 10)',
-  'Higher Secondary (Class 12)',
-  'Diploma/Certificate',
-  'Undergraduate (Bachelor\'s Degree)',
-  'Postgraduate Diploma',
-  'Postgraduate (Master\'s Degree)',
-  'Doctorate/PhD/MPhil',
-  'Professional Certification',
-  'Vocational Training',
-];
+  // Education options
+  final List<String> educationOptions = [
+    'Secondary (Class 10)',
+    'Higher Secondary (Class 12)',
+    'Diploma/Certificate',
+    'Undergraduate (Bachelor\'s Degree)',
+    'Postgraduate Diploma',
+    'Postgraduate (Master\'s Degree)',
+    'Doctorate/PhD/MPhil',
+    'Professional Certification',
+    'Vocational Training',
+  ];
 
-// Specialization options
-final List<String> specializationOptions = [
-  'Computer Science / IT',
-  'Artificial Intelligence / Machine Learning / Data Science',
-  'Electronics / Electrical / Robotics',
-  'Mechanical / Civil / Architecture',
-  'Aerospace / Aeronautical / Automotive',
-  'Chemical / Petroleum / Environmental',
-  'Biomedical / Biotechnology / Nanotechnology',
-  'Business / Finance / Management',
-  'Medicine / Healthcare / Pharma',
-  'Physiotherapy / Public Health / Veterinary Science',
-  'Law / Political Science / Public Administration',
-  'Arts / Humanities / Education',
-  'Design / Media / Communication',
-  'Hotel / Travel / Event Management',
-  'Science / Research / Environment',
-  'Astronomy / Astrophysics / Planetary Science',
-  'Vocational/Domestic Services',
-  'Others',
-];
+  // Specialization options
+  final List<String> specializationOptions = [
+    'Computer Science / IT',
+    'Artificial Intelligence / Machine Learning / Data Science',
+    'Electronics / Electrical / Robotics',
+    'Mechanical / Civil / Architecture',
+    'Aerospace / Aeronautical / Automotive',
+    'Chemical / Petroleum / Environmental',
+    'Biomedical / Biotechnology / Nanotechnology',
+    'Business / Finance / Management',
+    'Medicine / Healthcare / Pharma',
+    'Physiotherapy / Public Health / Veterinary Science',
+    'Law / Political Science / Public Administration',
+    'Arts / Humanities / Education',
+    'Design / Media / Communication',
+    'Hotel / Travel / Event Management',
+    'Science / Research / Environment',
+    'Astronomy / Astrophysics / Planetary Science',
+    'Vocational/Domestic Services',
+    'Others',
+  ];
 
-// Skills by specialization
-final Map<String, List<String>> skillsBySpecialization = {
-  'Computer Science / IT': [
-    'Java', 'Python', 'C++', 'C#', 'Dart', 'Flutter', 'Android Development',
-    'iOS Development', 'React', 'Angular', 'Vue.js', 'Node.js', 'Firebase',
-    'AWS', 'Azure', 'Google Cloud', 'Docker', 'Kubernetes', 'SQL', 'NoSQL',
-    'MongoDB', 'REST APIs', 'GraphQL', 'Data Structures & Algorithms', 'DevOps',
-    'Cybersecurity', 'System Design', 'Web Development', 'Unit Testing', 'Git',
-    'Jenkins', 'Agile Methodologies',
-  ],
-  'Artificial Intelligence / Machine Learning / Data Science': [
-    'Python', 'R', 'TensorFlow', 'PyTorch', 'Keras', 'Scikit-learn', 'Pandas',
-    'NumPy', 'Data Visualization', 'Tableau', 'Power BI', 'Big Data', 'Hadoop',
-    'Spark', 'Deep Learning', 'Natural Language Processing', 'Computer Vision',
-    'Statistical Modeling', 'Data Mining', 'Machine Learning Algorithms',
-    'Time Series Analysis', 'SQL', 'Feature Engineering', 'Model Deployment',
-    'Cloud Computing (AWS, Azure)', 'Jupyter Notebooks',
-  ],
-  'Electronics / Electrical / Robotics': [
-    'Embedded Systems', 'PCB Design', 'VLSI', 'MATLAB', 'Simulink', 'Verilog',
-    'VHDL', 'FPGA Programming', 'Arduino', 'Raspberry Pi', 'IoT Development',
-    'Signal Processing', 'Power Systems', 'Control Systems', 'SCADA', 'PLC Programming',
-    'Circuit Design', 'Robotics Programming', 'Sensor Integration', 'Microcontrollers',
-    'Power Electronics', 'Automation', 'Proteus', 'Multisim',
-    'Calculus', 'Algebra', 'Differential Equations', 'Electromagnetism',
-    'Circuit Theory', 'Ohm\'s Law', 'Basic Electrical Components',
-    'Power Systems Design', 'C Programming', 'C++ Programming', 'Python Programming',
-    'SPICE Simulation', 'System Design & Analysis', 'Troubleshooting Electronics',
-    'Microprocessor Design', 'Hardware Applications',
-    'Problem-Solving', 'Technical Communication', 'Team Collaboration',
-    'Attention to Detail', 'Critical Thinking', 'Creativity in Design',
-  ],
-  'Mechanical / Civil / Architecture': [
-    'AutoCAD', 'SolidWorks', 'CATIA', 'ANSYS', 'STAAD Pro', 'Revit', 'ETABS',
-    'Structural Analysis', 'Thermodynamics', 'Fluid Mechanics', 'Manufacturing Processes',
-    'Finite Element Analysis', 'Construction Management', 'Urban Planning', 'BIM (Building Information Modeling)',
-    'Geotechnical Engineering', 'Hydraulics', 'Surveying', 'CAD/CAM', 'HVAC Design',
-    '3D Printing', 'Project Estimation', 'Material Science',
-  ],
-  'Aerospace / Aeronautical / Automotive': [
-    'CATIA', 'ANSYS Fluent', 'SolidWorks', 'MATLAB', 'Aerodynamics', 'Propulsion Systems',
-    'Flight Mechanics', 'Automotive Design', 'Vehicle Dynamics', 'CFD (Computational Fluid Dynamics)',
-    'Finite Element Analysis', 'Aerospace Materials', 'Avionics', 'AutoCAD', 'Structural Design',
-    'Engine Testing', 'CAD/CAM', 'Thermal Analysis', 'Manufacturing Processes', 'Simulation Tools',
-  ],
-  'Chemical / Petroleum / Environmental': [
-    'Aspen HYSYS', 'MATLAB', 'Chemical Process Design', 'Petroleum Refining', 'Environmental Impact Assessment',
-    'Waste Management', 'Water Treatment', 'Process Simulation', 'Thermodynamics', 'Mass Transfer',
-    'Heat Transfer', 'Piping Design', 'HSE (Health, Safety, Environment)', 'Geochemical Analysis',
-    'Reservoir Engineering', 'Pollution Control', 'Sustainable Design', 'Chemical Safety',
-  ],
-  'Biomedical / Biotechnology / Nanotechnology': [
-    'Bioinformatics', 'Molecular Biology', 'Genetic Engineering', 'Cell Culture', 'PCR Techniques',
-    'Biomedical Instrumentation', 'Biomaterials', 'Nanoparticle Synthesis', 'Microscopy', 'Lab Techniques',
-    'Proteomics', 'Genomics', 'Biomedical Imaging', 'Tissue Engineering', 'Biosensors', 'MATLAB',
-    'Biostatistics', 'Drug Delivery Systems', 'Nanofabrication', 'Biochemical Analysis',
-  ],
-  'Business / Finance / Management': [
-    'Financial Analysis', 'Accounting', 'Tally ERP', 'QuickBooks', 'MS Excel', 'SAP FICO',
-    'Financial Modeling', 'Taxation', 'Auditing', 'Cost Accounting', 'Business Strategy',
-    'Market Research', 'Entrepreneurship Development', 'Investment Analysis', 'Risk Management',
-    'Corporate Finance', 'Budgeting', 'Financial Reporting', 'Business Plan Development',
-    'Venture Capital Analysis', 'GST Compliance', 'Digital Marketing', 'Google Ads', 'SEO',
-    'Social Media Marketing', 'Project Management', 'Agile', 'Scrum', 'Salesforce',
-    'Customer Relationship Management (CRM)',
-  ],
-  'Medicine / Healthcare / Pharma': [
-    'Clinical Diagnosis', 'Patient Care', 'Surgical Assistance', 'Nursing Procedures', 'Pharmacology',
-    'Medical Coding', 'First Aid', 'CPR', 'Dental Procedures', 'Orthodontics', 'Prescription Management',
-    'Clinical Pharmacy', 'Drug Dispensing', 'Wound Care', 'Vital Signs Monitoring', 'Patient Counseling',
-    'Anesthesia Administration', 'Infection Control', 'Medical Ethics', 'Health Education',
-  ],
-  'Physiotherapy / Public Health / Veterinary Science': [
-    'Manual Therapy', 'Exercise Prescription', 'Electrotherapy', 'Rehabilitation Techniques',
-    'Epidemiology', 'Public Health Policy', 'Health Program Management', 'Community Health',
-    'Veterinary Diagnosis', 'Animal Surgery', 'Veterinary Pharmacology', 'Animal Husbandry',
-    'Biostatistics', 'Health Promotion', 'Injury Assessment', 'Kinesiology', 'Vaccination Protocols',
-    'Zoonotic Disease Management', 'Public Health Surveillance',
-  ],
-  'Law / Political Science / Public Administration': [
-    'Legal Research', 'Case Analysis', 'Contract Drafting', 'Litigation', 'Legal Writing',
-    'Constitutional Law Analysis', 'International Law Compliance', 'Arbitration', 'Mediation',
-    'Intellectual Property Law', 'Criminal Law Practice', 'Corporate Law', 'Legal Compliance',
-    'Courtroom Advocacy', 'Policy Analysis', 'Public Speaking', 'Governance Studies',
-    'International Diplomacy', 'Conflict Resolution', 'Public Policy Formulation',
-    'Political Research', 'Legislative Analysis', 'International Trade Policy',
-    'Geopolitical Analysis', 'Public Administration Management',
-  ],
-  'Arts / Humanities / Education': [
-    'Creative Writing', 'Literary Analysis', 'Historical Research', 'Archival Studies',
-    'Philosophical Analysis', 'Critical Thinking', 'Content Writing', 'Editing & Proofreading',
-    'Cultural Studies', 'Art Criticism', 'Translation', 'Manuscript Analysis', 'Oral History',
-    'Ethnography', 'Research Methodologies', 'Academic Writing', 'Classroom Management',
-    'Curriculum Design', 'Lesson Planning', 'E-Learning Tools', 'Pedagogical Techniques',
-    'Special Education Strategies', 'Inclusive Education', 'Assessment Design',
-    'Educational Technology', 'Student Counseling',
-  ],
-  'Design / Media / Communication': [
-    'Adobe Photoshop', 'Adobe Illustrator', 'Figma', 'Adobe XD', 'Canva', 'UI/UX Design',
-    'Fashion Illustration', 'Pattern Making', 'Textile Design', '3D Modeling', 'Blender',
-    'SketchUp', 'Graphic Design', 'Typography', 'Branding', 'Motion Graphics', 'Color Theory',
-    'Video Editing', 'Adobe Premiere Pro', 'Final Cut Pro', 'Journalism Ethics', 'News Writing',
-    'Copywriting', 'Broadcast Journalism', 'Photojournalism', 'Social Media Content Creation',
-    'Public Relations', 'Storyboarding', 'Media Production', 'Podcast Production',
-  ],
-  'Hotel / Travel / Event Management': [
-    'Hospitality Management', 'Event Planning', 'Customer Service', 'Food & Beverage Service',
-    'Culinary Techniques', 'Menu Planning', 'Bartending', 'Housekeeping Management',
-    'Travel Planning', 'Tour Operations', 'Ticketing & Reservations', 'Catering Management',
-    'Hotel Operations', 'Guest Relations', 'Inventory Management', 'Sustainable Tourism',
-    'Vendor Management', 'Event Logistics', 'Budget Planning', 'Sponsorship Management',
-  ],
-  'Science / Research / Environment': [
-    'Laboratory Techniques', 'Chemical Analysis', 'Microscopy', 'Spectroscopy', 'Experimental Design',
-    'Data Analysis', 'Physics Modeling', 'Organic Chemistry', 'Molecular Biology', 'Biochemistry',
-    'Quantum Mechanics', 'Thermodynamics', 'Cell Biology', 'Scientific Writing', 'Lab Safety',
-    'Instrumentation', 'Environmental Impact Assessment', 'Geographic Information System (GIS)',
-    'Remote Sensing', 'Geological Mapping', 'Climate Modeling', 'Marine Biology', 'Oceanography',
-    'Environmental Monitoring', 'Soil Analysis', 'Hydrology', 'Biodiversity Conservation',
-  ],
-  'Astronomy / Astrophysics / Planetary Science': [
-    'Astrometry', 'Telescopic Observation', 'Data Analysis', 'Astrostatistics', 'Orbital Mechanics',
-    'Stellar Astrophysics', 'Planetary Geology', 'Spectroscopy', 'Computational Modeling',
-    'Space Mission Design', 'Astronomical Software (Stellarium, IRAF)', 'Exoplanet Research',
-    'Cosmology', 'Radio Astronomy', 'Image Processing',
-  ],
-  'Vocational/Domestic Services': [
-    'Driving', 'Vehicle Operation (Cars, Trucks, Buses)', 'Defensive Driving', 'Route Navigation',
-    'Vehicle Maintenance', 'Traffic Regulations', 'GPS Usage', 'Delivery Scheduling', 'Cargo Handling',
-    'Housekeeping', 'Cleaning & Sanitation', 'Inventory Stocking', 'Office Management',
-    'Document Handling', 'Filing & Organization', 'Basic Computer Skills (MS Office)', 'Errand Running',
-    'Office Equipment Maintenance', 'Mail Distribution', 'Reception Duties', 'Woodworking',
-    'Furniture Making', 'Carpentry Tools (Saws, Drills, Chisels)', 'Blueprint Reading', 'Wood Finishing',
-    'Cabinet Making', 'Framing', 'Joinery', 'Timber Measurement', 'Wood Carving', 'Cooking',
-    'Childcare', 'Elderly Care', 'Gardening', 'Landscaping', 'Basic Maintenance', 'Plumbing',
-    'Pipe Fitting', 'Electrical Wiring', 'Masonry', 'Painting', 'Welding', 'Construction Labor',
-    'Scaffolding', 'Heavy Machinery Operation', 'Forklift Operation', 'Pest Control',
-    'Customer Service', 'Time Management', 'Physical Stamina', 'Teamwork', 'Problem-Solving',
-    'Work Safety Practices',
-  ],
-  'Others': [
-    'Communication Skills', 'Problem Solving', 'Teamwork', 'Leadership', 'Time Management',
-    'Adaptability', 'Creativity', 'Conflict Resolution', 'Critical Thinking', 'Customer Support',
-    'Basic Computer Skills', 'Typing', 'Remote Work Tools (Zoom, Slack, Trello)', 'Virtual Assistant',
-    'Content Moderation', 'Ethical Analysis', 'Policy Formulation', 'Interdisciplinary Research',
-    'Digital Archiving', 'Data Ethics', 'Climate Policy Analysis', 'Stakeholder Engagement',
-    'Text Analysis', 'Digital Storytelling', 'Public Policy Research', 'AI Governance',
-    'Environmental Ethics', 'Cross-Cultural Analysis',
-  ],
-
+  // Skills by specialization
+  final Map<String, List<String>> skillsBySpecialization = {
+    'Computer Science / IT': [
+      'Java', 'Python', 'C++', 'C#', 'Dart', 'Flutter', 'Android Development',
+      'iOS Development', 'React', 'Angular', 'Vue.js', 'Node.js', 'Firebase',
+      'AWS', 'Azure', 'Google Cloud', 'Docker', 'Kubernetes', 'SQL', 'NoSQL',
+      'MongoDB', 'REST APIs', 'GraphQL', 'Data Structures & Algorithms', 'DevOps',
+      'Cybersecurity', 'System Design', 'Web Development', 'Unit Testing', 'Git',
+      'Jenkins', 'Agile Methodologies',
+    ],
+    'Artificial Intelligence / Machine Learning / Data Science': [
+      'Python', 'R', 'TensorFlow', 'PyTorch', 'Keras', 'Scikit-learn', 'Pandas',
+      'NumPy', 'Data Visualization', 'Tableau', 'Power BI', 'Big Data', 'Hadoop',
+      'Spark', 'Deep Learning', 'Natural Language Processing', 'Computer Vision',
+      'Statistical Modeling', 'Data Mining', 'Machine Learning Algorithms',
+      'Time Series Analysis', 'SQL', 'Feature Engineering', 'Model Deployment',
+      'Cloud Computing (AWS, Azure)', 'Jupyter Notebooks',
+    ],
+    'Electronics / Electrical / Robotics': [
+      'Embedded Systems', 'PCB Design', 'VLSI', 'MATLAB', 'Simulink', 'Verilog',
+      'VHDL', 'FPGA Programming', 'Arduino', 'Raspberry Pi', 'IoT Development',
+      'Signal Processing', 'Power Systems', 'Control Systems', 'SCADA', 'PLC Programming',
+      'Circuit Design', 'Robotics Programming', 'Sensor Integration', 'Microcontrollers',
+      'Power Electronics', 'Automation', 'Proteus', 'Multisim',
+      'Calculus', 'Algebra', 'Differential Equations', 'Electromagnetism',
+      'Circuit Theory', 'Ohm\'s Law', 'Basic Electrical Components',
+      'Power Systems Design', 'C Programming', 'C++ Programming', 'Python Programming',
+      'SPICE Simulation', 'System Design & Analysis', 'Troubleshooting Electronics',
+      'Microprocessor Design', 'Hardware Applications',
+      'Problem-Solving', 'Technical Communication', 'Team Collaboration',
+      'Attention to Detail', 'Critical Thinking', 'Creativity in Design',
+    ],
+    'Mechanical / Civil / Architecture': [
+      'AutoCAD', 'SolidWorks', 'CATIA', 'ANSYS', 'STAAD Pro', 'Revit', 'ETABS',
+      'Structural Analysis', 'Thermodynamics', 'Fluid Mechanics', 'Manufacturing Processes',
+      'Finite Element Analysis', 'Construction Management', 'Urban Planning', 'BIM (Building Information Modeling)',
+      'Geotechnical Engineering', 'Hydraulics', 'Surveying', 'CAD/CAM', 'HVAC Design',
+      '3D Printing', 'Project Estimation', 'Material Science',
+    ],
+    'Aerospace / Aeronautical / Automotive': [
+      'CATIA', 'ANSYS Fluent', 'SolidWorks', 'MATLAB', 'Aerodynamics', 'Propulsion Systems',
+      'Flight Mechanics', 'Automotive Design', 'Vehicle Dynamics', 'CFD (Computational Fluid Dynamics)',
+      'Finite Element Analysis', 'Aerospace Materials', 'Avionics', 'AutoCAD', 'Structural Design',
+      'Engine Testing', 'CAD/CAM', 'Thermal Analysis', 'Manufacturing Processes', 'Simulation Tools',
+    ],
+    'Chemical / Petroleum / Environmental': [
+      'Aspen HYSYS', 'MATLAB', 'Chemical Process Design', 'Petroleum Refining', 'Environmental Impact Assessment',
+      'Waste Management', 'Water Treatment', 'Process Simulation', 'Thermodynamics', 'Mass Transfer',
+      'Heat Transfer', 'Piping Design', 'HSE (Health, Safety, Environment)', 'Geochemical Analysis',
+      'Reservoir Engineering', 'Pollution Control', 'Sustainable Design', 'Chemical Safety',
+    ],
+    'Biomedical / Biotechnology / Nanotechnology': [
+      'Bioinformatics', 'Molecular Biology', 'Genetic Engineering', 'Cell Culture', 'PCR Techniques',
+      'Biomedical Instrumentation', 'Biomaterials', 'Nanoparticle Synthesis', 'Microscopy', 'Lab Techniques',
+      'Proteomics', 'Genomics', 'Biomedical Imaging', 'Tissue Engineering', 'Biosensors', 'MATLAB',
+      'Biostatistics', 'Drug Delivery Systems', 'Nanofabrication', 'Biochemical Analysis',
+    ],
+    'Business / Finance / Management': [
+      'Financial Analysis', 'Accounting', 'Tally ERP', 'QuickBooks', 'MS Excel', 'SAP FICO',
+      'Financial Modeling', 'Taxation', 'Auditing', 'Cost Accounting', 'Business Strategy',
+      'Market Research', 'Entrepreneurship Development', 'Investment Analysis', 'Risk Management',
+      'Corporate Finance', 'Budgeting', 'Financial Reporting', 'Business Plan Development',
+      'Venture Capital Analysis', 'GST Compliance', 'Digital Marketing', 'Google Ads', 'SEO',
+      'Social Media Marketing', 'Project Management', 'Agile', 'Scrum', 'Salesforce',
+      'Customer Relationship Management (CRM)',
+    ],
+    'Medicine / Healthcare / Pharma': [
+      'Clinical Diagnosis', 'Patient Care', 'Surgical Assistance', 'Nursing Procedures', 'Pharmacology',
+      'Medical Coding', 'First Aid', 'CPR', 'Dental Procedures', 'Orthodontics', 'Prescription Management',
+      'Clinical Pharmacy', 'Drug Dispensing', 'Wound Care', 'Vital Signs Monitoring', 'Patient Counseling',
+      'Anesthesia Administration', 'Infection Control', 'Medical Ethics', 'Health Education',
+    ],
+    'Physiotherapy / Public Health / Veterinary Science': [
+      'Manual Therapy', 'Exercise Prescription', 'Electrotherapy', 'Rehabilitation Techniques',
+      'Epidemiology', 'Public Health Policy', 'Health Program Management', 'Community Health',
+      'Veterinary Diagnosis', 'Animal Surgery', 'Veterinary Pharmacology', 'Animal Husbandry',
+      'Biostatistics', 'Health Promotion', 'Injury Assessment', 'Kinesiology', 'Vaccination Protocols',
+      'Zoonotic Disease Management', 'Public Health Surveillance',
+    ],
+    'Law / Political Science / Public Administration': [
+      'Legal Research', 'Case Analysis', 'Contract Drafting', 'Litigation', 'Legal Writing',
+      'Constitutional Law Analysis', 'International Law Compliance', 'Arbitration', 'Mediation',
+      'Intellectual Property Law', 'Criminal Law Practice', 'Corporate Law', 'Legal Compliance',
+      'Courtroom Advocacy', 'Policy Analysis', 'Public Speaking', 'Governance Studies',
+      'International Diplomacy', 'Conflict Resolution', 'Public Policy Formulation',
+      'Political Research', 'Legislative Analysis', 'International Trade Policy',
+      'Geopolitical Analysis', 'Public Administration Management',
+    ],
+    'Arts / Humanities / Education': [
+      'Creative Writing', 'Literary Analysis', 'Historical Research', 'Archival Studies',
+      'Philosophical Analysis', 'Critical Thinking', 'Content Writing', 'Editing & Proofreading',
+      'Cultural Studies', 'Art Criticism', 'Translation', 'Manuscript Analysis', 'Oral History',
+      'Ethnography', 'Research Methodologies', 'Academic Writing', 'Classroom Management',
+      'Curriculum Design', 'Lesson Planning', 'E-Learning Tools', 'Pedagogical Techniques',
+      'Special Education Strategies', 'Inclusive Education', 'Assessment Design',
+      'Educational Technology', 'Student Counseling',
+    ],
+    'Design / Media / Communication': [
+      'Adobe Photoshop', 'Adobe Illustrator', 'Figma', 'Adobe XD', 'Canva', 'UI/UX Design',
+      'Fashion Illustration', 'Pattern Making', 'Textile Design', '3D Modeling', 'Blender',
+      'SketchUp', 'Graphic Design', 'Typography', 'Branding', 'Motion Graphics', 'Color Theory',
+      'Video Editing', 'Adobe Premiere Pro', 'Final Cut Pro', 'Journalism Ethics', 'News Writing',
+      'Copywriting', 'Broadcast Journalism', 'Photojournalism', 'Social Media Content Creation',
+      'Public Relations', 'Storyboarding', 'Media Production', 'Podcast Production',
+    ],
+    'Hotel / Travel / Event Management': [
+      'Hospitality Management', 'Event Planning', 'Customer Service', 'Food & Beverage Service',
+      'Culinary Techniques', 'Menu Planning', 'Bartending', 'Housekeeping Management',
+      'Travel Planning', 'Tour Operations', 'Ticketing & Reservations', 'Catering Management',
+      'Hotel Operations', 'Guest Relations', 'Inventory Management', 'Sustainable Tourism',
+      'Vendor Management', 'Event Logistics', 'Budget Planning', 'Sponsorship Management',
+    ],
+    'Science / Research / Environment': [
+      'Laboratory Techniques', 'Chemical Analysis', 'Microscopy', 'Spectroscopy', 'Experimental Design',
+      'Data Analysis', 'Physics Modeling', 'Organic Chemistry', 'Molecular Biology', 'Biochemistry',
+      'Quantum Mechanics', 'Thermodynamics', 'Cell Biology', 'Scientific Writing', 'Lab Safety',
+      'Instrumentation', 'Environmental Impact Assessment', 'Geographic Information System (GIS)',
+      'Remote Sensing', 'Geological Mapping', 'Climate Modeling', 'Marine Biology', 'Oceanography',
+      'Environmental Monitoring', 'Soil Analysis', 'Hydrology', 'Biodiversity Conservation',
+    ],
+    'Astronomy / Astrophysics / Planetary Science': [
+      'Astrometry', 'Telescopic Observation', 'Data Analysis', 'Astrostatistics', 'Orbital Mechanics',
+      'Stellar Astrophysics', 'Planetary Geology', 'Spectroscopy', 'Computational Modeling',
+      'Space Mission Design', 'Astronomical Software (Stellarium, IRAF)', 'Exoplanet Research',
+      'Cosmology', 'Radio Astronomy', 'Image Processing',
+    ],
+    'Vocational/Domestic Services': [
+      'Driving', 'Vehicle Operation (Cars, Trucks, Buses)', 'Defensive Driving', 'Route Navigation',
+      'Vehicle Maintenance', 'Traffic Regulations', 'GPS Usage', 'Delivery Scheduling', 'Cargo Handling',
+      'Housekeeping', 'Cleaning & Sanitation', 'Inventory Stocking', 'Office Management',
+      'Document Handling', 'Filing & Organization', 'Basic Computer Skills (MS Office)', 'Errand Running',
+      'Office Equipment Maintenance', 'Mail Distribution', 'Reception Duties', 'Woodworking',
+      'Furniture Making', 'Carpentry Tools (Saws, Drills, Chisels)', 'Blueprint Reading', 'Wood Finishing',
+      'Cabinet Making', 'Framing', 'Joinery', 'Timber Measurement', 'Wood Carving', 'Cooking',
+      'Childcare', 'Elderly Care', 'Gardening', 'Landscaping', 'Basic Maintenance', 'Plumbing',
+      'Pipe Fitting', 'Electrical Wiring', 'Masonry', 'Painting', 'Welding', 'Construction Labor',
+      'Scaffolding', 'Heavy Machinery Operation', 'Forklift Operation', 'Pest Control',
+      'Customer Service', 'Time Management', 'Physical Stamina', 'Teamwork', 'Problem-Solving',
+      'Work Safety Practices',
+    ],
+    'Others': [
+      'Communication Skills', 'Problem Solving', 'Teamwork', 'Leadership', 'Time Management',
+      'Adaptability', 'Creativity', 'Conflict Resolution', 'Critical Thinking', 'Customer Support',
+      'Basic Computer Skills', 'Typing', 'Remote Work Tools (Zoom, Slack, Trello)', 'Virtual Assistant',
+      'Content Moderation', 'Ethical Analysis', 'Policy Formulation', 'Interdisciplinary Research',
+      'Digital Archiving', 'Data Ethics', 'Climate Policy Analysis', 'Stakeholder Engagement',
+      'Text Analysis', 'Digital Storytelling', 'Public Policy Research', 'AI Governance',
+      'Environmental Ethics', 'Cross-Cultural Analysis',
+    ],
   };
 
   @override
@@ -250,11 +249,9 @@ final Map<String, List<String>> skillsBySpecialization = {
       _mapEditData();
     } else {
       _loadRecruiterLocation();
-      _minSalaryController.text = '0.0';
-      _maxSalaryController.text = '0.0';
+      _minSalaryController.text = '';
+      _maxSalaryController.text = '';
     }
-    _minSalaryController.addListener(_formatSalaryOnChange);
-    _maxSalaryController.addListener(_formatSalaryOnChange);
   }
 
   void _mapEditData() {
@@ -276,8 +273,7 @@ final Map<String, List<String>> skillsBySpecialization = {
     _selectedSkills = (widget.editJobData!['skills'] as List<dynamic>?)?.cast<String>() ?? [];
     _selectedEducation = widget.editJobData!['education']?.toString();
     _selectedSpecialization = widget.editJobData!['specialization']?.toString();
-    _isFeatured = widget.editJobData!['isFeatured'] ?? false; // Initialize isFeatured from edit data
-    // Ensure selected values are valid options
+    _isFeatured = widget.editJobData!['isFeatured'] ?? false;
     if (_selectedExperience != null && !experienceOptions.contains(_selectedExperience)) {
       _selectedExperience = null;
     }
@@ -311,41 +307,34 @@ final Map<String, List<String>> skillsBySpecialization = {
 
   String _formatSalary(String value) {
     value = value.replaceAll(' LPA (INR)', '').trim();
+    if (value.isEmpty) {
+      return '';
+    }
     double? number = double.tryParse(value);
     if (number == null) {
-      return '0.0';
+      return value;
     }
     return number.toStringAsFixed(1);
   }
 
-  void _formatSalaryOnChange() {
-    final controllers = [_minSalaryController, _maxSalaryController];
-    for (var controller in controllers) {
-      final value = controller.text;
-      final formattedValue = _formatSalary(value);
-      if (controller.text != formattedValue) {
-        final selection = controller.selection;
-        controller.text = formattedValue;
-        controller.selection = selection.extent.offset == value.length
-            ? TextSelection.fromPosition(TextPosition(offset: formattedValue.length))
-            : TextSelection.collapsed(offset: selection.extent.offset);
-      }
-    }
-  }
-
   Map<String, dynamic> _getFormData() {
+    String minSalary = _formatSalary(_minSalaryController.text);
+    String maxSalary = _formatSalary(_maxSalaryController.text);
+    minSalary = minSalary.isEmpty ? '0.0' : minSalary;
+    maxSalary = maxSalary.isEmpty ? '0.0' : maxSalary;
+
     return {
       'title': _titleController.text.trim(),
       'company': _companyController.text.trim(),
       'location': _locationController.text.trim(),
       'experience': _selectedExperience ?? '',
-      'salary': '${_minSalaryController.text.trim()}-${_maxSalaryController.text.trim()} LPA (INR)',
+      'salary': '$minSalary-$maxSalary LPA (INR)',
       'jobType': _selectedJobType ?? '',
       'description': _descriptionController.text.trim(),
       'skills': _selectedSkills,
       'education': _selectedEducation ?? '',
       'specialization': _selectedSpecialization ?? '',
-      'isFeatured': _isFeatured, // Include isFeatured in form data
+      'isFeatured': _isFeatured,
     };
   }
 
@@ -458,8 +447,6 @@ final Map<String, List<String>> skillsBySpecialization = {
     _companyController.dispose();
     _locationController.dispose();
     _experienceController.dispose();
-    _minSalaryController.removeListener(_formatSalaryOnChange);
-    _maxSalaryController.removeListener(_formatSalaryOnChange);
     _minSalaryController.dispose();
     _maxSalaryController.dispose();
     _descriptionController.dispose();
@@ -537,7 +524,7 @@ final Map<String, List<String>> skillsBySpecialization = {
                               filled: true,
                               fillColor: Colors.white,
                             ),
-                            initialValue: _selectedExperience,
+                            value: _selectedExperience,
                             items: experienceOptions.map((String option) {
                               return DropdownMenuItem<String>(
                                 value: option,
@@ -570,7 +557,7 @@ final Map<String, List<String>> skillsBySpecialization = {
                             if (min == null) {
                               return 'Please enter a valid number';
                             }
-                            final max = double.tryParse(_maxSalaryController.text.trim()) ?? 0.0;
+                            final max = double.tryParse(_maxSalaryController.text.trim()) ?? double.infinity;
                             if (min > max && _maxSalaryController.text.isNotEmpty) {
                               return 'Min salary cannot be greater than max salary';
                             }
@@ -609,7 +596,7 @@ final Map<String, List<String>> skillsBySpecialization = {
                               filled: true,
                               fillColor: Colors.white,
                             ),
-                            initialValue: _selectedJobType,
+                            value: _selectedJobType,
                             items: jobTypeOptions.map((String option) {
                               return DropdownMenuItem<String>(
                                 value: option,
@@ -647,7 +634,7 @@ final Map<String, List<String>> skillsBySpecialization = {
                               filled: true,
                               fillColor: Colors.white,
                             ),
-                            initialValue: _selectedEducation,
+                            value: _selectedEducation,
                             items: educationOptions.map((String option) {
                               return DropdownMenuItem<String>(
                                 value: option,
@@ -685,7 +672,7 @@ final Map<String, List<String>> skillsBySpecialization = {
                               filled: true,
                               fillColor: Colors.white,
                             ),
-                            initialValue: _selectedSpecialization,
+                            value: _selectedSpecialization,
                             items: specializationOptions.map((String option) {
                               return DropdownMenuItem<String>(
                                 value: option,
@@ -845,7 +832,24 @@ final Map<String, List<String>> skillsBySpecialization = {
         maxLines: maxLines,
         keyboardType: keyboardType,
         validator: validator ??
-            ((value) => value == null || value.trim().isEmpty ? 'Please enter $labelText' : null),
+            (labelText.contains('Salary')
+                ? (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Please enter $labelText';
+                    }
+                    final parsed = double.tryParse(value.trim());
+                    if (parsed == null) {
+                      return 'Please enter a valid number';
+                    }
+                    if (labelText.contains('Minimum')) {
+                      final max = double.tryParse(_maxSalaryController.text.trim()) ?? double.infinity;
+                      if (parsed > max && _maxSalaryController.text.isNotEmpty) {
+                        return 'Min salary cannot be greater than max salary';
+                      }
+                    }
+                    return null;
+                  }
+                : (value) => value == null || value.trim().isEmpty ? 'Please enter $labelText' : null),
         onSaved: (value) {
           // No need for onSaved since controllers handle state
         },
@@ -854,7 +858,6 @@ final Map<String, List<String>> skillsBySpecialization = {
   }
 }
 
-// Custom Animated Button Widget
 class AnimatedScaleButton extends StatefulWidget {
   final VoidCallback onPressed;
   final Widget child;
