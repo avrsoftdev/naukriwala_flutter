@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import 'dart:developer' as dev;
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../services/auth_service.dart';
 import './chat_screen.dart';
 
@@ -27,6 +28,7 @@ class NotificationsScreenState extends State<NotificationsScreen> {
   final Set<String> _selectedNotifications = {};
   bool _isSelectionMode = false;
   final AuthService _authService = AuthService();
+  final Map<String, String?> _resumeUrlCache = {};
 
   @override
   void initState() {
@@ -45,21 +47,16 @@ class NotificationsScreenState extends State<NotificationsScreen> {
         query = query.where('type', whereIn: ['application', 'status_update', 'message']);
       }
 
-      _notificationsStream = query
-          .orderBy('timestamp', descending: true)
-          .snapshots();
-
+      _notificationsStream = query.orderBy('timestamp', descending: true).snapshots();
       dev.log('[2025-10-10 12:57 IST] Initialized notifications stream for ${widget.isRecruiter ? 'recruiter' : 'seeker'} UID: $uid in $collectionPath', name: 'NotificationsScreen');
-
-      // Handle FCM notification taps
       _setupFCMListeners();
     } else {
-      dev.log('[2025-10-10 12:57 IST] No authenticated user found', name: 'NotificationsScreen');
+      _notificationsStream = Stream.empty();
+      dev.log('[2025-10-10 12:57 IST] No authenticated user found, using empty stream', name: 'NotificationsScreen');
     }
   }
 
   void _setupFCMListeners() {
-    // Handle notification taps from background/terminated state
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
       dev.log('[2025-10-10 12:57 IST] Notification opened: ${message.messageId}', name: 'NotificationsScreen FCM');
       final data = message.data;
@@ -88,7 +85,6 @@ class NotificationsScreenState extends State<NotificationsScreen> {
       }
     });
 
-    // Handle initial message (app opened via notification)
     FirebaseMessaging.instance.getInitialMessage().then((RemoteMessage? message) {
       if (message != null && mounted) {
         dev.log('[2025-10-10 12:57 IST] App opened via notification: ${message.messageId}', name: 'NotificationsScreen FCM');
@@ -279,6 +275,10 @@ class NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   Future<String?> _getResumeUrl(String jobId, String seekerId) async {
+    final cacheKey = '${seekerId}_$jobId';
+    if (_resumeUrlCache.containsKey(cacheKey)) {
+      return _resumeUrlCache[cacheKey];
+    }
     try {
       final appDoc = await FirebaseFirestore.instance
           .collection('Applications')
@@ -286,11 +286,14 @@ class NotificationsScreenState extends State<NotificationsScreen> {
           .get();
       if (appDoc.exists && widget.isRecruiter) {
         final data = appDoc.data()!;
-        return data['resume']?['cvUrl'] ?? 'N/A';
+        final url = data['resume']?['cvUrl'] ?? 'N/A';
+        _resumeUrlCache[cacheKey] = url;
+        return url;
       }
     } catch (e) {
       dev.log('[2025-10-10 12:57 IST] Error fetching resume URL for job $jobId, seeker $seekerId: $e', name: 'NotificationsScreen', error: e);
     }
+    _resumeUrlCache[cacheKey] = null;
     return null;
   }
 
@@ -455,6 +458,14 @@ class NotificationsScreenState extends State<NotificationsScreen> {
                                   await _markAsRead(notificationId);
                                 } else if (value == 'mark_unread') {
                                   await _markAsUnread(notificationId);
+                                } else if (value == 'delete') {
+                                  await FirebaseFirestore.instance
+                                      .collection(collectionPath)
+                                      .doc(uid)
+                                      .collection('Notifications')
+                                      .doc(notificationId)
+                                      .delete();
+                                  dev.log('[2025-10-10 12:57 IST] Deleted notification $notificationId', name: 'NotificationsScreen');
                                 }
                               },
                               itemBuilder: (context) => [
@@ -468,6 +479,10 @@ class NotificationsScreenState extends State<NotificationsScreen> {
                                     value: 'mark_unread',
                                     child: Text('Mark as Unread'),
                                   ),
+                                const PopupMenuItem(
+                                  value: 'delete',
+                                  child: Text('Delete'),
+                                ),
                               ],
                               child: ListTile(
                                 contentPadding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 8.h),
@@ -494,9 +509,19 @@ class NotificationsScreenState extends State<NotificationsScreen> {
                                       ),
                                     if (resumeUrl != null && widget.isRecruiter)
                                       InkWell(
-                                        onTap: () {
-                                          // Implement resume URL opening logic if needed
-                                          dev.log('[2025-10-10 12:57 IST] Resume URL tapped: $resumeUrl', name: 'NotificationsScreen');
+                                        onTap: () async {
+                                          final uri = Uri.parse(resumeUrl);
+                                          if (await canLaunchUrl(uri)) {
+                                            await launchUrl(uri, mode: LaunchMode.externalApplication);
+                                            dev.log('[2025-10-10 12:57 IST] Opened resume URL: $resumeUrl', name: 'NotificationsScreen');
+                                          } else {
+                                            dev.log('[2025-10-10 12:57 IST] Cannot launch resume URL: $resumeUrl', name: 'NotificationsScreen');
+                                            if (mounted) {
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                const SnackBar(content: Text('Cannot open resume URL'), backgroundColor: Colors.red),
+                                              );
+                                            }
+                                          }
                                         },
                                         child: Text(
                                           'Resume URL: $resumeUrl',
@@ -538,10 +563,16 @@ class NotificationsScreenState extends State<NotificationsScreen> {
                                           );
                                         }
                                       } catch (e) {
+                                        String errorMessage = 'Failed to open chat. Please try again.';
+                                        if (e is FirebaseException && e.code == 'permission-denied') {
+                                          errorMessage = 'Permission denied. Ensure your account has access to this chat.';
+                                        } else if (e.toString().contains('Invalid chat ID')) {
+                                          errorMessage = 'Invalid chat configuration. Contact support.';
+                                        }
                                         dev.log('[2025-10-10 12:57 IST] Error navigating to ChatScreen for notification $notificationId: $e', name: 'NotificationsScreen', error: e);
                                         if (mounted) {
                                           ScaffoldMessenger.of(context).showSnackBar(
-                                            SnackBar(content: Text('Error opening chat: $e'), backgroundColor: Colors.red),
+                                            SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
                                           );
                                         }
                                       }
