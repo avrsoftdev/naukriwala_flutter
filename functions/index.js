@@ -2,27 +2,14 @@ const { onCall } = require("firebase-functions/v2/https");
 const { setGlobalOptions } = require("firebase-functions/v2");
 const admin = require("firebase-admin");
 const logger = require("firebase-functions/logger");
-const { google } = require("googleapis");
-const fs = require("fs");
+const serviceAccount = require("./fcm-service-account-key.json");
 
-// Load the Play Integrity service account key
-const playIntegrityServiceAccount = require("./play-integrity-service-account-key.json");
-
-// Initialize Firebase Admin SDK (use your main Firebase credentials)
+// Initialize Firebase Admin SDK
 if (!admin.apps.length) {
-  admin.initializeApp();
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+  });
 }
-
-// Create a GoogleAuth client for Play Integrity
-const auth = new google.auth.GoogleAuth({
-  credentials: playIntegrityServiceAccount,
-  scopes: ["https://www.googleapis.com/auth/playintegrity"],
-});
-
-const playintegrity = google.playintegrity({
-  version: "v1",
-  auth,
-});
 
 setGlobalOptions({ maxInstances: 10 });
 
@@ -37,68 +24,45 @@ exports.sendNotification = onCall(
         throw new Error("App Check verification failed.");
       }
 
-      const {
-        token,
-        title,
-        body,
-        data = {},
-        recipientId,
-        recipientRole,
-        integrityToken,
-      } = request.data;
+      const { token, title, body, data = {}, recipientId, role } = request.data;
 
-      if (!token) throw new Error("FCM token is required.");
-      if (!integrityToken) throw new Error("Integrity token is required.");
-
-      // ✅ Verify Play Integrity token
-      const packageName = "com.naukariwala.avr"; // Replace with your app's package name
-
-      const integrityResponse = await playintegrity.v1.verify({
-        packageName,
-        requestBody: { integrityToken },
-      });
-
-      const verdict = integrityResponse.data;
-      logger.info("Play Integrity verdict:", verdict);
-
-      // Check for device integrity (basic example)
-      const integrityVerdict =
-        verdict.deviceIntegrity?.deviceRecognitionVerdict || [];
-
-      if (!integrityVerdict.includes("MEETS_DEVICE_INTEGRITY")) {
-        throw new Error("Device integrity check failed");
+      if (!token) {
+        throw new Error("FCM token is required.");
       }
 
-      logger.info("✅ Device integrity verified successfully.");
-
-      // Prepare FCM message
       const message = {
         token,
-        notification: {
-          title: title || "📢 New Notification",
-          body: body || "You have a new message",
-        },
         data: {
           click_action: "FLUTTER_NOTIFICATION_CLICK",
           type: data.type || "general",
-          ...data,
+          jobId: data.jobId || "",
+          seekerId: data.seekerId || "",
+          recruiterId: data.recruiterId || "",
+          message: data.message || "",
           timestamp: new Date().toISOString(),
+          title: title || "📢 New Notification",
+          body: body || "You have a new message",
+          ...data,
         },
-        android: { priority: "high" },
+        android: {
+          priority: "high",
+        },
         apns: {
           headers: { "apns-priority": "10" },
-          payload: { aps: { contentAvailable: true } },
+          payload: {
+            aps: {
+              contentAvailable: true,
+            },
+          },
         },
       };
 
-      // Send FCM
-      await admin.messaging().send(message);
-      logger.info(`✅ Notification sent to ${token}`);
+      const response = await admin.messaging().send(message);
+      logger.info(`✅ Notification sent successfully to token: ${token}`);
 
-      // Save in Firestore if recipient details provided
-      if (recipientId && recipientRole) {
+      if (recipientId) {
         const collectionName =
-          recipientRole === "recruiter"
+          role === "recruiter"
             ? "RecruiterNotifications"
             : "SeekerNotifications";
 
@@ -108,8 +72,8 @@ exports.sendNotification = onCall(
           .doc(recipientId)
           .collection("Notifications")
           .add({
-            title,
-            body,
+            title: title,
+            body: body,
             data,
             timestamp: admin.firestore.FieldValue.serverTimestamp(),
             sentBy: request.auth.uid,
