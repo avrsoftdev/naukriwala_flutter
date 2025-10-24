@@ -1,3 +1,4 @@
+
 // ignore_for_file: deprecated_member_use
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -481,13 +482,7 @@ class _ChatScreenState extends State<ChatScreen> {
       if (recipientCollection == 'RecruiterNotifications') {
         await _validateAndCreateApplication(widget.jobId, widget.recipientId);
       }
-      await _authService.sendMessage(
-        senderId: senderId,
-        recipientId: widget.recipientId,
-        jobId: widget.jobId,
-        message: message,
-        status: 'sent',
-      );
+      await _authService.sendMessage(widget.recipientId, widget.jobId, message, status: 'sent');
       _messageController.clear();
       if (mounted) {
         setState(() {
@@ -547,13 +542,7 @@ class _ChatScreenState extends State<ChatScreen> {
       if (recipientCollection == 'RecruiterNotifications') {
         await _validateAndCreateApplication(widget.jobId, widget.recipientId);
       }
-      await _authService.sendMessage(
-        senderId: senderId,
-        recipientId: widget.recipientId,
-        jobId: widget.jobId,
-        message: initialMessage,
-        status: 'sent',
-      );
+      await _authService.sendMessage(widget.recipientId, widget.jobId, initialMessage, status: 'sent');
       _messageController.clear();
       if (mounted) {
         setState(() {
