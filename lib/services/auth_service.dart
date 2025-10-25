@@ -1,4 +1,4 @@
-// ignore_for_file: unnecessary_cast, deprecated_member_use
+/// ignore_for_file: unnecessary_cast, deprecated_member_use
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -57,6 +57,10 @@ class AuthService {
         return;
       }
       await user.getIdToken(); // Ensure token is refreshed
+
+      // Fetch App Check token for Play Integrity verification
+      final integrityToken = await FirebaseAppCheck.instance.getToken();
+
       final callable = FirebaseFunctions.instanceFor(region: 'asia-south1').httpsCallable(
         'sendNotification',
         options: HttpsCallableOptions(
@@ -72,6 +76,7 @@ class AuthService {
           'notificationId': data['notificationId'] ?? '', // Ensure notificationId is included
           'message': data['message'] ?? '', // Include message for custom handling
         },
+        'integrityToken': integrityToken,  // Added to pass integrityToken for Cloud Function verification
       });
 
       if (response.data['success'] == true) {

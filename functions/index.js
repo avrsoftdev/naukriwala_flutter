@@ -34,7 +34,8 @@ exports.sendNotification = onCall(
         throw new Error("User must be authenticated to send notifications.");
       }
       if (!request.app) {
-        throw new Error("App Check verification failed.");
+        logger.error("App Check verification failed.");
+        throw new Error("App Check verification failed.");  // Added for explicit error handling
       }
 
       const {
@@ -82,6 +83,8 @@ exports.sendNotification = onCall(
           click_action: "FLUTTER_NOTIFICATION_CLICK",
           type: data.type || "general",
           ...data,
+          'notificationId': data['notificationId'] ?? '', // Ensure notificationId is included
+          'message': data['message'] ?? '', // Include message for custom handling
           timestamp: new Date().toISOString(),
         },
         android: { priority: "high" },
@@ -117,9 +120,9 @@ exports.sendNotification = onCall(
       }
 
       return { success: true, message: "Notification sent successfully." };
-    } catch (error) {
-      logger.error("❌ Error sending notification:", error);
-      throw new Error(`Failed to send notification: ${error.message}`);
-    }
+  } catch (error) {
+    logger.error("❌ Error sending notification:", error);
+    throw new Error(`Failed to send notification: ${error.message}`);
   }
+}
 );
