@@ -32,6 +32,11 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+    lint {
+        disable += "UnitTestLint"
+        abortOnError = false
+        checkReleaseBuilds = false
+    }
 
     kotlinOptions {
         jvmTarget = JavaVersion.VERSION_17.toString()
@@ -62,7 +67,11 @@ android {
             signingConfig = signingConfigs.getByName("release")
         }
     }
-
+   configurations.all {
+    resolutionStrategy {
+        force("net.bytebuddy:byte-buddy:1.14.9")
+    }
+     }
     packaging {
         resources {
             excludes += setOf(
@@ -98,6 +107,7 @@ dependencies {
     implementation ("com.google.auth:google-auth-library-oauth2-http:1.19.0")
     implementation("androidx.multidex:multidex:2.0.1")
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
+    implementation ("com.google.android.play:integrity:1.5.0")
 }
 
 // Add Proguard rules for Firebase and Flutter

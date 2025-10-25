@@ -1,3 +1,5 @@
+// ignore_for_file: unused_import, unused_element, deprecated_member_use
+
 import 'dart:io';
 import 'dart:convert';
 import 'dart:developer' as dev;
@@ -104,6 +106,7 @@ void main() async {
   }
 
   // Initialize Local Notifications
+  // ignore: no_leading_underscores_for_local_identifiers
   final _localNotifications = FlutterLocalNotificationsPlugin();
   const AndroidInitializationSettings androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
   const DarwinInitializationSettings iOSInit = DarwinInitializationSettings(

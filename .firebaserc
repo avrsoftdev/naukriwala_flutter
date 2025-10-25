@@ -1,5 +1,8 @@
 {
   "projects": {
-    "default": "naukriwala-455909"
-  }
+    "default": "naukriwala-455909",
+    "firebase use": "naukriwala-455909"
+  },
+  "targets": {},
+  "etags": {}
 }

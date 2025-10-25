@@ -23,15 +23,7 @@
           }
         },
         {
-          "client_id": "307134434935-pikkldlkf80jsk7v0rgnesdru15f41ff.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.naukariwala.avr",
-            "certificate_hash": "d937d3cc87538418b14c73dd6fb1038081f50e42"
-          }
-        },
-        {
-          "client_id": "116749202314520008273",
+          "client_id": "104067883540506333321",
           "client_type": 3
         }
       ],
@@ -44,15 +36,8 @@
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "116749202314520008273",
+              "client_id": "104067883540506333321",
               "client_type": 3
-            },
-            {
-              "client_id": "307134434935-ha0p9ailvnl06pluvov294ar81ttt930.apps.googleusercontent.com",
-              "client_type": 2,
-              "ios_info": {
-                "bundle_id": "com.naukariwala.avr"
-              }
             }
           ]
         }

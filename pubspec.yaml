@@ -2,7 +2,7 @@ name: naukariwala
 description: "A Job Recruiter and Seeker App"
 publish_to: 'none'
 
-version: 6.0.0+14
+version: 6.0.0+18
 
 environment:
   sdk: ^3.8.1
@@ -22,7 +22,7 @@ dependencies:
   firebase_storage: ^13.0.2
   file_picker: ^10.3.3
   flutter_screenutil: ^5.9.0
-  image_picker: ^1.1.2
+  image_picker: ^1.2.0
   path: ^1.9.0
   intl: ^0.20.2
   url_launcher: ^6.3.0
