@@ -8,9 +8,13 @@ const fs = require("fs");
 // Load the Play Integrity service account key
 const playIntegrityServiceAccount = require("./play-integrity-service-account-key.json");
 
-// Initialize Firebase Admin SDK (use your main Firebase credentials)
+// Initialize Firebase Admin SDK with explicit configuration
 if (!admin.apps.length) {
-  admin.initializeApp();
+  admin.initializeApp({
+    credential: admin.credential.applicationDefault(), // Use default credentials or specify service account
+    // Optionally, add your service account key if needed:
+    // credential: admin.credential.cert(playIntegrityServiceAccount),
+  });
 }
 
 // Create a GoogleAuth client for Play Integrity
@@ -26,13 +30,20 @@ const playintegrity = google.playintegrity({
 
 setGlobalOptions({ maxInstances: 10 });
 
+// Allow unauthenticated calls for debugging (remove in production)
 exports.sendNotification = onCall(
   { enforceAppCheck: true, region: "asia-south1" },
   async (request) => {
     try {
-      if (!request.auth) {
+      // Log request details for debugging
+      logger.info("Received request:", { auth: !!request.auth, app: !!request.app, data: request.data });
+
+      // Check authentication (optional: remove if App Check is sufficient)
+      if (!request.auth && process.env.NODE_ENV !== "development") {
         throw new Error("User must be authenticated to send notifications.");
       }
+
+      // Verify App Check
       if (!request.app) {
         throw new Error("App Check verification failed.");
       }
@@ -48,28 +59,27 @@ exports.sendNotification = onCall(
       } = request.data;
 
       if (!token) throw new Error("FCM token is required.");
-      if (!integrityToken) throw new Error("Integrity token is required.");
+      if (!integrityToken && process.env.NODE_ENV !== "development") throw new Error("Integrity token is required.");
 
-      // ✅ Verify Play Integrity token
-      const packageName = "com.naukariwala.avr"; // Replace with your app's package name
+      // Verify Play Integrity token (skip in development for testing)
+      if (process.env.NODE_ENV !== "development") {
+        const packageName = "com.naukariwala.avr"; // Replace with your app's package name
+        const integrityResponse = await playintegrity.v1.verify({
+          packageName,
+          requestBody: { integrityToken },
+        });
 
-      const integrityResponse = await playintegrity.v1.verify({
-        packageName,
-        requestBody: { integrityToken },
-      });
+        const verdict = integrityResponse.data;
+        logger.info("Play Integrity verdict:", verdict);
 
-      const verdict = integrityResponse.data;
-      logger.info("Play Integrity verdict:", verdict);
-
-      // Check for device integrity (basic example)
-      const integrityVerdict =
-        verdict.deviceIntegrity?.deviceRecognitionVerdict || [];
-
-      if (!integrityVerdict.includes("MEETS_DEVICE_INTEGRITY")) {
-        throw new Error("Device integrity check failed");
+        const integrityVerdict = verdict.deviceIntegrity?.deviceRecognitionVerdict || [];
+        if (!integrityVerdict.includes("MEETS_DEVICE_INTEGRITY")) {
+          throw new Error("Device integrity check failed");
+        }
+        logger.info("✅ Device integrity verified successfully.");
+      } else {
+        logger.info("Skipping Play Integrity in development mode.");
       }
-
-      logger.info("✅ Device integrity verified successfully.");
 
       // Prepare FCM message
       const message = {
@@ -92,15 +102,13 @@ exports.sendNotification = onCall(
       };
 
       // Send FCM
-      await admin.messaging().send(message);
-      logger.info(`✅ Notification sent to ${token}`);
+      const response = await admin.messaging().send(message);
+      logger.info(`✅ Notification sent to ${token}, response: ${response}`);
 
       // Save in Firestore if recipient details provided
       if (recipientId && recipientRole) {
         const collectionName =
-          recipientRole === "recruiter"
-            ? "RecruiterNotifications"
-            : "SeekerNotifications";
+          recipientRole === "recruiter" ? "RecruiterNotifications" : "SeekerNotifications";
 
         await admin
           .firestore()
@@ -112,13 +120,13 @@ exports.sendNotification = onCall(
             body,
             data,
             timestamp: admin.firestore.FieldValue.serverTimestamp(),
-            sentBy: request.auth.uid,
+            sentBy: request.auth?.uid || "anonymous", // Fallback for unauthenticated calls
           });
       }
 
       return { success: true, message: "Notification sent successfully." };
     } catch (error) {
-      logger.error("❌ Error sending notification:", error);
+      logger.error("❌ Error sending notification:", { error: error.message, stack: error.stack });
       throw new Error(`Failed to send notification: ${error.message}`);
     }
   }

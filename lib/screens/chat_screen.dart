@@ -1,4 +1,3 @@
-
 // ignore_for_file: deprecated_member_use
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -7,10 +6,15 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'dart:developer' as dev;
+import 'package:firebase_app_check/firebase_app_check.dart';
+// ignore: unnecessary_import
+import 'package:flutter/foundation.dart';
 import '../services/auth_service.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:cloud_functions/cloud_functions.dart';
+import 'dart:io';
+import 'package:permission_handler/permission_handler.dart';
 
 class ChatScreen extends StatefulWidget {
   final String chatId;
@@ -40,13 +44,16 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void initState() {
     super.initState();
+    if (Platform.isAndroid) {
+      Permission.notification.request();
+    }
     _determineRole().then((_) {
       setState(() {
         _initializationFuture = _initializeChat();
       });
       _setupFCMListeners();
     }).catchError((e) {
-      dev.log('[2025-10-10 12:57 IST] Error determining role: $e', name: 'ChatScreen');
+      dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Error determining role: $e', name: 'ChatScreen');
       setState(() {
         _isRecruiter = false;
         _initializationFuture = _initializeChat();
@@ -56,7 +63,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   void _setupFCMListeners() {
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      dev.log('[2025-10-10 12:57 IST] Notification opened: ${message.messageId}', name: 'ChatScreen FCM');
+      dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Notification opened: ${message.messageId}', name: 'ChatScreen FCM');
       if (message.data['chatId'] == widget.chatId) {
         _markMessagesAsRead();
       }
@@ -64,7 +71,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
     FirebaseMessaging.instance.getInitialMessage().then((RemoteMessage? message) {
       if (message != null && message.data['chatId'] == widget.chatId && mounted) {
-        dev.log('[2025-10-10 12:57 IST] App opened via notification: ${message.messageId}', name: 'ChatScreen FCM');
+        dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] App opened via notification: ${message.messageId}', name: 'ChatScreen FCM');
         _markMessagesAsRead();
       }
     });
@@ -73,7 +80,7 @@ class _ChatScreenState extends State<ChatScreen> {
   Future<void> _determineRole() async {
     final uid = _auth.currentUser?.uid;
     if (uid == null) {
-      dev.log('[2025-10-10 12:57 IST] No authenticated user', name: 'ChatScreen');
+      dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] No authenticated user', name: 'ChatScreen');
       setState(() {
         _isRecruiter = false;
       });
@@ -82,7 +89,7 @@ class _ChatScreenState extends State<ChatScreen> {
     try {
       final userDoc = await _firestore.collection('UsersIndex').doc(uid).get();
       if (!userDoc.exists) {
-        dev.log('[2025-10-10 12:57 IST] No user data in UsersIndex/$uid', name: 'ChatScreen');
+        dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] No user data in UsersIndex/$uid', name: 'ChatScreen');
         setState(() {
           _isRecruiter = false;
         });
@@ -92,7 +99,7 @@ class _ChatScreenState extends State<ChatScreen> {
       if (userRole == 'recruiter') {
         final recruiterDoc = await _firestore.collection('Recruiters').doc(uid).get();
         if (!recruiterDoc.exists) {
-          dev.log('[2025-10-10 12:57 IST] User $uid marked as recruiter in UsersIndex but missing in Recruiters/$uid', name: 'ChatScreen');
+          dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] User $uid marked as recruiter in UsersIndex but missing in Recruiters/$uid', name: 'ChatScreen');
           setState(() {
             _isRecruiter = false;
           });
@@ -104,7 +111,7 @@ class _ChatScreenState extends State<ChatScreen> {
       } else if (userRole == 'seeker') {
         final seekerDoc = await _firestore.collection('Seekers').doc(uid).get();
         if (!seekerDoc.exists) {
-          dev.log('[2025-10-10 12:57 IST] User $uid marked as seeker in UsersIndex but missing in Seekers/$uid', name: 'ChatScreen');
+          dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] User $uid marked as seeker in UsersIndex but missing in Seekers/$uid', name: 'ChatScreen');
           setState(() {
             _isRecruiter = false;
           });
@@ -114,14 +121,14 @@ class _ChatScreenState extends State<ChatScreen> {
           _isRecruiter = false;
         });
       } else {
-        dev.log('[2025-10-10 12:57 IST] Invalid role for user $uid: $userRole', name: 'ChatScreen');
+        dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Invalid role for user $uid: $userRole', name: 'ChatScreen');
         setState(() {
           _isRecruiter = false;
         });
       }
-      dev.log('[2025-10-10 12:57 IST] Determined role for $uid: _isRecruiter=$_isRecruiter', name: 'ChatScreen');
+      dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Determined role for $uid: _isRecruiter=$_isRecruiter', name: 'ChatScreen');
     } catch (e) {
-      dev.log('[2025-10-10 12:57 IST] Firestore error in _determineRole: $e', name: 'ChatScreen');
+      dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Firestore error in _determineRole: $e', name: 'ChatScreen');
       setState(() {
         _isRecruiter = false;
       });
@@ -130,7 +137,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Future<void> _initializeChat() async {
     try {
-      dev.log('[2025-10-10 12:57 IST] Initializing chat ${widget.chatId} with recipientId: ${widget.recipientId}, jobId: ${widget.jobId}', name: 'ChatScreen');
+      dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Initializing chat ${widget.chatId} with recipientId: ${widget.recipientId}, jobId: ${widget.jobId}', name: 'ChatScreen');
       await Future.wait([
         _checkChatStatus(),
         _fetchChatDetails(),
@@ -142,7 +149,7 @@ class _ChatScreenState extends State<ChatScreen> {
       }
       await _markMessagesAsRead();
     } catch (e) {
-      dev.log('[2025-10-10 12:57 IST] Error initializing chat ${widget.chatId}: $e', name: 'ChatScreen');
+      dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Error initializing chat ${widget.chatId}: $e', name: 'ChatScreen');
     }
   }
 
@@ -157,11 +164,11 @@ class _ChatScreenState extends State<ChatScreen> {
       if (mounted) {
         setState(() {
           isNewChat = messagesSnapshot.docs.isEmpty;
-          dev.log('[2025-10-10 12:57 IST] Chat ${widget.chatId} is ${isNewChat ? 'new' : 'existing'}', name: 'ChatScreen');
+          dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Chat ${widget.chatId} is ${isNewChat ? 'new' : 'existing'}', name: 'ChatScreen');
         });
       }
     } catch (e) {
-      dev.log('[2025-10-10 12:57 IST] Error checking chat status for ${widget.chatId}: $e', name: 'ChatScreen');
+      dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Error checking chat status for ${widget.chatId}: $e', name: 'ChatScreen');
     }
   }
 
@@ -171,11 +178,11 @@ class _ChatScreenState extends State<ChatScreen> {
       if (mounted) {
         setState(() {
           _chatDetails = details;
-          dev.log('[2025-10-10 12:57 IST] Fetched chat details for ${widget.chatId}: $details', name: 'ChatScreen');
+          dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Fetched chat details for ${widget.chatId}: $details', name: 'ChatScreen');
         });
       }
     } catch (e) {
-      dev.log('[2025-10-10 12:57 IST] Error fetching chat details for ${widget.chatId}: $e', name: 'ChatScreen');
+      dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Error fetching chat details for ${widget.chatId}: $e', name: 'ChatScreen');
     }
   }
 
@@ -191,7 +198,7 @@ class _ChatScreenState extends State<ChatScreen> {
   Future<Map<String, dynamic>> _getChatDetails() async {
     final uid = _auth.currentUser?.uid;
     if (uid == null) {
-      dev.log('[2025-10-10 12:57 IST] No authenticated user for chat ${widget.chatId}', name: 'ChatScreen');
+      dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] No authenticated user for chat ${widget.chatId}', name: 'ChatScreen');
       return {'recipientName': 'Unknown', 'company': 'Unknown'};
     }
     String recipientName = 'Unknown';
@@ -208,43 +215,80 @@ class _ChatScreenState extends State<ChatScreen> {
             final resume = appDoc.data()?['resume'] as Map<String, dynamic>? ?? {};
             recipientName = resume['name'] ?? recipientName;
             company = appDoc.data()?['company'] ?? company;
-            dev.log('[2025-10-10 12:57 IST] Application data for ${widget.recipientId}_${widget.jobId}: ${appDoc.data()}', name: 'ChatScreen');
+            dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Application data for ${widget.recipientId}_${widget.jobId}: ${appDoc.data()}', name: 'ChatScreen');
           }
           final seekerDoc = await _firestore.collection('UsersIndex').doc(widget.recipientId).get(options);
           if (seekerDoc.exists) {
             final data = seekerDoc.data()!;
             recipientName = data['name'] ?? data['fullName'] ?? recipientName;
-            dev.log('[2025-10-10 12:57 IST] Seeker data from UsersIndex: $data', name: 'ChatScreen');
+            dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Seeker data from UsersIndex: $data', name: 'ChatScreen');
           }
         } else {
           final appDoc = await _firestore.collection('Applications').doc('${uid}_${widget.jobId}').get(options);
           if (appDoc.exists) {
             company = appDoc.data()?['company'] ?? 'Unknown';
-            dev.log('[2025-10-10 12:57 IST] Fallback company from Applications: $company', name: 'ChatScreen');
+            dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Fallback company from Applications: $company', name: 'ChatScreen');
           }
           final recruiterDoc = await _firestore.collection('UsersIndex').doc(widget.recipientId).get(options);
           if (recruiterDoc.exists) {
             final data = recruiterDoc.data()!;
             recipientName = data['name'] ?? data['companyName'] ?? 'Recruiter';
-            dev.log('[2025-10-10 12:57 IST] Recruiter data from UsersIndex: $data', name: 'ChatScreen');
+            dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Recruiter data from UsersIndex: $data', name: 'ChatScreen');
           }
         }
         break;
       } catch (e) {
         retryCount++;
-        dev.log('[2025-10-10 12:57 IST] Error fetching chat details for ${widget.chatId} (Attempt $retryCount): $e', name: 'ChatScreen');
+        dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Error fetching chat details for ${widget.chatId} (Attempt $retryCount): $e', name: 'ChatScreen', error: e);
         if (retryCount == maxRetries) {
-          dev.log('[2025-10-10 12:57 IST] Max retries reached, using fallback values', name: 'ChatScreen');
+          dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Max retries reached, using fallback values', name: 'ChatScreen');
           return {'recipientName': 'Unknown', 'company': 'Unknown'};
         }
         await Future.delayed(retryDelay * retryCount);
       }
     }
-    dev.log('[2025-10-10 12:57 IST] Final recipient details for ${widget.recipientId}: name=$recipientName, company=$company', name: 'ChatScreen');
+    dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Final recipient details for ${widget.recipientId}: name=$recipientName, company=$company', name: 'ChatScreen');
     return {
       'recipientName': recipientName,
       'company': company,
     };
+  }
+
+  Future<void> _validateAndCreateApplication(String jobId, String recruiterId) async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) {
+      throw Exception('No authenticated user');
+    }
+    final applicationId = '${uid}_$jobId';
+    final options = const GetOptions(source: Source.server);
+    final appDoc = await _firestore.collection('Applications').doc(applicationId).get(options);
+    if (!appDoc.exists) {
+      dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] No application found for $applicationId, attempting to create', name: 'ChatScreen');
+      try {
+        final jobDoc = await _firestore.collection('Recruiters').doc(recruiterId).collection('Jobs').doc(jobId).get(options);
+        if (!jobDoc.exists) {
+          throw Exception('Job $jobId does not exist for recruiter $recruiterId');
+        }
+        final jobData = jobDoc.data()!;
+        final applicationData = {
+          'seekerId': uid,
+          'jobId': jobId,
+          'recruiterId': recruiterId,
+          'status': 'Applied',
+          'appliedAt': FieldValue.serverTimestamp(),
+          'jobTitle': jobData['title'] ?? 'Unknown',
+          'company': jobData['company'] ?? 'Unknown',
+          'coverLetter': '',
+        };
+        await _firestore.collection('Applications').doc(applicationId).set(applicationData);
+        dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Created application $applicationId', name: 'ChatScreen');
+      } catch (e) {
+        dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Error creating application $applicationId: $e', name: 'ChatScreen');
+        throw Exception('Failed to create application for job $jobId: $e');
+      }
+    } else {
+      dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Application $applicationId exists', name: 'ChatScreen');
+    }
   }
 
   Future<void> _showOutsideNotification(String senderName, String message) async {
@@ -268,92 +312,35 @@ class _ChatScreenState extends State<ChatScreen> {
       'New Message from $senderName',
       message.length > 50 ? '${message.substring(0, 47)}...' : message,
       notificationDetails,
-    );
-  }
-
-  Future<void> _validateAndCreateApplication(String jobId, String recruiterId) async {
-    final uid = _auth.currentUser?.uid;
-    if (uid == null) {
-      throw Exception('No authenticated user');
-    }
-    final applicationId = '${uid}_$jobId';
-    final options = const GetOptions(source: Source.server);
-    final appDoc = await _firestore.collection('Applications').doc(applicationId).get(options);
-    if (!appDoc.exists) {
-      dev.log('[2025-10-10 12:57 IST] No application found for $applicationId, attempting to create', name: 'ChatScreen');
-      try {
-        final jobDoc = await _firestore.collection('Recruiters').doc(recruiterId).collection('Jobs').doc(jobId).get(options);
-        if (!jobDoc.exists) {
-          throw Exception('Job $jobId does not exist for recruiter $recruiterId');
-        }
-        final jobData = jobDoc.data()!;
-        final applicationData = {
-          'seekerId': uid,
-          'jobId': jobId,
-          'recruiterId': recruiterId,
-          'status': 'Applied',
-          'appliedAt': FieldValue.serverTimestamp(),
-          'jobTitle': jobData['title'] ?? 'Unknown',
-          'company': jobData['company'] ?? 'Unknown',
-          'coverLetter': '',
-        };
-        await _firestore.collection('Applications').doc(applicationId).set(applicationData);
-        dev.log('[2025-10-10 12:57 IST] Created application $applicationId', name: 'ChatScreen');
-      } catch (e) {
-        dev.log('[2025-10-10 12:57 IST] Error creating application $applicationId: $e', name: 'ChatScreen');
-        throw Exception('Failed to create application for job $jobId: $e');
-      }
-    } else {
-      dev.log('[2025-10-10 12:57 IST] Application $applicationId exists', name: 'ChatScreen');
-    }
+    ).catchError((e) {
+      dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Error showing notification: $e', name: 'ChatScreen', error: e);
+    });
   }
 
   Future<void> _sendNotification(String recipientCollection, String recipientId, String senderId, String messageText, String jobId) async {
     int retryCount = 0;
-    const maxRetries = 3;
+    const maxRetries = 2;
     const retryDelay = Duration(seconds: 2);
     while (retryCount < maxRetries) {
       try {
-        // Validate sender role
         String senderName = 'Unknown';
         String? jobTitle;
         final senderDoc = await _firestore.collection('UsersIndex').doc(senderId).get(const GetOptions(source: Source.server));
-        if (!senderDoc.exists) {
-          throw Exception('Sender $senderId not found in UsersIndex');
+        if (senderDoc.exists) {
+          final senderData = senderDoc.data()!;
+          senderName = senderData['name'] ?? senderData['fullName'] ?? senderData['companyName'] ?? 'User';
         }
-        final senderData = senderDoc.data()!;
-        senderName = senderData['name'] ?? senderData['fullName'] ?? senderData['companyName'] ?? 'User';
-        dev.log('[2025-10-10 12:57 IST] Fetched sender name for $senderId: $senderName', name: 'ChatScreen');
-
-        // Fetch job title
         final appDoc = await _firestore.collection('Applications').doc('${_isRecruiter == true ? recipientId : senderId}_$jobId').get(const GetOptions(source: Source.server));
         if (appDoc.exists) {
           jobTitle = appDoc.data()?['jobTitle'];
-          dev.log('[2025-10-10 12:57 IST] Fetched job title from Applications/${_isRecruiter == true ? recipientId : senderId}_$jobId: $jobTitle', name: 'ChatScreen');
         }
-
-        // Validate recipient
         final recipientDoc = await _firestore.collection('UsersIndex').doc(recipientId).get(const GetOptions(source: Source.server));
-        if (!recipientDoc.exists) {
-          throw Exception('Recipient $recipientId not found in UsersIndex');
-        }
+        if (!recipientDoc.exists) throw Exception('Recipient $recipientId not found in UsersIndex');
         final recipientRole = recipientDoc.data()?['role'] as String?;
-        if (recipientCollection == 'SeekerNotifications' && recipientRole != 'seeker') {
-          throw Exception('Recipient $recipientId is not a valid seeker, found role: $recipientRole');
-        }
-        if (recipientCollection == 'RecruiterNotifications' && recipientRole != 'recruiter') {
-          throw Exception('Recipient $recipientId is not a valid recruiter, found role: $recipientRole');
-        }
-
-        // Validate application
-        if (!appDoc.exists) {
-          throw Exception('No application found for ${_isRecruiter == true ? recipientId : senderId}_$jobId');
-        }
-
-        // Construct message
+        if (recipientCollection == 'SeekerNotifications' && recipientRole != 'seeker') throw Exception('Recipient $recipientId is not a valid seeker');
+        if (recipientCollection == 'RecruiterNotifications' && recipientRole != 'recruiter') throw Exception('Recipient $recipientId is not a valid recruiter');
+        if (!appDoc.exists) throw Exception('No application found for ${_isRecruiter == true ? recipientId : senderId}_$jobId');
         final message = jobTitle == null || jobTitle == 'Unknown' ? 'New message from $senderName' : 'New message from $senderName for $jobTitle';
-
-        // Store notification in Firestore
         final notificationId = '${senderId}_${jobId}_${DateTime.now().millisecondsSinceEpoch}';
         final notificationData = {
           'notificationId': notificationId,
@@ -374,34 +361,17 @@ class _ChatScreenState extends State<ChatScreen> {
             .collection('Notifications')
             .doc(notificationId)
             .set(notificationData);
-        dev.log('[2025-10-10 12:57 IST] Stored notification $notificationId in $recipientCollection/$recipientId/Notifications: $notificationData', name: 'ChatScreen');
-
-        // Send FCM push notification via Cloud Function
         final recipientFcmToken = await _getFcmToken(recipientId);
         if (recipientFcmToken != null) {
-          await _callSendNotificationFunction(
-            recipientFcmToken,
-            message,
-            notificationId,
-            widget.chatId,
-            jobId,
-            _isRecruiter == true ? recipientId : senderId,
-            senderId,
-            jobTitle ?? 'Unknown',
-          );
-          dev.log('[2025-10-10 12:57 IST] Sent FCM notification to $recipientId for $notificationId via Cloud Function', name: 'ChatScreen');
-        } else {
-          dev.log('[2025-10-10 12:57 IST] No FCM token found for $recipientId, notification stored but not pushed', name: 'ChatScreen');
+          await _callSendNotificationFunction(recipientFcmToken, message, notificationId, widget.chatId, jobId, _isRecruiter == true ? recipientId : senderId, senderId, jobTitle ?? 'Unknown');
         }
-
-        dev.log('[2025-10-10 12:57 IST] Sent notification to $recipientCollection/$recipientId, attempt ${retryCount + 1}', name: 'ChatScreen');
+        dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Sent notification to $recipientCollection/$recipientId, attempt ${retryCount + 1}', name: 'ChatScreen');
         return;
       } catch (e) {
         retryCount++;
-        dev.log('[2025-10-10 12:57 IST] Error sending notification to $recipientCollection/$recipientId (Attempt $retryCount): $e', name: 'ChatScreen', error: e);
+        dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Error sending notification to $recipientCollection/$recipientId (Attempt $retryCount): $e', name: 'ChatScreen', error: e);
         if (retryCount == maxRetries) {
-          dev.log('[2025-10-10 12:57 IST] Max retries reached for notification to $recipientCollection/$recipientId', name: 'ChatScreen');
-          // Don't throw; allow message to be sent even if notification fails
+          dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Max retries reached for notification to $recipientCollection/$recipientId', name: 'ChatScreen');
         }
         await Future.delayed(retryDelay * retryCount);
       }
@@ -413,32 +383,27 @@ class _ChatScreenState extends State<ChatScreen> {
       final userDoc = await _firestore.collection('UsersIndex').doc(userId).get(const GetOptions(source: Source.server));
       if (userDoc.exists) {
         final fcmToken = userDoc.data()?['fcmToken'] as String?;
-        dev.log('[2025-10-10 12:57 IST] Fetched FCM token for $userId: $fcmToken', name: 'ChatScreen');
+        dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Fetched FCM token for $userId: $fcmToken', name: 'ChatScreen');
         return fcmToken;
-      } else {
-        dev.log('[2025-10-10 12:57 IST] No user data found for $userId in UsersIndex', name: 'ChatScreen');
-        return null;
       }
+      dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] No user data found for $userId in UsersIndex', name: 'ChatScreen');
+      return null;
     } catch (e) {
-      dev.log('[2025-10-10 12:57 IST] Error fetching FCM token for $userId: $e', name: 'ChatScreen', error: e);
+      dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Error fetching FCM token for $userId: $e', name: 'ChatScreen', error: e);
       return null;
     }
   }
 
-  Future<void> _callSendNotificationFunction(
-    String recipientFcmToken,
-    String message,
-    String notificationId,
-    String chatId,
-    String jobId,
-    String seekerId,
-    String fromId,
-    String jobTitle,
-  ) async {
+  Future<void> _callSendNotificationFunction(String recipientFcmToken, String message, String notificationId, String chatId, String jobId, String seekerId, String fromId, String jobTitle) async {
     try {
-      final callable = FirebaseFunctions.instance.httpsCallable('sendNotification');
+      final appCheckToken = await FirebaseAppCheck.instance.getToken(); // Fetch token if required by function
+      final integrityToken = await _getPlayIntegrityToken();
+
+      final callable = FirebaseFunctions.instanceFor(region: 'asia-south1').httpsCallable('sendNotification');
       final response = await callable.call({
         'token': recipientFcmToken,
+        'title': 'New Message',
+        'body': message,
         'data': {
           'notificationId': notificationId,
           'chatId': chatId,
@@ -450,22 +415,43 @@ class _ChatScreenState extends State<ChatScreen> {
           'jobTitle': jobTitle,
           'message': message,
         },
+        'recipientId': widget.recipientId,
+        'recipientRole': _isRecruiter == true ? 'seeker' : 'recruiter',
+        'integrityToken': integrityToken,
+        'appCheckToken': appCheckToken ?? '', // Safe access with fallback
       });
       if (response.data['success'] == true) {
-        dev.log('[2025-10-10 12:57 IST] Cloud Function sendNotification called successfully for $recipientFcmToken', name: 'ChatScreen');
+        dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Cloud Function sendNotification called successfully for $recipientFcmToken', name: 'ChatScreen');
       } else {
-        dev.log('[2025-10-10 12:57 IST] Cloud Function sendNotification failed: ${response.data}', name: 'ChatScreen');
+        dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Cloud Function sendNotification failed: ${response.data}', name: 'ChatScreen');
       }
     } catch (e) {
-      dev.log('[2025-10-10 12:57 IST] Error calling sendNotification Cloud Function: $e', name: 'ChatScreen', error: e);
-      // Don't throw; allow message to be sent even if notification fails
+      dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Error calling sendNotification Cloud Function: $e', name: 'ChatScreen', error: e);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to send notification: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<String?> _getPlayIntegrityToken() async {
+    try {
+      dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Using placeholder Play Integrity token for development', name: 'ChatScreen');
+      return 'dev-integrity-token'; // Replace with real implementation using play_integrity_flutter
+    } catch (e) {
+      dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Error getting Play Integrity token: $e', name: 'ChatScreen');
+      return null;
     }
   }
 
   Future<void> _sendMessage() async {
     final message = _messageController.text.trim();
     if (message.isEmpty) {
-      dev.log('[2025-10-10 12:57 IST] Empty message not sent in chat ${widget.chatId}', name: 'ChatScreen');
+      dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Empty message not sent in chat ${widget.chatId}', name: 'ChatScreen');
       return;
     }
     final recipientCollection = _isRecruiter == true ? 'SeekerNotifications' : 'RecruiterNotifications';
@@ -490,10 +476,9 @@ class _ChatScreenState extends State<ChatScreen> {
           _showInitialMessagePrompt = false;
         });
       }
-      dev.log('[2025-10-10 12:57 IST] Sent message in chat ${widget.chatId} for job ${widget.jobId}: $message', name: 'ChatScreen');
-      // Send notification asynchronously and don't block on failure
+      dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Sent message in chat ${widget.chatId} for job ${widget.jobId}: $message', name: 'ChatScreen');
       _sendNotification(recipientCollection, widget.recipientId, senderId, message, widget.jobId).catchError((e) {
-        dev.log('[2025-10-10 12:57 IST] Notification failed but message sent: $e', name: 'ChatScreen', error: e);
+        dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Notification failed but message sent: $e', name: 'ChatScreen', error: e);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -509,7 +494,7 @@ class _ChatScreenState extends State<ChatScreen> {
         );
       }
     } catch (e) {
-      dev.log('[2025-10-10 12:57 IST] Error sending message in chat ${widget.chatId}: $e', name: 'ChatScreen', error: e);
+      dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Error sending message in chat ${widget.chatId}: $e', name: 'ChatScreen', error: e);
       String errorMessage = 'Failed to send message';
       if (e is FirebaseException && e.code == 'permission-denied') {
         errorMessage = 'Permission denied. Ensure your account is properly set up as a ${_isRecruiter == true ? 'recruiter' : 'seeker'} and the recipient is a valid ${recipientCollection == 'SeekerNotifications' ? 'seeker' : 'recruiter'}.';
@@ -550,10 +535,9 @@ class _ChatScreenState extends State<ChatScreen> {
           _showInitialMessagePrompt = false;
         });
       }
-      dev.log('[2025-10-10 12:57 IST] Sent initial message in chat ${widget.chatId} for job ${widget.jobId}', name: 'ChatScreen');
-      // Send notification asynchronously
+      dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Sent initial message in chat ${widget.chatId} for job ${widget.jobId}', name: 'ChatScreen');
       _sendNotification(recipientCollection, widget.recipientId, senderId, initialMessage, widget.jobId).catchError((e) {
-        dev.log('[2025-10-10 12:57 IST] Notification failed but initial message sent: $e', name: 'ChatScreen', error: e);
+        dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Notification failed but initial message sent: $e', name: 'ChatScreen', error: e);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -569,7 +553,7 @@ class _ChatScreenState extends State<ChatScreen> {
         );
       }
     } catch (e) {
-      dev.log('[2025-10-10 12:57 IST] Error sending initial message in chat ${widget.chatId}: $e', name: 'ChatScreen', error: e);
+      dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Error sending initial message in chat ${widget.chatId}: $e', name: 'ChatScreen', error: e);
       String errorMessage = 'Failed to send initial message';
       if (e is FirebaseException && e.code == 'permission-denied') {
         errorMessage = 'Permission denied. Ensure your account is properly set up as a ${_isRecruiter == true ? 'recruiter' : 'seeker'} and the recipient is a valid ${recipientCollection == 'SeekerNotifications' ? 'seeker' : 'recruiter'}.';
@@ -600,9 +584,9 @@ class _ChatScreenState extends State<ChatScreen> {
         batch.update(doc.reference, {'status': 'received'});
       }
       await batch.commit();
-      dev.log('[2025-10-10 12:57 IST] Marked messages as received in chat ${widget.chatId}', name: 'ChatScreen');
+      dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Marked messages as received in chat ${widget.chatId}', name: 'ChatScreen');
     } catch (e) {
-      dev.log('[2025-10-10 12:57 IST] Error marking messages as received: $e', name: 'ChatScreen', error: e);
+      dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Error marking messages as received: $e', name: 'ChatScreen', error: e);
     }
   }
 
@@ -622,9 +606,9 @@ class _ChatScreenState extends State<ChatScreen> {
         _lastSeenMessageTimestamp = messageData['timestamp'] as Timestamp?;
       }
       await batch.commit();
-      dev.log('[2025-10-10 12:57 IST] Marked messages as read in chat ${widget.chatId}', name: 'ChatScreen');
+      dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Marked messages as read in chat ${widget.chatId}', name: 'ChatScreen');
     } catch (e) {
-      dev.log('[2025-10-10 12:57 IST] Error marking messages as read: $e', name: 'ChatScreen', error: e);
+      dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Error marking messages as read: $e', name: 'ChatScreen', error: e);
     }
   }
 
@@ -694,7 +678,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       stream: _getMessagesStream(),
                       builder: (context, snapshot) {
                         if (snapshot.hasError) {
-                          dev.log('[2025-10-10 12:57 IST] Error loading messages for chat ${widget.chatId}: ${snapshot.error}', name: 'ChatScreen');
+                          dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Error loading messages for chat ${widget.chatId}: ${snapshot.error}', name: 'ChatScreen');
                           return Center(
                             child: Text(
                               'Unable to load messages. Please check your permissions or try again.',
@@ -740,40 +724,38 @@ class _ChatScreenState extends State<ChatScreen> {
                           itemBuilder: (context, index) {
                             final messageData = messages[index].data() as Map<String, dynamic>;
                             final isSender = messageData['senderId'] == _auth.currentUser?.uid;
-                            final status = messageData['status'] ?? 'sent';
-                            return AnimatedListItem(
-                              child: Container(
-                                margin: EdgeInsets.symmetric(vertical: 5.h, horizontal: 10.w),
-                                padding: EdgeInsets.all(10.w),
-                                decoration: BoxDecoration(
-                                  color: isSender ? Colors.teal.shade100 : Colors.grey.shade200,
-                                  borderRadius: BorderRadius.circular(12.r),
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: isSender ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      messageData['message'] ?? '',
-                                      style: TextStyle(fontSize: 16.sp),
-                                    ),
-                                    SizedBox(height: 5.h),
-                                    Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text(
-                                          messageData['timestamp'] != null
-                                              ? DateFormat('MMM d, h:mm a').format((messageData['timestamp'] as Timestamp).toDate())
-                                              : 'Unknown time',
-                                          style: TextStyle(fontSize: 12.sp, color: Colors.grey.shade600),
-                                        ),
-                                        if (isSender) SizedBox(width: 4.w),
-                                        if (isSender) _getTickIcon(status),
-                                      ],
-                                    ),
-                                  ],
-                                ),
+                            late final status = messageData['status'] ?? 'sent';
+                            return AnimatedListItem(child: Container(
+                              margin: EdgeInsets.symmetric(vertical: 5.h, horizontal: 10.w),
+                              padding: EdgeInsets.all(10.w),
+                              decoration: BoxDecoration(
+                                color: isSender ? Colors.teal.shade100 : Colors.grey.shade200,
+                                borderRadius: BorderRadius.circular(12.r),
                               ),
-                            );
+                              child: Column(
+                                crossAxisAlignment: isSender ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    messageData['message'] ?? '',
+                                    style: TextStyle(fontSize: 16.sp),
+                                  ),
+                                  SizedBox(height: 5.h),
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        messageData['timestamp'] != null
+                                            ? DateFormat('MMM d, h:mm a').format((messageData['timestamp'] as Timestamp).toDate())
+                                            : 'Unknown time',
+                                        style: TextStyle(fontSize: 12.sp, color: Colors.grey.shade600),
+                                      ),
+                                      if (isSender) SizedBox(width: 4.w),
+                                      if (isSender) _getTickIcon(status),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ));
                           },
                         );
                       },

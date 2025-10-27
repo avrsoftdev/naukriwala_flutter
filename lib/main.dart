@@ -19,14 +19,20 @@ import 'screens/unified_screen.dart';
 import 'screens/chat_screen.dart';
 import 'screens/notifications_screen.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
+import 'package:intl/intl.dart'; // Added for DateFormat
 
 // Background message handler
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  dev.log('[2025-10-10 12:57 IST] Handling background message: ${message.messageId}', name: 'FCM Background');
+  await FirebaseAppCheck.instance.activate(
+    androidProvider: kDebugMode ? AndroidProvider.debug : AndroidProvider.playIntegrity,
+    appleProvider: kDebugMode ? AppleProvider.debug : AppleProvider.appAttest,
+  );
+  dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Handling background message: ${message.messageId}', name: 'FCM Background');
 
-  // Store notification in Firestore
+  // Ensure Firebase Auth is initialized for current user
+  await FirebaseAuth.instance.authStateChanges().first;
   final data = message.data;
   final type = data['type'] as String? ?? 'unknown';
   final recipientId = data['recipientId'] as String? ?? FirebaseAuth.instance.currentUser?.uid;
@@ -58,13 +64,13 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
         'timestamp': FieldValue.serverTimestamp(),
         'message': messageBody,
       }, SetOptions(merge: true));
-      dev.log('[2025-10-10 12:57 IST] Stored background notification in $collection/$recipientId/Notifications/$notificationId', name: 'FCM Background');
+      dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Stored background notification in $collection/$recipientId/Notifications/$notificationId', name: 'FCM Background');
     } catch (e) {
-      dev.log('[2025-10-10 12:57 IST] Error storing background notification: $e', name: 'FCM Background', error: e);
+      dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Error storing background notification: $e', name: 'FCM Background', error: e);
     }
   }
 
-  // Display local notification using data fields
+  // Display local notification
   await _showLocalNotification(message, customTitle: data['title'] ?? 'Naukariwala', customBody: messageBody);
 }
 
@@ -77,55 +83,59 @@ void main() async {
     DeviceOrientation.portraitDown,
   ]);
 
+  // Initialize Firebase
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  
-  // Initialize App Check (for foreground/client calls)
+
+  // Initialize App Check
   try {
     await FirebaseAppCheck.instance.activate(
       androidProvider: kDebugMode ? AndroidProvider.debug : AndroidProvider.playIntegrity,
       appleProvider: kDebugMode ? AppleProvider.debug : AppleProvider.appAttest,
     );
-    dev.log('[2025-10-10 12:57 IST] Firebase App Check activated successfully', name: 'AppCheck');
+    dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Firebase App Check activated successfully', name: 'AppCheck');
   } catch (e) {
-    dev.log('[2025-10-10 00:35 IST] App Check activation failed: $e', name: 'AppCheck', error: e);
+    dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] App Check activation failed: $e', name: 'AppCheck', error: e);
   }
 
   // Initialize AuthService and FCM token refresh
   final authService = AuthService();
   await authService.setupFcmTokenRefresh();
 
-  // FCM Background Handler Setup
+  // Set up FCM background handler
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
-  // Request Notification Permissions
-  NotificationSettings settings = await FirebaseMessaging.instance.requestPermission();
+  // Request notification permissions
+  NotificationSettings settings = await FirebaseMessaging.instance.requestPermission(
+    alert: true,
+    badge: true,
+    sound: true,
+  );
   if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-    dev.log('[2025-10-10 12:57 IST] User granted permission', name: 'FCM');
+    dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] User granted permission', name: 'FCM');
   } else {
-    dev.log('[2025-10-10 12:57 IST] User denied permission', name: 'FCM');
+    dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] User denied or provisional permission: ${settings.authorizationStatus}', name: 'FCM');
   }
 
-  // Initialize Local Notifications
-  // ignore: no_leading_underscores_for_local_identifiers
-  final _localNotifications = FlutterLocalNotificationsPlugin();
+  // Initialize local notifications
+  final FlutterLocalNotificationsPlugin localNotifications = FlutterLocalNotificationsPlugin();
   const AndroidInitializationSettings androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
   const DarwinInitializationSettings iOSInit = DarwinInitializationSettings(
-    requestSoundPermission: false,
-    requestBadgePermission: false,
-    requestAlertPermission: false,
+    requestSoundPermission: true,
+    requestBadgePermission: true,
+    requestAlertPermission: true,
   );
   const InitializationSettings initSettings = InitializationSettings(
     android: androidInit,
     iOS: iOSInit,
   );
-  await _localNotifications.initialize(
+  await localNotifications.initialize(
     initSettings,
     onDidReceiveNotificationResponse: (NotificationResponse response) {
       try {
         final payloadMap = jsonDecode(response.payload ?? '{}') as Map<String, dynamic>;
         _handleNotificationNavigation(RemoteMessage(data: payloadMap));
       } catch (e) {
-        dev.log('[2025-10-10 12:57 IST] Error parsing notification payload: $e', name: 'Local Notification', error: e);
+        dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Error parsing notification payload: $e', name: 'Local Notification', error: e);
       }
     },
   );
@@ -137,10 +147,10 @@ void main() async {
     description: 'Notifications from Naukariwala',
     importance: Importance.max,
     playSound: true,
-    sound: RawResourceAndroidNotificationSound('default'),
+    sound: RawResourceAndroidNotificationSound('notification'),
     enableVibration: true,
   );
-  await _localNotifications
+  await localNotifications
       .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
       ?.createNotificationChannel(channel);
 
@@ -156,7 +166,7 @@ Future<void> _showLocalNotification(RemoteMessage message, {String? customTitle,
     importance: Importance.max,
     priority: Priority.high,
     icon: '@mipmap/ic_launcher',
-    sound: RawResourceAndroidNotificationSound('default'),
+    sound: RawResourceAndroidNotificationSound('notification'),
     enableVibration: true,
   );
   const DarwinNotificationDetails iOSDetails = DarwinNotificationDetails(
@@ -168,8 +178,8 @@ Future<void> _showLocalNotification(RemoteMessage message, {String? customTitle,
     android: androidDetails,
     iOS: iOSDetails,
   );
-  final _localNotifications = FlutterLocalNotificationsPlugin();
-  await _localNotifications.show(
+  final FlutterLocalNotificationsPlugin localNotifications = FlutterLocalNotificationsPlugin();
+  await localNotifications.show(
     message.hashCode,
     customTitle ?? 'Naukariwala',
     customBody ?? 'New notification',
@@ -189,23 +199,26 @@ Future<void> _handleNotificationNavigation(RemoteMessage message) async {
 
   final navigator = navigatorKey.currentState;
   if (navigator == null) {
-    dev.log('[2025-10-10 12:57 IST] Navigator not available for notification navigation', name: 'FCM Navigation');
+    dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Navigator not available for notification navigation', name: 'FCM Navigation');
     return;
   }
 
-  // Mark notification as read if notificationId is provided
+  // Mark notification as read if notificationId is provided and not a message type (to avoid duplicate reads)
   if (notificationId != null && type != 'message') {
     try {
       final collection = type == 'message' ? 'SeekerNotifications' : 'RecruiterNotifications';
-      await FirebaseFirestore.instance
-          .collection(collection)
-          .doc(FirebaseAuth.instance.currentUser?.uid)
-          .collection('Notifications')
-          .doc(notificationId)
-          .update({'read': true});
-      dev.log('[2025-10-10 12:57 IST] Marked notification $notificationId as read', name: 'FCM Navigation');
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid != null) {
+        await FirebaseFirestore.instance
+            .collection(collection)
+            .doc(uid)
+            .collection('Notifications')
+            .doc(notificationId)
+            .update({'read': true});
+        dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Marked notification $notificationId as read', name: 'FCM Navigation');
+      }
     } catch (e) {
-      dev.log('[2025-10-10 12:57 IST] Error marking notification $notificationId as read: $e', name: 'FCM Navigation', error: e);
+      dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Error marking notification $notificationId as read: $e', name: 'FCM Navigation', error: e);
     }
   }
 
@@ -217,14 +230,14 @@ Future<void> _handleNotificationNavigation(RemoteMessage message) async {
         jobId: jobId,
       ),
     ));
-    dev.log('[2025-10-10 12:57 IST] Navigated to ChatScreen: chatId=$chatId, jobId=$jobId', name: 'FCM Navigation');
+    dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Navigated to ChatScreen: chatId=$chatId, jobId=$jobId', name: 'FCM Navigation');
   } else if (type == 'application' || type == 'status_update' || type == 'interview_scheduled') {
     navigator.push(MaterialPageRoute(
-      builder: (context) => NotificationsScreen(),
+      builder: (context) => NotificationsScreen(isRecruiter: type == 'application'),
     ));
-    dev.log('[2025-10-10 12:57 IST] Navigated to NotificationsScreen for type=$type', name: 'FCM Navigation');
+    dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Navigated to NotificationsScreen for type=$type', name: 'FCM Navigation');
   } else {
-    dev.log('[2025-10-10 12:57 IST] Unknown notification type: $type', name: 'FCM Navigation');
+    dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Unknown notification type: $type', name: 'FCM Navigation');
     navigator.push(MaterialPageRoute(builder: (context) => const UnifiedScreen()));
   }
 }
@@ -236,8 +249,9 @@ Future<void> _testEmulatorConnection(String host, int port) async {
   try {
     final socket = await Socket.connect(host, port, timeout: const Duration(seconds: 2));
     await socket.close();
+    dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Successfully connected to emulator $host:$port', name: 'Emulator');
   } catch (e) {
-    throw Exception('Failed to connect to $host:$port - $e');
+    dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Failed to connect to $host:$port - $e', name: 'Emulator', error: e);
   }
 }
 

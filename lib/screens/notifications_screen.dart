@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'dart:developer' as dev;
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../services/auth_service.dart';
 import './chat_screen.dart';
@@ -27,6 +28,7 @@ class NotificationsScreenState extends State<NotificationsScreen> {
   final Set<String> _selectedNotifications = {};
   bool _isSelectionMode = false;
   final AuthService _authService = AuthService();
+  final FlutterLocalNotificationsPlugin _flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
 
   @override
   void initState() {
@@ -49,75 +51,94 @@ class NotificationsScreenState extends State<NotificationsScreen> {
           .orderBy('timestamp', descending: true)
           .snapshots();
 
-      dev.log('[2025-10-10 12:57 IST] Initialized notifications stream for ${widget.isRecruiter ? 'recruiter' : 'seeker'} UID: $uid in $collectionPath', name: 'NotificationsScreen');
+      dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Initialized notifications stream for ${widget.isRecruiter ? 'recruiter' : 'seeker'} UID: $uid in $collectionPath', name: 'NotificationsScreen');
 
-      // Handle FCM notification taps
       _setupFCMListeners();
+      _initializeLocalNotifications();
     } else {
-      dev.log('[2025-10-10 12:57 IST] No authenticated user found', name: 'NotificationsScreen');
+      dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] No authenticated user found', name: 'NotificationsScreen');
     }
   }
 
+  void _initializeLocalNotifications() {
+    const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const iosInit = DarwinInitializationSettings();
+    const initSettings = InitializationSettings(android: androidInit, iOS: iosInit);
+    _flutterLocalNotificationsPlugin.initialize(
+      initSettings,
+      onDidReceiveNotificationResponse: (NotificationResponse response) {
+        _handleNotificationTap(RemoteMessage(
+          data: {'type': 'message', 'notificationId': response.id.toString(), 'chatId': 'sampleChatId', 'jobId': 'sampleJobId', 'seekerId': 'sampleSeekerId', 'from': 'sampleFrom'},
+          messageId: response.id.toString(),
+        ));
+      },
+    );
+  }
+
   void _setupFCMListeners() {
-    // Handle notification taps from background/terminated state
-    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      dev.log('[2025-10-10 12:57 IST] Notification opened: ${message.messageId}', name: 'NotificationsScreen FCM');
-      final data = message.data;
-      final type = data['type'] as String? ?? 'unknown';
-      final notificationId = data['notificationId'] as String?;
-      final jobId = data['jobId'] as String?;
-      final seekerId = data['seekerId'] as String?;
-      final chatId = data['chatId'] as String?;
-
-      if (notificationId != null) {
-        _markAsRead(notificationId);
-      }
-
-      if (type == 'message' && chatId != null && jobId != null && seekerId != null) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ChatScreen(
-              chatId: chatId,
-              recipientId: widget.isRecruiter ? seekerId : data['from'] ?? 'Unknown',
-              jobId: jobId,
-            ),
-          ),
-        );
-        dev.log('[2025-10-10 12:57 IST] Navigated to ChatScreen from FCM: chatId=$chatId', name: 'NotificationsScreen FCM');
-      }
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Foreground message received: ${message.messageId}', name: 'NotificationsScreen FCM');
+      _showLocalNotification(message);
     });
 
-    // Handle initial message (app opened via notification)
+    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+      dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Notification opened: ${message.messageId}', name: 'NotificationsScreen FCM');
+      _handleNotificationTap(message);
+    });
+
     FirebaseMessaging.instance.getInitialMessage().then((RemoteMessage? message) {
       if (message != null && mounted) {
-        dev.log('[2025-10-10 12:57 IST] App opened via notification: ${message.messageId}', name: 'NotificationsScreen FCM');
-        final data = message.data;
-        final type = data['type'] as String? ?? 'unknown';
-        final notificationId = data['notificationId'] as String?;
-        final jobId = data['jobId'] as String?;
-        final seekerId = data['seekerId'] as String?;
-        final chatId = data['chatId'] as String?;
-
-        if (notificationId != null) {
-          _markAsRead(notificationId);
-        }
-
-        if (type == 'message' && chatId != null && jobId != null && seekerId != null) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => ChatScreen(
-                chatId: chatId,
-                recipientId: widget.isRecruiter ? seekerId : data['from'] ?? 'Unknown',
-                jobId: jobId,
-              ),
-            ),
-          );
-          dev.log('[2025-10-10 12:57 IST] Navigated to ChatScreen from initial message: chatId=$chatId', name: 'NotificationsScreen FCM');
-        }
+        dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] App opened via notification: ${message.messageId}', name: 'NotificationsScreen FCM');
+        _handleNotificationTap(message);
       }
     });
+  }
+
+  void _showLocalNotification(RemoteMessage message) {
+    const androidDetails = AndroidNotificationDetails(
+      'notifications_channel',
+      'Notifications',
+      channelDescription: 'Notifications for new messages and updates',
+      importance: Importance.high,
+      priority: Priority.high,
+      enableVibration: true,
+    );
+    const iosDetails = DarwinNotificationDetails();
+    const notificationDetails = NotificationDetails(android: androidDetails, iOS: iosDetails);
+    _flutterLocalNotificationsPlugin.show(
+      message.messageId.hashCode,
+      message.notification?.title ?? 'New Notification',
+      message.notification?.body ?? message.data['message'] ?? 'New update',
+      notificationDetails,
+      payload: message.data.toString(),
+    );
+  }
+
+  void _handleNotificationTap(RemoteMessage message) {
+    final data = message.data;
+    final type = data['type'] as String? ?? 'unknown';
+    final notificationId = data['notificationId'] as String?;
+    final jobId = data['jobId'] as String?;
+    final seekerId = data['seekerId'] as String?;
+    final chatId = data['chatId'] as String?;
+
+    if (notificationId != null) {
+      _markAsRead(notificationId);
+    }
+
+    if (type == 'message' && chatId != null && jobId != null && seekerId != null) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ChatScreen(
+            chatId: chatId,
+            recipientId: widget.isRecruiter ? seekerId : data['from'] ?? 'Unknown',
+            jobId: jobId,
+          ),
+        ),
+      );
+      dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Navigated to ChatScreen from FCM: chatId=$chatId', name: 'NotificationsScreen FCM');
+    }
   }
 
   String _formatTimestamp(Timestamp? ts) {
@@ -135,11 +156,11 @@ class NotificationsScreenState extends State<NotificationsScreen> {
           .collection('Notifications')
           .doc(notificationId)
           .update({'read': true});
-      dev.log('[2025-10-10 12:57 IST] Marked notification $notificationId as read for UID $uid in $collectionPath', name: 'NotificationsScreen');
+      dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Marked notification $notificationId as read for UID $uid in $collectionPath', name: 'NotificationsScreen');
     } catch (e) {
-      dev.log('[2025-10-10 12:57 IST] Error marking notification $notificationId as read: $e', name: 'NotificationsScreen', error: e);
+      dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Error marking notification $notificationId as read: $e', name: 'NotificationsScreen', error: e);
       if (e is FirebaseException && e.code == 'permission-denied') {
-        dev.log('[2025-10-10 12:57 IST] Permission denied updating $collectionPath/$uid/Notifications/$notificationId', name: 'NotificationsScreen');
+        dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Permission denied updating $collectionPath/$uid/Notifications/$notificationId', name: 'NotificationsScreen');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -161,11 +182,11 @@ class NotificationsScreenState extends State<NotificationsScreen> {
           .collection('Notifications')
           .doc(notificationId)
           .update({'read': false});
-      dev.log('[2025-10-10 12:57 IST] Marked notification $notificationId as unread for UID $uid in $collectionPath', name: 'NotificationsScreen');
+      dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Marked notification $notificationId as unread for UID $uid in $collectionPath', name: 'NotificationsScreen');
     } catch (e) {
-      dev.log('[2025-10-10 12:57 IST] Error marking notification $notificationId as unread: $e', name: 'NotificationsScreen', error: e);
+      dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Error marking notification $notificationId as unread: $e', name: 'NotificationsScreen', error: e);
       if (e is FirebaseException && e.code == 'permission-denied') {
-        dev.log('[2025-10-10 12:57 IST] Permission denied updating $collectionPath/$uid/Notifications/$notificationId', name: 'NotificationsScreen');
+        dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Permission denied updating $collectionPath/$uid/Notifications/$notificationId', name: 'NotificationsScreen');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -191,7 +212,7 @@ class NotificationsScreenState extends State<NotificationsScreen> {
         batch.delete(docRef);
       }
       await batch.commit();
-      dev.log('[2025-10-10 12:57 IST] Deleted selected notifications for UID $uid', name: 'NotificationsScreen');
+      dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Deleted selected notifications for UID $uid', name: 'NotificationsScreen');
       setState(() {
         _selectedNotifications.clear();
         _isSelectionMode = false;
@@ -202,7 +223,7 @@ class NotificationsScreenState extends State<NotificationsScreen> {
         );
       }
     } catch (e) {
-      dev.log('[2025-10-10 12:57 IST] Error deleting selected notifications: $e', name: 'NotificationsScreen', error: e);
+      dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Error deleting selected notifications: $e', name: 'NotificationsScreen', error: e);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Error deleting notifications'), backgroundColor: Colors.red),
@@ -224,13 +245,13 @@ class NotificationsScreenState extends State<NotificationsScreen> {
         batch.update(docRef, {'read': true});
       }
       await batch.commit();
-      dev.log('[2025-10-10 12:57 IST] Marked selected notifications as read for UID $uid', name: 'NotificationsScreen');
+      dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Marked selected notifications as read for UID $uid', name: 'NotificationsScreen');
       setState(() {
         _selectedNotifications.clear();
         _isSelectionMode = false;
       });
     } catch (e) {
-      dev.log('[2025-10-10 12:57 IST] Error marking selected notifications as read: $e', name: 'NotificationsScreen', error: e);
+      dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Error marking selected notifications as read: $e', name: 'NotificationsScreen', error: e);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Error updating notifications'), backgroundColor: Colors.red),
@@ -252,13 +273,13 @@ class NotificationsScreenState extends State<NotificationsScreen> {
         batch.update(docRef, {'read': false});
       }
       await batch.commit();
-      dev.log('[2025-10-10 12:57 IST] Marked selected notifications as unread for UID $uid', name: 'NotificationsScreen');
+      dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Marked selected notifications as unread for UID $uid', name: 'NotificationsScreen');
       setState(() {
         _selectedNotifications.clear();
         _isSelectionMode = false;
       });
     } catch (e) {
-      dev.log('[2025-10-10 12:57 IST] Error marking selected notifications as unread: $e', name: 'NotificationsScreen', error: e);
+      dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Error marking selected notifications as unread: $e', name: 'NotificationsScreen', error: e);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Error updating notifications'), backgroundColor: Colors.red),
@@ -289,7 +310,7 @@ class NotificationsScreenState extends State<NotificationsScreen> {
         return data['resume']?['cvUrl'] ?? 'N/A';
       }
     } catch (e) {
-      dev.log('[2025-10-10 12:57 IST] Error fetching resume URL for job $jobId, seeker $seekerId: $e', name: 'NotificationsScreen', error: e);
+      dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Error fetching resume URL for job $jobId, seeker $seekerId: $e', name: 'NotificationsScreen', error: e);
     }
     return null;
   }
@@ -297,7 +318,7 @@ class NotificationsScreenState extends State<NotificationsScreen> {
   @override
   Widget build(BuildContext context) {
     if (uid == null) {
-      dev.log('[2025-10-10 12:57 IST] Redirecting to login due to null UID', name: 'NotificationsScreen');
+      dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Redirecting to login due to null UID', name: 'NotificationsScreen');
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -368,7 +389,7 @@ class NotificationsScreenState extends State<NotificationsScreen> {
             stream: _notificationsStream,
             builder: (context, snapshot) {
               if (snapshot.hasError) {
-                dev.log('[2025-10-10 12:57 IST] Stream error for UID $uid: ${snapshot.error}', name: 'NotificationsScreen');
+                dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Stream error for UID $uid: ${snapshot.error}', name: 'NotificationsScreen');
                 String errorMessage = 'Error loading notifications. Please verify Firestore permissions or contact support.';
                 if (snapshot.error is FirebaseException) {
                   final error = snapshot.error as FirebaseException;
@@ -405,7 +426,7 @@ class NotificationsScreenState extends State<NotificationsScreen> {
 
               final docs = snapshot.data?.docs ?? [];
               if (docs.isEmpty) {
-                dev.log('[2025-10-10 12:57 IST] No notifications found for UID $uid in $collectionPath', name: 'NotificationsScreen');
+                dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] No notifications found for UID $uid in $collectionPath', name: 'NotificationsScreen');
                 return Center(
                   child: Text(
                     'No notifications found.',
@@ -495,8 +516,7 @@ class NotificationsScreenState extends State<NotificationsScreen> {
                                     if (resumeUrl != null && widget.isRecruiter)
                                       InkWell(
                                         onTap: () {
-                                          // Implement resume URL opening logic if needed
-                                          dev.log('[2025-10-10 12:57 IST] Resume URL tapped: $resumeUrl', name: 'NotificationsScreen');
+                                          dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Resume URL tapped: $resumeUrl', name: 'NotificationsScreen');
                                         },
                                         child: Text(
                                           'Resume URL: $resumeUrl',
@@ -516,7 +536,7 @@ class NotificationsScreenState extends State<NotificationsScreen> {
                                     if (type == 'message') {
                                       try {
                                         if (jobId == 'Unknown' || seekerId == 'Unknown') {
-                                          dev.log('[2025-10-10 12:57 IST] Skipping chat navigation: Invalid jobId ($jobId) or seekerId ($seekerId)', name: 'NotificationsScreen');
+                                          dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Skipping chat navigation: Invalid jobId ($jobId) or seekerId ($seekerId)', name: 'NotificationsScreen');
                                           if (mounted) {
                                             ScaffoldMessenger.of(context).showSnackBar(
                                               const SnackBar(content: Text('Invalid chat details. Please try again.'), backgroundColor: Colors.red),
@@ -538,7 +558,7 @@ class NotificationsScreenState extends State<NotificationsScreen> {
                                           );
                                         }
                                       } catch (e) {
-                                        dev.log('[2025-10-10 12:57 IST] Error navigating to ChatScreen for notification $notificationId: $e', name: 'NotificationsScreen', error: e);
+                                        dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Error navigating to ChatScreen for notification $notificationId: $e', name: 'NotificationsScreen', error: e);
                                         if (mounted) {
                                           ScaffoldMessenger.of(context).showSnackBar(
                                             SnackBar(content: Text('Error opening chat: $e'), backgroundColor: Colors.red),
