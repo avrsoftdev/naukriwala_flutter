@@ -1,133 +1,179 @@
-const { onCall } = require("firebase-functions/v2/https");
+const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { setGlobalOptions } = require("firebase-functions/v2");
 const admin = require("firebase-admin");
 const logger = require("firebase-functions/logger");
 const { google } = require("googleapis");
-const fs = require("fs");
 
-// Load the Play Integrity service account key
-const playIntegrityServiceAccount = require("./play-integrity-service-account-key.json");
+// --- GLOBAL INITIALIZATION ---
 
-// Initialize Firebase Admin SDK with explicit configuration
-if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.applicationDefault(), // Use default credentials or specify service account
-    // Optionally, add your service account key if needed:
-    // credential: admin.credential.cert(playIntegrityServiceAccount),
-  });
+// 🚨 WARNING: Robustly load the Play Integrity service account key. 
+// This try/catch helps diagnose HTTP 500 errors caused by a missing file 
+// during cold start in the V2 runtime environment.
+let playIntegrityServiceAccount;
+try {
+  // Use require for JSON file as it runs synchronously at initialization
+  playIntegrityServiceAccount = require("./play-integrity-service-account-key.json");
+} catch (e) {
+  // Use console.error/throw as logger may not be fully initialized during global scope execution
+  console.error("FATAL: Could not load Play Integrity Service Account Key. Check file existence and path.", e.message);
+  throw new Error("Missing or invalid 'play-integrity-service-account-key.json' file.");
 }
 
-// Create a GoogleAuth client for Play Integrity
+// Initialize Firebase Admin SDK (only once)
+if (!admin.apps.length) {
+  admin.initializeApp({
+    // Using applicationDefault assumes the key is loaded via the environment or credential: admin.credential.cert(playIntegrityServiceAccount) is used for local development/testing with a file.
+    credential: admin.credential.applicationDefault(),
+  });
+}
+
+// Ensure the loaded key is valid before creating the client
+if (!playIntegrityServiceAccount || !playIntegrityServiceAccount.private_key) {
+    console.error("FATAL: Loaded Play Integrity key is missing required fields.");
+    throw new Error("Invalid Play Integrity service account key structure.");
+}
+
+
+// Create GoogleAuth client for Play Integrity API
 const auth = new google.auth.GoogleAuth({
-  credentials: playIntegrityServiceAccount,
-  scopes: ["https://www.googleapis.com/auth/playintegrity"],
+  credentials: playIntegrityServiceAccount,
+  scopes: ["https://www.googleapis.com/auth/playintegrity"],
 });
 
 const playintegrity = google.playintegrity({
-  version: "v1",
-  auth,
+  version: "v1",
+  auth,
 });
 
 setGlobalOptions({ maxInstances: 10 });
 
-// Allow unauthenticated calls for debugging (remove in production)
+/**
+ * Cloud Function to send an FCM notification after performing input validation 
+ * and optional Play Integrity verification.
+ */
 exports.sendNotification = onCall(
-  { enforceAppCheck: true, region: "asia-south1" },
-  async (request) => {
-    try {
-      // Log request details for debugging
-      logger.info("Received request:", { auth: !!request.auth, app: !!request.app, data: request.data });
+  { enforceAppCheck: true, region: "asia-south1" },
+  async (request) => {
+    try {
+      logger.info("📩 Received request", {
+        hasAuth: !!request.auth,
+        hasApp: !!request.app,
+        data: request.data,
+      });
 
-      // Check authentication (optional: remove if App Check is sufficient)
-      if (!request.auth && process.env.NODE_ENV !== "development") {
-        throw new Error("User must be authenticated to send notifications.");
-      }
+      const {
+        token,
+        title,
+        body,
+        data = {},
+        recipientId,
+        recipientRole,
+        integrityToken,
+      } = request.data;
 
-      // Verify App Check
-      if (!request.app) {
-        throw new Error("App Check verification failed.");
-      }
+      // ✅ Input validation
+      if (!token || typeof token !== 'string' || token.trim() === '') {
+        throw new HttpsError('invalid-argument', 'FCM token is required and must be a non-empty string');
+      }
+      if (!integrityToken && process.env.NODE_ENV !== 'development') {
+        throw new HttpsError('failed-precondition', 'Integrity token is required in production');
+      }
 
-      const {
-        token,
-        title,
-        body,
-        data = {},
-        recipientId,
-        recipientRole,
-        integrityToken,
-      } = request.data;
+      // ✅ Verify Play Integrity Token (skip in development)
+      if (process.env.NODE_ENV !== 'development') {
+        const packageName = "com.naukariwala.avr"; // Your app package name
 
-      if (!token) throw new Error("FCM token is required.");
-      if (!integrityToken && process.env.NODE_ENV !== "development") throw new Error("Integrity token is required.");
+        const integrityResponse = await playintegrity.v1.decodeIntegrityToken({
+          packageName,
+          requestBody: { integrityToken },
+        });
 
-      // Verify Play Integrity token (skip in development for testing)
-      if (process.env.NODE_ENV !== "development") {
-        const packageName = "com.naukariwala.avr"; // Replace with your app's package name
-        const integrityResponse = await playintegrity.v1.verify({
-          packageName,
-          requestBody: { integrityToken },
-        });
+        const verdict = integrityResponse.data.tokenPayloadExternal || {};
+        logger.info("Play Integrity verdict:", verdict);
 
-        const verdict = integrityResponse.data;
-        logger.info("Play Integrity verdict:", verdict);
+        const integrityVerdict = verdict.deviceIntegrity?.deviceRecognitionVerdict || [];
+        if (!integrityVerdict.includes("MEETS_DEVICE_INTEGRITY")) {
+          throw new HttpsError('failed-precondition', 'Device integrity check failed');
+        }
 
-        const integrityVerdict = verdict.deviceIntegrity?.deviceRecognitionVerdict || [];
-        if (!integrityVerdict.includes("MEETS_DEVICE_INTEGRITY")) {
-          throw new Error("Device integrity check failed");
-        }
-        logger.info("✅ Device integrity verified successfully.");
-      } else {
-        logger.info("Skipping Play Integrity in development mode.");
-      }
+        logger.info("✅ Device integrity verified successfully");
+      } else {
+        logger.info("Skipping Play Integrity verification (development mode)");
+      }
 
-      // Prepare FCM message
-      const message = {
-        token,
-        notification: {
-          title: title || "📢 New Notification",
-          body: body || "You have a new message",
-        },
-        data: {
-          click_action: "FLUTTER_NOTIFICATION_CLICK",
-          type: data.type || "general",
-          ...data,
-          timestamp: new Date().toISOString(),
-        },
-        android: { priority: "high" },
-        apns: {
-          headers: { "apns-priority": "10" },
-          payload: { aps: { contentAvailable: true } },
-        },
-      };
+      // ✅ Prepare FCM message
+      
+      // FIX: Sanitize the incoming 'data' object to remove reserved FCM keys (like 'from')
+      // and large, unnecessary keys (like 'integrityToken').
+      const payloadData = { ...data };
+      delete payloadData.integrityToken;
+      // This is the key fix for the "Invalid data payload key: from" error
+      delete payloadData.from; 
 
-      // Send FCM
-      const response = await admin.messaging().send(message);
-      logger.info(`✅ Notification sent to ${token}, response: ${response}`);
+      const message = {
+        token,
+        notification: {
+          title: title || "📢 New Notification",
+          body: body || "You have a new message",
+        },
+        data: {
+          click_action: "FLUTTER_NOTIFICATION_CLICK",
+          type: payloadData.type || "general",
+          ...payloadData, // Spread the sanitized data
+          timestamp: new Date().toISOString(),
+        },
+        android: { priority: "high" },
+        apns: {
+          headers: { "apns-priority": "10" },
+          payload: { aps: { contentAvailable: true } },
+        },
+      };
 
-      // Save in Firestore if recipient details provided
-      if (recipientId && recipientRole) {
-        const collectionName =
-          recipientRole === "recruiter" ? "RecruiterNotifications" : "SeekerNotifications";
+      // ✅ Send FCM Notification
+      const response = await admin.messaging().send(message);
+      logger.info(`✅ Notification sent to ${token}, response: ${response}`);
 
-        await admin
-          .firestore()
-          .collection(collectionName)
-          .doc(recipientId)
-          .collection("Notifications")
-          .add({
-            title,
-            body,
-            data,
-            timestamp: admin.firestore.FieldValue.serverTimestamp(),
-            sentBy: request.auth?.uid || "anonymous", // Fallback for unauthenticated calls
-          });
-      }
+      // ✅ Save in Firestore if recipient info provided
+      if (recipientId && recipientRole) {
+        const collectionName = recipientRole === "recruiter"
+          ? "RecruiterNotifications"
+          : "SeekerNotifications";
+        
+        // Ensure Firestore is initialized before use (admin is initialized globally)
+        const firestore = admin.firestore();
 
-      return { success: true, message: "Notification sent successfully." };
-    } catch (error) {
-      logger.error("❌ Error sending notification:", { error: error.message, stack: error.stack });
-      throw new Error(`Failed to send notification: ${error.message}`);
-    }
-  }
+        await firestore
+          .collection(collectionName)
+          .doc(recipientId)
+          .collection("Notifications")
+          .add({
+            title,
+            body,
+            data: payloadData, // Use the sanitized data for Firestore as well
+            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+            sentBy: request.auth?.uid || "anonymous",
+          });
+          logger.info(`✅ Notification saved to Firestore for recipient: ${recipientId}`);
+      }
+
+      return { success: true, message: "Notification sent successfully." };
+    } catch (error) {
+      logger.error("❌ Error sending notification:", {
+        error: error.message,
+        stack: error.stack,
+      });
+
+      // Handle expected errors
+      if (error instanceof HttpsError) {
+        throw error; // Re-throw HttpsError to preserve details
+      } else if (error.message.includes("messaging/registration-token-not-registered")) {
+        throw new HttpsError('invalid-argument', 'FCM token is invalid or unregistered');
+      } else if (error.message.includes("Permission denied")) {
+        throw new HttpsError('permission-denied', 'Insufficient permissions to send notification');
+      } else {
+        // Catch all other unexpected errors
+        throw new HttpsError('internal', `Failed to send notification: ${error.message}`);
+      }
+    }
+  }
 );

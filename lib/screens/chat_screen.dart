@@ -395,48 +395,47 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _callSendNotificationFunction(String recipientFcmToken, String message, String notificationId, String chatId, String jobId, String seekerId, String fromId, String jobTitle) async {
-    try {
-      final appCheckToken = await FirebaseAppCheck.instance.getToken(); // Fetch token if required by function
-      final integrityToken = await _getPlayIntegrityToken();
+  if (recipientFcmToken.isEmpty) { // Removed unnecessary null check as per Dart analysis
+    dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Empty FCM token for ${widget.recipientId}', name: 'ChatScreen');
+    return;
+  }
+  try {
+    final appCheckToken = await FirebaseAppCheck.instance.getToken();
+    final integrityToken = await _getPlayIntegrityToken();
 
-      final callable = FirebaseFunctions.instanceFor(region: 'asia-south1').httpsCallable('sendNotification');
-      final response = await callable.call({
-        'token': recipientFcmToken,
-        'title': 'New Message',
-        'body': message,
-        'data': {
-          'notificationId': notificationId,
-          'chatId': chatId,
-          'jobId': jobId,
-          'seekerId': seekerId,
-          'from': fromId,
-          'type': 'message',
-          'recipientId': widget.recipientId,
-          'jobTitle': jobTitle,
-          'message': message,
-        },
+    final callable = FirebaseFunctions.instanceFor(region: 'asia-south1').httpsCallable('sendNotification');
+    final response = await callable.call({
+      'token': recipientFcmToken,
+      'title': 'New Message',
+      'body': message,
+      'data': {
+        'notificationId': notificationId,
+        'chatId': chatId,
+        'jobId': jobId,
+        'seekerId': seekerId,
+        'from': fromId,
+        'type': 'message',
         'recipientId': widget.recipientId,
-        'recipientRole': _isRecruiter == true ? 'seeker' : 'recruiter',
-        'integrityToken': integrityToken,
-        'appCheckToken': appCheckToken ?? '', // Safe access with fallback
-      });
-      if (response.data['success'] == true) {
-        dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Cloud Function sendNotification called successfully for $recipientFcmToken', name: 'ChatScreen');
-      } else {
-        dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Cloud Function sendNotification failed: ${response.data}', name: 'ChatScreen');
-      }
-    } catch (e) {
-      dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Error calling sendNotification Cloud Function: $e', name: 'ChatScreen', error: e);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to send notification: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+        'jobTitle': jobTitle,
+        'message': message,
+      },
+      'recipientId': widget.recipientId,
+      'recipientRole': _isRecruiter == true ? 'seeker' : 'recruiter',
+      'integrityToken': integrityToken ?? '',
+      'appCheckToken': appCheckToken ?? '',
+    });
+    if (response.data['success'] != true) {
+      dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Cloud Function sendNotification failed: ${response.data}', name: 'ChatScreen');
+    }
+  } catch (e) {
+    dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Error calling sendNotification Cloud Function: $e', name: 'ChatScreen', error: e);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to send notification: ${e.toString()}'), backgroundColor: Colors.red),
+      );
     }
   }
+}
 
   Future<String?> _getPlayIntegrityToken() async {
     try {

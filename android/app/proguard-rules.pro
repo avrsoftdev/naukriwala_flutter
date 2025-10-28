@@ -36,6 +36,9 @@
 #########################################
 -keep class com.google.android.gms.** { *; }
 -dontwarn com.google.android.gms.**
+# Keep Play Integrity classes
+-keep class com.google.android.play.core.integrity.** { *; }
+-dontwarn com.google.android.play.core.integrity.**
 # Keep Play Core split install and app update classes
 -keep class com.google.android.play.core.splitinstall.** { *; }
 -keep class com.google.android.play.core.splitcompat.** { *; }

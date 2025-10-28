@@ -1,4 +1,4 @@
-// ignore_for_file: unnecessary_cast, deprecated_member_use
+// ignore_for_file: unnecessary_cast, deprecated_member_use, avoid_print
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -13,6 +13,7 @@ import 'dart:io';
 import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:flutter/foundation.dart'; // For kDebugMode
 import 'dart:math';
+import 'package:flutter/services.dart'; // Added for MethodChannel
 
 import 'package:naukariwala/main.dart'; // For exponential backoff
 
@@ -29,6 +30,19 @@ class AuthService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseStorage _storage = FirebaseStorage.instance;
   final FirebaseMessaging _messaging = FirebaseMessaging.instance;
+
+  // Helper method to get Play Integrity token
+  Future<String?> getPlayIntegrityToken() async {
+    const platform = MethodChannel('play_integrity_channel');
+    try {
+      final String? token = await platform.invokeMethod('getPlayIntegrityToken');
+      print('✅ Play Integrity Token: $token');
+      return token;
+    } catch (e) {
+      print('❌ Error getting Play Integrity token: $e');
+      return null;
+    }
+  }
 
   Future<String?> _getFcmToken(String recipientId) async {
     try {
@@ -49,6 +63,7 @@ class AuthService {
     required String title,
     required String body,
     required Map<String, String> data,
+    String? integrityToken,
   }) async {
     try {
       final user = _auth.currentUser;
@@ -57,6 +72,16 @@ class AuthService {
         return;
       }
       await user.getIdToken(); // Ensure token is refreshed
+
+      // Fetch Play Integrity token with development mode bypass
+      String? integrityToken;
+      if (kDebugMode) {
+        print('⚠️ Using placeholder Play Integrity token for development');
+        integrityToken = 'DEVELOPMENT_PLACEHOLDER_TOKEN';
+      } else {
+        integrityToken = await getPlayIntegrityToken();
+      }
+
       final callable = FirebaseFunctions.instanceFor(region: 'asia-south1').httpsCallable(
         'sendNotification',
         options: HttpsCallableOptions(
@@ -64,6 +89,7 @@ class AuthService {
         ),
       );
       final response = await callable.call({
+        'integrityToken': integrityToken, // Added Play Integrity token
         'token': recipientFcmToken,
         'title': title,
         'body': body,
@@ -83,6 +109,7 @@ class AuthService {
       dev.log('[2025-10-10 00:35 IST] Error sending FCM notification via Cloud Function: $e', name: 'AuthService', error: e, stackTrace: stackTrace);
     }
   }
+
   final List<String> educationOptions = [
     'Secondary (Class 10)',
     'Higher Secondary (Class 12)',
@@ -408,52 +435,6 @@ class AuthService {
       });
     } catch (e) {
       dev.log('[2025-10-10 00:35 IST] Error setting up FCM token refresh: $e', name: 'AuthService', error: e);
-    }
-  }
-
-  Future<String> uploadCompanyLogo(File file) async {
-    final uid = _auth.currentUser?.uid;
-    if (uid == null) throw const AuthException("User not logged in");
-
-    try {
-      dev.log('[2025-10-10 00:35 IST] Uploading company logo for recruiter $uid', name: 'AuthService');
-      final ref = _storage.ref().child('recruiters/$uid/logo_${DateTime.now().millisecondsSinceEpoch}.jpg');
-      final uploadTask = await ref.putFile(file);
-      final downloadUrl = await uploadTask.ref.getDownloadURL();
-
-      await _firestore.collection('Recruiters').doc(uid).set(
-        {'companyLogo': downloadUrl},
-        SetOptions(merge: true),
-      );
-
-      dev.log('[2025-10-10 00:35 IST] Company logo uploaded and saved for recruiter $uid: $downloadUrl', name: 'AuthService');
-      return downloadUrl;
-    } catch (e, stackTrace) {
-      dev.log('[2025-10-10 00:35 IST] uploadCompanyLogo ERROR for UID: $uid: $e', name: 'AuthService', error: e, stackTrace: stackTrace);
-      if (e is FirebaseException) {
-        throw AuthException('Failed to upload company logo: ${e.code} - ${e.message}');
-      }
-      rethrow;
-    }
-  }
-
-  Future<String> uploadSeekerPhoto(File file) async {
-    final uid = _auth.currentUser?.uid;
-    if (uid == null) throw const AuthException("User not logged in");
-
-    try {
-      dev.log("[2025-10-10 00:35 IST] Uploading seeker photo for $uid", name: 'AuthService');
-      final ref = _storage.ref("seeker_photos/$uid/photo.png");
-      await ref.putFile(file);
-      final url = await ref.getDownloadURL();
-      dev.log("[2025-10-10 00:35 IST] Seeker photo uploaded for $uid: $url", name: 'AuthService');
-      return url;
-    } catch (e) {
-      dev.log("[2025-10-10 00:35 IST] uploadSeekerPhoto ERROR: $e", name: 'AuthService', error: e);
-      if (e is FirebaseException) {
-        throw AuthException("Upload failed: ${e.code} - ${e.message}. Check storage permissions or file format.");
-      }
-      rethrow;
     }
   }
 
@@ -883,109 +864,123 @@ class AuthService {
       rethrow;
     }
   }
-
-  Future<void> sendMessage(String recipientId, String jobId, String message, {String status = 'sent'}) async {
-    final senderId = FirebaseAuth.instance.currentUser!.uid;
-    try {
-      String seekerId;
-      String applicationId;
-      if (senderId == recipientId) {
-        throw Exception('Cannot send message to self');
-      }
-      final senderAppDoc = await FirebaseFirestore.instance
+Future<void> sendMessage(
+  String recipientId,
+  String jobId,
+  String message, {
+  String status = 'sent',
+}) async {
+  final senderId = FirebaseAuth.instance.currentUser!.uid;
+  try {
+    String seekerId;
+    String applicationId;
+    if (senderId == recipientId) {
+      throw Exception('Cannot send message to self');
+    }
+    final senderAppDoc = await FirebaseFirestore.instance
+        .collection('Applications')
+        .doc('${senderId}_$jobId')
+        .get();
+    if (senderAppDoc.exists && senderAppDoc.data()?['seekerId'] == senderId) {
+      seekerId = senderId;
+      applicationId = '${senderId}_$jobId';
+    } else {
+      final recipientAppDoc = await FirebaseFirestore.instance
           .collection('Applications')
-          .doc('${senderId}_$jobId')
+          .doc('${recipientId}_$jobId')
           .get();
-      if (senderAppDoc.exists && senderAppDoc.data()?['seekerId'] == senderId) {
-        seekerId = senderId;
-        applicationId = '${senderId}_$jobId';
-      } else {
-        final recipientAppDoc = await FirebaseFirestore.instance
-            .collection('Applications')
-            .doc('${recipientId}_$jobId')
-            .get();
-        if (!recipientAppDoc.exists) {
-          dev.log('[2025-10-10 00:35 IST] Application ${recipientId}_$jobId not found', name: 'AuthService');
-          throw Exception('Application does not exist');
-        }
-        seekerId = recipientId;
-        applicationId = '${recipientId}_$jobId';
-      }
-
-      final appDoc = await FirebaseFirestore.instance
-          .collection('Applications')
-          .doc(applicationId)
-          .get();
-      if (!appDoc.exists) {
-        dev.log('[2025-10-10 00:35 IST] Application $applicationId not found', name: 'AuthService');
+      if (!recipientAppDoc.exists) {
+        dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Application ${recipientId}_$jobId not found', name: 'AuthService');
         throw Exception('Application does not exist');
       }
-      final appData = appDoc.data()!;
-      if (appData['jobId'] != jobId || appData['seekerId'] != seekerId || appData['recruiterId'] is! String) {
-        dev.log('[2025-10-10 00:35 IST] Invalid application data for $applicationId: $appData', name: 'AuthService');
-        throw Exception('Invalid application data');
-      }
-
-      final participants = [senderId, recipientId];
-      participants.sort();
-      final chatId = '${participants[0]}_${participants[1]}';
-      final messageDocRef = _firestore
-          .collection('Messages')
-          .doc(chatId)
-          .collection('Chats')
-          .doc();
-      await messageDocRef.set({
-        'senderId': senderId,
-        'recipientId': recipientId,
-        'jobId': jobId,
-        'message': message,
-        'timestamp': FieldValue.serverTimestamp(),
-        'status': status,
-      });
-
-      final notificationId = _firestore.collection('SeekerNotifications').doc(recipientId).collection('Notifications').doc().id;
-      await _firestore.collection(recipientId == seekerId ? 'SeekerNotifications' : 'RecruiterNotifications')
-          .doc(recipientId)
-          .collection('Notifications')
-          .doc(notificationId)
-          .set({
-        'to': recipientId,
-        'recipientId': recipientId,
-        'from': senderId,
-        'jobId': jobId,
-        'jobTitle': appData['jobTitle']?.toString() ?? 'Untitled',
-        'notificationId': notificationId,
-        'type': 'message',
-        'chatId': chatId,
-        'seekerId': seekerId,
-        'read': false,
-        'timestamp': FieldValue.serverTimestamp(),
-        'message': 'New message: $message',
-      });
-
-      dev.log('[2025-10-10 00:35 IST] Message sent from $senderId to $recipientId for job $jobId with chatId $chatId, status: $status', name: 'AuthService');
-
-      final recipientFcmToken = await _getFcmToken(recipientId);
-      if (recipientFcmToken != null) {
-        await _sendFcmNotification(
-          recipientFcmToken: recipientFcmToken,
-          title: 'New Message',
-          body: message,
-          data: {
-            'notificationId': notificationId,
-            'chatId': chatId,
-            'jobId': jobId,
-            'seekerId': seekerId,
-            'from': senderId,
-            'type': 'message',
-          },
-        );
-      }
-    } catch (e) {
-      dev.log('[2025-10-10 00:35 IST] Error sending message from $senderId to $recipientId for job $jobId: $e', name: 'AuthService', error: e);
-      throw AuthException('Failed to send message: $e');
+      seekerId = recipientId;
+      applicationId = '${recipientId}_$jobId';
     }
+
+    final appDoc = await FirebaseFirestore.instance
+        .collection('Applications')
+        .doc(applicationId)
+        .get();
+    if (!appDoc.exists) {
+      dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Application $applicationId not found', name: 'AuthService');
+      throw Exception('Application does not exist');
+    }
+    final appData = appDoc.data()!;
+    if (appData['jobId'] != jobId || appData['seekerId'] != seekerId || appData['recruiterId'] is! String) {
+      dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Invalid application data for $applicationId: $appData', name: 'AuthService');
+      throw Exception('Invalid application data');
+    }
+
+    final participants = [senderId, recipientId];
+    participants.sort();
+    final chatId = '${participants[0]}_${participants[1]}';
+    final messageDocRef = FirebaseFirestore.instance
+        .collection('Messages')
+        .doc(chatId)
+        .collection('Chats')
+        .doc();
+    await messageDocRef.set({
+      'senderId': senderId,
+      'recipientId': recipientId,
+      'jobId': jobId,
+      'message': message,
+      'timestamp': FieldValue.serverTimestamp(),
+      'status': status,
+    });
+
+    final notificationId = FirebaseFirestore.instance.collection('SeekerNotifications').doc(recipientId).collection('Notifications').doc().id;
+    await FirebaseFirestore.instance.collection(recipientId == seekerId ? 'SeekerNotifications' : 'RecruiterNotifications')
+        .doc(recipientId)
+        .collection('Notifications')
+        .doc(notificationId)
+        .set({
+      'to': recipientId,
+      'recipientId': recipientId,
+      'from': senderId,
+      'jobId': jobId,
+      'jobTitle': appData['jobTitle']?.toString() ?? 'Untitled',
+      'notificationId': notificationId,
+      'type': 'message',
+      'chatId': chatId,
+      'seekerId': seekerId,
+      'read': false,
+      'timestamp': FieldValue.serverTimestamp(),
+      'message': 'New message: $message',
+    });
+
+    dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Message sent from $senderId to $recipientId for job $jobId with chatId $chatId, status: $status', name: 'AuthService');
+
+    final recipientFcmToken = await _getFcmToken(recipientId);
+    if (recipientFcmToken != null) {
+      // Fetch Play Integrity token with development mode bypass
+      String? integrityToken;
+      if (kDebugMode) {
+        print('⚠️ Using placeholder Play Integrity token for development');
+        integrityToken = 'DEVELOPMENT_PLACEHOLDER_TOKEN';
+      } else {
+        integrityToken = await getPlayIntegrityToken();
+      }
+
+      await _sendFcmNotification(
+        recipientFcmToken: recipientFcmToken,
+        title: 'New Message',
+        body: message,
+        data: {
+          'notificationId': notificationId,
+          'chatId': chatId,
+          'jobId': jobId,
+          'seekerId': seekerId,
+          'from': senderId,
+          'type': 'message',
+        },
+        integrityToken: integrityToken, // Pass the integrity token
+      );
+    }
+  } catch (e) {
+    dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Error sending message from $senderId to $recipientId for job $jobId: $e', name: 'AuthService', error: e);
+    throw AuthException('Failed to send message: $e');
   }
+}
 
   Future<bool> isSignedIn() async => _auth.currentUser != null;
 
