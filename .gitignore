@@ -31,7 +31,7 @@ migrate_working_dir/
 .flutter-plugins-dependencies
 .pub-cache/
 .pub/
-/build/
+build/
 
 # Symbolication related
 app.*.symbols
@@ -43,3 +43,16 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# --- Sensitive files and secrets ---
+# Google Cloud / Firebase service account keys
+functions/fcm-service-account-key.json
+functions/play-integrity-service-account-key.json
+
+# Any other potential secret files
+*.env
+*.key
+*.pem
+*.p12
+*.credentials.json
+*.secret.json
