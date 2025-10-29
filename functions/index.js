@@ -55,6 +55,10 @@ exports.sendNotification = onCall(
   { enforceAppCheck: true, region: "asia-south1" },
   async (request) => {
     try {
+      // --- TEMPORARY DEBUG OVERRIDE REMOVED ---
+      // Since the app is in closed testing, the function will now run the full
+      // Play Integrity check by default.
+      
       logger.info("📩 Received request", {
         hasAuth: !!request.auth,
         hasApp: !!request.app,
@@ -75,6 +79,7 @@ exports.sendNotification = onCall(
       if (!token || typeof token !== 'string' || token.trim() === '') {
         throw new HttpsError('invalid-argument', 'FCM token is required and must be a non-empty string');
       }
+      // If running in production (or closed testing), ensure the integrity token is provided by the client.
       if (!integrityToken && process.env.NODE_ENV !== 'development') {
         throw new HttpsError('failed-precondition', 'Integrity token is required in production');
       }
@@ -103,12 +108,12 @@ exports.sendNotification = onCall(
 
       // ✅ Prepare FCM message
       
-      // FIX: Sanitize the incoming 'data' object to remove reserved FCM keys (like 'from')
-      // and large, unnecessary keys (like 'integrityToken').
-      const payloadData = { ...data };
-      delete payloadData.integrityToken;
-      // This is the key fix for the "Invalid data payload key: from" error
-      delete payloadData.from; 
+      // FIX: Sanitize the incoming 'data' object to remove reserved FCM keys (like 'from')
+      // and large, unnecessary keys (like 'integrityToken').
+      const payloadData = { ...data };
+      delete payloadData.integrityToken;
+      // This is the key fix for the "Invalid data payload key: from" error
+      delete payloadData.from; 
 
       const message = {
         token,
@@ -133,27 +138,36 @@ exports.sendNotification = onCall(
       const response = await admin.messaging().send(message);
       logger.info(`✅ Notification sent to ${token}, response: ${response}`);
 
-      // ✅ Save in Firestore if recipient info provided
-      if (recipientId && recipientRole) {
-        const collectionName = recipientRole === "recruiter"
-          ? "RecruiterNotifications"
-          : "SeekerNotifications";
-        
-        // Ensure Firestore is initialized before use (admin is initialized globally)
-        const firestore = admin.firestore();
+      // ✅ Save in Firestore if recipient info provided (Now wrapped in try/catch and data is JSON stringified)
+      if (recipientId && (recipientRole === "recruiter" || recipientRole === "seeker")) {
+        try {
+          const collectionName = recipientRole === "recruiter"
+            ? "RecruiterNotifications"
+            : "SeekerNotifications";
+          
+          const firestore = admin.firestore();
 
-        await firestore
-          .collection(collectionName)
-          .doc(recipientId)
-          .collection("Notifications")
-          .add({
-            title,
-            body,
-            data: payloadData, // Use the sanitized data for Firestore as well
-            timestamp: admin.firestore.FieldValue.serverTimestamp(),
-            sentBy: request.auth?.uid || "anonymous",
-          });
-          logger.info(`✅ Notification saved to Firestore for recipient: ${recipientId}`);
+          // Convert the payload data to a JSON string for robust storage
+          const payloadDataJson = JSON.stringify(payloadData);
+
+          await firestore
+            .collection(collectionName)
+            .doc(recipientId)
+            .collection("Notifications")
+            .add({
+              title: title || "",
+              body: body || "",
+              payloadDataJson: payloadDataJson, // Storing as JSON string
+              timestamp: admin.firestore.FieldValue.serverTimestamp(),
+              sentBy: request.auth?.uid || "anonymous",
+            });
+            logger.info(`✅ Notification saved to Firestore for recipient: ${recipientId}`);
+        } catch (firestoreError) {
+          // Log the Firestore error specifically, but do not fail the entire function
+          // as the notification has already been sent successfully.
+          logger.error(`⚠️ Failed to save notification to Firestore for ${recipientId}:`, firestoreError.message);
+          // Continue execution
+        }
       }
 
       return { success: true, message: "Notification sent successfully." };
