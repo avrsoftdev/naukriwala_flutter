@@ -269,46 +269,41 @@ class _ChatScreenState extends State<ChatScreen> {
     final doc = await _firestore.collection('UsersIndex').doc(uid).get();
     return doc.exists ? doc.get('fcmToken') as String? : null;
   }
+Future<void> _callSendNotification(
+  String fcmToken, String message, String notifId, String jobTitle,
+) async {
+  try {
+    final integrityToken = await _playIntegrity.getIntegrityToken();
+    final callable = FirebaseFunctions.instanceFor(region: 'asia-south1').httpsCallable('sendNotification');
 
-  Future<void> _callSendNotification(
-    String fcmToken,
-    String message,
-    String notifId,
-    String jobTitle,
-  ) async {
-    try {
-      final integrityToken = await _playIntegrity.getIntegrityToken();
-      final callable = FirebaseFunctions.instanceFor(region: 'asia-south1')
-          .httpsCallable('sendNotification');
-
-      final response = await callable({
-        'token': fcmToken,
-        'title': 'New Message',
-        'body': message,
-        'data': {
-          'notificationId': notifId,
-          'chatId': widget.chatId,
-          'jobId': widget.jobId,
-          'seekerId': _isRecruiter == true ? widget.recipientId : _auth.currentUser!.uid,
-          'senderId': _auth.currentUser!.uid,
-          'type': 'message',
-          'recipientId': widget.recipientId,
-          'jobTitle': jobTitle,
-          'message': message,
-        },
+    final response = await callable({
+      'token': fcmToken,
+      'title': 'New Message',
+      'body': message,
+      'data': {
+        'notificationId': notifId,
+        'chatId': widget.chatId,
+        'jobId': widget.jobId,
+        'seekerId': _isRecruiter == true ? widget.recipientId : _auth.currentUser!.uid,
+        'senderId': _auth.currentUser!.uid,
+        'type': 'message',
         'recipientId': widget.recipientId,
-        'recipientRole': _isRecruiter == true ? 'seeker' : 'recruiter',
-        'integrityToken': integrityToken,
-      });
+        'jobTitle': jobTitle,
+        'message': message,
+      }.map((k, v) => MapEntry(k, v.toString())),
+      'recipientId': widget.recipientId,
+      'recipientRole': _isRecruiter == true ? 'seeker' : 'recruiter',
+      'integrityToken': integrityToken,
+    });
 
-      if (!(response.data['success'] as bool? ?? false)) {
-        dev.log('Cloud Function failed: ${response.data}');
-      }
-    } catch (e) {
-      dev.log('FCM send error: $e');
-      _showError('Notification failed to send');
+    if (response.data['success'] == true) {
+      dev.log('FCM sent successfully');
     }
+  } catch (e) {
+    dev.log('FCM error: $e');
+    _showError('Failed to send notification');
   }
+}
 
   // ────────────────────────────── MARK AS READ ──────────────────────────────
   Future<void> _markAsRead() async {

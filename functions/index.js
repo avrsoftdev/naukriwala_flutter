@@ -44,7 +44,15 @@ async function retry(fn, maxRetries = 3) {
 // MAIN FUNCTION
 exports.sendNotification = onCall({ enforceAppCheck: true }, async (request) => {
   try {
-    const { token, title, body, data = {}, recipientId, recipientRole, integrityToken } = request.data;
+    const {
+      token,
+      title,
+      body,
+      data = {},
+      recipientId,
+      recipientRole,
+      integrityToken
+    } = request.data;
 
     // VALIDATE
     if (!token || typeof token !== "string") {
@@ -52,68 +60,99 @@ exports.sendNotification = onCall({ enforceAppCheck: true }, async (request) => 
     }
 
     // PLAY INTEGRITY
-    if (integrityToken === PLACEHOLDER_TOKEN) {
-      logger.info("DEBUG MODE: Skipping Play Integrity");
-    } else if (!integrityToken) {
-      throw new HttpsError("failed-precondition", "integrityToken required");
-    } else {
-      logger.info("Verifying Play Integrity token...");
-      await retry(async () => {
-        const resp = await playintegrity.v1.decodeIntegrityToken({
-          packageName: PACKAGE_NAME,
-          requestBody: { integrityToken },
-        });
-
-        const verdict = resp.data.tokenPayloadExternal?.deviceIntegrity?.deviceRecognitionVerdict || [];
-        if (!verdict.includes("MEETS_DEVICE_INTEGRITY")) {
-          throw new HttpsError("failed-precondition", "Device integrity failed");
-        }
-
-        logger.info("Play Integrity PASSED");
-      }, 3);
+    // PLAY INTEGRITY
+if (integrityToken === PLACEHOLDER_TOKEN || !integrityToken) {
+  logger.info("DEVELOPMENT MODE: Skipping Play Integrity");
+} else {
+  logger.info("Verifying Play Integrity token...");
+  await retry(async () => {
+    const resp = await playintegrity.v1.decodeIntegrityToken({
+      packageName: PACKAGE_NAME,
+      requestBody: { integrityToken },
+    });
+    const verdict = resp.data.tokenPayloadExternal?.deviceIntegrity?.deviceRecognitionVerdict || [];
+    if (!verdict.includes("MEETS_DEVICE_INTEGRITY")) {
+      throw new HttpsError("failed-precondition", "Device integrity failed");
     }
+    logger.info("Play Integrity PASSED");
+  }, 3);
+}
+
+    // EXTRACT VALUES SAFELY
+    const senderId = data.senderId || request.auth?.uid || "";
+    const notificationId = data.notificationId || "";
+    const chatId = data.chatId || "";
+    const jobId = data.jobId || "";
+    const seekerId = data.seekerId || "";
+    const jobTitle = data.jobTitle || "Unknown";
+
+    // BUILD FCM MESSAGE
+    const message = {
+      token,
+      notification: {
+        title: title || "New Message",
+        body: body || "Tap to view"
+      },
+      data: {
+        click_action: "FLUTTER_NOTIFICATION_CLICK",
+        senderId: String(senderId),
+        notificationId: String(notificationId),
+        chatId: String(chatId),
+        jobId: String(jobId),
+        seekerId: String(seekerId),
+        type: "message",
+        recipientId: String(recipientId),
+        jobTitle: String(jobTitle),
+        message: String(title || "New Message"),
+      },
+      android: { priority: "high" },
+    };
 
     // SEND FCM
-    const message = {
-  token,
-  notification: { title: title || "New Message", body: body || "Tap to view" },
-  data: {
-    click_action: "FLUTTER_NOTIFICATION_CLICK",
-    senderId: senderId,        // ← CHANGED
-    notificationId: notificationId,
-    chatId: widget.chatId,
-    jobId: jobId,
-    seekerId: _isRecruiter == true ? recipientId : senderId,
-    type: 'message',
-    recipientId: widget.recipientId,
-    jobTitle: jobTitle ?? 'Unknown',
-    message: title,
-  },
-  android: { priority: "high" },
-};
-
-    const fcmResponse = await admin.messaging().send(message);
-    logger.info("FCM sent successfully", { response: fcmResponse });
+    let fcmResponse;
+    try {
+      fcmResponse = await admin.messaging().send(message);
+      logger.info("FCM sent successfully", { response: fcmResponse });
+    } catch (error) {
+      logger.error("FCM send failed", { error: error.message });
+      throw new HttpsError("internal", `FCM failed: ${error.message}`);
+    }
 
     // SAVE TO FIRESTORE
     if (recipientId && ["recruiter", "seeker"].includes(recipientRole)) {
       try {
+        const coll = recipientRole === "recruiter" ? "RecruiterNotifications" : "SeekerNotifications";
         await admin.firestore()
-          .collection(recipientRole === "recruiter" ? "RecruiterNotifications" : "SeekerNotifications")
+          .collection(coll)
           .doc(recipientId)
           .collection("Notifications")
           .add({
-            title, body, data: JSON.stringify(data),
+            title: title || "New Message",
+            body: body || "Tap to view",
+            data: {
+              click_action: "FLUTTER_NOTIFICATION_CLICK",
+              senderId: String(senderId),
+              notificationId: String(notificationId),
+              chatId: String(chatId),
+              jobId: String(jobId),
+              seekerId: String(seekerId),
+              type: "message",
+              recipientId: String(recipientId),
+              jobTitle: String(jobTitle),
+              message: String(title || "New Message"),
+            },
             timestamp: admin.firestore.FieldValue.serverTimestamp(),
+            read: false,
           });
+        logger.info("Saved notification to Firestore");
       } catch (e) {
         logger.warn("Firestore save failed", { error: e.message });
       }
     }
 
-    return { success: true, message: "Sent" };
+    return { success: true, message: "Sent", fcmMessageId: fcmResponse };
+
   } catch (error) {
-    // SAFE LOGGING
     const msg = error?.message || String(error);
     logger.error("sendNotification failed", { error: msg });
 

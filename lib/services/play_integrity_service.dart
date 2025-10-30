@@ -1,3 +1,5 @@
+// lib/services/play_integrity_service.dart
+
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
@@ -9,11 +11,32 @@ class PlayIntegrityService {
   bool _sending = false;
 
   Future<String> getIntegrityToken() async {
-    if (kDebugMode) return _placeholder;
+    // DEBUG MODE: Use placeholder
+    if (kDebugMode) {
+      dev.log('PlayIntegrity: Debug mode → using placeholder');
+      return _placeholder;
+    }
 
-    final token = await _channel.invokeMethod<String>('getPlayIntegrityToken');
-    if (token == null || token.isEmpty) throw Exception('Empty integrity token');
-    return token;
+    try {
+      final token = await _channel.invokeMethod<String>('getPlayIntegrityToken');
+      if (token == null || token.isEmpty) {
+        dev.log('PlayIntegrity: Token is null/empty → fallback');
+        return _fallback();
+      }
+      dev.log('PlayIntegrity: Token generated successfully');
+      return token;
+    } on PlatformException catch (e) {
+      dev.log('PlayIntegrity: PlatformException → ${e.code}: ${e.message}');
+      return _fallback();
+    } catch (e) {
+      dev.log('PlayIntegrity: Unexpected error → $e');
+      return _fallback();
+    }
+  }
+
+  String _fallback() {
+    dev.log('PlayIntegrity: Using fallback token');
+    return _placeholder;
   }
 
   Future<Map<String, dynamic>> sendNotificationWithIntegrity({
@@ -29,17 +52,27 @@ class PlayIntegrityService {
 
     try {
       final token = await getIntegrityToken();
-      final callable = FirebaseFunctions.instance.httpsCallable('sendNotification');
-      final result = await callable.call({
+      final callable = FirebaseFunctions.instanceFor(region: 'asia-south1')
+          .httpsCallable('sendNotification');
+
+      final result = await callable({
         'token': fcmToken,
-        'title': title,
-        'body': body,
+        'title': title ?? 'New Message',
+        'body': body ?? 'Tap to view',
+        'data': (data ?? {}).map((k, v) => MapEntry(k, v.toString())),
         'recipientId': recipientId,
         'recipientRole': recipientRole,
         'integrityToken': token,
-        'data': data ?? {},
       });
-      return result.data;
+
+      final response = result.data as Map<String, dynamic>;
+      if (response['success'] == true) {
+        dev.log('FCM sent successfully: ${response['fcmMessageId']}');
+      }
+      return response;
+    } catch (e) {
+      dev.log('sendNotificationWithIntegrity error: $e');
+      return {'success': false, 'message': e.toString()};
     } finally {
       _sending = false;
     }
