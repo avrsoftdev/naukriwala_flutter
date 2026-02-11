@@ -1,3 +1,5 @@
+// ignore_for_file: non_constant_identifier_names
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -29,7 +31,7 @@ class ChatScreen extends StatefulWidget {
   State<ChatScreen> createState() => _ChatScreenState();
 }
 
-class _ChatScreenState extends State<ChatScreen> {
+class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   final _messageController = TextEditingController();
   final _authService = AuthService();
   final _firestore = FirebaseFirestore.instance;
@@ -45,12 +47,28 @@ class _ChatScreenState extends State<ChatScreen> {
   Timestamp? _lastSeenTimestamp;
   String? _lastMessageId;
   bool _isSending = false;
+  bool _isAppInForeground = true; // Track app state
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     if (Platform.isAndroid) Permission.notification.request();
     _initialize();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _messageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    setState(() {
+      _isAppInForeground = state == AppLifecycleState.resumed;
+    });
   }
 
   Future<void> _initialize() async {
@@ -78,6 +96,7 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _initializeChat() async {
+    // ignore: constant_identifier_names, unused_local_variable
     final [_, __] = await Future.wait([
       _checkIfNewChat(),
       _loadChatDetails(),
@@ -87,6 +106,7 @@ class _ChatScreenState extends State<ChatScreen> {
       setState(() => _showPrompt = true);
     }
     await _markAsRead();
+    _localNotifications.cancel(widget.chatId.hashCode); // Clear old notif
   }
 
   Future<void> _checkIfNewChat() async {
@@ -110,12 +130,16 @@ class _ChatScreenState extends State<ChatScreen> {
   // ────────────────────────────── FCM & LOCAL NOTIF ──────────────────────────────
   void _setupFcmListeners() {
     FirebaseMessaging.onMessageOpenedApp.listen((msg) {
-      if (msg.data['chatId'] == widget.chatId) _markAsRead();
+      if (msg.data['chatId'] == widget.chatId) {
+        _markAsRead();
+        _localNotifications.cancel(widget.chatId.hashCode);
+      }
     });
 
     _messaging.getInitialMessage().then((msg) {
       if (msg?.data['chatId'] == widget.chatId && mounted) {
         _markAsRead();
+        _localNotifications.cancel(widget.chatId.hashCode);
       }
     });
   }
@@ -269,41 +293,42 @@ class _ChatScreenState extends State<ChatScreen> {
     final doc = await _firestore.collection('UsersIndex').doc(uid).get();
     return doc.exists ? doc.get('fcmToken') as String? : null;
   }
-Future<void> _callSendNotification(
-  String fcmToken, String message, String notifId, String jobTitle,
-) async {
-  try {
-    final integrityToken = await _playIntegrity.getIntegrityToken();
-    final callable = FirebaseFunctions.instanceFor(region: 'asia-south1').httpsCallable('sendNotification');
 
-    final response = await callable({
-      'token': fcmToken,
-      'title': 'New Message',
-      'body': message,
-      'data': {
-        'notificationId': notifId,
-        'chatId': widget.chatId,
-        'jobId': widget.jobId,
-        'seekerId': _isRecruiter == true ? widget.recipientId : _auth.currentUser!.uid,
-        'senderId': _auth.currentUser!.uid,
-        'type': 'message',
+  Future<void> _callSendNotification(
+    String fcmToken, String message, String notifId, String jobTitle,
+  ) async {
+    try {
+      final integrityToken = await _playIntegrity.getIntegrityToken();
+      final callable = FirebaseFunctions.instanceFor(region: 'asia-south1').httpsCallable('sendNotification');
+
+      final response = await callable({
+        'token': fcmToken,
+        'title': 'New Message',
+        'body': message,
+        'data': {
+          'notificationId': notifId,
+          'chatId': widget.chatId,
+          'jobId': widget.jobId,
+          'seekerId': _isRecruiter == true ? widget.recipientId : _auth.currentUser!.uid,
+          'senderId': _auth.currentUser!.uid,
+          'type': 'message',
+          'recipientId': widget.recipientId,
+          'jobTitle': jobTitle,
+          'message': message,
+        }.map((k, v) => MapEntry(k, v.toString())),
         'recipientId': widget.recipientId,
-        'jobTitle': jobTitle,
-        'message': message,
-      }.map((k, v) => MapEntry(k, v.toString())),
-      'recipientId': widget.recipientId,
-      'recipientRole': _isRecruiter == true ? 'seeker' : 'recruiter',
-      'integrityToken': integrityToken,
-    });
+        'recipientRole': _isRecruiter == true ? 'seeker' : 'recruiter',
+        'integrityToken': integrityToken,
+      });
 
-    if (response.data['success'] == true) {
-      dev.log('FCM sent successfully');
+      if (response.data['success'] == true) {
+        dev.log('FCM sent successfully');
+      }
+    } catch (e) {
+      dev.log('FCM error: $e');
+      _showError('Failed to send notification');
     }
-  } catch (e) {
-    dev.log('FCM error: $e');
-    _showError('Failed to send notification');
   }
-}
 
   // ────────────────────────────── MARK AS READ ──────────────────────────────
   Future<void> _markAsRead() async {
@@ -428,8 +453,8 @@ Future<void> _callSendNotification(
             future: Future.value(_chatDetails),
             builder: (_, snap) {
               final title = _isRecruiter == true
-             ? (_chatDetails != null ? _chatDetails!['recipientName'] : null) ?? widget.recipientId
-              : _chatDetails?['company'] ?? widget.recipientId;
+                  ? (_chatDetails != null ? _chatDetails!['recipientName'] : null) ?? widget.recipientId
+                  : _chatDetails?['company'] ?? widget.recipientId;
 
               return Text(
                 title,
@@ -475,10 +500,14 @@ Future<void> _callSendNotification(
                         final data = latest.data() as Map<String, dynamic>;
                         if (data['senderId'] != _auth.currentUser?.uid) {
                           final name = _isRecruiter == true
-                         ? (_chatDetails != null ? _chatDetails!['recipientName'] : null) ?? 'User'
-                         : _chatDetails?['company'] ?? 'Recruiter';
+                              ? (_chatDetails?['recipientName'] ?? 'User')
+                              : (_chatDetails?['company'] ?? 'Recruiter');
 
-                          _showLocalNotification(name, data['message'] ?? '');
+                          // ONLY SHOW LOCAL NOTIF IF APP IS NOT IN FOREGROUND
+                          if (!_isAppInForeground) {
+                            _showLocalNotification(name, data['message'] ?? '');
+                          }
+
                           _markAsRead();
                         }
                       }
@@ -536,7 +565,7 @@ Future<void> _callSendNotification(
                     Center(
                       child: Container(
                         padding: EdgeInsets.all(16.w),
-                        color: Colors.white.withAlpha(245), // ← Fixed deprecated withOpacity
+                        color: Colors.white.withAlpha(245),
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
@@ -609,11 +638,5 @@ Future<void> _callSendNotification(
         ),
       ),
     );
-  }
-
-  @override
-  void dispose() {
-    _messageController.dispose();
-    super.dispose();
   }
 }
