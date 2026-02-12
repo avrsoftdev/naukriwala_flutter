@@ -87,14 +87,17 @@ if (integrityToken === PLACEHOLDER_TOKEN || !integrityToken) {
     const jobTitle = data.jobTitle || "Unknown";
 
     // BUILD FCM MESSAGE
+    // Build a data-only message and include explicit `title`/`body`
+    // so the client background/foreground handlers can show the exact text
+    // and avoid fallback text such as "New Message".
     const message = {
       token,
-      notification: {
-        title: title || "New Message",
-        body: body || "Tap to view"
-      },
       data: {
         click_action: "FLUTTER_NOTIFICATION_CLICK",
+        // explicit title/body for client use
+        title: String(title || "Naukariwala"),
+        body: String(body || ""),
+        // preserve useful metadata
         senderId: String(senderId),
         notificationId: String(notificationId),
         chatId: String(chatId),
@@ -103,7 +106,8 @@ if (integrityToken === PLACEHOLDER_TOKEN || !integrityToken) {
         type: "message",
         recipientId: String(recipientId),
         jobTitle: String(jobTitle),
-        message: String(title || "New Message"),
+        // message should carry the actual body text (not a default title)
+        message: String(body || title || ""),
       },
       android: { priority: "high" },
     };
@@ -131,6 +135,8 @@ if (integrityToken === PLACEHOLDER_TOKEN || !integrityToken) {
             body: body || "Tap to view",
             data: {
               click_action: "FLUTTER_NOTIFICATION_CLICK",
+              title: String(title || "Naukariwala"),
+              body: String(body || ""),
               senderId: String(senderId),
               notificationId: String(notificationId),
               chatId: String(chatId),
@@ -139,7 +145,7 @@ if (integrityToken === PLACEHOLDER_TOKEN || !integrityToken) {
               type: "message",
               recipientId: String(recipientId),
               jobTitle: String(jobTitle),
-              message: String(title || "New Message"),
+              message: String(body || title || ""),
             },
             timestamp: admin.firestore.FieldValue.serverTimestamp(),
             read: false,
