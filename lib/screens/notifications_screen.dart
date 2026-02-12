@@ -26,6 +26,7 @@ class NotificationsScreenState extends State<NotificationsScreen> {
   final String? uid = FirebaseAuth.instance.currentUser?.uid;
   late final String collectionPath;
   final Set<String> _selectedNotifications = {};
+  final Set<String> _initiallyUnreadNotifications = {};
   bool _isSelectionMode = false;
   final AuthService _authService = AuthService();
   final FlutterLocalNotificationsPlugin _flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
@@ -55,8 +56,39 @@ class NotificationsScreenState extends State<NotificationsScreen> {
 
       _setupFCMListeners();
       _initializeLocalNotifications();
+      _markUnreadAsReadAndTrack();
     } else {
       dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] No authenticated user found', name: 'NotificationsScreen');
+    }
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+  }
+
+  Future<void> _markUnreadAsReadAndTrack() async {
+    if (uid == null) return;
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection(collectionPath)
+          .doc(uid)
+          .collection('Notifications')
+          .where('read', isEqualTo: false)
+          .get();
+
+      if (snapshot.docs.isNotEmpty) {
+        final batch = FirebaseFirestore.instance.batch();
+        for (var doc in snapshot.docs) {
+          final notificationId = doc.id;
+          _initiallyUnreadNotifications.add(notificationId);
+          batch.update(doc.reference, {'read': true});
+        }
+        await batch.commit();
+        dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Marked ${_initiallyUnreadNotifications.length} unread notifications as read and tracked for highlighting for UID $uid', name: 'NotificationsScreen');
+      }
+    } catch (e) {
+      dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Error marking unread notifications as read: $e', name: 'NotificationsScreen', error: e);
     }
   }
 
@@ -201,6 +233,15 @@ class NotificationsScreenState extends State<NotificationsScreen> {
 
   Future<void> _deleteSelectedNotifications() async {
     if (uid == null || _selectedNotifications.isEmpty) return;
+    
+    final confirmed = await _showConfirmationDialog(
+      title: 'Delete Notifications',
+      message: 'Are you sure you want to delete ${_selectedNotifications.length} notification(s)? This action cannot be undone.',
+      context: context,
+    );
+
+    if (!confirmed) return;
+
     try {
       final batch = FirebaseFirestore.instance.batch();
       for (var notificationId in _selectedNotifications) {
@@ -219,7 +260,7 @@ class NotificationsScreenState extends State<NotificationsScreen> {
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Selected notifications deleted'), backgroundColor: Colors.green),
+          const SnackBar(content: Text('Notifications deleted'), backgroundColor: Colors.green),
         );
       }
     } catch (e) {
@@ -230,6 +271,80 @@ class NotificationsScreenState extends State<NotificationsScreen> {
         );
       }
     }
+  }
+
+  Future<void> _deleteAllNotifications() async {
+    if (uid == null) return;
+
+    final confirmed = await _showConfirmationDialog(
+      title: 'Delete All Notifications',
+      message: 'Are you sure you want to delete all notifications? This action cannot be undone.',
+      context: context,
+    );
+
+    if (!confirmed) return;
+
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection(collectionPath)
+          .doc(uid)
+          .collection('Notifications')
+          .get();
+
+      if (snapshot.docs.isNotEmpty) {
+        final batch = FirebaseFirestore.instance.batch();
+        for (var doc in snapshot.docs) {
+          batch.delete(doc.reference);
+        }
+        await batch.commit();
+      }
+
+      dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Deleted all notifications for UID $uid', name: 'NotificationsScreen');
+      setState(() {
+        _selectedNotifications.clear();
+        _isSelectionMode = false;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('All notifications deleted'), backgroundColor: Colors.green),
+        );
+      }
+    } catch (e) {
+      dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Error deleting all notifications: $e', name: 'NotificationsScreen', error: e);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error deleting notifications'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  Future<bool> _showConfirmationDialog({
+    required String title,
+    required String message,
+    required BuildContext context,
+  }) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(title),
+          content: Text(message),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Delete', style: TextStyle(color: Colors.red)),
+            ),
+          ],
+        );
+      },
+    );
+    return result ?? false;
   }
 
   Future<void> _markSelectedAsRead() async {
@@ -252,34 +367,6 @@ class NotificationsScreenState extends State<NotificationsScreen> {
       });
     } catch (e) {
       dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Error marking selected notifications as read: $e', name: 'NotificationsScreen', error: e);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Error updating notifications'), backgroundColor: Colors.red),
-        );
-      }
-    }
-  }
-
-  Future<void> _markSelectedAsUnread() async {
-    if (uid == null || _selectedNotifications.isEmpty) return;
-    try {
-      final batch = FirebaseFirestore.instance.batch();
-      for (var notificationId in _selectedNotifications) {
-        final docRef = FirebaseFirestore.instance
-            .collection(collectionPath)
-            .doc(uid)
-            .collection('Notifications')
-            .doc(notificationId);
-        batch.update(docRef, {'read': false});
-      }
-      await batch.commit();
-      dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Marked selected notifications as unread for UID $uid', name: 'NotificationsScreen');
-      setState(() {
-        _selectedNotifications.clear();
-        _isSelectionMode = false;
-      });
-    } catch (e) {
-      dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Error marking selected notifications as unread: $e', name: 'NotificationsScreen', error: e);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Error updating notifications'), backgroundColor: Colors.red),
@@ -357,33 +444,40 @@ class NotificationsScreenState extends State<NotificationsScreen> {
             elevation: 4,
             actions: _isSelectionMode
                 ? [
+                    IconButton(
+                      icon: const Icon(Icons.delete),
+                      tooltip: 'Delete Selected',
+                      onPressed: _selectedNotifications.isEmpty ? null : _deleteSelectedNotifications,
+                    ),
                     PopupMenuButton<String>(
                       onSelected: (value) async {
-                        if (value == 'mark_read') {
-                          await _markSelectedAsRead();
-                        } else if (value == 'mark_unread') {
-                          await _markSelectedAsUnread();
-                        } else if (value == 'delete') {
-                          await _deleteSelectedNotifications();
+                        if (value == 'delete_all') {
+                          await _deleteAllNotifications();
                         }
                       },
                       itemBuilder: (context) => [
                         const PopupMenuItem(
-                          value: 'mark_read',
-                          child: Text('Mark as Read'),
-                        ),
-                        const PopupMenuItem(
-                          value: 'mark_unread',
-                          child: Text('Mark as Unread'),
-                        ),
-                        const PopupMenuItem(
-                          value: 'delete',
-                          child: Text('Delete'),
+                          value: 'delete_all',
+                          child: Text('Delete All'),
                         ),
                       ],
                     ),
                   ]
-                : [],
+                : [
+                    PopupMenuButton<String>(
+                      onSelected: (value) async {
+                        if (value == 'delete_all') {
+                          await _deleteAllNotifications();
+                        }
+                      },
+                      itemBuilder: (context) => [
+                        const PopupMenuItem(
+                          value: 'delete_all',
+                          child: Text('Delete All'),
+                        ),
+                      ],
+                    ),
+                  ],
           ),
           body: StreamBuilder<QuerySnapshot>(
             stream: _notificationsStream,
@@ -449,6 +543,8 @@ class NotificationsScreenState extends State<NotificationsScreen> {
                   final notificationId = data['notificationId'] as String? ?? docs[index].id;
                   final type = data['type'] as String? ?? 'Unknown';
                   final jobTitle = data['jobTitle'] as String? ?? 'Untitled';
+                  final isSelected = _selectedNotifications.contains(notificationId);
+                  final wasInitiallyUnread = _initiallyUnreadNotifications.contains(notificationId);
 
                   return FutureBuilder<String?>(
                     future: _getResumeUrl(jobId, seekerId),
@@ -456,126 +552,108 @@ class NotificationsScreenState extends State<NotificationsScreen> {
                       final resumeUrl = resumeSnapshot.data;
 
                       return AnimatedListItem(
-                        child: Card(
-                          elevation: 3,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: read
-                                    ? [Colors.grey.shade100, Colors.grey.shade200]
-                                    : [Colors.blue.shade50, Colors.blue.shade100],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              borderRadius: BorderRadius.circular(12.r),
-                            ),
-                            child: PopupMenuButton<String>(
-                              onSelected: (value) async {
-                                if (value == 'mark_read') {
-                                  await _markAsRead(notificationId);
-                                } else if (value == 'mark_unread') {
-                                  await _markAsUnread(notificationId);
+                        child: GestureDetector(
+                          onTap: () {
+                            if (_isSelectionMode) {
+                              _toggleSelection(notificationId);
+                            } else {
+                              if (type == 'message') {
+                                try {
+                                  if (jobId == 'Unknown' || seekerId == 'Unknown') {
+                                    dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Skipping chat navigation: Invalid jobId ($jobId) or seekerId ($seekerId)', name: 'NotificationsScreen');
+                                    if (mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(content: Text('Invalid chat details. Please try again.'), backgroundColor: Colors.red),
+                                      );
+                                    }
+                                    return;
+                                  }
+                                  _authService.getChatId(seekerId: seekerId, jobId: jobId).then((chatId) {
+                                    if (mounted) {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => ChatScreen(
+                                            chatId: chatId,
+                                            recipientId: widget.isRecruiter ? seekerId : data['from'] ?? 'Unknown',
+                                            jobId: jobId,
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  });
+                                } catch (e) {
+                                  dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Error navigating to ChatScreen for notification $notificationId: $e', name: 'NotificationsScreen', error: e);
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text('Error opening chat: $e'), backgroundColor: Colors.red),
+                                    );
+                                  }
                                 }
-                              },
-                              itemBuilder: (context) => [
-                                if (!read)
-                                  const PopupMenuItem(
-                                    value: 'mark_read',
-                                    child: Text('Mark as Read'),
-                                  ),
-                                if (read)
-                                  const PopupMenuItem(
-                                    value: 'mark_unread',
-                                    child: Text('Mark as Unread'),
-                                  ),
-                              ],
-                              child: ListTile(
-                                contentPadding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 8.h),
-                                leading: Checkbox(
-                                  value: _selectedNotifications.contains(notificationId),
-                                  onChanged: (value) {
-                                    _toggleSelection(notificationId);
-                                  },
+                              }
+                            }
+                          },
+                          onLongPress: () {
+                            setState(() {
+                              _isSelectionMode = true;
+                              _toggleSelection(notificationId);
+                            });
+                          },
+                          child: Card(
+                            elevation: isSelected ? 6 : 3,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12.r),
+                              side: BorderSide(
+                                color: isSelected ? Colors.blue.shade500 : Colors.transparent,
+                                width: isSelected ? 2 : 0,
+                              ),
+                            ),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: isSelected
+                                      ? [Colors.blue.shade100, Colors.blue.shade50]
+                                      : (wasInitiallyUnread
+                                          ? [Colors.amber.shade50, Colors.amber.shade100]
+                                          : [Colors.grey.shade100, Colors.grey.shade200]),
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
                                 ),
+                                borderRadius: BorderRadius.circular(12.r),
+                              ),
+                              child: ListTile(
+                                contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
                                 title: Text(
                                   '$jobTitle: $message',
                                   style: TextStyle(
-                                    fontWeight: read ? FontWeight.normal : FontWeight.w600,
+                                    fontWeight: wasInitiallyUnread ? FontWeight.w600 : FontWeight.normal,
                                     color: Colors.black87,
                                   ),
                                 ),
                                 subtitle: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
+                                    SizedBox(height: 4.h),
                                     if (timestamp != null)
                                       Text(
                                         _formatTimestamp(timestamp),
                                         style: TextStyle(color: Colors.grey.shade600, fontSize: 14.sp),
                                       ),
                                     if (resumeUrl != null && widget.isRecruiter)
-                                      InkWell(
-                                        onTap: () {
-                                          dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Resume URL tapped: $resumeUrl', name: 'NotificationsScreen');
-                                        },
-                                        child: Text(
-                                          'Resume URL: $resumeUrl',
-                                          style: TextStyle(color: Colors.blue.shade600, fontSize: 14.sp),
+                                      Padding(
+                                        padding: EdgeInsets.only(top: 4.h),
+                                        child: InkWell(
+                                          onTap: () {
+                                            dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Resume URL tapped: $resumeUrl', name: 'NotificationsScreen');
+                                          },
+                                          child: Text(
+                                            'Resume: $resumeUrl',
+                                            style: TextStyle(color: Colors.blue.shade600, fontSize: 14.sp),
+                                          ),
                                         ),
                                       ),
                                   ],
                                 ),
-                                trailing: read
-                                    ? const Icon(Icons.check_circle, color: Colors.teal, size: 28)
-                                    : const Icon(Icons.circle, color: Colors.grey, size: 28),
-                                onTap: () async {
-                                  if (!_isSelectionMode) {
-                                    if (!read) {
-                                      await _markAsRead(notificationId);
-                                    }
-                                    if (type == 'message') {
-                                      try {
-                                        if (jobId == 'Unknown' || seekerId == 'Unknown') {
-                                          dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Skipping chat navigation: Invalid jobId ($jobId) or seekerId ($seekerId)', name: 'NotificationsScreen');
-                                          if (mounted) {
-                                            ScaffoldMessenger.of(context).showSnackBar(
-                                              const SnackBar(content: Text('Invalid chat details. Please try again.'), backgroundColor: Colors.red),
-                                            );
-                                          }
-                                          return;
-                                        }
-                                        final chatId = await _authService.getChatId(seekerId: seekerId, jobId: jobId);
-                                        if (mounted) {
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (context) => ChatScreen(
-                                                chatId: chatId,
-                                                recipientId: widget.isRecruiter ? seekerId : data['from'] ?? 'Unknown',
-                                                jobId: jobId,
-                                              ),
-                                            ),
-                                          );
-                                        }
-                                      } catch (e) {
-                                        dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Error navigating to ChatScreen for notification $notificationId: $e', name: 'NotificationsScreen', error: e);
-                                        if (mounted) {
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            SnackBar(content: Text('Error opening chat: $e'), backgroundColor: Colors.red),
-                                          );
-                                        }
-                                      }
-                                    }
-                                  } else {
-                                    _toggleSelection(notificationId);
-                                  }
-                                },
-                                onLongPress: () {
-                                  setState(() {
-                                    _isSelectionMode = true;
-                                    _toggleSelection(notificationId);
-                                  });
-                                },
                               ),
                             ),
                           ),
