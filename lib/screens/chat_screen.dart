@@ -182,13 +182,13 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     }
 
     final isRecruiter = _isRecruiter == true;
-    final recipientColl = isRecruiter ? 'SeekerNotifications' : 'RecruiterNotifications';
 
     try {
       if (!isRecruiter) {
         await _ensureApplicationExists(widget.jobId, widget.recipientId);
       }
 
+      // AuthService.sendMessage() handles both message saving AND FCM notification
       await _authService.sendMessage(widget.recipientId, widget.jobId, text, status: 'sent');
       _messageController.clear();
 
@@ -199,7 +199,6 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
         });
       }
 
-      await _notifyRecipient(recipientColl, widget.recipientId, senderId, text);
       _showSuccess('Message sent');
     } catch (e) {
       _handleSendError(e, isRecruiter ? 'seeker' : 'recruiter');
@@ -238,98 +237,6 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   }
 
   // ────────────────────────────── NOTIFY RECIPIENT ──────────────────────────────
-  Future<void> _notifyRecipient(
-    String coll,
-    String recipientId,
-    String senderId,
-    String message,
-  ) async {
-    final senderName = await _getUserName(senderId);
-    final jobTitle = await _getJobTitle(senderId, widget.jobId);
-    final title = jobTitle == null ? 'New message from $senderName' : 'New message from $senderName for $jobTitle';
-
-    final notifId = '${senderId}_${widget.jobId}_${DateTime.now().millisecondsSinceEpoch}';
-    final data = {
-      'notificationId': notifId,
-      'to': recipientId,
-      'from': senderId,
-      'message': title,
-      'type': 'message',
-      'jobId': widget.jobId,
-      'seekerId': _isRecruiter == true ? recipientId : senderId,
-      'timestamp': FieldValue.serverTimestamp(),
-      'read': false,
-      'chatId': widget.chatId,
-      'jobTitle': jobTitle ?? 'Unknown',
-    };
-
-    await _firestore
-        .collection(coll)
-        .doc(recipientId)
-        .collection('Notifications')
-        .doc(notifId)
-        .set(data);
-
-    final fcmToken = await _getFcmToken(recipientId);
-    if (fcmToken != null && fcmToken.isNotEmpty) {
-      await _callSendNotification(fcmToken, title, notifId, jobTitle ?? 'Unknown');
-    }
-  }
-
-  Future<String> _getUserName(String uid) async {
-    final doc = await _firestore.collection('UsersIndex').doc(uid).get();
-    if (!doc.exists) return 'User';
-    final data = doc.data()!;
-    return data['name'] ?? data['fullName'] ?? data['companyName'] ?? 'User';
-  }
-
-  Future<String?> _getJobTitle(String uid, String jobId) async {
-    final appId = '${_isRecruiter == true ? widget.recipientId : uid}_$jobId';
-    final doc = await _firestore.collection('Applications').doc(appId).get();
-    return doc.exists ? doc.get('jobTitle') as String? : null;
-  }
-
-  Future<String?> _getFcmToken(String uid) async {
-    final doc = await _firestore.collection('UsersIndex').doc(uid).get();
-    return doc.exists ? doc.get('fcmToken') as String? : null;
-  }
-
-  Future<void> _callSendNotification(
-    String fcmToken, String message, String notifId, String jobTitle,
-  ) async {
-    try {
-      final integrityToken = await _playIntegrity.getIntegrityToken();
-      final callable = FirebaseFunctions.instanceFor(region: 'asia-south1').httpsCallable('sendNotification');
-
-      final response = await callable({
-        'token': fcmToken,
-        'title': 'New Message',
-        'body': message,
-        'data': {
-          'notificationId': notifId,
-          'chatId': widget.chatId,
-          'jobId': widget.jobId,
-          'seekerId': _isRecruiter == true ? widget.recipientId : _auth.currentUser!.uid,
-          'senderId': _auth.currentUser!.uid,
-          'type': 'message',
-          'recipientId': widget.recipientId,
-          'jobTitle': jobTitle,
-          'message': message,
-        }.map((k, v) => MapEntry(k, v.toString())),
-        'recipientId': widget.recipientId,
-        'recipientRole': _isRecruiter == true ? 'seeker' : 'recruiter',
-        'integrityToken': integrityToken,
-      });
-
-      if (response.data['success'] == true) {
-        dev.log('FCM sent successfully');
-      }
-    } catch (e) {
-      dev.log('FCM error: $e');
-      _showError('Failed to send notification');
-    }
-  }
-
   // ────────────────────────────── MARK AS READ ──────────────────────────────
   Future<void> _markAsRead() async {
     final uid = _auth.currentUser?.uid;

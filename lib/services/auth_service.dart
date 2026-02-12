@@ -952,29 +952,34 @@ Future<void> sendMessage(
 
     final recipientFcmToken = await _getFcmToken(recipientId);
     if (recipientFcmToken != null) {
-      // Fetch Play Integrity token with development mode bypass
-      String? integrityToken;
-      if (kDebugMode) {
-        print('⚠️ Using placeholder Play Integrity token for development');
-        integrityToken = 'DEVELOPMENT_PLACEHOLDER_TOKEN';
-      } else {
-        integrityToken = await getPlayIntegrityToken();
-      }
+      try {
+        // Fetch Play Integrity token with development mode bypass
+        String? integrityToken;
+        if (kDebugMode) {
+          print('⚠️ Using placeholder Play Integrity token for development');
+          integrityToken = 'DEVELOPMENT_PLACEHOLDER_TOKEN';
+        } else {
+          integrityToken = await getPlayIntegrityToken();
+        }
 
-      await _sendFcmNotification(
-        recipientFcmToken: recipientFcmToken,
-        title: 'New Message',
-        body: message,
-        data: {
-          'notificationId': notificationId,
-          'chatId': chatId,
-          'jobId': jobId,
-          'seekerId': seekerId,
-          'from': senderId,
-          'type': 'message',
-        },
-        integrityToken: integrityToken, // Pass the integrity token
-      );
+        await _sendFcmNotification(
+          recipientFcmToken: recipientFcmToken,
+          title: 'New Message',
+          body: message,
+          data: {
+            'notificationId': notificationId,
+            'chatId': chatId,
+            'jobId': jobId,
+            'seekerId': seekerId,
+            'from': senderId,
+            'type': 'message',
+          },
+          integrityToken: integrityToken, // Pass the integrity token
+        );
+      } catch (fcmError) {
+        // Log FCM error but don't fail the message send - notification is secondary
+        dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] FCM notification failed (message still sent): $fcmError', name: 'AuthService', error: fcmError);
+      }
     }
   } catch (e) {
     dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Error sending message from $senderId to $recipientId for job $jobId: $e', name: 'AuthService', error: e);
