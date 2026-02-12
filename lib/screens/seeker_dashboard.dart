@@ -10,6 +10,7 @@ import 'package:naukariwala/screens/profile_screen.dart';
 import 'package:naukariwala/screens/job_screen.dart';
 import 'package:naukariwala/screens/my_applications_screen.dart';
 import 'package:naukariwala/screens/notifications_screen.dart';
+import 'package:naukariwala/widgets/notification_bell.dart';
 import 'package:naukariwala/services/auth_service.dart';
 import 'dart:developer' as dev;
 
@@ -98,10 +99,9 @@ class _SeekerDashboardState extends State<SeekerDashboard> {
           ),
         ),
         actions: [
-          IconButton(
-            icon: Icon(Icons.notifications, color: Colors.black87, size: 28.sp),
-            padding: EdgeInsets.all(2.w),
-            onPressed: () {
+          NotificationBell(
+            isRecruiter: false,
+            onTap: () {
               dev.log('Navigating to NotificationsScreen', name: 'SeekerDashboard');
               Navigator.push(
                 context,

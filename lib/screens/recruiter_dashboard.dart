@@ -10,6 +10,7 @@ import 'package:naukariwala/screens/post_job_screen.dart';
 import 'package:naukariwala/screens/applied_seekers_screen.dart';
 import 'package:naukariwala/screens/calls_screen.dart';
 import 'package:naukariwala/screens/notifications_screen.dart';
+import 'package:naukariwala/widgets/notification_bell.dart';
 import '../../services/auth_service.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'dart:developer' as dev;
@@ -124,9 +125,9 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
               ),
             ),
             actions: [
-              IconButton(
-                icon: const Icon(Icons.notifications, color: Colors.black87, size: 28),
-                onPressed: () {
+              NotificationBell(
+                isRecruiter: true,
+                onTap: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
