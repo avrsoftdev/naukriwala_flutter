@@ -275,7 +275,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       SnackBar(content: Text(msg), backgroundColor: Colors.green),
     );
   }
-
+//democomment
   void _handleSendError(Object e, String expectedRole) {
     String msg = 'Failed to send message';
     if (e is FirebaseException && e.code == 'permission-denied') {
