@@ -42,7 +42,7 @@ async function retry(fn, maxRetries = 3) {
 }
 
 // MAIN FUNCTION
-exports.sendNotification = onCall({ enforceAppCheck: true }, async (request) => {
+exports.sendNotification = onCall({ enforceAppCheck: false }, async (request) => {
   try {
     const {
       token,
