@@ -305,7 +305,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   Future<Map<String, String>> _fetchRecipientInfo() async {
     final uid = _auth.currentUser?.uid;
     if (uid == null) return {'recipientName': 'Unknown', 'company': 'Unknown'};
-//commentssss
+//commentssss3232
     String name = 'Unknown';
     String company = 'Unknown';
     for (int i = 0; i < 3; i++) {
