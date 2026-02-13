@@ -155,7 +155,9 @@ service cloud.firestore {
                     request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastMessage', 'timestamp']);
       match /Chats/{messageId} {
         allow read: if request.auth != null &&
-                    isValidChatParticipant(chatId);
+                    (isValidChatParticipant(chatId) ||
+                     request.auth.uid == resource.data.senderId ||
+                     request.auth.uid == resource.data.recipientId);
         allow create: if request.auth != null &&
                       request.auth.uid == request.resource.data.senderId &&
                       isValidChatParticipant(chatId) &&
@@ -211,6 +213,12 @@ service cloud.firestore {
       allow write: if request.auth != null &&
                      isRecruiter() &&
                      request.resource.data.recruiterId == request.auth.uid;
+    }
+    // Allow collectionGroup queries on Chats subcollection
+    match /{path=**}/Chats/{messageId} {
+      allow read: if request.auth != null &&
+                  (request.auth.uid == resource.data.senderId ||
+                   request.auth.uid == resource.data.recipientId);
     }
     match /{document=**} {
       allow read, write: if false;

@@ -12,6 +12,7 @@ import 'package:naukariwala/screens/my_applications_screen.dart';
 import 'package:naukariwala/screens/notifications_screen.dart';
 import 'package:naukariwala/widgets/notification_bell.dart';
 import 'package:naukariwala/services/auth_service.dart';
+import 'package:naukariwala/screens/chat_list_screen.dart';
 import 'dart:developer' as dev;
 
 void main() {
@@ -99,6 +100,19 @@ class _SeekerDashboardState extends State<SeekerDashboard> {
           ),
         ),
         actions: [
+          IconButton(
+            icon: Icon(Icons.chat, color: Colors.black87, size: 24.sp),
+            padding: EdgeInsets.all(2.w),
+            onPressed: () {
+              dev.log('Navigating to ChatListScreen', name: 'SeekerDashboard');
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const ChatListScreen(),
+                ),
+              );
+            },
+          ),
           NotificationBell(
             isRecruiter: false,
             onTap: () {
@@ -106,7 +120,7 @@ class _SeekerDashboardState extends State<SeekerDashboard> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => const NotificationsScreen(isRecruiter: false),
+                  builder: (context) => NotificationsScreen(isRecruiter: false),
                 ),
               );
             },
