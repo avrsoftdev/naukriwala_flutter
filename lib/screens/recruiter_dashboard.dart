@@ -12,6 +12,7 @@ import 'package:naukariwala/screens/calls_screen.dart';
 import 'package:naukariwala/screens/notifications_screen.dart';
 import 'package:naukariwala/widgets/notification_bell.dart';
 import 'package:naukariwala/screens/chat_list_screen.dart';
+import '../widgets/chat_icon_with_badge.dart';
 import '../services/auth_service.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'dart:developer' as dev;
@@ -126,9 +127,8 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
               ),
             ),
             actions: [
-              IconButton(
-                icon: const Icon(Icons.chat, color: Colors.black87, size: 24),
-                onPressed: () {
+              ChatIconWithBadge(
+                onTap: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(

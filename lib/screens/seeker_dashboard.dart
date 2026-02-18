@@ -13,6 +13,7 @@ import 'package:naukariwala/screens/notifications_screen.dart';
 import 'package:naukariwala/widgets/notification_bell.dart';
 import 'package:naukariwala/services/auth_service.dart';
 import 'package:naukariwala/screens/chat_list_screen.dart';
+import '../widgets/chat_icon_with_badge.dart';
 import 'dart:developer' as dev;
 
 void main() {
@@ -100,10 +101,8 @@ class _SeekerDashboardState extends State<SeekerDashboard> {
           ),
         ),
         actions: [
-          IconButton(
-            icon: Icon(Icons.chat, color: Colors.black87, size: 24.sp),
-            padding: EdgeInsets.all(2.w),
-            onPressed: () {
+          ChatIconWithBadge(
+            onTap: () {
               dev.log('Navigating to ChatListScreen', name: 'SeekerDashboard');
               Navigator.push(
                 context,
