@@ -14,6 +14,7 @@ import 'dart:developer' as dev;
 
 import '../services/auth_service.dart';
 import '../services/play_integrity_service.dart';
+import '../providers/message_state_provider.dart';
 
 class ChatScreen extends StatefulWidget {
   final String chatId;
@@ -54,6 +55,12 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     if (Platform.isAndroid) Permission.notification.request();
+    
+    // Defer setting active chat to after first frame to avoid build conflicts
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      messageStateService.setActiveChatId(widget.chatId);
+    });
+    
     _initialize();
   }
 
@@ -61,6 +68,17 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _messageController.dispose();
+    
+    // Clear active chat safely after widget tree operations complete
+    try {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        messageStateService.setActiveChatId(null);
+      });
+    } catch (e) {
+      // If binding is already closed, just set it directly
+      messageStateService.setActiveChatId(null);
+    }
+    
     super.dispose();
   }
 
@@ -259,6 +277,10 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       }
     }
     await batch.commit();
+    
+    // Update the message state service to reset unread count for this chat
+    messageStateService.resetUnreadCountForChat(widget.chatId);
+    dev.log('Marked messages as read for chat: ${widget.chatId}', name: 'ChatScreen');
   }
 
   // ────────────────────────────── UI HELPERS ──────────────────────────────
@@ -348,6 +370,146 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     return {'recipientName': name, 'company': company};
   }
 
+  // ────────────────────────────── MESSAGE OPTIONS (EDIT/DELETE) ──────────────────────────────
+  void _showMessageOptions(BuildContext context, String messageId, String currentMessage) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => Container(
+        padding: EdgeInsets.all(16.w),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Message Options',
+              style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold),
+            ),
+            SizedBox(height: 16.h),
+            ListTile(
+              leading: const Icon(Icons.edit, color: Colors.blue),
+              title: Text('Edit Message', style: TextStyle(fontSize: 16.sp)),
+              onTap: () {
+                Navigator.pop(context);
+                _showEditDialog(messageId, currentMessage);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete, color: Colors.red),
+              title: Text('Delete Message', style: TextStyle(fontSize: 16.sp, color: Colors.red)),
+              onTap: () {
+                Navigator.pop(context);
+                _showDeleteConfirmation(messageId);
+              },
+            ),
+            SizedBox(height: 8.h),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Cancel', style: TextStyle(fontSize: 16.sp, color: Colors.grey)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showEditDialog(String messageId, String currentMessage) {
+    final editController = TextEditingController(text: currentMessage);
+    
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('Edit Message', style: TextStyle(fontSize: 18.sp)),
+        content: TextField(
+          controller: editController,
+          maxLines: null,
+          decoration: InputDecoration(
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.r)),
+            hintText: 'Enter your message',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text('Cancel', style: TextStyle(fontSize: 14.sp)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final newMessage = editController.text.trim();
+              Navigator.pop(dialogContext);
+              _editMessage(messageId, newMessage);
+            },
+            child: Text('Save', style: TextStyle(fontSize: 14.sp)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _editMessage(String messageId, String newMessage) async {
+    if (newMessage.isEmpty) {
+      _showError('Message cannot be empty');
+      return;
+    }
+
+    try {
+      await _firestore
+          .collection('Messages')
+          .doc(widget.chatId)
+          .collection('Chats')
+          .doc(messageId)
+          .update({
+        'message': newMessage,
+        'isEdited': true,
+        'editedAt': FieldValue.serverTimestamp(),
+      });
+      _showSuccess('Message edited');
+    } catch (e) {
+      _showError('Failed to edit message: $e');
+      dev.log('Error editing message: $e', name: 'ChatScreen');
+    }
+  }
+
+  void _showDeleteConfirmation(String messageId) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Delete Message?', style: TextStyle(fontSize: 18.sp)),
+        content: Text(
+          'This action cannot be undone.',
+          style: TextStyle(fontSize: 14.sp),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel', style: TextStyle(fontSize: 14.sp)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _deleteMessage(messageId);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: Text('Delete', style: TextStyle(fontSize: 14.sp, color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _deleteMessage(String messageId) async {
+    try {
+      await _firestore
+          .collection('Messages')
+          .doc(widget.chatId)
+          .collection('Chats')
+          .doc(messageId)
+          .delete();
+      _showSuccess('Message deleted');
+    } catch (e) {
+      _showError('Failed to delete message: $e');
+      dev.log('Error deleting message: $e', name: 'ChatScreen');
+    }
+  }
+
   // ────────────────────────────── BUILD UI ──────────────────────────────
   @override
   Widget build(BuildContext context) {
@@ -423,42 +585,66 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                         itemCount: docs.length,
                         itemBuilder: (_, i) {
                           final data = docs[i].data() as Map<String, dynamic>;
+                          final messageId = docs[i].id;
                           final isMe = data['senderId'] == _auth.currentUser?.uid;
                           final status = data['status'] ?? 'sent';
+                          final isEdited = data['isEdited'] ?? false;
 
                           return Padding(
                             padding: EdgeInsets.symmetric(vertical: 5.h, horizontal: 10.w),
                             child: Align(
                               alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-                              child: Container(
-                                padding: EdgeInsets.all(10.w),
-                                decoration: BoxDecoration(
-                                  color: isMe ? Colors.teal.shade100 : Colors.grey.shade200,
-                                  borderRadius: BorderRadius.circular(12.r),
-                                ),
-                                child: Column(
-                                  crossAxisAlignment:
-                                      isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-                                  children: [
-                                    Text(data['message'] ?? '', style: TextStyle(fontSize: 16.sp)),
-                                    SizedBox(height: 5.h),
-                                    Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text(
-                                          data['timestamp'] != null
-                                              ? DateFormat('MMM d, h:mm a')
-                                                  .format((data['timestamp'] as Timestamp).toDate())
-                                              : '—',
-                                          style: TextStyle(fontSize: 12.sp, color: Colors.grey[600]),
+                              child: GestureDetector(
+                                onLongPress: () {
+                                  if (isMe) {
+                                    _showMessageOptions(context, messageId, data['message'] ?? '');
+                                  }
+                                },
+                                child: Container(
+                                  padding: EdgeInsets.all(10.w),
+                                  decoration: BoxDecoration(
+                                    color: isMe ? Colors.teal.shade100 : Colors.grey.shade200,
+                                    borderRadius: BorderRadius.circular(12.r),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        data['message'] ?? '',
+                                        style: TextStyle(fontSize: 16.sp),
+                                      ),
+                                      if (isEdited)
+                                        Padding(
+                                          padding: EdgeInsets.only(top: 4.h),
+                                          child: Text(
+                                            '(edited)',
+                                            style: TextStyle(
+                                              fontSize: 10.sp,
+                                              color: Colors.grey[600],
+                                              fontStyle: FontStyle.italic,
+                                            ),
+                                          ),
                                         ),
-                                        if (isMe) ...[
-                                          SizedBox(width: 4.w),
-                                          _buildTick(status),
+                                      SizedBox(height: 5.h),
+                                      Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            data['timestamp'] != null
+                                                ? DateFormat('MMM d, h:mm a')
+                                                    .format((data['timestamp'] as Timestamp).toDate())
+                                                : '—',
+                                            style: TextStyle(fontSize: 12.sp, color: Colors.grey[600]),
+                                          ),
+                                          if (isMe) ...[
+                                            SizedBox(width: 4.w),
+                                            _buildTick(status),
+                                          ],
                                         ],
-                                      ],
-                                    ),
-                                  ],
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),

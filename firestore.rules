@@ -153,6 +153,8 @@ service cloud.firestore {
       allow update: if request.auth != null &&
                     isValidChatParticipant(chatId) &&
                     request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastMessage', 'timestamp']);
+      allow delete: if request.auth != null &&
+                    isValidChatParticipant(chatId);
       match /Chats/{messageId} {
         allow read: if request.auth != null &&
                     (isValidChatParticipant(chatId) ||
@@ -166,11 +168,16 @@ service cloud.firestore {
                       request.resource.data.timestamp is timestamp &&
                       request.resource.data.jobId is string;
         allow update: if request.auth != null &&
-                      isValidChatParticipant(chatId) &&
-                      request.auth.uid == resource.data.recipientId &&
-                      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) &&
-                      resource.data.status != 'read' &&
-                      request.resource.data.status == 'read';
+                      isValidChatParticipant(chatId) && (
+                        (request.auth.uid == resource.data.recipientId &&
+                         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) &&
+                         resource.data.status != 'read' &&
+                         request.resource.data.status == 'read') ||
+                        (request.auth.uid == resource.data.senderId &&
+                         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['message', 'isEdited', 'editedAt']))
+                      );
+        allow delete: if request.auth != null &&
+                      isValidChatParticipant(chatId);
       }
     }
     match /Bookmarks/{uid}/SavedJobs/{jobId} {

@@ -12,6 +12,7 @@ import 'package:firebase_app_check/firebase_app_check.dart';
 import 'firebase_options.dart';
 import 'screens/unified_screen.dart';
 import 'services/auth_service.dart';
+import 'providers/message_state_provider.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
@@ -67,13 +68,15 @@ class NaukariwalaApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ScreenUtilInit(
-      designSize: const Size(360, 690),
-      builder: (context, child) => MaterialApp(
-        navigatorKey: navigatorKey,
-        theme: ThemeData(primarySwatch: Colors.blue),
-        debugShowCheckedModeBanner: false,
-        home: const UnifiedScreen(),
+    return MessageStateProvider(
+      child: ScreenUtilInit(
+        designSize: const Size(360, 690),
+        builder: (context, child) => MaterialApp(
+          navigatorKey: navigatorKey,
+          theme: ThemeData(primarySwatch: Colors.blue),
+          debugShowCheckedModeBanner: false,
+          home: const UnifiedScreen(),
+        ),
       ),
     );
   }

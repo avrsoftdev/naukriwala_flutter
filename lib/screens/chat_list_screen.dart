@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
 import 'chat_screen.dart';
-import '../services/auth_service.dart';
 import 'dart:developer' as dev;
 
 class ChatListScreen extends StatefulWidget {
@@ -77,6 +76,109 @@ class _ChatListScreenState extends State<ChatListScreen> {
         'photoUrl': null,
         'jobTitle': 'Unknown Job',
       };
+    }
+  }
+
+  // ────────────────────────────── CHAT OPTIONS (DELETE) ──────────────────────────────
+  void _showChatOptions(BuildContext context, String chatId) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => Container(
+        padding: EdgeInsets.all(16.w),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Chat Options',
+              style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold),
+            ),
+            SizedBox(height: 16.h),
+            ListTile(
+              leading: const Icon(Icons.delete, color: Colors.red),
+              title: Text(
+                'Delete Chat',
+                style: TextStyle(fontSize: 16.sp, color: Colors.red),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                _showDeleteChatConfirmation(chatId);
+              },
+            ),
+            SizedBox(height: 8.h),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Cancel', style: TextStyle(fontSize: 16.sp, color: Colors.grey)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showDeleteChatConfirmation(String chatId) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Delete Chat?', style: TextStyle(fontSize: 18.sp)),
+        content: Text(
+          'This will delete the entire conversation. This action cannot be undone.',
+          style: TextStyle(fontSize: 14.sp),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel', style: TextStyle(fontSize: 14.sp)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _deleteChat(chatId);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: Text('Delete', style: TextStyle(fontSize: 14.sp, color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _deleteChat(String chatId) async {
+    try {
+      // Delete all messages in the chat
+      final messagesCollection = _firestore
+          .collection('Messages')
+          .doc(chatId)
+          .collection('Chats');
+      
+      final snapshot = await messagesCollection.get();
+      for (final doc in snapshot.docs) {
+        await doc.reference.delete();
+      }
+      
+      // Delete the Messages document itself
+      await _firestore.collection('Messages').doc(chatId).delete();
+      
+      if (!mounted) return;
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Chat deleted'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      
+      // Refresh the conversation list
+      setState(() {});
+    } catch (e) {
+      if (!mounted) return;
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to delete chat: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      dev.log('Error deleting chat: $e', name: 'ChatListScreen');
     }
   }
 
@@ -273,6 +375,9 @@ class _ChatListScreenState extends State<ChatListScreen> {
                           ),
                         ),
                       );
+                    },
+                    onLongPress: () {
+                      _showChatOptions(context, chatId);
                     },
                   );
                 },
