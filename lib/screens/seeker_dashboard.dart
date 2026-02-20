@@ -155,13 +155,36 @@ class _SeekerDashboardState extends State<SeekerDashboard> {
                           fontSize: 18.sp,
                           fontWeight: FontWeight.bold,
                         ),
-                        // style: TextStyle(
-                        //   color: Colors.white,
-                        //   fontSize: 18.sp,
-                        //   fontWeight: FontWeight.bold,
-                        // ),
                         overflow: TextOverflow.ellipsis,
                         maxLines: 1,
+                      ),
+                    ),
+                    SizedBox(height: 8.h),
+                    Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [Colors.amber.shade300, Colors.orange.shade400],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(16.r),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.2),
+                            blurRadius: 4.r,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 6.h),
+                      child: Text(
+                        'Seeker',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 13.sp,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.5,
+                        ),
                       ),
                     ),
                   ],

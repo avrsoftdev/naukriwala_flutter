@@ -182,6 +182,34 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
+                        SizedBox(height: 8.h),
+                        Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [Colors.blue.shade300, Colors.indigo.shade400],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(16.r),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.2),
+                                blurRadius: 4.r,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 6.h),
+                          child: Text(
+                            'Recruiter',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 13.sp,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),
