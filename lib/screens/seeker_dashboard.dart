@@ -149,12 +149,17 @@ class _SeekerDashboardState extends State<SeekerDashboard> {
                     Container(
                       constraints: BoxConstraints(maxWidth: 200.w),
                       child: Text(
-                        'Hi ${widget.seekerName ?? 'Seeker'}',
+                        '${widget.seekerName ?? 'Seeker'}',
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 18.sp,
                           fontWeight: FontWeight.bold,
                         ),
+                        // style: TextStyle(
+                        //   color: Colors.white,
+                        //   fontSize: 18.sp,
+                        //   fontWeight: FontWeight.bold,
+                        // ),
                         overflow: TextOverflow.ellipsis,
                         maxLines: 1,
                       ),
