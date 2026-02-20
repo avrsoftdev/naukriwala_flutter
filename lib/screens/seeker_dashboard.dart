@@ -110,15 +110,6 @@ class _SeekerDashboardState extends State<SeekerDashboard> {
           ),
         ),
         actions: [
-          ChatIconWithBadge(
-            onTap: () {
-              dev.log('Navigating to ChatListScreen', name: 'SeekerDashboard');
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const ChatListScreen()),
-              );
-            },
-          ),
           NotificationBell(
             isRecruiter: false,
             onTap: () {
@@ -131,6 +122,15 @@ class _SeekerDashboardState extends State<SeekerDashboard> {
                 MaterialPageRoute(
                   builder: (context) => NotificationsScreen(isRecruiter: false),
                 ),
+              );
+            },
+          ),
+          ChatIconWithBadge(
+            onTap: () {
+              dev.log('Navigating to ChatListScreen', name: 'SeekerDashboard');
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const ChatListScreen()),
               );
             },
           ),

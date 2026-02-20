@@ -154,16 +154,6 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
               ),
             ),
             actions: [
-              ChatIconWithBadge(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const ChatListScreen(),
-                    ),
-                  );
-                },
-              ),
               NotificationBell(
                 isRecruiter: true,
                 onTap: () {
@@ -172,6 +162,16 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
                     MaterialPageRoute(
                       builder: (context) =>
                           NotificationsScreen(isRecruiter: true),
+                    ),
+                  );
+                },
+              ),
+              ChatIconWithBadge(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ChatListScreen(),
                     ),
                   );
                 },
