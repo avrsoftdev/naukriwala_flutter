@@ -35,9 +35,15 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
   void initState() {
     super.initState();
     if (recruiterId == null) {
-      dev.log('[2025-08-08 21:25 IST] No authenticated user found', name: 'RecruiterDashboard');
+      dev.log(
+        '[2025-08-08 21:25 IST] No authenticated user found',
+        name: 'RecruiterDashboard',
+      );
     } else {
-      dev.log('[2025-08-08 21:25 IST] Recruiter ID: $recruiterId', name: 'RecruiterDashboard');
+      dev.log(
+        '[2025-08-08 21:25 IST] Recruiter ID: $recruiterId',
+        name: 'RecruiterDashboard',
+      );
     }
     _requestNotificationPermissions();
     _checkRoleAndFetchName();
@@ -50,29 +56,46 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
       await _firestore.collection('UsersIndex').doc(recruiterId).set({
         'fcmToken': token,
       }, SetOptions(merge: true));
-      dev.log('[2025-08-08 21:25 IST] FCM token updated for $recruiterId: $token', name: 'RecruiterDashboard');
+      dev.log(
+        '[2025-08-08 21:25 IST] FCM token updated for $recruiterId: $token',
+        name: 'RecruiterDashboard',
+      );
     } else {
-      dev.log('[2025-08-08 21:25 IST] Failed to retrieve FCM token for $recruiterId', name: 'RecruiterDashboard');
+      dev.log(
+        '[2025-08-08 21:25 IST] Failed to retrieve FCM token for $recruiterId',
+        name: 'RecruiterDashboard',
+      );
     }
   }
 
   Future<void> _checkRoleAndFetchName() async {
     try {
       final role = await _authService.getUserRole();
-      dev.log('[2025-08-08 21:25 IST] Role for UID ${FirebaseAuth.instance.currentUser!.uid}: $role', name: 'RecruiterDashboard');
+      dev.log(
+        '[2025-08-08 21:25 IST] Role for UID ${FirebaseAuth.instance.currentUser!.uid}: $role',
+        name: 'RecruiterDashboard',
+      );
       if (role != 'recruiter') {
-        dev.log('[2025-08-08 21:25 IST] WARNING: User ${FirebaseAuth.instance.currentUser!.uid} does not have recruiter role', name: 'RecruiterDashboard');
+        dev.log(
+          '[2025-08-08 21:25 IST] WARNING: User ${FirebaseAuth.instance.currentUser!.uid} does not have recruiter role',
+          name: 'RecruiterDashboard',
+        );
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Text('Invalid role. Please ensure your account is set as a recruiter.'),
+              content: const Text(
+                'Invalid role. Please ensure your account is set as a recruiter.',
+              ),
               backgroundColor: Colors.redAccent,
             ),
           );
         }
       } else {
         // Fetch recruiter name from Firestore
-        final doc = await _firestore.collection('Recruiters').doc(recruiterId).get();
+        final doc = await _firestore
+            .collection('Recruiters')
+            .doc(recruiterId)
+            .get();
         final data = doc.data();
         if (data != null && mounted) {
           setState(() {
@@ -81,7 +104,11 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
         }
       }
     } catch (e) {
-      dev.log('[2025-08-08 21:25 IST] Error checking role or fetching name: $e', name: 'RecruiterDashboard', error: e);
+      dev.log(
+        '[2025-08-08 21:25 IST] Error checking role or fetching name: $e',
+        name: 'RecruiterDashboard',
+        error: e,
+      );
     }
   }
 
@@ -112,7 +139,7 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
             backgroundColor: Colors.white,
             elevation: 2,
             title: Text(
-              'Hi, ${recruiterName ?? 'Recruiter'}',
+              'Recruiter Dashboard',
               style: TextStyle(
                 color: const Color.fromARGB(221, 12, 20, 108),
                 fontWeight: FontWeight.bold,
@@ -143,7 +170,8 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => NotificationsScreen(isRecruiter: true),
+                      builder: (context) =>
+                          NotificationsScreen(isRecruiter: true),
                     ),
                   );
                 },
@@ -163,54 +191,13 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
                 padding: EdgeInsets.zero,
                 children: [
                   DrawerHeader(
-                    decoration: const BoxDecoration(
-                      color: Colors.transparent,
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        SizedBox(height: 8.h),
-                        Flexible(
-                          child: Text(
-                            recruiterName ?? 'Recruiter',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 18.sp,
-                              fontWeight: FontWeight.bold,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        SizedBox(height: 8.h),
-                        Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [Colors.blue.shade300, Colors.indigo.shade400],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            borderRadius: BorderRadius.circular(16.r),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.2),
-                                blurRadius: 4.r,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 6.h),
-                          child: Text(
-                            'Recruiter',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 13.sp,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                        ),
-                      ],
+                    decoration: const BoxDecoration(color: Colors.transparent),
+                    child: Center(
+                      child: Icon(
+                        Icons.business_center_outlined,
+                        color: Colors.white,
+                        size: 44.sp,
+                      ),
                     ),
                   ),
                   _buildDrawerItem(
@@ -221,7 +208,8 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const ProfileScreen(isRecruiter: true),
+                          builder: (context) =>
+                              const ProfileScreen(isRecruiter: true),
                         ),
                       );
                     },
@@ -307,7 +295,10 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
               child: Column(
                 children: [
                   Container(
-                    padding: EdgeInsets.symmetric(vertical: 8.h, horizontal: 8.w),
+                    padding: EdgeInsets.symmetric(
+                      vertical: 8.h,
+                      horizontal: 8.w,
+                    ),
                     decoration: const BoxDecoration(
                       gradient: LinearGradient(
                         colors: [Color(0xFF4A00E0), Color(0xFF8E2DE2)],
@@ -383,9 +374,7 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
       contentPadding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 5.h),
       tileColor: Colors.transparent,
       hoverColor: Colors.white12,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10.r),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
     );
   }
 
@@ -393,9 +382,7 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
     return Tab(
       child: Container(
         padding: EdgeInsets.symmetric(vertical: 6.h, horizontal: 12.w),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20.r),
-        ),
+        decoration: BoxDecoration(borderRadius: BorderRadius.circular(20.r)),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [

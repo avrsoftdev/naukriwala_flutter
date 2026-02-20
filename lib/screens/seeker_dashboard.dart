@@ -26,7 +26,7 @@ class SeekerDashboardApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Seeker Dashboard',
+      // title: 'Seeker Dashboard',
       theme: ThemeData(
         primarySwatch: Colors.blue,
         inputDecorationTheme: const InputDecorationTheme(
@@ -37,7 +37,8 @@ class SeekerDashboardApp extends StatelessWidget {
       initialRoute: '/',
       routes: {
         '/': (context) => const SeekerDashboard(),
-        '/login': (context) => const Placeholder(), // Replace with actual login screen
+        '/login': (context) =>
+            const Placeholder(), // Replace with actual login screen
       },
     );
   }
@@ -59,12 +60,20 @@ class _SeekerDashboardState extends State<SeekerDashboard> {
 
   @override
   Widget build(BuildContext context) {
-    ScreenUtil.init(context, designSize: const Size(360, 640), minTextAdapt: true, splitScreenMode: true);
+    ScreenUtil.init(
+      context,
+      designSize: const Size(360, 640),
+      minTextAdapt: true,
+      splitScreenMode: true,
+    );
     final uid = _auth.currentUser?.uid;
     if (uid == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
-          dev.log('No user logged in, redirecting to login', name: 'SeekerDashboard');
+          dev.log(
+            'No user logged in, redirecting to login',
+            name: 'SeekerDashboard',
+          );
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
@@ -84,14 +93,14 @@ class _SeekerDashboardState extends State<SeekerDashboard> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 2,
-        title: Text(
-          'Hi, ${widget.seekerName ?? 'Seeker'}',
-          style: TextStyle(
-            color: const Color.fromARGB(221, 12, 20, 108),
-            fontWeight: FontWeight.bold,
-            fontSize: 22.sp,
-          ),
-        ),
+        // title: Text(
+        //   // 'Seeker Dashboard',
+        //   // style: TextStyle(
+        //   //   color: const Color.fromARGB(221, 12, 20, 108),
+        //   //   fontWeight: FontWeight.bold,
+        //   //   fontSize: 22.sp,
+        //   // ),
+        // ),
         centerTitle: true,
         leading: Builder(
           builder: (context) => IconButton(
@@ -106,16 +115,17 @@ class _SeekerDashboardState extends State<SeekerDashboard> {
               dev.log('Navigating to ChatListScreen', name: 'SeekerDashboard');
               Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (context) => const ChatListScreen(),
-                ),
+                MaterialPageRoute(builder: (context) => const ChatListScreen()),
               );
             },
           ),
           NotificationBell(
             isRecruiter: false,
             onTap: () {
-              dev.log('Navigating to NotificationsScreen', name: 'SeekerDashboard');
+              dev.log(
+                'Navigating to NotificationsScreen',
+                name: 'SeekerDashboard',
+              );
               Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -139,67 +149,29 @@ class _SeekerDashboardState extends State<SeekerDashboard> {
             padding: EdgeInsets.zero,
             children: [
               DrawerHeader(
-                decoration: const BoxDecoration(
-                  color: Colors.transparent,
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    SizedBox(height: 10.h),
-                    Container(
-                      constraints: BoxConstraints(maxWidth: 200.w),
-                      child: Text(
-                        '${widget.seekerName ?? 'Seeker'}',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 18.sp,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                        maxLines: 1,
-                      ),
-                    ),
-                    SizedBox(height: 8.h),
-                    Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [Colors.amber.shade300, Colors.orange.shade400],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(16.r),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.2),
-                            blurRadius: 4.r,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 6.h),
-                      child: Text(
-                        'Seeker',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 13.sp,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ),
-                  ],
+                decoration: const BoxDecoration(color: Colors.transparent),
+                child: Center(
+                  child: Icon(
+                    Icons.person_outline,
+                    color: Colors.white,
+                    size: 44.sp,
+                  ),
                 ),
               ),
               _buildDrawerItem(
                 icon: Icons.person,
                 title: 'Profile',
                 onTap: () {
-                  dev.log('Navigating to ProfileScreen', name: 'SeekerDashboard');
+                  dev.log(
+                    'Navigating to ProfileScreen',
+                    name: 'SeekerDashboard',
+                  );
                   Navigator.pop(context);
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => const ProfileScreen(isRecruiter: false),
+                      builder: (context) =>
+                          const ProfileScreen(isRecruiter: false),
                     ),
                   );
                 },
@@ -208,7 +180,10 @@ class _SeekerDashboardState extends State<SeekerDashboard> {
                 icon: Icons.work,
                 title: 'Search Jobs',
                 onTap: () {
-                  dev.log('Navigating to SearchJobScreen', name: 'SeekerDashboard');
+                  dev.log(
+                    'Navigating to SearchJobScreen',
+                    name: 'SeekerDashboard',
+                  );
                   Navigator.pop(context);
                   Navigator.push(
                     context,
@@ -220,11 +195,16 @@ class _SeekerDashboardState extends State<SeekerDashboard> {
                 icon: Icons.work_history_rounded,
                 title: 'Applied Jobs',
                 onTap: () {
-                  dev.log('Navigating to MyApplicationsScreen', name: 'SeekerDashboard');
+                  dev.log(
+                    'Navigating to MyApplicationsScreen',
+                    name: 'SeekerDashboard',
+                  );
                   Navigator.pop(context);
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => MyApplicationsScreen(seekerId: uid)),
+                    MaterialPageRoute(
+                      builder: (context) => MyApplicationsScreen(seekerId: uid),
+                    ),
                   );
                 },
               ),
@@ -232,11 +212,16 @@ class _SeekerDashboardState extends State<SeekerDashboard> {
                 icon: Icons.description,
                 title: 'Resume',
                 onTap: () {
-                  dev.log('Navigating to ResumeBuilderScreen', name: 'SeekerDashboard');
+                  dev.log(
+                    'Navigating to ResumeBuilderScreen',
+                    name: 'SeekerDashboard',
+                  );
                   Navigator.pop(context);
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => const ResumeBuilderScreen()),
+                    MaterialPageRoute(
+                      builder: (context) => const ResumeBuilderScreen(),
+                    ),
                   );
                 },
               ),
@@ -244,12 +229,16 @@ class _SeekerDashboardState extends State<SeekerDashboard> {
                 icon: Icons.notification_add,
                 title: 'Notifications',
                 onTap: () {
-                  dev.log('Navigating to NotificationsScreen', name: 'SeekerDashboard');
+                  dev.log(
+                    'Navigating to NotificationsScreen',
+                    name: 'SeekerDashboard',
+                  );
                   Navigator.pop(context);
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => const NotificationsScreen(isRecruiter: false),
+                      builder: (context) =>
+                          const NotificationsScreen(isRecruiter: false),
                     ),
                   );
                 },
@@ -320,11 +309,11 @@ class _SeekerDashboardState extends State<SeekerDashboard> {
                 color: Colors.grey[100],
                 child: TabBarView(
                   children: [
-                      const ProfileScreen(isRecruiter: false),
-                      const JobScreen(isSeekerProfileView: true),
-                      MyApplicationsScreen(seekerId: uid),
-                      const ResumeBuilderScreen(),
-                    ],
+                    const ProfileScreen(isRecruiter: false),
+                    const JobScreen(isSeekerProfileView: true),
+                    MyApplicationsScreen(seekerId: uid),
+                    const ResumeBuilderScreen(),
+                  ],
                 ),
               ),
             ),
@@ -358,9 +347,7 @@ class _SeekerDashboardState extends State<SeekerDashboard> {
       contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 4.h),
       tileColor: Colors.white,
       hoverColor: Colors.white12,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10.r),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
     );
   }
 
@@ -370,9 +357,7 @@ class _SeekerDashboardState extends State<SeekerDashboard> {
       child: Container(
         constraints: BoxConstraints(maxWidth: 120.w),
         padding: EdgeInsets.symmetric(vertical: 6.h, horizontal: 8.w),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20.r),
-        ),
+        decoration: BoxDecoration(borderRadius: BorderRadius.circular(20.r)),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -416,24 +401,26 @@ class _ResumeBuilderScreenState extends State<ResumeBuilderScreen> {
   final _summaryController = TextEditingController();
   final _objectiveController = TextEditingController();
   final _hobbiesController = TextEditingController();
-  List<Map<String, String>> education = [{'institution': '', 'degree': '', 'year': ''}];
+  List<Map<String, String>> education = [
+    {'institution': '', 'degree': '', 'year': ''},
+  ];
   List<Map<String, String>> experience = [
-    {'company': '', 'role': '', 'duration': '', 'description': ''}
+    {'company': '', 'role': '', 'duration': '', 'description': ''},
   ];
   List<Map<String, String>> projects = [
-    {'title': '', 'description': '', 'duration': ''}
+    {'title': '', 'description': '', 'duration': ''},
   ];
   List<String> skills = [''];
   List<Map<String, String>> extraCurricular = [
-    {'activity': '', 'description': '', 'duration': ''}
+    {'activity': '', 'description': '', 'duration': ''},
   ];
   List<Map<String, String>> certifications = [
     {'title': '', 'issuer': '', 'year': ''},
-    {'title': '', 'issuer': '', 'year': ''}
+    {'title': '', 'issuer': '', 'year': ''},
   ];
   List<Map<String, String>> awards = [
     {'title': '', 'issuer': '', 'year': ''},
-    {'title': '', 'issuer': '', 'year': ''}
+    {'title': '', 'issuer': '', 'year': ''},
   ];
 
   // Add education entry
@@ -446,7 +433,12 @@ class _ResumeBuilderScreenState extends State<ResumeBuilderScreen> {
   // Add experience entry
   void _addExperience() {
     setState(() {
-      experience.add({'company': '', 'role': '', 'duration': '', 'description': ''});
+      experience.add({
+        'company': '',
+        'role': '',
+        'duration': '',
+        'description': '',
+      });
     });
   }
 
@@ -496,7 +488,9 @@ class _ResumeBuilderScreenState extends State<ResumeBuilderScreen> {
           pw.Header(
             level: 0,
             child: pw.Text(
-              _headerController.text.isEmpty ? 'Resume' : _headerController.text,
+              _headerController.text.isEmpty
+                  ? 'Resume'
+                  : _headerController.text,
               style: pw.TextStyle(fontSize: 28, fontWeight: pw.FontWeight.bold),
             ),
           ),
@@ -519,8 +513,13 @@ class _ResumeBuilderScreenState extends State<ResumeBuilderScreen> {
             pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
-                pw.Text('Summary',
-                    style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+                pw.Text(
+                  'Summary',
+                  style: pw.TextStyle(
+                    fontSize: 18,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                ),
                 pw.SizedBox(height: 8),
                 pw.Text(_summaryController.text),
                 pw.SizedBox(height: 16),
@@ -530,107 +529,173 @@ class _ResumeBuilderScreenState extends State<ResumeBuilderScreen> {
             pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
-                pw.Text('Objective',
-                    style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+                pw.Text(
+                  'Objective',
+                  style: pw.TextStyle(
+                    fontSize: 18,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                ),
                 pw.SizedBox(height: 8),
                 pw.Text(_objectiveController.text),
                 pw.SizedBox(height: 16),
               ],
             ),
-          pw.Text('Education',
-              style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+          pw.Text(
+            'Education',
+            style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold),
+          ),
           pw.SizedBox(height: 8),
-          ...education.map((edu) => pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: [
-                  pw.Text(
-                      '${edu['institution']!.isEmpty ? 'Institution' : edu['institution']} - ${edu['degree']!.isEmpty ? 'Degree' : edu['degree']}'),
-                  pw.Text(edu['year']!.isEmpty ? 'Year' : edu['year']!),
-                  pw.SizedBox(height: 8),
-                ],
-              )),
-          pw.Text('Work Experience',
-              style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+          ...education.map(
+            (edu) => pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Text(
+                  '${edu['institution']!.isEmpty ? 'Institution' : edu['institution']} - ${edu['degree']!.isEmpty ? 'Degree' : edu['degree']}',
+                ),
+                pw.Text(edu['year']!.isEmpty ? 'Year' : edu['year']!),
+                pw.SizedBox(height: 8),
+              ],
+            ),
+          ),
+          pw.Text(
+            'Work Experience',
+            style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold),
+          ),
           pw.SizedBox(height: 8),
-          ...experience.map((exp) => pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: [
-                  pw.Text(
-                      '${exp['company']!.isEmpty ? 'Company' : exp['company']} - ${exp['role']!.isEmpty ? 'Role' : exp['role']}'),
-                  pw.Text(exp['duration']!.isEmpty ? 'Duration' : exp['duration']!),
-                  pw.Text(exp['description']!.isEmpty ? 'Description' : exp['description']!),
-                  pw.SizedBox(height: 8),
-                ],
-              )),
-          pw.Text('Projects',
-              style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+          ...experience.map(
+            (exp) => pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Text(
+                  '${exp['company']!.isEmpty ? 'Company' : exp['company']} - ${exp['role']!.isEmpty ? 'Role' : exp['role']}',
+                ),
+                pw.Text(
+                  exp['duration']!.isEmpty ? 'Duration' : exp['duration']!,
+                ),
+                pw.Text(
+                  exp['description']!.isEmpty
+                      ? 'Description'
+                      : exp['description']!,
+                ),
+                pw.SizedBox(height: 8),
+              ],
+            ),
+          ),
+          pw.Text(
+            'Projects',
+            style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold),
+          ),
           pw.SizedBox(height: 8),
-          ...projects.map((proj) => pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: [
-                  pw.Text(proj['title']!.isEmpty ? 'Project Title' : proj['title']!),
-                  pw.Text(proj['duration']!.isEmpty ? 'Duration' : proj['duration']!),
-                  pw.Text(proj['description']!.isEmpty ? 'Description' : proj['description']!),
-                  pw.SizedBox(height: 8),
-                ],
-              )),
-          pw.Text('Skills',
-              style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+          ...projects.map(
+            (proj) => pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Text(
+                  proj['title']!.isEmpty ? 'Project Title' : proj['title']!,
+                ),
+                pw.Text(
+                  proj['duration']!.isEmpty ? 'Duration' : proj['duration']!,
+                ),
+                pw.Text(
+                  proj['description']!.isEmpty
+                      ? 'Description'
+                      : proj['description']!,
+                ),
+                pw.SizedBox(height: 8),
+              ],
+            ),
+          ),
+          pw.Text(
+            'Skills',
+            style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold),
+          ),
           pw.SizedBox(height: 8),
           pw.Wrap(
             spacing: 8,
             children: skills
                 .asMap()
                 .entries
-                .map((entry) => pw.Text(
-                      entry.value.isEmpty ? 'Skill ${entry.key + 1}' : entry.value,
-                      style: const pw.TextStyle(fontSize: 14),
-                    ))
+                .map(
+                  (entry) => pw.Text(
+                    entry.value.isEmpty
+                        ? 'Skill ${entry.key + 1}'
+                        : entry.value,
+                    style: const pw.TextStyle(fontSize: 14),
+                  ),
+                )
                 .toList(),
           ),
           pw.SizedBox(height: 16),
-          pw.Text('Extra-Curricular Activities',
-              style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+          pw.Text(
+            'Extra-Curricular Activities',
+            style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold),
+          ),
           pw.SizedBox(height: 8),
-          ...extraCurricular.map((ec) => pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: [
-                  pw.Text(ec['activity']!.isEmpty ? 'Activity' : ec['activity']!),
-                  pw.Text(ec['duration']!.isEmpty ? 'Duration' : ec['duration']!),
-                  pw.Text(ec['description']!.isEmpty ? 'Description' : ec['description']!),
-                  pw.SizedBox(height: 8),
-                ],
-              )),
-          pw.Text('Certifications',
-              style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+          ...extraCurricular.map(
+            (ec) => pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Text(ec['activity']!.isEmpty ? 'Activity' : ec['activity']!),
+                pw.Text(ec['duration']!.isEmpty ? 'Duration' : ec['duration']!),
+                pw.Text(
+                  ec['description']!.isEmpty
+                      ? 'Description'
+                      : ec['description']!,
+                ),
+                pw.SizedBox(height: 8),
+              ],
+            ),
+          ),
+          pw.Text(
+            'Certifications',
+            style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold),
+          ),
           pw.SizedBox(height: 8),
-          ...certifications.map((cert) => pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: [
-                  pw.Text(cert['title']!.isEmpty ? 'Certification Title' : cert['title']!),
-                  pw.Text(cert['issuer']!.isEmpty ? 'Issuer' : cert['issuer']!),
-                  pw.Text(cert['year']!.isEmpty ? 'Year' : cert['year']!),
-                  pw.SizedBox(height: 8),
-                ],
-              )),
-          pw.Text('Awards and Recognitions',
-              style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+          ...certifications.map(
+            (cert) => pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Text(
+                  cert['title']!.isEmpty
+                      ? 'Certification Title'
+                      : cert['title']!,
+                ),
+                pw.Text(cert['issuer']!.isEmpty ? 'Issuer' : cert['issuer']!),
+                pw.Text(cert['year']!.isEmpty ? 'Year' : cert['year']!),
+                pw.SizedBox(height: 8),
+              ],
+            ),
+          ),
+          pw.Text(
+            'Awards and Recognitions',
+            style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold),
+          ),
           pw.SizedBox(height: 8),
-          ...awards.map((award) => pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: [
-                  pw.Text(award['title']!.isEmpty ? 'Award Title' : award['title']!),
-                  pw.Text(award['issuer']!.isEmpty ? 'Issuer' : award['issuer']!),
-                  pw.Text(award['year']!.isEmpty ? 'Year' : award['year']!),
-                  pw.SizedBox(height: 8),
-                ],
-              )),
+          ...awards.map(
+            (award) => pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Text(
+                  award['title']!.isEmpty ? 'Award Title' : award['title']!,
+                ),
+                pw.Text(award['issuer']!.isEmpty ? 'Issuer' : award['issuer']!),
+                pw.Text(award['year']!.isEmpty ? 'Year' : award['year']!),
+                pw.SizedBox(height: 8),
+              ],
+            ),
+          ),
           if (_hobbiesController.text.isNotEmpty)
             pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
-                pw.Text('Hobbies',
-                    style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+                pw.Text(
+                  'Hobbies',
+                  style: pw.TextStyle(
+                    fontSize: 18,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                ),
                 pw.SizedBox(height: 8),
                 pw.Text(_hobbiesController.text),
               ],
@@ -640,16 +705,15 @@ class _ResumeBuilderScreenState extends State<ResumeBuilderScreen> {
     );
 
     Printing.sharePdf(
-        bytes: await pdf.save(), filename: '${_nameController.text}_Resume.pdf');
+      bytes: await pdf.save(),
+      filename: '${_nameController.text}_Resume.pdf',
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Resume Builder'),
-        centerTitle: true,
-      ),
+      appBar: AppBar(title: const Text('Resume Builder'), centerTitle: true),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Form(
@@ -658,16 +722,24 @@ class _ResumeBuilderScreenState extends State<ResumeBuilderScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Header
-              const Text('Header', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              const Text(
+                'Header',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _headerController,
-                decoration: const InputDecoration(labelText: 'Resume Header (e.g., Professional Resume)'),
+                decoration: const InputDecoration(
+                  labelText: 'Resume Header (e.g., Professional Resume)',
+                ),
               ),
               const SizedBox(height: 24),
 
               // Personal Information
-              const Text('Personal Information', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              const Text(
+                'Personal Information',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _nameController,
@@ -693,40 +765,58 @@ class _ResumeBuilderScreenState extends State<ResumeBuilderScreen> {
               const SizedBox(height: 8),
               TextFormField(
                 controller: _permanentAddressController,
-                decoration: const InputDecoration(labelText: 'Permanent Address'),
+                decoration: const InputDecoration(
+                  labelText: 'Permanent Address',
+                ),
               ),
               const SizedBox(height: 24),
 
               // Summary
-              const Text('Summary', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              const Text(
+                'Summary',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _summaryController,
-                decoration: const InputDecoration(labelText: 'Professional Summary'),
+                decoration: const InputDecoration(
+                  labelText: 'Professional Summary',
+                ),
                 maxLines: 4,
               ),
               const SizedBox(height: 24),
 
               // Objective
-              const Text('Objective', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              const Text(
+                'Objective',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _objectiveController,
-                decoration: const InputDecoration(labelText: 'Career Objective'),
+                decoration: const InputDecoration(
+                  labelText: 'Career Objective',
+                ),
                 maxLines: 3,
               ),
               const SizedBox(height: 24),
 
               // Education Section
-              const Text('Education', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              const Text(
+                'Education',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 12),
               ...education.asMap().entries.map((entry) {
                 int index = entry.key;
                 return Column(
                   children: [
                     TextFormField(
-                      decoration: const InputDecoration(labelText: 'Institution'),
-                      onChanged: (value) => education[index]['institution'] = value,
+                      decoration: const InputDecoration(
+                        labelText: 'Institution',
+                      ),
+                      onChanged: (value) =>
+                          education[index]['institution'] = value,
                     ),
                     const SizedBox(height: 8),
                     TextFormField(
@@ -744,13 +834,19 @@ class _ResumeBuilderScreenState extends State<ResumeBuilderScreen> {
               }),
               ElevatedButton(
                 onPressed: _addEducation,
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  foregroundColor: Colors.white,
+                ),
                 child: const Text('Add Education'),
               ),
               const SizedBox(height: 24),
 
               // Work Experience Section
-              const Text('Work Experience', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              const Text(
+                'Work Experience',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 12),
               ...experience.asMap().entries.map((entry) {
                 int index = entry.key;
@@ -758,7 +854,8 @@ class _ResumeBuilderScreenState extends State<ResumeBuilderScreen> {
                   children: [
                     TextFormField(
                       decoration: const InputDecoration(labelText: 'Company'),
-                      onChanged: (value) => experience[index]['company'] = value,
+                      onChanged: (value) =>
+                          experience[index]['company'] = value,
                     ),
                     const SizedBox(height: 8),
                     TextFormField(
@@ -767,14 +864,20 @@ class _ResumeBuilderScreenState extends State<ResumeBuilderScreen> {
                     ),
                     const SizedBox(height: 8),
                     TextFormField(
-                      decoration: const InputDecoration(labelText: 'Duration (e.g., 2020-2022)'),
-                      onChanged: (value) => experience[index]['duration'] = value,
+                      decoration: const InputDecoration(
+                        labelText: 'Duration (e.g., 2020-2022)',
+                      ),
+                      onChanged: (value) =>
+                          experience[index]['duration'] = value,
                     ),
                     const SizedBox(height: 8),
                     TextFormField(
-                      decoration: const InputDecoration(labelText: 'Description'),
+                      decoration: const InputDecoration(
+                        labelText: 'Description',
+                      ),
                       maxLines: 3,
-                      onChanged: (value) => experience[index]['description'] = value,
+                      onChanged: (value) =>
+                          experience[index]['description'] = value,
                     ),
                     const SizedBox(height: 12),
                   ],
@@ -782,32 +885,45 @@ class _ResumeBuilderScreenState extends State<ResumeBuilderScreen> {
               }),
               ElevatedButton(
                 onPressed: _addExperience,
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  foregroundColor: Colors.white,
+                ),
                 child: const Text('Add Experience'),
               ),
               const SizedBox(height: 24),
 
               // Projects Section
-              const Text('Projects', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              const Text(
+                'Projects',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 12),
               ...projects.asMap().entries.map((entry) {
                 int index = entry.key;
                 return Column(
                   children: [
                     TextFormField(
-                      decoration: const InputDecoration(labelText: 'Project Title'),
+                      decoration: const InputDecoration(
+                        labelText: 'Project Title',
+                      ),
                       onChanged: (value) => projects[index]['title'] = value,
                     ),
                     const SizedBox(height: 8),
                     TextFormField(
-                      decoration: const InputDecoration(labelText: 'Duration (e.g., Jan 2023 - Mar 2023)'),
+                      decoration: const InputDecoration(
+                        labelText: 'Duration (e.g., Jan 2023 - Mar 2023)',
+                      ),
                       onChanged: (value) => projects[index]['duration'] = value,
                     ),
                     const SizedBox(height: 8),
                     TextFormField(
-                      decoration: const InputDecoration(labelText: 'Description'),
+                      decoration: const InputDecoration(
+                        labelText: 'Description',
+                      ),
                       maxLines: 3,
-                      onChanged: (value) => projects[index]['description'] = value,
+                      onChanged: (value) =>
+                          projects[index]['description'] = value,
                     ),
                     const SizedBox(height: 12),
                   ],
@@ -815,13 +931,19 @@ class _ResumeBuilderScreenState extends State<ResumeBuilderScreen> {
               }),
               ElevatedButton(
                 onPressed: _addProject,
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  foregroundColor: Colors.white,
+                ),
                 child: const Text('Add Project'),
               ),
               const SizedBox(height: 24),
 
               // Skills Section
-              const Text('Skills', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              const Text(
+                'Skills',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 12),
               ...skills.asMap().entries.map((entry) {
                 int index = entry.key;
@@ -837,14 +959,19 @@ class _ResumeBuilderScreenState extends State<ResumeBuilderScreen> {
               }),
               ElevatedButton(
                 onPressed: _addSkill,
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  foregroundColor: Colors.white,
+                ),
                 child: const Text('Add Skill'),
               ),
               const SizedBox(height: 24),
 
               // Extra-Curricular Activities Section
-              const Text('Extra-Curricular Activities',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              const Text(
+                'Extra-Curricular Activities',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 12),
               ...extraCurricular.asMap().entries.map((entry) {
                 int index = entry.key;
@@ -852,18 +979,25 @@ class _ResumeBuilderScreenState extends State<ResumeBuilderScreen> {
                   children: [
                     TextFormField(
                       decoration: const InputDecoration(labelText: 'Activity'),
-                      onChanged: (value) => extraCurricular[index]['activity'] = value,
+                      onChanged: (value) =>
+                          extraCurricular[index]['activity'] = value,
                     ),
                     const SizedBox(height: 8),
                     TextFormField(
-                      decoration: const InputDecoration(labelText: 'Duration (e.g., 2021-2022)'),
-                      onChanged: (value) => extraCurricular[index]['duration'] = value,
+                      decoration: const InputDecoration(
+                        labelText: 'Duration (e.g., 2021-2022)',
+                      ),
+                      onChanged: (value) =>
+                          extraCurricular[index]['duration'] = value,
                     ),
                     const SizedBox(height: 8),
                     TextFormField(
-                      decoration: const InputDecoration(labelText: 'Description'),
+                      decoration: const InputDecoration(
+                        labelText: 'Description',
+                      ),
                       maxLines: 3,
-                      onChanged: (value) => extraCurricular[index]['description'] = value,
+                      onChanged: (value) =>
+                          extraCurricular[index]['description'] = value,
                     ),
                     const SizedBox(height: 12),
                   ],
@@ -871,31 +1005,42 @@ class _ResumeBuilderScreenState extends State<ResumeBuilderScreen> {
               }),
               ElevatedButton(
                 onPressed: _addExtraCurricular,
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  foregroundColor: Colors.white,
+                ),
                 child: const Text('Add Activity'),
               ),
               const SizedBox(height: 24),
 
               // Certifications Section
-              const Text('Certifications', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              const Text(
+                'Certifications',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 12),
               ...certifications.asMap().entries.map((entry) {
                 int index = entry.key;
                 return Column(
                   children: [
                     TextFormField(
-                      decoration: const InputDecoration(labelText: 'Certification Title'),
-                      onChanged: (value) => certifications[index]['title'] = value,
+                      decoration: const InputDecoration(
+                        labelText: 'Certification Title',
+                      ),
+                      onChanged: (value) =>
+                          certifications[index]['title'] = value,
                     ),
                     const SizedBox(height: 8),
                     TextFormField(
                       decoration: const InputDecoration(labelText: 'Issuer'),
-                      onChanged: (value) => certifications[index]['issuer'] = value,
+                      onChanged: (value) =>
+                          certifications[index]['issuer'] = value,
                     ),
                     const SizedBox(height: 8),
                     TextFormField(
                       decoration: const InputDecoration(labelText: 'Year'),
-                      onChanged: (value) => certifications[index]['year'] = value,
+                      onChanged: (value) =>
+                          certifications[index]['year'] = value,
                     ),
                     const SizedBox(height: 12),
                   ],
@@ -903,21 +1048,28 @@ class _ResumeBuilderScreenState extends State<ResumeBuilderScreen> {
               }),
               ElevatedButton(
                 onPressed: _addCertification,
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  foregroundColor: Colors.white,
+                ),
                 child: const Text('Add Certification'),
               ),
               const SizedBox(height: 24),
 
               // Awards and Recognitions Section
-              const Text('Awards and Recognitions',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              const Text(
+                'Awards and Recognitions',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 12),
               ...awards.asMap().entries.map((entry) {
                 int index = entry.key;
                 return Column(
                   children: [
                     TextFormField(
-                      decoration: const InputDecoration(labelText: 'Award Title'),
+                      decoration: const InputDecoration(
+                        labelText: 'Award Title',
+                      ),
                       onChanged: (value) => awards[index]['title'] = value,
                     ),
                     const SizedBox(height: 8),
@@ -936,23 +1088,34 @@ class _ResumeBuilderScreenState extends State<ResumeBuilderScreen> {
               }),
               ElevatedButton(
                 onPressed: _addAward,
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  foregroundColor: Colors.white,
+                ),
                 child: const Text('Add Award'),
               ),
               const SizedBox(height: 24),
 
               // Hobbies
-              const Text('Hobbies', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              const Text(
+                'Hobbies',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _hobbiesController,
-                decoration: const InputDecoration(labelText: 'Hobbies (e.g., Reading, Hiking)'),
+                decoration: const InputDecoration(
+                  labelText: 'Hobbies (e.g., Reading, Hiking)',
+                ),
                 maxLines: 2,
               ),
               const SizedBox(height: 24),
 
               // Resume Preview
-              const Text('Resume Preview', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              const Text(
+                'Resume Preview',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 12),
               Container(
                 padding: const EdgeInsets.all(16),
@@ -964,13 +1127,23 @@ class _ResumeBuilderScreenState extends State<ResumeBuilderScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      _headerController.text.isEmpty ? 'Resume' : _headerController.text,
-                      style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                      _headerController.text.isEmpty
+                          ? 'Resume'
+                          : _headerController.text,
+                      style: const TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      _nameController.text.isEmpty ? 'Your Name' : _nameController.text,
-                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                      _nameController.text.isEmpty
+                          ? 'Your Name'
+                          : _nameController.text,
+                      style: const TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Text(
@@ -987,8 +1160,13 @@ class _ResumeBuilderScreenState extends State<ResumeBuilderScreen> {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('Summary',
-                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                          const Text(
+                            'Summary',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                           const SizedBox(height: 8),
                           Text(_summaryController.text),
                           const SizedBox(height: 16),
@@ -998,107 +1176,220 @@ class _ResumeBuilderScreenState extends State<ResumeBuilderScreen> {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('Objective',
-                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                          const Text(
+                            'Objective',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                           const SizedBox(height: 8),
                           Text(_objectiveController.text),
                           const SizedBox(height: 16),
                         ],
                       ),
-                    const Text('Education',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    const Text(
+                      'Education',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     const SizedBox(height: 8),
-                    ...education.map((edu) => Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                                '${edu['institution']!.isEmpty ? 'Institution' : edu['institution']} - ${edu['degree']!.isEmpty ? 'Degree' : edu['degree']}'),
-                            Text(edu['year']!.isEmpty ? 'Year' : edu['year']!),
-                            const SizedBox(height: 8),
-                          ],
-                        )),
-                    const Text('Work Experience',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    ...education.map(
+                      (edu) => Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${edu['institution']!.isEmpty ? 'Institution' : edu['institution']} - ${edu['degree']!.isEmpty ? 'Degree' : edu['degree']}',
+                          ),
+                          Text(edu['year']!.isEmpty ? 'Year' : edu['year']!),
+                          const SizedBox(height: 8),
+                        ],
+                      ),
+                    ),
+                    const Text(
+                      'Work Experience',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     const SizedBox(height: 8),
-                    ...experience.map((exp) => Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                                '${exp['company']!.isEmpty ? 'Company' : exp['company']} - ${exp['role']!.isEmpty ? 'Role' : exp['role']}'),
-                            Text(exp['duration']!.isEmpty ? 'Duration' : exp['duration']!),
-                            Text(exp['description']!.isEmpty ? 'Description' : exp['description']!),
-                            const SizedBox(height: 8),
-                          ],
-                        )),
-                    const Text('Projects',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    ...experience.map(
+                      (exp) => Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${exp['company']!.isEmpty ? 'Company' : exp['company']} - ${exp['role']!.isEmpty ? 'Role' : exp['role']}',
+                          ),
+                          Text(
+                            exp['duration']!.isEmpty
+                                ? 'Duration'
+                                : exp['duration']!,
+                          ),
+                          Text(
+                            exp['description']!.isEmpty
+                                ? 'Description'
+                                : exp['description']!,
+                          ),
+                          const SizedBox(height: 8),
+                        ],
+                      ),
+                    ),
+                    const Text(
+                      'Projects',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     const SizedBox(height: 8),
-                    ...projects.map((proj) => Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(proj['title']!.isEmpty ? 'Project Title' : proj['title']!),
-                            Text(proj['duration']!.isEmpty ? 'Duration' : proj['duration']!),
-                            Text(proj['description']!.isEmpty ? 'Description' : proj['description']!),
-                            const SizedBox(height: 8),
-                          ],
-                        )),
-                    const Text('Skills',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    ...projects.map(
+                      (proj) => Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            proj['title']!.isEmpty
+                                ? 'Project Title'
+                                : proj['title']!,
+                          ),
+                          Text(
+                            proj['duration']!.isEmpty
+                                ? 'Duration'
+                                : proj['duration']!,
+                          ),
+                          Text(
+                            proj['description']!.isEmpty
+                                ? 'Description'
+                                : proj['description']!,
+                          ),
+                          const SizedBox(height: 8),
+                        ],
+                      ),
+                    ),
+                    const Text(
+                      'Skills',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     const SizedBox(height: 8),
                     Wrap(
                       spacing: 8,
                       children: skills
                           .asMap()
                           .entries
-                          .map((entry) => Text(
-                                entry.value.isEmpty ? 'Skill ${entry.key + 1}' : entry.value,
-                                style: const TextStyle(fontSize: 14),
-                              ))
+                          .map(
+                            (entry) => Text(
+                              entry.value.isEmpty
+                                  ? 'Skill ${entry.key + 1}'
+                                  : entry.value,
+                              style: const TextStyle(fontSize: 14),
+                            ),
+                          )
                           .toList(),
                     ),
                     const SizedBox(height: 16),
-                    const Text('Extra-Curricular Activities',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    const Text(
+                      'Extra-Curricular Activities',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     const SizedBox(height: 8),
-                    ...extraCurricular.map((ec) => Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(ec['activity']!.isEmpty ? 'Activity' : ec['activity']!),
-                            Text(ec['duration']!.isEmpty ? 'Duration' : ec['duration']!),
-                            Text(ec['description']!.isEmpty ? 'Description' : ec['description']!),
-                            const SizedBox(height: 8),
-                          ],
-                        )),
-                    const Text('Certifications',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    ...extraCurricular.map(
+                      (ec) => Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            ec['activity']!.isEmpty
+                                ? 'Activity'
+                                : ec['activity']!,
+                          ),
+                          Text(
+                            ec['duration']!.isEmpty
+                                ? 'Duration'
+                                : ec['duration']!,
+                          ),
+                          Text(
+                            ec['description']!.isEmpty
+                                ? 'Description'
+                                : ec['description']!,
+                          ),
+                          const SizedBox(height: 8),
+                        ],
+                      ),
+                    ),
+                    const Text(
+                      'Certifications',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     const SizedBox(height: 8),
-                    ...certifications.map((cert) => Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(cert['title']!.isEmpty ? 'Certification Title' : cert['title']!),
-                            Text(cert['issuer']!.isEmpty ? 'Issuer' : cert['issuer']!),
-                            Text(cert['year']!.isEmpty ? 'Year' : cert['year']!),
-                            const SizedBox(height: 8),
-                          ],
-                        )),
-                    const Text('Awards and Recognitions',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    ...certifications.map(
+                      (cert) => Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            cert['title']!.isEmpty
+                                ? 'Certification Title'
+                                : cert['title']!,
+                          ),
+                          Text(
+                            cert['issuer']!.isEmpty
+                                ? 'Issuer'
+                                : cert['issuer']!,
+                          ),
+                          Text(cert['year']!.isEmpty ? 'Year' : cert['year']!),
+                          const SizedBox(height: 8),
+                        ],
+                      ),
+                    ),
+                    const Text(
+                      'Awards and Recognitions',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     const SizedBox(height: 8),
-                    ...awards.map((award) => Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(award['title']!.isEmpty ? 'Award Title' : award['title']!),
-                            Text(award['issuer']!.isEmpty ? 'Issuer' : award['issuer']!),
-                            Text(award['year']!.isEmpty ? 'Year' : award['year']!),
-                            const SizedBox(height: 8),
-                          ],
-                        )),
+                    ...awards.map(
+                      (award) => Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            award['title']!.isEmpty
+                                ? 'Award Title'
+                                : award['title']!,
+                          ),
+                          Text(
+                            award['issuer']!.isEmpty
+                                ? 'Issuer'
+                                : award['issuer']!,
+                          ),
+                          Text(
+                            award['year']!.isEmpty ? 'Year' : award['year']!,
+                          ),
+                          const SizedBox(height: 8),
+                        ],
+                      ),
+                    ),
                     if (_hobbiesController.text.isNotEmpty)
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('Hobbies',
-                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                          const Text(
+                            'Hobbies',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                           const SizedBox(height: 8),
                           Text(_hobbiesController.text),
                         ],
@@ -1115,7 +1406,10 @@ class _ResumeBuilderScreenState extends State<ResumeBuilderScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.green,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
                   ),
                   child: const Text('Download Resume as PDF'),
                 ),

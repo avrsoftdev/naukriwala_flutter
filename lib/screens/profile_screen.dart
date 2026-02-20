@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:naukariwala/services/auth_service.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'dart:developer' as dev;
-import 'package:naukariwala/screens/seeker_dashboard.dart';
 
 class ProfileScreen extends StatefulWidget {
   final bool isRecruiter;
@@ -24,7 +23,8 @@ class ProfileScreenState extends State<ProfileScreen> {
   // Controllers for editable fields
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _companyNameController = TextEditingController();
-  final TextEditingController _companyProfileController = TextEditingController();
+  final TextEditingController _companyProfileController =
+      TextEditingController();
   final TextEditingController _designationController = TextEditingController();
   final TextEditingController _experienceController = TextEditingController();
   final TextEditingController _currentCtcController = TextEditingController();
@@ -97,45 +97,69 @@ class ProfileScreenState extends State<ProfileScreen> {
 
     try {
       setState(() => isLoading = true);
-      final data = await _authService.fetchProfileData(isRecruiter: widget.isRecruiter);
+      final data = await _authService.fetchProfileData(
+        isRecruiter: widget.isRecruiter,
+      );
       if (mounted) {
         if (data != null) {
           dev.log('Firestore data: $data', name: 'ProfileScreen');
           setState(() {
             _nameController.text = data['name']?.toString().trim() ?? '';
-            _mobileNumber = data['mobileNumber']?.toString().trim() ??
+            _mobileNumber =
+                data['mobileNumber']?.toString().trim() ??
                 data['mobile']?.toString().trim() ??
                 data['Mobile Number']?.toString().trim();
             if (_mobileNumber == null || _mobileNumber!.isEmpty) {
-              dev.log('Warning: Mobile number not found in Firestore data for UID: ${user.uid}', name: 'ProfileScreen');
+              dev.log(
+                'Warning: Mobile number not found in Firestore data for UID: ${user.uid}',
+                name: 'ProfileScreen',
+              );
             }
             _email = user.email?.trim() ?? '';
             if (widget.isRecruiter) {
-              _companyNameController.text = data['companyName']?.toString().trim() ?? '';
-              _companyProfileController.text = data['companyProfile']?.toString().trim() ?? '';
-              _designationController.text = data['designation']?.toString().trim() ?? '';
+              _companyNameController.text =
+                  data['companyName']?.toString().trim() ?? '';
+              _companyProfileController.text =
+                  data['companyProfile']?.toString().trim() ?? '';
+              _designationController.text =
+                  data['designation']?.toString().trim() ?? '';
             } else {
-              _experienceController.text = data['experience']?.toString().trim() ?? '';
+              _experienceController.text =
+                  data['experience']?.toString().trim() ?? '';
               final education = data['education']?.toString().trim();
-              _selectedEducation = education != null && educationOptions.contains(education)
+              _selectedEducation =
+                  education != null && educationOptions.contains(education)
                   ? education
                   : education != null && education.isNotEmpty
-                      ? 'Other'
-                      : null;
-              _selectedSkills = (data['skills'] as List<dynamic>?)?.cast<String>() ?? [];
-              _selectedSpecialization = specializationOptions.contains(data['specialization'])
+                  ? 'Other'
+                  : null;
+              _selectedSkills =
+                  (data['skills'] as List<dynamic>?)?.cast<String>() ?? [];
+              _selectedSpecialization =
+                  specializationOptions.contains(data['specialization'])
                   ? data['specialization']
                   : 'Others';
-              _currentCtcController.text = _formatCtc(data['currentCtc']?.toString().trim() ?? '');
-              _expectedCtcController.text = _formatCtc(data['expectedCtc']?.toString().trim() ?? '');
+              _currentCtcController.text = _formatCtc(
+                data['currentCtc']?.toString().trim() ?? '',
+              );
+              _expectedCtcController.text = _formatCtc(
+                data['expectedCtc']?.toString().trim() ?? '',
+              );
             }
-            _isProfileUpdated = data['name'] != null && data['name'].toString().trim().isNotEmpty &&
-                (widget.isRecruiter ? data['companyName'] != null : data['education'] != null);
+            _isProfileUpdated =
+                data['name'] != null &&
+                data['name'].toString().trim().isNotEmpty &&
+                (widget.isRecruiter
+                    ? data['companyName'] != null
+                    : data['education'] != null);
           });
         } else {
           setState(() {
             errorMessage = 'Profile not found';
-            dev.log('No profile data found for UID: ${user.uid}', name: 'ProfileScreen');
+            dev.log(
+              'No profile data found for UID: ${user.uid}',
+              name: 'ProfileScreen',
+            );
           });
         }
       }
@@ -161,7 +185,9 @@ class ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _formatCtcOnChange() {
-    final controller = _currentCtcController == FocusScope.of(context).focusedChild?.context?.widget
+    final controller =
+        _currentCtcController ==
+            FocusScope.of(context).focusedChild?.context?.widget
         ? _currentCtcController
         : _expectedCtcController;
 
@@ -171,7 +197,9 @@ class ProfileScreenState extends State<ProfileScreen> {
       final selection = controller.selection;
       controller.text = formattedValue;
       controller.selection = selection.extent.offset == value.length
-          ? TextSelection.fromPosition(TextPosition(offset: formattedValue.length))
+          ? TextSelection.fromPosition(
+              TextPosition(offset: formattedValue.length),
+            )
           : TextSelection.collapsed(offset: selection.extent.offset);
     }
   }
@@ -186,13 +214,20 @@ class ProfileScreenState extends State<ProfileScreen> {
       'education': _selectedEducation ?? 'Other',
       'experience': _experienceController.text.trim(),
       'specialization': _selectedSpecialization ?? 'Others',
-      'currentCtc': _currentCtcController.text.replaceAll(' LPA (INR)', '').trim(),
-      'expectedCtc': _expectedCtcController.text.replaceAll(' LPA (INR)', '').trim(),
+      'currentCtc': _currentCtcController.text
+          .replaceAll(' LPA (INR)', '')
+          .trim(),
+      'expectedCtc': _expectedCtcController.text
+          .replaceAll(' LPA (INR)', '')
+          .trim(),
       'updatedAt': FieldValue.serverTimestamp(),
     };
   }
 
-  Future<void> _updateProfile(Map<String, dynamic> profileData, Function setDialogState) async {
+  Future<void> _updateProfile(
+    Map<String, dynamic> profileData,
+    Function setDialogState,
+  ) async {
     final user = _auth.currentUser;
     if (user == null) {
       setDialogState(() => errorMessage = 'No user logged in');
@@ -204,7 +239,10 @@ class ProfileScreenState extends State<ProfileScreen> {
       return;
     }
     if (_mobileNumber == null || _mobileNumber!.trim().isEmpty) {
-      setDialogState(() => errorMessage = 'Mobile number is required. Please ensure it is set in your profile.');
+      setDialogState(
+        () => errorMessage =
+            'Mobile number is required. Please ensure it is set in your profile.',
+      );
       return;
     }
     if (widget.isRecruiter) {
@@ -226,7 +264,9 @@ class ProfileScreenState extends State<ProfileScreen> {
         return;
       }
       if (!experienceOptions.contains(profileData['experience'].trim())) {
-        setDialogState(() => errorMessage = 'Please select a valid experience level');
+        setDialogState(
+          () => errorMessage = 'Please select a valid experience level',
+        );
         return;
       }
       if (profileData['specialization'] == null) {
@@ -237,7 +277,10 @@ class ProfileScreenState extends State<ProfileScreen> {
 
     setDialogState(() => isLoading = true);
     try {
-      dev.log('Updating profile with data: $profileData', name: 'ProfileScreen');
+      dev.log(
+        'Updating profile with data: $profileData',
+        name: 'ProfileScreen',
+      );
       await _authService.storeSignupData(
         isRecruiter: widget.isRecruiter,
         data: profileData,
@@ -257,7 +300,9 @@ class ProfileScreenState extends State<ProfileScreen> {
             _experienceController.text = profileData['experience'];
             _selectedSpecialization = profileData['specialization'];
             _currentCtcController.text = _formatCtc(profileData['currentCtc']);
-            _expectedCtcController.text = _formatCtc(profileData['expectedCtc']);
+            _expectedCtcController.text = _formatCtc(
+              profileData['expectedCtc'],
+            );
           }
           errorMessage = null;
         });
@@ -310,11 +355,104 @@ class ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildTextField(String label,
-      {bool isPassword = false,
-      bool multiline = false,
-      TextEditingController? controller,
-      String? Function(String?)? validator}) {
+  InputDecoration _fieldDecoration(
+    String label, {
+    IconData? icon,
+    bool enabled = true,
+  }) {
+    final borderColor = enabled
+        ? Colors.blueGrey.shade200
+        : Colors.blueGrey.shade100;
+    return InputDecoration(
+      labelText: label,
+      labelStyle: TextStyle(
+        color: Colors.blueGrey.shade600,
+        fontSize: 12.sp,
+        fontWeight: FontWeight.w500,
+      ),
+      prefixIcon: icon == null
+          ? null
+          : Icon(icon, size: 18.sp, color: Colors.blueGrey.shade500),
+      enabledBorder: OutlineInputBorder(
+        borderSide: BorderSide(color: borderColor),
+        borderRadius: BorderRadius.circular(14.r),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderSide: BorderSide(color: Colors.teal.shade500, width: 1.8.w),
+        borderRadius: BorderRadius.circular(14.r),
+      ),
+      disabledBorder: OutlineInputBorder(
+        borderSide: BorderSide(color: Colors.blueGrey.shade100),
+        borderRadius: BorderRadius.circular(14.r),
+      ),
+      filled: true,
+      fillColor: enabled ? Colors.white : Colors.blueGrey.shade50,
+      contentPadding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
+    );
+  }
+
+  IconData _iconForLabel(String label) {
+    switch (label.toLowerCase()) {
+      case 'email':
+        return Icons.mail_outline;
+      case 'mobile number':
+        return Icons.phone_outlined;
+      case 'name':
+        return Icons.person_outline;
+      case 'company name':
+        return Icons.apartment_outlined;
+      case 'company profile':
+        return Icons.business_center_outlined;
+      case 'designation':
+        return Icons.badge_outlined;
+      case 'specialization':
+        return Icons.auto_awesome_mosaic_outlined;
+      case 'education':
+        return Icons.school_outlined;
+      case 'experience':
+        return Icons.timeline_outlined;
+      case 'current ctc':
+      case 'expected ctc':
+        return Icons.currency_rupee_outlined;
+      default:
+        return Icons.info_outline;
+    }
+  }
+
+  Widget _buildSectionHeader(String title) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: 10.h),
+      child: Row(
+        children: [
+          Container(
+            width: 4.w,
+            height: 18.h,
+            decoration: BoxDecoration(
+              color: Colors.teal.shade500,
+              borderRadius: BorderRadius.circular(20.r),
+            ),
+          ),
+          SizedBox(width: 8.w),
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 15.sp,
+              fontWeight: FontWeight.w700,
+              color: Colors.blueGrey.shade800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTextField(
+    String label, {
+    bool isPassword = false,
+    bool multiline = false,
+    TextEditingController? controller,
+    String? Function(String?)? validator,
+  }) {
     return Padding(
       padding: EdgeInsets.symmetric(vertical: 8.h),
       child: Container(
@@ -324,20 +462,10 @@ class ProfileScreenState extends State<ProfileScreen> {
           obscureText: isPassword,
           maxLines: multiline ? 4 : 1,
           maxLength: multiline ? 500 : 100,
-          decoration: InputDecoration(
-            labelText: label,
-            labelStyle: TextStyle(color: Colors.grey, fontSize: 12.sp),
-            enabledBorder: const UnderlineInputBorder(
-              borderSide: BorderSide(color: Colors.grey),
-            ),
-            focusedBorder: UnderlineInputBorder(
-              borderSide: BorderSide(color: Colors.teal, width: 2.w),
-            ),
-            filled: true,
-            fillColor: Colors.white,
-            contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
-            counterText: multiline ? null : '',
-          ),
+          decoration: _fieldDecoration(
+            label,
+            icon: _iconForLabel(label),
+          ).copyWith(counterText: multiline ? null : ''),
           validator: validator,
           onChanged: (value) {
             if (mounted) setState(() => errorMessage = null);
@@ -355,20 +483,16 @@ class ProfileScreenState extends State<ProfileScreen> {
         child: TextFormField(
           initialValue: value ?? 'N/A',
           enabled: false,
-          decoration: InputDecoration(
-            labelText: label,
-            labelStyle: TextStyle(color: Colors.grey, fontSize: 12.sp),
-            enabledBorder: const UnderlineInputBorder(
-              borderSide: BorderSide(color: Colors.grey),
-            ),
-            focusedBorder: UnderlineInputBorder(
-              borderSide: BorderSide(color: Colors.teal, width: 2.w),
-            ),
-            filled: true,
-            fillColor: Colors.white,
-            contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+          decoration: _fieldDecoration(
+            label,
+            enabled: false,
+            icon: _iconForLabel(label),
           ),
-          style: TextStyle(fontSize: 14.sp, color: Colors.black87),
+          style: TextStyle(
+            fontSize: 14.sp,
+            color: Colors.blueGrey.shade700,
+            fontWeight: FontWeight.w500,
+          ),
         ),
       ),
     );
@@ -381,20 +505,10 @@ class ProfileScreenState extends State<ProfileScreen> {
         constraints: BoxConstraints(maxWidth: 300.w),
         child: DropdownButtonFormField<String>(
           initialValue: _selectedSpecialization,
-          decoration: InputDecoration(
-            labelText: 'Specialization',
-            labelStyle: TextStyle(color: Colors.grey, fontSize: 12.sp),
-            enabledBorder: OutlineInputBorder(
-              borderSide: BorderSide(color: Colors.grey.shade400),
-              borderRadius: BorderRadius.circular(12.r),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderSide: BorderSide(color: Colors.teal, width: 2.w),
-              borderRadius: BorderRadius.circular(12.r),
-            ),
-            filled: true,
-            fillColor: Colors.white,
-            contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+          decoration: _fieldDecoration(
+            'Specialization',
+            enabled: enabled,
+            icon: _iconForLabel('Specialization'),
           ),
           isExpanded: true,
           menuMaxHeight: 300.h,
@@ -422,7 +536,8 @@ class ProfileScreenState extends State<ProfileScreen> {
                   }
                 }
               : null,
-          validator: (value) => value == null ? 'Specialization is required' : null,
+          validator: (value) =>
+              value == null ? 'Specialization is required' : null,
         ),
       ),
     );
@@ -435,20 +550,10 @@ class ProfileScreenState extends State<ProfileScreen> {
         constraints: BoxConstraints(maxWidth: 300.w),
         child: DropdownButtonFormField<String>(
           initialValue: _selectedEducation,
-          decoration: InputDecoration(
-            labelText: 'Education',
-            labelStyle: TextStyle(color: Colors.grey, fontSize: 12.sp),
-            enabledBorder: OutlineInputBorder(
-              borderSide: BorderSide(color: Colors.grey.shade400),
-              borderRadius: BorderRadius.circular(12.r),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderSide: BorderSide(color: Colors.teal, width: 2.w),
-              borderRadius: BorderRadius.circular(12.r),
-            ),
-            filled: true,
-            fillColor: Colors.white,
-            contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+          decoration: _fieldDecoration(
+            'Education',
+            enabled: enabled,
+            icon: _iconForLabel('Education'),
           ),
           isExpanded: true,
           menuMaxHeight: 300.h,
@@ -487,24 +592,15 @@ class ProfileScreenState extends State<ProfileScreen> {
       child: Container(
         constraints: BoxConstraints(maxWidth: 300.w),
         child: DropdownButtonFormField<String>(
-          initialValue: _experienceController.text.isNotEmpty &&
+          initialValue:
+              _experienceController.text.isNotEmpty &&
                   experienceOptions.contains(_experienceController.text)
               ? _experienceController.text
               : null,
-          decoration: InputDecoration(
-            labelText: 'Experience',
-            labelStyle: TextStyle(color: Colors.grey, fontSize: 12.sp),
-            enabledBorder: OutlineInputBorder(
-              borderSide: BorderSide(color: Colors.grey.shade400),
-              borderRadius: BorderRadius.circular(12.r),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderSide: BorderSide(color: Colors.teal, width: 2.w),
-              borderRadius: BorderRadius.circular(12.r),
-            ),
-            filled: true,
-            fillColor: Colors.white,
-            contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+          decoration: _fieldDecoration(
+            'Experience',
+            enabled: enabled,
+            icon: _iconForLabel('Experience'),
           ),
           isExpanded: true,
           menuMaxHeight: 300.h,
@@ -538,22 +634,27 @@ class ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildSkillsMultiSelect({bool enabled = true}) {
-    final availableSkills = skillsBySpecialization[_selectedSpecialization ?? 'Others'] ?? [];
+    final availableSkills =
+        skillsBySpecialization[_selectedSpecialization ?? 'Others'] ?? [];
     return Padding(
       padding: EdgeInsets.symmetric(vertical: 8.h),
       child: Card(
-        elevation: 2,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+        elevation: 0,
+        color: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16.r),
+        ),
         child: Container(
           constraints: BoxConstraints(maxWidth: 300.w),
-          padding: EdgeInsets.all(12.w),
+          padding: EdgeInsets.all(14.w),
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [Colors.blue.shade50, Colors.blue.shade100],
+              colors: [Colors.cyan.shade50, Colors.teal.shade50],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
-            borderRadius: BorderRadius.circular(12.r),
+            border: Border.all(color: Colors.teal.shade100),
+            borderRadius: BorderRadius.circular(16.r),
           ),
           child: GestureDetector(
             onTap: enabled
@@ -576,22 +677,45 @@ class ProfileScreenState extends State<ProfileScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Skills',
-                  style: TextStyle(fontSize: 12.sp, color: Colors.blue.shade800, fontWeight: FontWeight.w600),
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 1,
+                Row(
+                  children: [
+                    Icon(
+                      Icons.bolt_outlined,
+                      size: 18.sp,
+                      color: Colors.teal.shade700,
+                    ),
+                    SizedBox(width: 6.w),
+                    Text(
+                      'Skills',
+                      style: TextStyle(
+                        fontSize: 12.sp,
+                        color: Colors.teal.shade800,
+                        fontWeight: FontWeight.w700,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
+                    const Spacer(),
+                    Icon(
+                      Icons.chevron_right_rounded,
+                      color: Colors.teal.shade700,
+                    ),
+                  ],
                 ),
                 SizedBox(height: 6.h),
                 Container(
                   constraints: BoxConstraints(maxWidth: 250.w),
                   child: Text(
-                    _selectedSkills.isEmpty ? 'Select skills' : _selectedSkills.join(', '),
+                    _selectedSkills.isEmpty
+                        ? 'Select skills'
+                        : _selectedSkills.join(', '),
                     overflow: TextOverflow.ellipsis,
                     maxLines: 2,
                     style: TextStyle(
                       fontSize: 14.sp,
-                      color: _selectedSkills.isEmpty ? Colors.grey : Colors.black87,
+                      color: _selectedSkills.isEmpty
+                          ? Colors.grey
+                          : Colors.black87,
                     ),
                   ),
                 ),
@@ -600,7 +724,10 @@ class ProfileScreenState extends State<ProfileScreen> {
                     padding: EdgeInsets.only(top: 6.h),
                     child: Text(
                       'At least one skill is required',
-                      style: TextStyle(fontSize: 10.sp, color: Colors.red.shade700),
+                      style: TextStyle(
+                        fontSize: 10.sp,
+                        color: Colors.red.shade700,
+                      ),
                     ),
                   ),
               ],
@@ -633,228 +760,530 @@ class ProfileScreenState extends State<ProfileScreen> {
       splitScreenMode: true,
       builder: (context, child) {
         return Scaffold(
+          backgroundColor: Colors.transparent,
           appBar: AppBar(
             title: Text(
               widget.isRecruiter ? 'Recruiter Profile' : 'Seeker Profile',
-              style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 18.sp),
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+                fontSize: 18.sp,
+              ),
             ),
+            centerTitle: true,
             flexibleSpace: Container(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Colors.blue.shade700, Colors.blue.shade900],
+                  colors: [Colors.blue.shade700, Colors.teal.shade600],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
               ),
             ),
-            elevation: 4,
+            elevation: 0,
             actions: [
               if (!widget.isRecruiter) ...[
-                IconButton(
-                  icon: const Icon(Icons.description, color: Colors.white, size: 22),
-                  padding: EdgeInsets.all(2.w),
-                  onPressed: () {
-                    dev.log('Opening resume preview', name: 'ProfileScreen');
-                    final resumeData = _generateResumeData();
-                    showDialog(
-                      context: context,
-                      builder: (context) => AlertDialog(
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
-                        title: Container(
-                          padding: EdgeInsets.all(12.w),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [Colors.blue.shade700, Colors.blue.shade900],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
+                Container(
+                  margin: EdgeInsets.symmetric(horizontal: 4.w, vertical: 6.h),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.18),
+                    shape: BoxShape.circle,
+                  ),
+                  child: IconButton(
+                    icon: const Icon(
+                      Icons.description_outlined,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                    padding: EdgeInsets.all(2.w),
+                    onPressed: () {
+                      dev.log('Opening resume preview', name: 'ProfileScreen');
+                      final resumeData = _generateResumeData();
+                      showDialog(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16.r),
+                          ),
+                          title: Container(
+                            padding: EdgeInsets.all(12.w),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  Colors.blue.shade700,
+                                  Colors.blue.shade900,
+                                ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              borderRadius: BorderRadius.vertical(
+                                top: Radius.circular(16.r),
+                              ),
                             ),
-                            borderRadius: BorderRadius.vertical(top: Radius.circular(16.r)),
+                            child: const Text(
+                              'Resume Preview',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
                           ),
-                          child: const Text(
-                            'Resume Preview',
-                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                          content: SingleChildScrollView(
+                            child: Container(
+                              constraints: BoxConstraints(maxWidth: 300.w),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Email: ${resumeData['email'] ?? 'N/A'}',
+                                    style: TextStyle(fontSize: 14.sp),
+                                  ),
+                                  Text(
+                                    'Mobile: ${resumeData['mobileNumber'] ?? 'N/A'}',
+                                    style: TextStyle(fontSize: 14.sp),
+                                  ),
+                                  Text(
+                                    'Name: ${resumeData['name'] ?? 'N/A'}',
+                                    style: TextStyle(fontSize: 14.sp),
+                                  ),
+                                  SizedBox(height: 6.h),
+                                  Text(
+                                    'Skills:',
+                                    style: TextStyle(
+                                      fontSize: 12.sp,
+                                      color: Colors.blue.shade800,
+                                    ),
+                                  ),
+                                  Wrap(
+                                    spacing: 6.w,
+                                    runSpacing: 4.h,
+                                    children:
+                                        (resumeData['skills'] as List<dynamic>?)
+                                            ?.cast<String>()
+                                            .map(
+                                              (skill) => Chip(
+                                                label: Text(
+                                                  skill,
+                                                  style: TextStyle(
+                                                    fontSize: 12.sp,
+                                                  ),
+                                                ),
+                                                backgroundColor:
+                                                    Colors.teal.shade100,
+                                                labelStyle: TextStyle(
+                                                  color: Colors.teal.shade900,
+                                                ),
+                                              ),
+                                            )
+                                            .toList() ??
+                                        [
+                                          const Chip(
+                                            label: Text(
+                                              'N/A',
+                                              style: TextStyle(fontSize: 12),
+                                            ),
+                                          ),
+                                        ],
+                                  ),
+                                  SizedBox(height: 6.h),
+                                  Text(
+                                    'Education: ${resumeData['education'] ?? 'N/A'}',
+                                    style: TextStyle(fontSize: 14.sp),
+                                  ),
+                                  Text(
+                                    'Experience: ${resumeData['experience'] ?? 'N/A'}',
+                                    style: TextStyle(fontSize: 14.sp),
+                                  ),
+                                  Text(
+                                    'Specialization: ${resumeData['specialization'] ?? 'N/A'}',
+                                    style: TextStyle(fontSize: 14.sp),
+                                  ),
+                                  Text(
+                                    'Current CTC: ${_formatCtc(resumeData['currentCtc'] ?? '0.0')}',
+                                    style: TextStyle(fontSize: 14.sp),
+                                  ),
+                                  Text(
+                                    'Expected CTC: ${_formatCtc(resumeData['expectedCtc'] ?? '0.0')}',
+                                    style: TextStyle(fontSize: 14.sp),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
-                        ),
-                        content: SingleChildScrollView(
-                          child: Container(
-                            constraints: BoxConstraints(maxWidth: 300.w),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('Email: ${resumeData['email'] ?? 'N/A'}', style: TextStyle(fontSize: 14.sp)),
-                                Text('Mobile: ${resumeData['mobileNumber'] ?? 'N/A'}', style: TextStyle(fontSize: 14.sp)),
-                                Text('Name: ${resumeData['name'] ?? 'N/A'}', style: TextStyle(fontSize: 14.sp)),
-                                SizedBox(height: 6.h),
-                                Text('Skills:', style: TextStyle(fontSize: 12.sp, color: Colors.blue.shade800)),
-                                Wrap(
-                                  spacing: 6.w,
-                                  runSpacing: 4.h,
-                                  children: (resumeData['skills'] as List<dynamic>?)?.cast<String>().map((skill) => Chip(
-                                        label: Text(skill, style: TextStyle(fontSize: 12.sp)),
-                                        backgroundColor: Colors.teal.shade100,
-                                        labelStyle: TextStyle(color: Colors.teal.shade900),
-                                      )).toList() ?? [
-                                        const Chip(
-                                          label: Text('N/A', style: TextStyle(fontSize: 12)),
-                                        ),
-                                      ],
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: const Text(
+                                'Close',
+                                style: TextStyle(
+                                  color: Colors.teal,
+                                  fontSize: 12,
                                 ),
-                                SizedBox(height: 6.h),
-                                Text('Education: ${resumeData['education'] ?? 'N/A'}', style: TextStyle(fontSize: 14.sp)),
-                                Text('Experience: ${resumeData['experience'] ?? 'N/A'}', style: TextStyle(fontSize: 14.sp)),
-                                Text('Specialization: ${resumeData['specialization'] ?? 'N/A'}', style: TextStyle(fontSize: 14.sp)),
-                                Text('Current CTC: ${_formatCtc(resumeData['currentCtc'] ?? '0.0')}', style: TextStyle(fontSize: 14.sp)),
-                                Text('Expected CTC: ${_formatCtc(resumeData['expectedCtc'] ?? '0.0')}', style: TextStyle(fontSize: 14.sp)),
-                              ],
+                              ),
                             ),
-                          ),
+                          ],
                         ),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context),
-                            child: const Text('Close', style: TextStyle(color: Colors.teal, fontSize: 12)),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
+                      );
+                    },
+                  ),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.edit, color: Colors.white, size: 22),
-                  padding: EdgeInsets.all(2.w),
-                  onPressed: _showUpdateProfileDialog,
+                Container(
+                  margin: EdgeInsets.only(
+                    right: 8.w,
+                    left: 4.w,
+                    top: 6.h,
+                    bottom: 6.h,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.18),
+                    shape: BoxShape.circle,
+                  ),
+                  child: IconButton(
+                    icon: const Icon(
+                      Icons.edit_outlined,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                    padding: EdgeInsets.all(2.w),
+                    onPressed: _showUpdateProfileDialog,
+                  ),
                 ),
               ],
             ],
           ),
-          body: isLoading
-              ? Center(
-                  child: CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.teal),
-                    strokeWidth: 4.w,
-                  ),
-                )
-              : errorMessage != null
-                  ? Center(
-                      child: Card(
-                        elevation: 4,
-                        color: Colors.red.shade50,
-                        child: Padding(
-                          padding: EdgeInsets.all(12.w),
-                          child: Text(
-                            errorMessage!,
-                            style: TextStyle(color: Colors.red.shade700, fontSize: 14.sp),
-                          ),
-                        ),
+          body: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Colors.blue.shade50,
+                  Colors.teal.shade50,
+                  Colors.white,
+                ],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+            ),
+            child: isLoading
+                ? Center(
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        Colors.teal.shade500,
                       ),
-                    )
-                  : SingleChildScrollView(
+                      strokeWidth: 3.5.w,
+                    ),
+                  )
+                : errorMessage != null
+                ? Center(
+                    child: Container(
+                      margin: EdgeInsets.all(18.w),
                       padding: EdgeInsets.all(16.w),
-                      child: Card(
-                        elevation: 4,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
-                        child: Padding(
-                          padding: EdgeInsets.all(12.w),
-                          child: Form(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                SizedBox(height: 16.h),
-                                _buildNonEditableField('Email', _email),
-                                _buildNonEditableField('Mobile Number', _mobileNumber),
-                                if (_isProfileUpdated)
-                                  _buildNonEditableField('Name', _nameController.text)
-                                else
-                                  _buildTextField(
-                                    'Name',
-                                    controller: _nameController,
-                                    validator: (value) => value == null || value.trim().isEmpty ? 'Name is required' : null,
-                                  ),
-                                if (widget.isRecruiter) ...[
-                                  if (_isProfileUpdated)
-                                    _buildNonEditableField('Company Name', _companyNameController.text)
-                                  else
-                                    _buildTextField(
-                                      'Company Name',
-                                      controller: _companyNameController,
-                                      validator: (value) => value == null || value.trim().isEmpty ? 'Company Name is required' : null,
-                                    ),
-                                  if (_isProfileUpdated)
-                                    _buildNonEditableField('Company Profile', _companyProfileController.text)
-                                  else
-                                    _buildTextField('Company Profile', multiline: true, controller: _companyProfileController),
-                                  if (_isProfileUpdated)
-                                    _buildNonEditableField('Designation', _designationController.text)
-                                  else
-                                    _buildTextField('Designation', controller: _designationController),
-                                ] else ...[
-                                  if (_isProfileUpdated)
-                                    _buildNonEditableField('Specialization', _selectedSpecialization)
-                                  else
-                                    _buildSpecializationDropdown(),
-                                  if (_isProfileUpdated)
-                                    _buildNonEditableField('Skills', _selectedSkills.isEmpty ? 'N/A' : _selectedSkills.join(', '))
-                                  else
-                                    _buildSkillsMultiSelect(),
-                                  if (_isProfileUpdated)
-                                    _buildNonEditableField('Education', _selectedEducation)
-                                  else
-                                    _buildEducationDropdown(),
-                                  if (_isProfileUpdated)
-                                    _buildNonEditableField('Experience', _experienceController.text)
-                                  else
-                                    _buildExperienceDropdown(),
-                                  if (_isProfileUpdated)
-                                    _buildNonEditableField('Current CTC', _currentCtcController.text)
-                                  else
-                                    _buildTextField('Current CTC', controller: _currentCtcController),
-                                  if (_isProfileUpdated)
-                                    _buildNonEditableField('Expected CTC', _expectedCtcController.text)
-                                  else
-                                    _buildTextField('Expected CTC', controller: _expectedCtcController),
-                                ],
-                                SizedBox(height: 16.h),
-                                if (!_isProfileUpdated)
-                                  Center(
-                                    child: AnimatedScaleButton(
-                                      onPressed: _showUpdateProfileDialog,
-                                      child: Container(
-                                        constraints: BoxConstraints(maxWidth: 200.w),
-                                        padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 10.h),
-                                        decoration: BoxDecoration(
-                                          gradient: LinearGradient(
-                                            colors: [Colors.blue.shade700, Colors.teal.shade400],
-                                            begin: Alignment.topLeft,
-                                            end: Alignment.bottomRight,
-                                          ),
-                                          borderRadius: BorderRadius.circular(12.r),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: Colors.black.withValues(alpha: 0.2),
-                                              blurRadius: 4.r,
-                                              offset: Offset(0, 2.h),
-                                            ),
-                                          ],
-                                        ),
-                                        child: Text(
-                                          'Update Profile',
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                SizedBox(height: 12.h),
-                              ],
-                            ),
-                          ),
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade50,
+                        borderRadius: BorderRadius.circular(16.r),
+                        border: Border.all(color: Colors.red.shade100),
+                      ),
+                      child: Text(
+                        errorMessage!,
+                        style: TextStyle(
+                          color: Colors.red.shade700,
+                          fontSize: 14.sp,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ),
+                  )
+                : SingleChildScrollView(
+                    padding: EdgeInsets.fromLTRB(16.w, 14.h, 16.w, 24.h),
+                    child: Column(
+                      children: [
+                        Container(
+                          width: double.infinity,
+                          padding: EdgeInsets.all(16.w),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                Colors.blue.shade700,
+                                Colors.teal.shade500,
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(20.r),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.teal.withValues(alpha: 0.25),
+                                blurRadius: 16.r,
+                                offset: Offset(0, 8.h),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 52.w,
+                                height: 52.w,
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.2),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  Icons.person_rounded,
+                                  color: Colors.white,
+                                  size: 28.sp,
+                                ),
+                              ),
+                              SizedBox(width: 12.w),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      _nameController.text.isNotEmpty
+                                          ? _nameController.text
+                                          : 'Your Profile',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 16.sp,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    SizedBox(height: 4.h),
+                                    Text(
+                                      _email ?? 'No email',
+                                      style: TextStyle(
+                                        color: Colors.white.withValues(
+                                          alpha: 0.9,
+                                        ),
+                                        fontSize: 12.sp,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Container(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 10.w,
+                                  vertical: 5.h,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.2),
+                                  borderRadius: BorderRadius.circular(30.r),
+                                ),
+                                child: Text(
+                                  widget.isRecruiter ? 'Recruiter' : 'Seeker',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 11.sp,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        SizedBox(height: 14.h),
+                        Container(
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(22.r),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.blueGrey.withValues(alpha: 0.08),
+                                blurRadius: 18.r,
+                                offset: Offset(0, 8.h),
+                              ),
+                            ],
+                          ),
+                          child: Padding(
+                            padding: EdgeInsets.all(14.w),
+                            child: Form(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _buildSectionHeader('Basic Information'),
+                                  _buildNonEditableField('Email', _email),
+                                  _buildNonEditableField(
+                                    'Mobile Number',
+                                    _mobileNumber,
+                                  ),
+                                  if (_isProfileUpdated)
+                                    _buildNonEditableField(
+                                      'Name',
+                                      _nameController.text,
+                                    )
+                                  else
+                                    _buildTextField(
+                                      'Name',
+                                      controller: _nameController,
+                                      validator: (value) =>
+                                          value == null || value.trim().isEmpty
+                                          ? 'Name is required'
+                                          : null,
+                                    ),
+                                  SizedBox(height: 8.h),
+                                  _buildSectionHeader(
+                                    widget.isRecruiter
+                                        ? 'Organization Details'
+                                        : 'Career Details',
+                                  ),
+                                  if (widget.isRecruiter) ...[
+                                    if (_isProfileUpdated)
+                                      _buildNonEditableField(
+                                        'Company Name',
+                                        _companyNameController.text,
+                                      )
+                                    else
+                                      _buildTextField(
+                                        'Company Name',
+                                        controller: _companyNameController,
+                                        validator: (value) =>
+                                            value == null ||
+                                                value.trim().isEmpty
+                                            ? 'Company Name is required'
+                                            : null,
+                                      ),
+                                    if (_isProfileUpdated)
+                                      _buildNonEditableField(
+                                        'Company Profile',
+                                        _companyProfileController.text,
+                                      )
+                                    else
+                                      _buildTextField(
+                                        'Company Profile',
+                                        multiline: true,
+                                        controller: _companyProfileController,
+                                      ),
+                                    if (_isProfileUpdated)
+                                      _buildNonEditableField(
+                                        'Designation',
+                                        _designationController.text,
+                                      )
+                                    else
+                                      _buildTextField(
+                                        'Designation',
+                                        controller: _designationController,
+                                      ),
+                                  ] else ...[
+                                    if (_isProfileUpdated)
+                                      _buildNonEditableField(
+                                        'Specialization',
+                                        _selectedSpecialization,
+                                      )
+                                    else
+                                      _buildSpecializationDropdown(),
+                                    if (_isProfileUpdated)
+                                      _buildNonEditableField(
+                                        'Skills',
+                                        _selectedSkills.isEmpty
+                                            ? 'N/A'
+                                            : _selectedSkills.join(', '),
+                                      )
+                                    else
+                                      _buildSkillsMultiSelect(),
+                                    if (_isProfileUpdated)
+                                      _buildNonEditableField(
+                                        'Education',
+                                        _selectedEducation,
+                                      )
+                                    else
+                                      _buildEducationDropdown(),
+                                    if (_isProfileUpdated)
+                                      _buildNonEditableField(
+                                        'Experience',
+                                        _experienceController.text,
+                                      )
+                                    else
+                                      _buildExperienceDropdown(),
+                                    if (_isProfileUpdated)
+                                      _buildNonEditableField(
+                                        'Current CTC',
+                                        _currentCtcController.text,
+                                      )
+                                    else
+                                      _buildTextField(
+                                        'Current CTC',
+                                        controller: _currentCtcController,
+                                      ),
+                                    if (_isProfileUpdated)
+                                      _buildNonEditableField(
+                                        'Expected CTC',
+                                        _expectedCtcController.text,
+                                      )
+                                    else
+                                      _buildTextField(
+                                        'Expected CTC',
+                                        controller: _expectedCtcController,
+                                      ),
+                                  ],
+                                  SizedBox(height: 14.h),
+                                  if (!_isProfileUpdated)
+                                    AnimatedScaleButton(
+                                      onPressed: _showUpdateProfileDialog,
+                                      child: Container(
+                                        width: double.infinity,
+                                        padding: EdgeInsets.symmetric(
+                                          vertical: 12.h,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          gradient: LinearGradient(
+                                            colors: [
+                                              Colors.blue.shade700,
+                                              Colors.teal.shade500,
+                                            ],
+                                            begin: Alignment.topLeft,
+                                            end: Alignment.bottomRight,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            14.r,
+                                          ),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.teal.withValues(
+                                                alpha: 0.24,
+                                              ),
+                                              blurRadius: 12.r,
+                                              offset: Offset(0, 5.h),
+                                            ),
+                                          ],
+                                        ),
+                                        child: Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            Icon(
+                                              Icons.verified_outlined,
+                                              color: Colors.white,
+                                              size: 18.sp,
+                                            ),
+                                            SizedBox(width: 8.w),
+                                            Text(
+                                              'Update Profile',
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 14.sp,
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  SizedBox(height: 4.h),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+          ),
         );
       },
     );
@@ -908,12 +1337,24 @@ class ProfileDialogState extends State<ProfileDialog> {
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.initialData['name']);
-    _companyNameController = TextEditingController(text: widget.initialData['companyName']);
-    _companyProfileController = TextEditingController(text: widget.initialData['companyProfile']);
-    _designationController = TextEditingController(text: widget.initialData['designation']);
-    _experienceController = TextEditingController(text: widget.initialData['experience']);
-    _currentCtcController = TextEditingController(text: widget.initialData['currentCtc']);
-    _expectedCtcController = TextEditingController(text: widget.initialData['expectedCtc']);
+    _companyNameController = TextEditingController(
+      text: widget.initialData['companyName'],
+    );
+    _companyProfileController = TextEditingController(
+      text: widget.initialData['companyProfile'],
+    );
+    _designationController = TextEditingController(
+      text: widget.initialData['designation'],
+    );
+    _experienceController = TextEditingController(
+      text: widget.initialData['experience'],
+    );
+    _currentCtcController = TextEditingController(
+      text: widget.initialData['currentCtc'],
+    );
+    _expectedCtcController = TextEditingController(
+      text: widget.initialData['expectedCtc'],
+    );
     _specialization = widget.initialData['specialization'];
     _education = widget.initialData['education'];
     _skills = List<String>.from(widget.initialData['skills']);
@@ -931,8 +1372,12 @@ class ProfileDialogState extends State<ProfileDialog> {
     super.dispose();
   }
 
-  Widget _buildTextField(String label,
-      {bool multiline = false, TextEditingController? controller, String? Function(String?)? validator}) {
+  Widget _buildTextField(
+    String label, {
+    bool multiline = false,
+    TextEditingController? controller,
+    String? Function(String?)? validator,
+  }) {
     return Padding(
       padding: EdgeInsets.symmetric(vertical: 8.h),
       child: Container(
@@ -954,7 +1399,10 @@ class ProfileDialogState extends State<ProfileDialog> {
             ),
             filled: true,
             fillColor: Colors.white,
-            contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+            contentPadding: EdgeInsets.symmetric(
+              horizontal: 12.w,
+              vertical: 10.h,
+            ),
             counterText: multiline ? null : '',
           ),
           validator: validator,
@@ -982,7 +1430,11 @@ class ProfileDialogState extends State<ProfileDialog> {
         ),
         child: Text(
           widget.isProfileUpdated ? 'Edit Profile' : 'Update Profile',
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+          ),
         ),
       ),
       content: SingleChildScrollView(
@@ -996,19 +1448,26 @@ class ProfileDialogState extends State<ProfileDialog> {
                   padding: EdgeInsets.only(bottom: 8.h),
                   child: Text(
                     _errorMessage!,
-                    style: TextStyle(color: Colors.red.shade700, fontSize: 12.sp),
+                    style: TextStyle(
+                      color: Colors.red.shade700,
+                      fontSize: 12.sp,
+                    ),
                   ),
                 ),
               _buildTextField(
                 'Name',
                 controller: _nameController,
-                validator: (value) => value == null || value.trim().isEmpty ? 'Name is required' : null,
+                validator: (value) => value == null || value.trim().isEmpty
+                    ? 'Name is required'
+                    : null,
               ),
               if (widget.isRecruiter) ...[
                 _buildTextField(
                   'Company Name',
                   controller: _companyNameController,
-                  validator: (value) => value == null || value.trim().isEmpty ? 'Company Name is required' : null,
+                  validator: (value) => value == null || value.trim().isEmpty
+                      ? 'Company Name is required'
+                      : null,
                 ),
                 _buildTextField(
                   'Company Profile',
@@ -1028,22 +1487,33 @@ class ProfileDialogState extends State<ProfileDialog> {
                       initialValue: _specialization,
                       decoration: InputDecoration(
                         labelText: 'Specialization',
-                        labelStyle: TextStyle(color: Colors.grey, fontSize: 12.sp),
+                        labelStyle: TextStyle(
+                          color: Colors.grey,
+                          fontSize: 12.sp,
+                        ),
                         enabledBorder: OutlineInputBorder(
                           borderSide: BorderSide(color: Colors.grey.shade400),
                           borderRadius: BorderRadius.circular(12.r),
                         ),
                         focusedBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: Colors.teal, width: 2.w),
+                          borderSide: BorderSide(
+                            color: Colors.teal,
+                            width: 2.w,
+                          ),
                           borderRadius: BorderRadius.circular(12.r),
                         ),
                         filled: true,
                         fillColor: Colors.white,
-                        contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 12.w,
+                          vertical: 10.h,
+                        ),
                       ),
                       isExpanded: true,
                       menuMaxHeight: 300.h,
-                      items: widget.specializationOptions.map((String specialization) {
+                      items: widget.specializationOptions.map((
+                        String specialization,
+                      ) {
                         return DropdownMenuItem<String>(
                           value: specialization,
                           child: Container(
@@ -1051,7 +1521,10 @@ class ProfileDialogState extends State<ProfileDialog> {
                             child: Text(
                               specialization,
                               overflow: TextOverflow.ellipsis,
-                              style: TextStyle(color: Colors.black87, fontSize: 12.sp),
+                              style: TextStyle(
+                                color: Colors.black87,
+                                fontSize: 12.sp,
+                              ),
                             ),
                           ),
                         );
@@ -1063,7 +1536,8 @@ class ProfileDialogState extends State<ProfileDialog> {
                           _errorMessage = null;
                         });
                       },
-                      validator: (value) => value == null ? 'Specialization is required' : null,
+                      validator: (value) =>
+                          value == null ? 'Specialization is required' : null,
                     ),
                   ),
                 ),
@@ -1071,7 +1545,9 @@ class ProfileDialogState extends State<ProfileDialog> {
                   padding: EdgeInsets.symmetric(vertical: 8.h),
                   child: Card(
                     elevation: 2,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12.r),
+                    ),
                     child: Container(
                       constraints: BoxConstraints(maxWidth: 300.w),
                       padding: EdgeInsets.all(12.w),
@@ -1088,7 +1564,11 @@ class ProfileDialogState extends State<ProfileDialog> {
                           final selected = await showDialog<List<String>>(
                             context: context,
                             builder: (context) => MultiSelectDialog(
-                              items: widget.skillsBySpecialization[_specialization ?? 'Others'] ?? [],
+                              items:
+                                  widget
+                                      .skillsBySpecialization[_specialization ??
+                                      'Others'] ??
+                                  [],
                               selectedItems: _skills,
                             ),
                           );
@@ -1104,7 +1584,11 @@ class ProfileDialogState extends State<ProfileDialog> {
                           children: [
                             Text(
                               'Skills',
-                              style: TextStyle(fontSize: 12.sp, color: Colors.blue.shade800, fontWeight: FontWeight.w600),
+                              style: TextStyle(
+                                fontSize: 12.sp,
+                                color: Colors.blue.shade800,
+                                fontWeight: FontWeight.w600,
+                              ),
                               overflow: TextOverflow.ellipsis,
                               maxLines: 1,
                             ),
@@ -1112,12 +1596,16 @@ class ProfileDialogState extends State<ProfileDialog> {
                             Container(
                               constraints: BoxConstraints(maxWidth: 250.w),
                               child: Text(
-                                _skills.isEmpty ? 'Select skills' : _skills.join(', '),
+                                _skills.isEmpty
+                                    ? 'Select skills'
+                                    : _skills.join(', '),
                                 overflow: TextOverflow.ellipsis,
                                 maxLines: 2,
                                 style: TextStyle(
                                   fontSize: 14.sp,
-                                  color: _skills.isEmpty ? Colors.grey : Colors.black87,
+                                  color: _skills.isEmpty
+                                      ? Colors.grey
+                                      : Colors.black87,
                                 ),
                               ),
                             ),
@@ -1126,7 +1614,10 @@ class ProfileDialogState extends State<ProfileDialog> {
                                 padding: EdgeInsets.only(top: 6.h),
                                 child: Text(
                                   'At least one skill is required',
-                                  style: TextStyle(fontSize: 10.sp, color: Colors.red.shade700),
+                                  style: TextStyle(
+                                    fontSize: 10.sp,
+                                    color: Colors.red.shade700,
+                                  ),
                                 ),
                               ),
                           ],
@@ -1143,18 +1634,27 @@ class ProfileDialogState extends State<ProfileDialog> {
                       initialValue: _education,
                       decoration: InputDecoration(
                         labelText: 'Education',
-                        labelStyle: TextStyle(color: Colors.grey, fontSize: 12.sp),
+                        labelStyle: TextStyle(
+                          color: Colors.grey,
+                          fontSize: 12.sp,
+                        ),
                         enabledBorder: OutlineInputBorder(
                           borderSide: BorderSide(color: Colors.grey.shade400),
                           borderRadius: BorderRadius.circular(12.r),
                         ),
                         focusedBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: Colors.teal, width: 2.w),
+                          borderSide: BorderSide(
+                            color: Colors.teal,
+                            width: 2.w,
+                          ),
                           borderRadius: BorderRadius.circular(12.r),
                         ),
                         filled: true,
                         fillColor: Colors.white,
-                        contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 12.w,
+                          vertical: 10.h,
+                        ),
                       ),
                       isExpanded: true,
                       menuMaxHeight: 300.h,
@@ -1166,7 +1666,10 @@ class ProfileDialogState extends State<ProfileDialog> {
                             child: Text(
                               education,
                               overflow: TextOverflow.ellipsis,
-                              style: TextStyle(color: Colors.black87, fontSize: 12.sp),
+                              style: TextStyle(
+                                color: Colors.black87,
+                                fontSize: 12.sp,
+                              ),
                             ),
                           ),
                         );
@@ -1177,7 +1680,8 @@ class ProfileDialogState extends State<ProfileDialog> {
                           _errorMessage = null;
                         });
                       },
-                      validator: (value) => value == null ? 'Education is required' : null,
+                      validator: (value) =>
+                          value == null ? 'Education is required' : null,
                     ),
                   ),
                 ),
@@ -1186,24 +1690,36 @@ class ProfileDialogState extends State<ProfileDialog> {
                   child: Container(
                     constraints: BoxConstraints(maxWidth: 300.w),
                     child: DropdownButtonFormField<String>(
-                      initialValue: _experienceController.text.isNotEmpty &&
-                              widget.experienceOptions.contains(_experienceController.text)
+                      initialValue:
+                          _experienceController.text.isNotEmpty &&
+                              widget.experienceOptions.contains(
+                                _experienceController.text,
+                              )
                           ? _experienceController.text
                           : null,
                       decoration: InputDecoration(
                         labelText: 'Experience',
-                        labelStyle: TextStyle(color: Colors.grey, fontSize: 12.sp),
+                        labelStyle: TextStyle(
+                          color: Colors.grey,
+                          fontSize: 12.sp,
+                        ),
                         enabledBorder: OutlineInputBorder(
                           borderSide: BorderSide(color: Colors.grey.shade400),
                           borderRadius: BorderRadius.circular(12.r),
                         ),
                         focusedBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: Colors.teal, width: 2.w),
+                          borderSide: BorderSide(
+                            color: Colors.teal,
+                            width: 2.w,
+                          ),
                           borderRadius: BorderRadius.circular(12.r),
                         ),
                         filled: true,
                         fillColor: Colors.white,
-                        contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 12.w,
+                          vertical: 10.h,
+                        ),
                       ),
                       isExpanded: true,
                       menuMaxHeight: 300.h,
@@ -1215,7 +1731,10 @@ class ProfileDialogState extends State<ProfileDialog> {
                             child: Text(
                               experience,
                               overflow: TextOverflow.ellipsis,
-                              style: TextStyle(color: Colors.black87, fontSize: 12.sp),
+                              style: TextStyle(
+                                color: Colors.black87,
+                                fontSize: 12.sp,
+                              ),
                             ),
                           ),
                         );
@@ -1226,12 +1745,19 @@ class ProfileDialogState extends State<ProfileDialog> {
                           _errorMessage = null;
                         });
                       },
-                      validator: (value) => value == null ? 'Experience is required' : null,
+                      validator: (value) =>
+                          value == null ? 'Experience is required' : null,
                     ),
                   ),
                 ),
-                _buildTextField('Current CTC', controller: _currentCtcController),
-                _buildTextField('Expected CTC', controller: _expectedCtcController),
+                _buildTextField(
+                  'Current CTC',
+                  controller: _currentCtcController,
+                ),
+                _buildTextField(
+                  'Expected CTC',
+                  controller: _expectedCtcController,
+                ),
               ],
             ],
           ),
@@ -1254,7 +1780,8 @@ class ProfileDialogState extends State<ProfileDialog> {
                           'name': _nameController.text.trim(),
                           'mobileNumber': widget.mobileNumber!.trim(),
                           'companyName': _companyNameController.text.trim(),
-                          'companyProfile': _companyProfileController.text.trim(),
+                          'companyProfile': _companyProfileController.text
+                              .trim(),
                           'designation': _designationController.text.trim(),
                           'updatedAt': FieldValue.serverTimestamp(),
                         }
@@ -1265,8 +1792,12 @@ class ProfileDialogState extends State<ProfileDialog> {
                           'education': _education,
                           'experience': _experienceController.text.trim(),
                           'specialization': _specialization,
-                          'currentCtc': _currentCtcController.text.replaceAll(' LPA (INR)', '').trim(),
-                          'expectedCtc': _expectedCtcController.text.replaceAll(' LPA (INR)', '').trim(),
+                          'currentCtc': _currentCtcController.text
+                              .replaceAll(' LPA (INR)', '')
+                              .trim(),
+                          'expectedCtc': _expectedCtcController.text
+                              .replaceAll(' LPA (INR)', '')
+                              .trim(),
                           'updatedAt': FieldValue.serverTimestamp(),
                         };
                   widget.onUpdate(profileData, setState);
@@ -1294,13 +1825,18 @@ class AnimatedScaleButton extends StatefulWidget {
   final VoidCallback onPressed;
   final Widget child;
 
-  const AnimatedScaleButton({required this.onPressed, required this.child, super.key});
+  const AnimatedScaleButton({
+    required this.onPressed,
+    required this.child,
+    super.key,
+  });
 
   @override
   AnimatedScaleButtonState createState() => AnimatedScaleButtonState();
 }
 
-class AnimatedScaleButtonState extends State<AnimatedScaleButton> with SingleTickerProviderStateMixin {
+class AnimatedScaleButtonState extends State<AnimatedScaleButton>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
 
@@ -1329,10 +1865,7 @@ class AnimatedScaleButtonState extends State<AnimatedScaleButton> with SingleTic
         widget.onPressed();
       },
       onTapCancel: () => _controller.reverse(),
-      child: ScaleTransition(
-        scale: _scaleAnimation,
-        child: widget.child,
-      ),
+      child: ScaleTransition(scale: _scaleAnimation, child: widget.child),
     );
   }
 }
@@ -1341,7 +1874,11 @@ class MultiSelectDialog extends StatefulWidget {
   final List<String> items;
   final List<String> selectedItems;
 
-  const MultiSelectDialog({required this.items, required this.selectedItems, super.key});
+  const MultiSelectDialog({
+    required this.items,
+    required this.selectedItems,
+    super.key,
+  });
 
   @override
   MultiSelectDialogState createState() => MultiSelectDialogState();
@@ -1372,7 +1909,11 @@ class MultiSelectDialogState extends State<MultiSelectDialog> {
         ),
         child: const Text(
           'Select Skills',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+          ),
         ),
       ),
       content: SingleChildScrollView(
@@ -1408,13 +1949,19 @@ class MultiSelectDialogState extends State<MultiSelectDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel', style: TextStyle(color: Colors.grey, fontSize: 12)),
+          child: const Text(
+            'Cancel',
+            style: TextStyle(color: Colors.grey, fontSize: 12),
+          ),
         ),
         TextButton(
           onPressed: () {
             Navigator.pop(context, _tempSelectedItems);
           },
-          child: const Text('OK', style: TextStyle(color: Colors.teal, fontSize: 12)),
+          child: const Text(
+            'OK',
+            style: TextStyle(color: Colors.teal, fontSize: 12),
+          ),
         ),
       ],
     );
