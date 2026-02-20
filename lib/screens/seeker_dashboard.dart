@@ -252,7 +252,7 @@ class _SeekerDashboardState extends State<SeekerDashboard> {
         ),
       ),
       body: DefaultTabController(
-        length: 5,
+        length: 4,
         child: Column(
           children: [
             Container(
@@ -284,7 +284,6 @@ class _SeekerDashboardState extends State<SeekerDashboard> {
                   _buildTab(Icons.work, 'Jobs'),
                   _buildTab(Icons.work_history_rounded, 'Applications'),
                   _buildTab(Icons.description, 'Resume'),
-                  _buildTab(Icons.notification_add, 'Notifications'),
                 ],
               ),
             ),
@@ -293,12 +292,11 @@ class _SeekerDashboardState extends State<SeekerDashboard> {
                 color: Colors.grey[100],
                 child: TabBarView(
                   children: [
-                    const ProfileScreen(isRecruiter: false),
-                    const JobScreen(isSeekerProfileView: true),
-                    MyApplicationsScreen(seekerId: uid),
-                    const ResumeBuilderScreen(),
-                    const NotificationsScreen(isRecruiter: false),
-                  ],
+                      const ProfileScreen(isRecruiter: false),
+                      const JobScreen(isSeekerProfileView: true),
+                      MyApplicationsScreen(seekerId: uid),
+                      const ResumeBuilderScreen(),
+                    ],
                 ),
               ),
             ),
@@ -352,15 +350,17 @@ class _SeekerDashboardState extends State<SeekerDashboard> {
           children: [
             Icon(icon, size: 16.sp, color: Colors.white),
             SizedBox(width: 4.w),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 14.sp,
-                color: Colors.white,
-                fontWeight: FontWeight.w500,
+            Flexible(
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 14.sp,
+                  color: Colors.white,
+                  fontWeight: FontWeight.w500,
+                ),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
               ),
-              overflow: TextOverflow.ellipsis,
-              maxLines: 1,
             ),
           ],
         ),
