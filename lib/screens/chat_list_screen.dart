@@ -18,10 +18,18 @@ class ChatListScreen extends StatefulWidget {
 class _ChatListScreenState extends State<ChatListScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<List<QueryDocumentSnapshot>> _getConversations() async {
@@ -77,6 +85,44 @@ class _ChatListScreenState extends State<ChatListScreen> {
         'jobTitle': 'Unknown Job',
       };
     }
+  }
+
+  Future<List<Map<String, dynamic>>> _buildConversationItems(
+    List<Map<String, dynamic>> conversationList,
+  ) async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) return [];
+
+    final items = await Future.wait(
+      conversationList.map((conv) async {
+        final senderId = conv['senderId'] as String;
+        final recipientId = conv['recipientId'] as String;
+        final otherUserId = senderId == uid ? recipientId : senderId;
+        final info = await _getConversationInfo(
+          conv['chatId'] as String,
+          otherUserId,
+          conv['jobId'] as String,
+        );
+
+        return {
+          ...conv,
+          'name': info['name'] ?? 'Unknown',
+          'photoUrl': info['photoUrl'],
+          'jobTitle': info['jobTitle'] ?? 'Unknown Job',
+          'otherUserId': otherUserId,
+        };
+      }),
+    );
+
+    final query = _searchQuery.trim().toLowerCase();
+    if (query.isEmpty) return items;
+
+    return items.where((item) {
+      final name = (item['name'] as String? ?? '').toLowerCase();
+      final jobTitle = (item['jobTitle'] as String? ?? '').toLowerCase();
+      final message = (item['message'] as String? ?? '').toLowerCase();
+      return name.contains(query) || jobTitle.contains(query) || message.contains(query);
+    }).toList();
   }
 
   // ────────────────────────────── CHAT OPTIONS (DELETE) ──────────────────────────────
@@ -202,189 +248,238 @@ class _ChatListScreenState extends State<ChatListScreen> {
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
-      body: FutureBuilder<List<QueryDocumentSnapshot>>(
-        future: _getConversations(),
-        builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            return Center(
-              child: Text(
-                'Error loading conversations',
-                style: TextStyle(fontSize: 16.sp),
+      body: Column(
+        children: [
+          Padding(
+            padding: EdgeInsets.fromLTRB(12.w, 12.h, 12.w, 8.h),
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: 'Search chats by name, job, or message...',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: _searchQuery.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() => _searchQuery = '');
+                        },
+                      )
+                    : null,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12.r),
+                ),
+                contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
               ),
-            );
-          }
-
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          final messages = snapshot.data ?? [];
-          if (messages.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.chat_bubble_outline,
-                    size: 64.sp,
-                    color: Colors.grey,
-                  ),
-                  SizedBox(height: 16.h),
-                  Text(
-                    'No conversations yet',
-                    style: TextStyle(
-                      fontSize: 18.sp,
-                      color: Colors.grey[600],
-                      fontWeight: FontWeight.w500,
+              onChanged: (value) {
+                setState(() => _searchQuery = value);
+              },
+            ),
+          ),
+          Expanded(
+            child: FutureBuilder<List<QueryDocumentSnapshot>>(
+              future: _getConversations(),
+              builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Text(
+                      'Error loading conversations',
+                      style: TextStyle(fontSize: 16.sp),
                     ),
-                  ),
-                  SizedBox(height: 8.h),
-                  Text(
-                    'Start chatting with recruiters or job seekers',
-                    style: TextStyle(
-                      fontSize: 14.sp,
-                      color: Colors.grey[500],
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-            );
-          }
+                  );
+                }
 
-          // Group messages by chatId and get the latest message for each
-          final conversations = <String, Map<String, dynamic>>{};
-          for (final doc in messages) {
-            final data = doc.data() as Map<String, dynamic>;
-            final senderId = data['senderId'] as String;
-            final recipientId = data['recipientId'] as String;
-            final participants = [senderId, recipientId];
-            participants.sort();
-            final chatId = '${participants[0]}_${participants[1]}';
-            final timestamp = data['timestamp'] as Timestamp?;
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
-            if (!conversations.containsKey(chatId) ||
-                (timestamp != null && conversations[chatId]!['timestamp'] == null) ||
-                (timestamp != null && conversations[chatId]!['timestamp'] != null &&
-                 timestamp.compareTo(conversations[chatId]!['timestamp']) > 0)) {
-              conversations[chatId] = {
-                'chatId': chatId,
-                'message': data['message'] ?? '',
-                'timestamp': timestamp,
-                'senderId': senderId,
-                'recipientId': recipientId,
-                'jobId': data['jobId'],
-                'isRead': data['status'] == 'read',
-              };
-            }
-          }
-
-          final conversationList = conversations.values.toList()
-            ..sort((a, b) {
-              final aTime = a['timestamp'] as Timestamp?;
-              final bTime = b['timestamp'] as Timestamp?;
-              if (aTime == null && bTime == null) return 0;
-              if (aTime == null) return 1;
-              if (bTime == null) return -1;
-              return bTime.compareTo(aTime);
-            });
-
-          return ListView.builder(
-            itemCount: conversationList.length,
-            itemBuilder: (context, index) {
-              final conv = conversationList[index];
-              final chatId = conv['chatId'] as String;
-              final message = conv['message'] as String;
-              final timestamp = conv['timestamp'] as Timestamp?;
-              final jobId = conv['jobId'] as String;
-              final senderId = conv['senderId'] as String;
-              final recipientId = conv['recipientId'] as String;
-              final uid = _auth.currentUser?.uid;
-              final otherUserId = senderId == uid ? recipientId : senderId;
-
-              return FutureBuilder<Map<String, dynamic>>(
-                future: _getConversationInfo(chatId, otherUserId, jobId),
-                builder: (context, infoSnapshot) {
-                  final info = infoSnapshot.data ?? {'name': 'Loading...', 'photoUrl': null, 'jobTitle': 'Loading...'};
-                  final name = info['name'] as String;
-                  final photoUrl = info['photoUrl'] as String?;
-                  final jobTitle = info['jobTitle'] as String;
-
-                  return ListTile(
-                    leading: CircleAvatar(
-                      radius: 24.sp,
-                      backgroundImage: photoUrl != null ? NetworkImage(photoUrl) : null,
-                      child: photoUrl == null
-                          ? Text(
-                              name.isNotEmpty ? name[0].toUpperCase() : '?',
-                              style: TextStyle(
-                                fontSize: 18.sp,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            )
-                          : null,
-                    ),
-                    title: Text(
-                      name,
-                      style: TextStyle(
-                        fontSize: 16.sp,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black87,
-                      ),
-                    ),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                final messages = snapshot.data ?? [];
+                if (messages.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
+                        Icon(
+                          Icons.chat_bubble_outline,
+                          size: 64.sp,
+                          color: Colors.grey,
+                        ),
+                        SizedBox(height: 16.h),
                         Text(
-                          jobTitle,
+                          'No conversations yet',
                           style: TextStyle(
-                            fontSize: 12.sp,
+                            fontSize: 18.sp,
                             color: Colors.grey[600],
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
-                        SizedBox(height: 2.h),
+                        SizedBox(height: 8.h),
                         Text(
-                          message,
+                          'Start chatting with recruiters or job seekers',
                           style: TextStyle(
                             fontSize: 14.sp,
-                            color: Colors.black54,
+                            color: Colors.grey[500],
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
                         ),
                       ],
                     ),
-                    trailing: timestamp != null
-                        ? Text(
-                            DateFormat('MMM d, HH:mm').format(timestamp.toDate()),
-                            style: TextStyle(
-                              fontSize: 12.sp,
-                              color: Colors.grey[500],
-                            ),
-                          )
-                        : null,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => ChatScreen(
-                            chatId: chatId,
-                            recipientId: otherUserId,
-                            jobId: jobId,
-                          ),
+                  );
+                }
+
+                final conversations = <String, Map<String, dynamic>>{};
+                for (final doc in messages) {
+                  final data = doc.data() as Map<String, dynamic>;
+                  final senderId = data['senderId'] as String;
+                  final recipientId = data['recipientId'] as String;
+                  final participants = [senderId, recipientId];
+                  participants.sort();
+                  final chatId = '${participants[0]}_${participants[1]}';
+                  final timestamp = data['timestamp'] as Timestamp?;
+
+                  if (!conversations.containsKey(chatId) ||
+                      (timestamp != null && conversations[chatId]!['timestamp'] == null) ||
+                      (timestamp != null &&
+                          conversations[chatId]!['timestamp'] != null &&
+                          timestamp.compareTo(conversations[chatId]!['timestamp']) > 0)) {
+                    conversations[chatId] = {
+                      'chatId': chatId,
+                      'message': data['message'] ?? '',
+                      'timestamp': timestamp,
+                      'senderId': senderId,
+                      'recipientId': recipientId,
+                      'jobId': data['jobId'],
+                      'isRead': data['status'] == 'read',
+                    };
+                  }
+                }
+
+                final conversationList = conversations.values.toList()
+                  ..sort((a, b) {
+                    final aTime = a['timestamp'] as Timestamp?;
+                    final bTime = b['timestamp'] as Timestamp?;
+                    if (aTime == null && bTime == null) return 0;
+                    if (aTime == null) return 1;
+                    if (bTime == null) return -1;
+                    return bTime.compareTo(aTime);
+                  });
+
+                return FutureBuilder<List<Map<String, dynamic>>>(
+                  future: _buildConversationItems(conversationList),
+                  builder: (context, listSnapshot) {
+                    if (listSnapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    if (listSnapshot.hasError) {
+                      return Center(
+                        child: Text(
+                          'Error loading conversation details',
+                          style: TextStyle(fontSize: 16.sp),
                         ),
                       );
-                    },
-                    onLongPress: () {
-                      _showChatOptions(context, chatId);
-                    },
-                  );
-                },
-              );
-            },
-          );
-        },
+                    }
+
+                    final items = listSnapshot.data ?? [];
+                    if (items.isEmpty) {
+                      return Center(
+                        child: Text(
+                          _searchQuery.trim().isEmpty ? 'No conversations yet' : 'No chats found for your search',
+                          style: TextStyle(fontSize: 15.sp, color: Colors.grey[700]),
+                        ),
+                      );
+                    }
+
+                    return ListView.builder(
+                      itemCount: items.length,
+                      itemBuilder: (context, index) {
+                        final item = items[index];
+                        final chatId = item['chatId'] as String;
+                        final message = item['message'] as String;
+                        final timestamp = item['timestamp'] as Timestamp?;
+                        final jobId = item['jobId'] as String;
+                        final otherUserId = item['otherUserId'] as String;
+                        final name = item['name'] as String;
+                        final photoUrl = item['photoUrl'] as String?;
+                        final jobTitle = item['jobTitle'] as String;
+
+                        return ListTile(
+                          leading: CircleAvatar(
+                            radius: 24.sp,
+                            backgroundImage: photoUrl != null ? NetworkImage(photoUrl) : null,
+                            child: photoUrl == null
+                                ? Text(
+                                    name.isNotEmpty ? name[0].toUpperCase() : '?',
+                                    style: TextStyle(
+                                      fontSize: 18.sp,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : null,
+                          ),
+                          title: Text(
+                            name,
+                            style: TextStyle(
+                              fontSize: 16.sp,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                jobTitle,
+                                style: TextStyle(
+                                  fontSize: 12.sp,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                              SizedBox(height: 2.h),
+                              Text(
+                                message,
+                                style: TextStyle(
+                                  fontSize: 14.sp,
+                                  color: Colors.black54,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                          trailing: timestamp != null
+                              ? Text(
+                                  DateFormat('MMM d, HH:mm').format(timestamp.toDate()),
+                                  style: TextStyle(
+                                    fontSize: 12.sp,
+                                    color: Colors.grey[500],
+                                  ),
+                                )
+                              : null,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => ChatScreen(
+                                  chatId: chatId,
+                                  recipientId: otherUserId,
+                                  jobId: jobId,
+                                ),
+                              ),
+                            );
+                          },
+                          onLongPress: () {
+                            _showChatOptions(context, chatId);
+                          },
+                        );
+                      },
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }

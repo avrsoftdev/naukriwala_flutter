@@ -34,6 +34,7 @@ class ChatScreen extends StatefulWidget {
 
 class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   final _messageController = TextEditingController();
+  final _searchController = TextEditingController();
   final _authService = AuthService();
   final _firestore = FirebaseFirestore.instance;
   final _auth = FirebaseAuth.instance;
@@ -49,6 +50,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   String? _lastMessageId;
   bool _isSending = false;
   bool _isAppInForeground = true; // Track app state
+  bool _isSearchingMessages = false;
+  String _messageSearchQuery = '';
 
   @override
   void initState() {
@@ -68,6 +71,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _messageController.dispose();
+    _searchController.dispose();
     
     // Clear active chat safely after widget tree operations complete
     try {
@@ -517,20 +521,49 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       designSize: const Size(360, 690),
       builder: (context, _) => Scaffold(
         appBar: AppBar(
-          title: FutureBuilder(
-            future: Future.value(_chatDetails),
-            builder: (_, snap) {
-              final title = _isRecruiter == true
-                  ? (_chatDetails != null ? _chatDetails!['recipientName'] : null) ?? widget.recipientId
-                  : _chatDetails?['company'] ?? widget.recipientId;
+          title: _isSearchingMessages
+              ? TextField(
+                  controller: _searchController,
+                  autofocus: true,
+                  style: TextStyle(fontSize: 15.sp, color: Colors.white),
+                  cursorColor: Colors.white,
+                  decoration: InputDecoration(
+                    hintText: 'Search messages...',
+                    hintStyle: TextStyle(color: Colors.white70, fontSize: 14.sp),
+                    border: InputBorder.none,
+                  ),
+                  onChanged: (value) {
+                    setState(() => _messageSearchQuery = value.trim().toLowerCase());
+                  },
+                )
+              : FutureBuilder(
+                  future: Future.value(_chatDetails),
+                  builder: (_, snap) {
+                    final title = _isRecruiter == true
+                        ? (_chatDetails != null ? _chatDetails!['recipientName'] : null) ?? widget.recipientId
+                        : _chatDetails?['company'] ?? widget.recipientId;
 
-              return Text(
-                title,
-                style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold, color: Colors.white),
-                overflow: TextOverflow.ellipsis,
-              );
-            },
-          ),
+                    return Text(
+                      title,
+                      style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold, color: Colors.white),
+                      overflow: TextOverflow.ellipsis,
+                    );
+                  },
+                ),
+          actions: [
+            IconButton(
+              icon: Icon(_isSearchingMessages ? Icons.close : Icons.search, color: Colors.white),
+              onPressed: () {
+                setState(() {
+                  _isSearchingMessages = !_isSearchingMessages;
+                  if (!_isSearchingMessages) {
+                    _searchController.clear();
+                    _messageSearchQuery = '';
+                  }
+                });
+              },
+            ),
+          ],
           flexibleSpace: Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
@@ -562,6 +595,14 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                       }
 
                       final docs = snapshot.data!.docs;
+                      final visibleDocs = _messageSearchQuery.isEmpty
+                          ? docs
+                          : docs.where((doc) {
+                              final data = doc.data() as Map<String, dynamic>;
+                              final messageText = (data['message'] ?? '').toString().toLowerCase();
+                              return messageText.contains(_messageSearchQuery);
+                            }).toList();
+
                       final latest = docs.isNotEmpty ? docs.first : null;
                       if (latest != null && latest.id != _lastMessageId) {
                         _lastMessageId = latest.id;
@@ -580,12 +621,21 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                         }
                       }
 
+                      if (visibleDocs.isEmpty) {
+                        return Center(
+                          child: Text(
+                            _messageSearchQuery.isEmpty ? 'No messages yet' : 'No messages found',
+                            style: TextStyle(fontSize: 15.sp, color: Colors.grey[700]),
+                          ),
+                        );
+                      }
+
                       return ListView.builder(
                         reverse: true,
-                        itemCount: docs.length,
+                        itemCount: visibleDocs.length,
                         itemBuilder: (_, i) {
-                          final data = docs[i].data() as Map<String, dynamic>;
-                          final messageId = docs[i].id;
+                          final data = visibleDocs[i].data() as Map<String, dynamic>;
+                          final messageId = visibleDocs[i].id;
                           final isMe = data['senderId'] == _auth.currentUser?.uid;
                           final status = data['status'] ?? 'sent';
                           final isEdited = data['isEdited'] ?? false;
