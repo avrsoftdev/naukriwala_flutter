@@ -7,12 +7,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:naukariwala/screens/apply_job_screen.dart';
 import 'package:naukariwala/screens/edit_job_screen.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
 
 class JobScreen extends StatefulWidget {
   final bool isSeekerProfileView;
+  final bool showSavedOnly;
 
-  const JobScreen({super.key, this.isSeekerProfileView = false});
+  const JobScreen({
+    super.key,
+    this.isSeekerProfileView = false,
+    this.showSavedOnly = false,
+  });
 
   @override
   JobScreenState createState() => JobScreenState();
@@ -33,6 +39,7 @@ class JobScreenState extends State<JobScreen> {
   Map<String, dynamic>? _jobData;
   bool _isEligible = false;
   String? _ineligibilityReason;
+  final Set<String> _savedJobIds = {};
 
   final List<String> experienceOptions = [
     'Fresher',
@@ -241,8 +248,37 @@ final Map<String, List<String>> skillsBySpecialization = {
 
   Future<void> _initializeData() async {
     await fetchSeekerProfile();
+    await _fetchSavedJobs();
     if (_seekerProfile != null || FirebaseAuth.instance.currentUser == null) {
       await fetchJobsFromFirestore();
+    }
+  }
+
+  Future<void> _fetchSavedJobs() async {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) return;
+
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('Bookmarks')
+          .doc(currentUser.uid)
+          .collection('SavedJobs')
+          .get();
+
+      if (!mounted) return;
+      setState(() {
+        _savedJobIds
+          ..clear()
+          ..addAll(snapshot.docs.map((doc) => doc.id));
+        _recomputeFilteredJobs();
+      });
+    } catch (e, stackTrace) {
+      dev.log(
+        '[2025-09-01 14:44 IST] Error fetching saved jobs: $e',
+        name: 'JobScreen',
+        error: e,
+        stackTrace: stackTrace,
+      );
     }
   }
 
@@ -346,7 +382,7 @@ final Map<String, List<String>> skillsBySpecialization = {
       if (mounted) {
         setState(() {
           jobs = jobList;
-          filteredJobs = jobList;
+          _recomputeFilteredJobs();
           isLoading = false;
           errorMessage = null;
         });
@@ -371,12 +407,20 @@ final Map<String, List<String>> skillsBySpecialization = {
 
   void _filterJobs(String query) {
     _searchQuery = query.toLowerCase();
+    setState(_recomputeFilteredJobs);
+  }
+
+  void _recomputeFilteredJobs() {
+    final sourceJobs = widget.showSavedOnly
+        ? jobs.where((job) => _savedJobIds.contains(job['jobId']?.toString() ?? '')).toList()
+        : jobs;
+
     if (_searchQuery.isEmpty) {
-      setState(() => filteredJobs = jobs);
+      filteredJobs = sourceJobs;
       return;
     }
 
-    final results = jobs.where((job) {
+    filteredJobs = sourceJobs.where((job) {
       final title = (job['title'] ?? '').toString().toLowerCase();
       final company = (job['company'] ?? '').toString().toLowerCase();
       final location = (job['location'] ?? '').toString().toLowerCase();
@@ -385,8 +429,119 @@ final Map<String, List<String>> skillsBySpecialization = {
           location.contains(_searchQuery);
     }).toList();
 
-    dev.log('[2025-09-01 14:44 IST] Filtered jobs: ${results.length} found for query "$_searchQuery"', name: 'JobScreen');
-    setState(() => filteredJobs = results);
+    dev.log(
+      '[2025-09-01 14:44 IST] Filtered jobs: ${filteredJobs.length} found for query "$_searchQuery"',
+      name: 'JobScreen',
+    );
+  }
+
+  Future<void> _shareJob(Map<String, dynamic> job) async {
+    final text = [
+      'Job Opportunity on Naukariwala',
+      'Title: ${job['title'] ?? 'N/A'}',
+      'Company: ${job['company'] ?? 'N/A'}',
+      'Location: ${job['location'] ?? 'N/A'}',
+      'Type: ${job['jobType'] ?? 'N/A'}',
+      'Salary: ${job['salary'] ?? 'Not specified'}',
+      '',
+      'Shared via Naukariwala',
+    ].join('\n');
+
+    try {
+      await Share.share(text, subject: 'Job Opportunity');
+    } catch (e, stackTrace) {
+      dev.log(
+        '[2025-09-01 14:44 IST] Error sharing job: $e',
+        name: 'JobScreen',
+        error: e,
+        stackTrace: stackTrace,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to share job: $e'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  Future<void> _toggleSavedJob(Map<String, dynamic> job) async {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please log in to save jobs.'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    final jobId = job['jobId']?.toString() ?? '';
+    if (jobId.isEmpty) return;
+
+    final docRef = FirebaseFirestore.instance
+        .collection('Bookmarks')
+        .doc(currentUser.uid)
+        .collection('SavedJobs')
+        .doc(jobId);
+
+    final isAlreadySaved = _savedJobIds.contains(jobId);
+
+    try {
+      if (isAlreadySaved) {
+        await docRef.delete();
+      } else {
+        await docRef.set({
+          'jobId': jobId,
+          'title': job['title'],
+          'company': job['company'],
+          'location': job['location'],
+          'jobType': job['jobType'],
+          'recruiterId': job['recruiterId'],
+          'savedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      }
+
+      if (!mounted) return;
+      setState(() {
+        if (isAlreadySaved) {
+          _savedJobIds.remove(jobId);
+          if (widget.showSavedOnly && _selectedJob?['jobId']?.toString() == jobId) {
+            _selectedJob = null;
+          }
+        } else {
+          _savedJobIds.add(jobId);
+        }
+        _recomputeFilteredJobs();
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(isAlreadySaved ? 'Removed from saved jobs' : 'Job saved successfully'),
+          backgroundColor: Colors.teal,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e, stackTrace) {
+      dev.log(
+        '[2025-09-01 14:44 IST] Error saving job: $e',
+        name: 'JobScreen',
+        error: e,
+        stackTrace: stackTrace,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to save job: $e'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   Future<void> _selectJob(Map<String, dynamic> job) async {
@@ -688,7 +843,9 @@ final Map<String, List<String>> skillsBySpecialization = {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          widget.isSeekerProfileView ? 'Available Jobs' : 'Search & Available Jobs',
+          widget.showSavedOnly
+              ? 'Saved Jobs'
+              : (widget.isSeekerProfileView ? 'Available Jobs' : 'Search & Available Jobs'),
           style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 20.sp),
         ),
         flexibleSpace: Container(
@@ -745,7 +902,9 @@ final Map<String, List<String>> skillsBySpecialization = {
                       child: filteredJobs.isEmpty
                           ? Center(
                               child: Text(
-                                'No jobs found matching your criteria.',
+                                widget.showSavedOnly
+                                    ? 'No saved jobs yet.'
+                                    : 'No jobs found matching your criteria.',
                                 style: TextStyle(fontSize: 16.sp, color: Colors.grey.shade700),
                                 textAlign: TextAlign.center,
                               ),
@@ -754,8 +913,10 @@ final Map<String, List<String>> skillsBySpecialization = {
                               itemCount: filteredJobs.length,
                               itemBuilder: (context, index) {
                                 final job = filteredJobs[index];
+                                final jobId = job['jobId']?.toString() ?? '';
                                 final isApplied = _appliedJobIds.contains(job['jobId']);
                                 final isFeatured = job['isFeatured'] ?? false;
+                                final isSaved = _savedJobIds.contains(jobId);
                                 Color cardColor = _seekerProfile != null
                                     ? (job['isEligible'] == true ? Colors.green.shade100 : Colors.red.shade100)
                                     : Colors.grey.shade200;
@@ -779,6 +940,28 @@ final Map<String, List<String>> skillsBySpecialization = {
                                           ),
                                           child: ListTile(
                                             contentPadding: EdgeInsets.all(16.r),
+                                            trailing: SizedBox(
+                                              width: 84.w,
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  IconButton(
+                                                    icon: Icon(Icons.share, color: Colors.blue.shade800, size: 22.sp),
+                                                    onPressed: () => _shareJob(job),
+                                                    tooltip: 'Share',
+                                                  ),
+                                                  IconButton(
+                                                    icon: Icon(
+                                                      isSaved ? Icons.bookmark : Icons.bookmark_border,
+                                                      color: isSaved ? Colors.orange.shade700 : Colors.grey.shade700,
+                                                      size: 24.sp,
+                                                    ),
+                                                    onPressed: () => _toggleSavedJob(job),
+                                                    tooltip: isSaved ? 'Saved' : 'Save',
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
                                             title: Row(
                                               children: [
                                                 Flexible(

@@ -209,6 +209,26 @@ class _SeekerDashboardState extends State<SeekerDashboard> {
                 },
               ),
               _buildDrawerItem(
+                icon: Icons.bookmark,
+                title: 'Saved Jobs',
+                onTap: () {
+                  dev.log(
+                    'Navigating to Saved Jobs',
+                    name: 'SeekerDashboard',
+                  );
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const JobScreen(
+                        isSeekerProfileView: true,
+                        showSavedOnly: true,
+                      ),
+                    ),
+                  );
+                },
+              ),
+              _buildDrawerItem(
                 icon: Icons.description,
                 title: 'Resume',
                 onTap: () {
@@ -269,7 +289,7 @@ class _SeekerDashboardState extends State<SeekerDashboard> {
         ),
       ),
       body: DefaultTabController(
-        length: 4,
+        length: 5,
         child: Column(
           children: [
             Container(
@@ -299,6 +319,7 @@ class _SeekerDashboardState extends State<SeekerDashboard> {
                 tabs: [
                   _buildTab(Icons.person, 'Profile'),
                   _buildTab(Icons.work, 'Jobs'),
+                  _buildTab(Icons.bookmark, 'Saved Jobs'),
                   _buildTab(Icons.work_history_rounded, 'Applications'),
                   _buildTab(Icons.description, 'Resume'),
                 ],
@@ -311,6 +332,10 @@ class _SeekerDashboardState extends State<SeekerDashboard> {
                   children: [
                     const ProfileScreen(isRecruiter: false),
                     const JobScreen(isSeekerProfileView: true),
+                    const JobScreen(
+                      isSeekerProfileView: true,
+                      showSavedOnly: true,
+                    ),
                     MyApplicationsScreen(seekerId: uid),
                     const ResumeBuilderScreen(),
                   ],
