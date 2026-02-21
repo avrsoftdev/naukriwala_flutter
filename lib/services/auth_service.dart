@@ -31,6 +31,17 @@ class AuthService {
   final FirebaseStorage _storage = FirebaseStorage.instance;
   final FirebaseMessaging _messaging = FirebaseMessaging.instance;
 
+  Future<User> _getFreshAuthenticatedUser() async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      throw const AuthException(
+        'Session expired. Please login again and retry.',
+      );
+    }
+    await user.getIdToken(true);
+    return user;
+  }
+
   // Helper method to get Play Integrity token
   Future<String?> getPlayIntegrityToken() async {
     const platform = MethodChannel('play_integrity_channel');
@@ -439,13 +450,29 @@ class AuthService {
   }
 
   Future<String> uploadSeekerResume(File file) async {
-    final uid = _auth.currentUser?.uid;
-    if (uid == null) throw const AuthException("User not logged in");
+    final user = await _getFreshAuthenticatedUser();
+    final uid = user.uid;
 
     try {
       dev.log('[2025-10-10 00:35 IST] Uploading resume for seeker $uid', name: 'AuthService');
-      final ref = _storage.ref().child('seekers/$uid/resume_${DateTime.now().millisecondsSinceEpoch}.pdf');
-      final uploadTask = await ref.putFile(file);
+      final ref = _storage.ref().child('seeker_resumes/$uid/resume.pdf');
+      TaskSnapshot uploadTask;
+      try {
+        uploadTask = await ref.putFile(
+          file,
+          SettableMetadata(contentType: 'application/pdf'),
+        );
+      } on FirebaseException catch (e) {
+        if (e.code == 'unauthenticated') {
+          await user.getIdToken(true);
+          uploadTask = await ref.putFile(
+            file,
+            SettableMetadata(contentType: 'application/pdf'),
+          );
+        } else {
+          rethrow;
+        }
+      }
       final downloadUrl = await uploadTask.ref.getDownloadURL();
 
       await _firestore.collection('Seekers').doc(uid).set(
@@ -459,6 +486,84 @@ class AuthService {
       dev.log('[2025-10-10 00:35 IST] uploadSeekerResume ERROR for UID: $uid: $e', name: 'AuthService', error: e, stackTrace: stackTrace);
       if (e is FirebaseException) {
         throw AuthException('Failed to upload resume: ${e.code} - ${e.message}');
+      }
+      rethrow;
+    }
+  }
+
+  Future<String> uploadProfilePhoto({
+    required File file,
+    required bool isRecruiter,
+  }) async {
+    final user = await _getFreshAuthenticatedUser();
+    final uid = user.uid;
+
+    final collection = isRecruiter ? 'Recruiters' : 'Seekers';
+    final storagePath = isRecruiter
+        ? 'company_logos/$uid/logo.png'
+        : 'seeker_photos/$uid/photo.png';
+    final extension = file.path.split('.').last.toLowerCase();
+    final contentType = extension == 'png' ? 'image/png' : 'image/jpeg';
+
+    try {
+      dev.log(
+        '[2026-02-21 14:30 IST] Uploading profile photo for $collection/$uid',
+        name: 'AuthService',
+      );
+      final ref = _storage.ref().child(storagePath);
+      TaskSnapshot uploadTask;
+      try {
+        uploadTask = await ref.putFile(
+          file,
+          SettableMetadata(contentType: contentType),
+        );
+      } on FirebaseException catch (e) {
+        if (e.code == 'unauthenticated') {
+          await user.getIdToken(true);
+          uploadTask = await ref.putFile(
+            file,
+            SettableMetadata(contentType: contentType),
+          );
+        } else {
+          rethrow;
+        }
+      }
+      final downloadUrl = await uploadTask.ref.getDownloadURL();
+
+      final batch = _firestore.batch();
+      batch.set(
+        _firestore.collection(collection).doc(uid),
+        {'photoUrl': downloadUrl},
+        SetOptions(merge: true),
+      );
+      batch.set(
+        _firestore.collection('UsersIndex').doc(uid),
+        {'photoUrl': downloadUrl, 'updatedAt': FieldValue.serverTimestamp()},
+        SetOptions(merge: true),
+      );
+      await batch.commit();
+
+      dev.log(
+        '[2026-02-21 14:30 IST] Profile photo uploaded for $collection/$uid: $downloadUrl',
+        name: 'AuthService',
+      );
+      return downloadUrl;
+    } catch (e, stackTrace) {
+      dev.log(
+        '[2026-02-21 14:30 IST] uploadProfilePhoto ERROR for UID: $uid: $e',
+        name: 'AuthService',
+        error: e,
+        stackTrace: stackTrace,
+      );
+      if (e is FirebaseException) {
+        if (e.code == 'unauthenticated') {
+          throw const AuthException(
+            'Session expired. Please login again and retry.',
+          );
+        }
+        throw AuthException(
+          'Failed to upload profile photo: ${e.code} - ${e.message}',
+        );
       }
       rethrow;
     }

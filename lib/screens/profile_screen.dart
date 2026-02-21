@@ -3,8 +3,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:naukariwala/services/auth_service.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'dart:io';
 import 'dart:developer' as dev;
 
 class ProfileScreen extends StatefulWidget {
@@ -33,6 +35,7 @@ class ProfileScreenState extends State<ProfileScreen> {
   // Non-editable fields
   String? _mobileNumber;
   String? _email;
+  String? _profilePhotoUrl;
 
   // Dropdown and multi-select fields for seekers
   String? _selectedSpecialization;
@@ -41,6 +44,7 @@ class ProfileScreenState extends State<ProfileScreen> {
 
   // Track if profile has been updated
   bool _isProfileUpdated = false;
+  bool _isUploadingProfilePhoto = false;
 
   final List<String> experienceOptions = [
     'Fresher',
@@ -116,6 +120,10 @@ class ProfileScreenState extends State<ProfileScreen> {
               );
             }
             _email = user.email?.trim() ?? '';
+            _profilePhotoUrl = data['photoUrl']?.toString().trim();
+            if (_profilePhotoUrl != null && _profilePhotoUrl!.isEmpty) {
+              _profilePhotoUrl = null;
+            }
             if (widget.isRecruiter) {
               _companyNameController.text =
                   data['companyName']?.toString().trim() ?? '';
@@ -171,6 +179,59 @@ class ProfileScreenState extends State<ProfileScreen> {
     } finally {
       if (mounted) {
         setState(() => isLoading = false);
+      }
+    }
+  }
+
+  Future<void> _pickAndUploadProfilePhoto() async {
+    if (widget.isRecruiter || _isUploadingProfilePhoto) return;
+
+    try {
+      final picker = ImagePicker();
+      final image = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 80,
+        maxWidth: 1200,
+      );
+
+      if (image == null) return;
+
+      if (mounted) {
+        setState(() => _isUploadingProfilePhoto = true);
+      }
+
+      final photoUrl = await _authService.uploadProfilePhoto(
+        file: File(image.path),
+        isRecruiter: widget.isRecruiter,
+      );
+
+      if (mounted) {
+        setState(() {
+          _profilePhotoUrl = photoUrl;
+          _isUploadingProfilePhoto = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Profile photo updated successfully'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      dev.log(
+        'Error uploading profile photo: $e',
+        name: 'ProfileScreen',
+        error: e,
+      );
+      if (mounted) {
+        setState(() => _isUploadingProfilePhoto = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to upload profile photo: $e'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
       }
     }
   }
@@ -1020,18 +1081,66 @@ class ProfileScreenState extends State<ProfileScreen> {
                           ),
                           child: Row(
                             children: [
-                              Container(
-                                width: 52.w,
-                                height: 52.w,
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.2),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Icon(
-                                  Icons.person_rounded,
-                                  color: Colors.white,
-                                  size: 28.sp,
-                                ),
+                              Stack(
+                                children: [
+                                  Container(
+                                    width: 52.w,
+                                    height: 52.w,
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withValues(alpha: 0.2),
+                                      shape: BoxShape.circle,
+                                      image: _profilePhotoUrl != null
+                                          ? DecorationImage(
+                                              image: NetworkImage(_profilePhotoUrl!),
+                                              fit: BoxFit.cover,
+                                            )
+                                          : null,
+                                    ),
+                                    child: _profilePhotoUrl == null
+                                        ? Icon(
+                                            Icons.person_rounded,
+                                            color: Colors.white,
+                                            size: 28.sp,
+                                          )
+                                        : null,
+                                  ),
+                                  if (!widget.isRecruiter)
+                                    Positioned(
+                                      right: -1.w,
+                                      bottom: -1.h,
+                                      child: GestureDetector(
+                                        onTap: _pickAndUploadProfilePhoto,
+                                        child: Container(
+                                          width: 20.w,
+                                          height: 20.w,
+                                          decoration: BoxDecoration(
+                                            color: Colors.white,
+                                            shape: BoxShape.circle,
+                                            border: Border.all(
+                                              color: Colors.teal.shade400,
+                                              width: 1.5.w,
+                                            ),
+                                          ),
+                                          child: _isUploadingProfilePhoto
+                                              ? Padding(
+                                                  padding: EdgeInsets.all(4.w),
+                                                  child: CircularProgressIndicator(
+                                                    strokeWidth: 2.w,
+                                                    valueColor:
+                                                        AlwaysStoppedAnimation<Color>(
+                                                          Colors.teal.shade600,
+                                                        ),
+                                                  ),
+                                                )
+                                              : Icon(
+                                                  Icons.camera_alt_rounded,
+                                                  size: 11.sp,
+                                                  color: Colors.teal.shade700,
+                                                ),
+                                        ),
+                                      ),
+                                    ),
+                                ],
                               ),
                               SizedBox(width: 12.w),
                               Expanded(
