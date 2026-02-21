@@ -917,82 +917,88 @@ final Map<String, List<String>> skillsBySpecialization = {
                                 final isApplied = _appliedJobIds.contains(job['jobId']);
                                 final isFeatured = job['isFeatured'] ?? false;
                                 final isSaved = _savedJobIds.contains(jobId);
-                                Color cardColor = _seekerProfile != null
-                                    ? (job['isEligible'] == true ? Colors.green.shade100 : Colors.red.shade100)
-                                    : Colors.grey.shade200;
+                                final Color eligibilityBorderColor = _seekerProfile == null
+                                    ? Colors.grey.shade300
+                                    : (job['isEligible'] == true ? Colors.green.shade400 : Colors.red.shade300);
                                 return Column(
                                   children: [
                                     AnimatedListItem(
                                       child: Card(
                                         elevation: 3,
                                         margin: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
-                                        color: cardColor,
-                                        child: Container(
-                                          decoration: BoxDecoration(
-                                            gradient: LinearGradient(
-                                              // ignore: deprecated_member_use
-                                              colors: [cardColor, cardColor.withOpacity(0.8)],
-                                              begin: Alignment.topLeft,
-                                              end: Alignment.bottomRight,
-                                            ),
-                                            borderRadius: BorderRadius.circular(12.r),
-                                          ),
-                                          child: ListTile(
-                                            contentPadding: EdgeInsets.all(16.r),
-                                            trailing: SizedBox(
-                                              width: 84.w,
-                                              child: Row(
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  IconButton(
-                                                    icon: Icon(Icons.share, color: Colors.blue.shade800, size: 22.sp),
-                                                    onPressed: () => _shareJob(job),
-                                                    tooltip: 'Share',
-                                                  ),
-                                                  IconButton(
-                                                    icon: Icon(
-                                                      isSaved ? Icons.bookmark : Icons.bookmark_border,
-                                                      color: isSaved ? Colors.orange.shade700 : Colors.grey.shade700,
-                                                      size: 24.sp,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(12.r),
+                                          side: BorderSide(color: eligibilityBorderColor, width: 1.2),
+                                        ),
+                                        color: Colors.white,
+                                        child: InkWell(
+                                          borderRadius: BorderRadius.circular(12.r),
+                                          onTap: () => _selectJob(job),
+                                          child: Stack(
+                                            children: [
+                                              Padding(
+                                                padding: EdgeInsets.fromLTRB(16.w, 16.h, 58.w, 16.h),
+                                                child: Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  children: [
+                                                    Row(
+                                                      children: [
+                                                        Expanded(
+                                                          child: Text(
+                                                            job['title'] ?? 'Untitled',
+                                                            style: TextStyle(
+                                                              fontWeight: FontWeight.w600,
+                                                              fontSize: 18.sp,
+                                                              color: Colors.black87,
+                                                            ),
+                                                            overflow: TextOverflow.ellipsis,
+                                                          ),
+                                                        ),
+                                                        if (isFeatured)
+                                                          Padding(
+                                                            padding: EdgeInsets.only(left: 8.w),
+                                                            child: Chip(
+                                                              label: Text(
+                                                                'Featured',
+                                                                style: TextStyle(fontSize: 12.sp, color: Colors.white),
+                                                              ),
+                                                              backgroundColor: Colors.blue.shade600,
+                                                              padding: EdgeInsets.symmetric(horizontal: 8.w),
+                                                            ),
+                                                          ),
+                                                      ],
                                                     ),
-                                                    onPressed: () => _toggleSavedJob(job),
-                                                    tooltip: isSaved ? 'Saved' : 'Save',
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                            title: Row(
-                                              children: [
-                                                Flexible(
-                                                  child: Text(
-                                                    job['title'] ?? 'Untitled',
-                                                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 18.sp, color: Colors.black87),
-                                                    overflow: TextOverflow.ellipsis,
-                                                  ),
+                                                    SizedBox(height: 8.h),
+                                                    Text(
+                                                      "${job['company'] ?? ''} | ${job['location'] ?? ''} | ${job['jobType'] ?? ''}",
+                                                      style: TextStyle(color: Colors.grey.shade700, fontSize: 14.sp),
+                                                    ),
+                                                  ],
                                                 ),
-                                                if (isFeatured)
-                                                  Padding(
-                                                    padding: EdgeInsets.only(left: 8.w),
-                                                    child: Chip(
-                                                      label: Text(
-                                                        'Featured',
-                                                        style: TextStyle(fontSize: 12.sp, color: Colors.white),
-                                                      ),
-                                                      backgroundColor: Colors.blue.shade600,
-                                                      padding: EdgeInsets.symmetric(horizontal: 8.w),
-                                                    ),
-                                                  ),
-                                              ],
-                                            ),
-                                            subtitle: Padding(
-                                              padding: EdgeInsets.only(top: 8.h),
-                                              child: Text(
-                                                '${job['company'] ?? ''} • ${job['location'] ?? ''} • ${job['jobType'] ?? ''}',
-                                                style: TextStyle(color: Colors.grey.shade700, fontSize: 14.sp),
                                               ),
-                                            ),
-                                            onTap: () => _selectJob(job),
+                                              Positioned(
+                                                top: 6.h,
+                                                right: 4.w,
+                                                child: IconButton(
+                                                  icon: Icon(Icons.share, color: Colors.blue.shade800, size: 22.sp),
+                                                  onPressed: () => _shareJob(job),
+                                                  tooltip: 'Share',
+                                                ),
+                                              ),
+                                              Positioned(
+                                                right: 4.w,
+                                                bottom: 6.h,
+                                                child: IconButton(
+                                                  icon: Icon(
+                                                    isSaved ? Icons.bookmark : Icons.bookmark_border,
+                                                    color: isSaved ? Colors.orange.shade700 : Colors.grey.shade700,
+                                                    size: 24.sp,
+                                                  ),
+                                                  onPressed: () => _toggleSavedJob(job),
+                                                  tooltip: isSaved ? 'Saved' : 'Save',
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                         ),
                                       ),
@@ -1039,8 +1045,8 @@ final Map<String, List<String>> skillsBySpecialization = {
                                                       ),
                                                       SizedBox(height: 12.h),
                                                       Text(
-                                                        '${_jobData?['company']?.toString() ?? _selectedJob!['company']?.toString() ?? 'Unknown Company'} • '
-                                                        '${_jobData?['location']?.toString() ?? _selectedJob!['location']?.toString() ?? 'Unknown Location'} • '
+                                                        '${_jobData?['company']?.toString() ?? _selectedJob!['company']?.toString() ?? 'Unknown Company'} | '
+                                                        '${_jobData?['location']?.toString() ?? _selectedJob!['location']?.toString() ?? 'Unknown Location'} | '
                                                         '${_jobData?['jobType']?.toString() ?? _selectedJob!['jobType']?.toString() ?? 'Unknown Type'}',
                                                         style: TextStyle(fontSize: 16.sp, color: Colors.grey.shade700),
                                                       ),
