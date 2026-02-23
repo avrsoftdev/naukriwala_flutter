@@ -15,7 +15,13 @@ class PostedJobsScreen extends StatefulWidget {
 
 class _PostedJobsScreenState extends State<PostedJobsScreen> {
   final user = FirebaseAuth.instance.currentUser;
-  String _filter = 'All Jobs'; // Filter state: All Jobs, Featured Jobs, Non-Featured Jobs
+  String _filter = 'All Jobs';
+
+  static const List<String> _filters = <String>[
+    'All Jobs',
+    'Featured Jobs',
+    'Non-Featured Jobs',
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -47,7 +53,6 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
         .orderBy('isFeatured', descending: true)
         .orderBy('createdAt', descending: true);
 
-    // Apply filter based on _filter value
     if (_filter == 'Featured Jobs') {
       jobsQuery = jobsQuery.where('isFeatured', isEqualTo: true);
     } else if (_filter == 'Non-Featured Jobs') {
@@ -55,269 +60,556 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
     }
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF3F6FB),
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'My Posted Jobs',
-          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+          style: TextStyle(fontWeight: FontWeight.w700, color: Colors.white, fontSize: 20.sp),
         ),
-        flexibleSpace: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Colors.blue.shade700, Colors.blue.shade900],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
+        centerTitle: false,
+        elevation: 0,
+        backgroundColor: const Color(0xFF0D47A1),
+      ),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFFE8EEF8), Color(0xFFF6F9FF)],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
           ),
         ),
-        elevation: 4,
-      ),
-      body: Column(
-        children: [
-          // Filter Dropdown
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
-            child: DropdownButton<String>(
-              value: _filter,
-              isExpanded: true,
-              items: ['All Jobs', 'Featured Jobs', 'Non-Featured Jobs']
-                  .map((String value) => DropdownMenuItem<String>(
-                        value: value,
-                        child: Text(value, style: TextStyle(fontSize: 14.sp)),
-                      ))
-                  .toList(),
-              onChanged: (String? newValue) {
-                if (newValue != null) {
-                  setState(() {
-                    _filter = newValue;
-                  });
-                  dev.log('[2025-09-01 15:05 IST] Filter changed to: $_filter', name: 'PostedJobsScreen');
-                }
-              },
-              underline: Container(
-                height: 2.h,
-                color: Colors.teal,
+        child: Column(
+          children: [
+            Padding(
+              padding: EdgeInsets.fromLTRB(16.w, 14.h, 16.w, 10.h),
+              child: _buildFilterChips(),
+            ),
+            Expanded(
+              child: StreamBuilder<QuerySnapshot>(
+                stream: jobsQuery.snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(
+                      child: CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF1565C0)),
+                      ),
+                    );
+                  }
+
+                  if (snapshot.hasError) {
+                    dev.log(
+                      '[2025-09-01 15:05 IST] Stream error for user ${user!.uid}: ${snapshot.error}',
+                      name: 'PostedJobsScreen',
+                      error: snapshot.error,
+                    );
+                    String errorMessage = 'Error loading jobs. Please verify Firestore permissions.';
+                    if (snapshot.error is FirebaseException) {
+                      final error = snapshot.error as FirebaseException;
+                      errorMessage = 'Firebase error: ${error.code} - ${error.message}';
+                      if (error.code == 'permission-denied') {
+                        errorMessage += '\nEnsure /Recruiters/${user!.uid}/Jobs is accessible.';
+                      }
+                    }
+                    return Center(
+                      child: Card(
+                        elevation: 2,
+                        color: Colors.red.shade50,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14.r)),
+                        child: Padding(
+                          padding: EdgeInsets.all(16.w),
+                          child: Text(
+                            errorMessage,
+                            style: TextStyle(color: Colors.red.shade700, fontSize: 14.sp),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                    );
+                  }
+
+                  final jobs = snapshot.data?.docs ?? [];
+                  final featuredCount = jobs.where((doc) {
+                    final data = doc.data() as Map<String, dynamic>;
+                    return data['isFeatured'] == true;
+                  }).length;
+
+                  if (jobs.isEmpty) {
+                    return Center(
+                      child: Container(
+                        margin: EdgeInsets.symmetric(horizontal: 20.w),
+                        padding: EdgeInsets.symmetric(horizontal: 18.w, vertical: 22.h),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16.r),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.07),
+                              blurRadius: 12.r,
+                              offset: Offset(0, 4.h),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.work_outline_rounded, size: 34.sp, color: Colors.blueGrey.shade400),
+                            SizedBox(height: 10.h),
+                            Text(
+                              'No jobs posted yet',
+                              style: TextStyle(fontSize: 16.sp, color: Colors.blueGrey.shade700, fontWeight: FontWeight.w600),
+                            ),
+                            SizedBox(height: 4.h),
+                            Text(
+                              'Create a new job post to start receiving applications.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(fontSize: 13.sp, color: Colors.blueGrey.shade400),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+
+                  return Column(
+                    children: [
+                      Padding(
+                        padding: EdgeInsets.fromLTRB(16.w, 0, 16.w, 10.h),
+                        child: _buildSummaryBanner(
+                          totalJobs: jobs.length,
+                          featuredJobs: featuredCount,
+                        ),
+                      ),
+                      Expanded(
+                        child: ListView.separated(
+                          padding: EdgeInsets.fromLTRB(16.w, 0, 16.w, 16.h),
+                          itemCount: jobs.length,
+                          separatorBuilder: (_, __) => SizedBox(height: 10.h),
+                          itemBuilder: (context, index) {
+                            final job = jobs[index].data() as Map<String, dynamic>;
+                            final jobId = jobs[index].id;
+                            final isFeatured = job['isFeatured'] ?? false;
+                            dev.log(
+                              '[2025-09-01 15:05 IST] Job $jobId data for user ${user!.uid}: isFeatured=$isFeatured, title=${job['title']}',
+                              name: 'PostedJobsScreen',
+                            );
+
+                            final title = job['title'] ?? 'Untitled Job';
+                            final company = job['company'] ?? 'Unknown Company';
+                            final location = job['location'] ?? 'Unspecified';
+                            final salary = job['salary'] ?? 'Not specified';
+                            final skills = (job['skills'] as List<dynamic>?)?.join(', ') ?? 'N/A';
+                            final education = job['education'] ?? 'N/A';
+                            final experience = job['experience'] ?? 'N/A';
+                            final specialization = job['specialization'] ?? 'N/A';
+                            final status = job['status'] ?? 'unknown';
+                            final timestamp = job['createdAt'] as Timestamp?;
+                            final postedDate =
+                                timestamp != null ? DateFormat('dd MMM yyyy').format(timestamp.toDate()) : 'N/A';
+
+                            return FutureBuilder<Map<String, dynamic>>(
+                              future: _getApplicantData(jobId),
+                              builder: (context, applicantSnapshot) {
+                                final applicantCount = applicantSnapshot.data?['count'] ?? 0;
+                                final applicants = applicantSnapshot.data?['applicants'] ?? [];
+
+                                return AnimatedListItem(
+                                  child: _buildJobCard(
+                                    context: context,
+                                    jobId: jobId,
+                                    job: job,
+                                    title: title,
+                                    company: company,
+                                    location: location,
+                                    salary: salary,
+                                    skills: skills,
+                                    education: education,
+                                    experience: experience,
+                                    specialization: specialization,
+                                    status: status.toString().toLowerCase(),
+                                    postedDate: postedDate,
+                                    isFeatured: isFeatured == true,
+                                    applicantCount: applicantCount,
+                                    applicants: applicants,
+                                    hasApplicantError: applicantSnapshot.hasError,
+                                  ),
+                                );
+                              },
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  );
+                },
               ),
-              icon: Icon(Icons.filter_list, size: 20.sp, color: Colors.teal),
-              style: TextStyle(color: Colors.black87, fontSize: 14.sp),
-              dropdownColor: Colors.white,
-              borderRadius: BorderRadius.circular(8.r),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFilterChips() {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(12.w),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14.r),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 12.r,
+            offset: Offset(0, 3.h),
+          ),
+        ],
+      ),
+      child: Wrap(
+        spacing: 8.w,
+        runSpacing: 8.h,
+        children: _filters.map((filter) {
+          final isSelected = _filter == filter;
+          return ChoiceChip(
+            label: Text(filter, style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w600)),
+            selected: isSelected,
+            onSelected: (_) {
+              setState(() {
+                _filter = filter;
+              });
+              dev.log('[2025-09-01 15:05 IST] Filter changed to: $_filter', name: 'PostedJobsScreen');
+            },
+            backgroundColor: const Color(0xFFE7EEF8),
+            selectedColor: const Color(0xFF1565C0),
+            labelStyle: TextStyle(
+              color: isSelected ? Colors.white : const Color(0xFF0D47A1),
+            ),
+            checkmarkColor: Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22.r)),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildSummaryBanner({
+    required int totalJobs,
+    required int featuredJobs,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF0D47A1), Color(0xFF1976D2)],
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+        ),
+        borderRadius: BorderRadius.circular(14.r),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.analytics_outlined, color: Colors.white, size: 20.sp),
+          SizedBox(width: 10.w),
+          Expanded(
+            child: Text(
+              '$totalJobs jobs found  •  $featuredJobs featured',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+                fontSize: 13.sp,
+              ),
+            ),
+          ),
+          Text(
+            _filter,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.9),
+              fontWeight: FontWeight.w500,
+              fontSize: 11.sp,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildJobCard({
+    required BuildContext context,
+    required String jobId,
+    required Map<String, dynamic> job,
+    required String title,
+    required String company,
+    required String location,
+    required String salary,
+    required String skills,
+    required String education,
+    required String experience,
+    required String specialization,
+    required String status,
+    required String postedDate,
+    required bool isFeatured,
+    required int applicantCount,
+    required List<dynamic> applicants,
+    required bool hasApplicantError,
+  }) {
+    final bool isOpen = status == 'open';
+
+    return Card(
+      elevation: 2.5,
+      margin: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16.r),
+        child: ExpansionTile(
+          tilePadding: EdgeInsets.fromLTRB(14.w, 12.h, 6.w, 4.h),
+          childrenPadding: EdgeInsets.fromLTRB(14.w, 0, 14.w, 14.h),
+          backgroundColor: Colors.white,
+          collapsedBackgroundColor: Colors.white,
+          iconColor: const Color(0xFF1565C0),
+          collapsedIconColor: const Color(0xFF1565C0),
+          title: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w700, color: const Color(0xFF102A43)),
+                ),
+              ),
+              SizedBox(width: 8.w),
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
+                decoration: BoxDecoration(
+                  color: isOpen ? const Color(0xFFE6F6EC) : const Color(0xFFFFEBEE),
+                  borderRadius: BorderRadius.circular(30.r),
+                ),
+                child: Text(
+                  status.toUpperCase(),
+                  style: TextStyle(
+                    fontSize: 10.sp,
+                    fontWeight: FontWeight.w700,
+                    color: isOpen ? const Color(0xFF217A3D) : const Color(0xFFC62828),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          subtitle: Padding(
+            padding: EdgeInsets.only(top: 10.h, right: 10.w, bottom: 6.h),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Wrap(
+                  spacing: 8.w,
+                  runSpacing: 8.h,
+                  children: [
+                    _metaChip(Icons.apartment_rounded, company),
+                    _metaChip(Icons.location_on_outlined, location),
+                    _metaChip(Icons.currency_rupee_rounded, salary),
+                    if (isFeatured) _metaChip(Icons.star_rounded, 'Featured', highlighted: true),
+                  ],
+                ),
+                SizedBox(height: 10.h),
+                Row(
+                  children: [
+                    Icon(Icons.people_alt_outlined, size: 16.sp, color: Colors.blueGrey.shade500),
+                    SizedBox(width: 6.w),
+                    Text(
+                      '$applicantCount applicants',
+                      style: TextStyle(fontSize: 12.sp, color: Colors.blueGrey.shade700, fontWeight: FontWeight.w600),
+                    ),
+                    SizedBox(width: 12.w),
+                    Icon(Icons.schedule_rounded, size: 16.sp, color: Colors.blueGrey.shade500),
+                    SizedBox(width: 6.w),
+                    Text(
+                      postedDate,
+                      style: TextStyle(fontSize: 12.sp, color: Colors.blueGrey.shade700),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          trailing: PopupMenuButton<String>(
+            icon: Icon(Icons.more_vert, color: const Color(0xFF1565C0), size: 22.sp),
+            onSelected: (value) {
+              if (value == 'edit') {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => PostJobScreen(editJobData: {...job, 'jobId': jobId}),
+                  ),
+                );
+              } else if (value == 'delete') {
+                _confirmDeleteJob(context, jobId);
+              }
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'edit',
+                child: Text('Edit', style: TextStyle(color: Color(0xFF1565C0))),
+              ),
+              const PopupMenuItem(
+                value: 'delete',
+                child: Text('Delete', style: TextStyle(color: Colors.red)),
+              ),
+            ],
+          ),
+          children: [
+            Divider(height: 1.h, color: const Color(0xFFDCE6F3)),
+            SizedBox(height: 10.h),
+            _buildDetailRow('Skills', skills),
+            _buildDetailRow('Education', education),
+            _buildDetailRow('Experience', experience),
+            _buildDetailRow('Specialization', specialization),
+            SizedBox(height: 8.h),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Applicants',
+                style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w700, color: const Color(0xFF102A43)),
+              ),
+            ),
+            SizedBox(height: 8.h),
+            if (hasApplicantError)
+              _buildApplicantInfoCard(
+                icon: Icons.error_outline_rounded,
+                text: 'Error loading applicants',
+                color: Colors.red.shade600,
+                background: Colors.red.shade50,
+              )
+            else if (applicants.isNotEmpty)
+              ...applicants.map<Widget>((applicant) {
+                final name = applicant['name']?.toString() ?? 'Unknown Seeker';
+                final resume = applicant['resumeUrl']?.toString() ?? 'N/A';
+                return Padding(
+                  padding: EdgeInsets.only(bottom: 8.h),
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF6FAFF),
+                      borderRadius: BorderRadius.circular(10.r),
+                      border: Border.all(color: const Color(0xFFDCE6F3)),
+                    ),
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 14.r,
+                          backgroundColor: const Color(0xFF1565C0),
+                          child: Text(
+                            name.isNotEmpty ? name[0].toUpperCase() : '?',
+                            style: TextStyle(color: Colors.white, fontSize: 12.sp, fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                        SizedBox(width: 10.w),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                name,
+                                style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w600, color: const Color(0xFF243B53)),
+                              ),
+                              Text(
+                                'Resume: $resume',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(fontSize: 11.sp, color: Colors.blueGrey.shade500),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              })
+            else
+              _buildApplicantInfoCard(
+                icon: Icons.inbox_outlined,
+                text: 'No applicants yet',
+                color: Colors.blueGrey.shade600,
+                background: const Color(0xFFEFF4FA),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _metaChip(IconData icon, String label, {bool highlighted = false}) {
+    final background = highlighted ? const Color(0xFFFFF8E1) : const Color(0xFFEAF2FD);
+    final foreground = highlighted ? const Color(0xFFB26A00) : const Color(0xFF0D47A1);
+    return Container(
+      constraints: BoxConstraints(maxWidth: 220.w),
+      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 5.h),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(20.r),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12.sp, color: foreground),
+          SizedBox(width: 4.w),
+          Flexible(
+            child: Text(
+              label,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w600, color: foreground),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: 6.h),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 90.w,
+            child: Text(
+              '$label:',
+              style: TextStyle(fontSize: 12.sp, color: Colors.blueGrey.shade500, fontWeight: FontWeight.w600),
             ),
           ),
           Expanded(
-            child: StreamBuilder<QuerySnapshot>(
-              stream: jobsQuery.snapshots(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(
-                    child: CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.teal),
-                    ),
-                  );
-                }
+            child: Text(
+              value,
+              style: TextStyle(fontSize: 12.sp, color: const Color(0xFF243B53)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
-                if (snapshot.hasError) {
-                  dev.log('[2025-09-01 15:05 IST] Stream error for user ${user!.uid}: ${snapshot.error}', name: 'PostedJobsScreen', error: snapshot.error);
-                  String errorMessage = 'Error loading jobs. Please verify Firestore permissions.';
-                  if (snapshot.error is FirebaseException) {
-                    final error = snapshot.error as FirebaseException;
-                    errorMessage = 'Firebase error: ${error.code} - ${error.message}';
-                    if (error.code == 'permission-denied') {
-                      errorMessage += '\nEnsure /Recruiters/${user!.uid}/Jobs is accessible.';
-                    }
-                  }
-                  return Center(
-                    child: Card(
-                      elevation: 4,
-                      color: Colors.red.shade50,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
-                      child: Padding(
-                        padding: EdgeInsets.all(16.w),
-                        child: Text(
-                          errorMessage,
-                          style: TextStyle(color: Colors.red.shade700, fontSize: 16.sp),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ),
-                  );
-                }
-
-                final jobs = snapshot.data?.docs ?? [];
-
-                if (jobs.isEmpty) {
-                  return Center(
-                    child: Text(
-                      'No jobs posted yet',
-                      style: TextStyle(fontSize: 16.sp, color: Colors.grey.shade600),
-                    ),
-                  );
-                }
-
-                return ListView.builder(
-                  itemCount: jobs.length,
-                  itemBuilder: (context, index) {
-                    final job = jobs[index].data() as Map<String, dynamic>;
-                    final jobId = jobs[index].id;
-                    final isFeatured = job['isFeatured'] ?? false;
-                    dev.log('[2025-09-01 15:05 IST] Job $jobId data for user ${user!.uid}: isFeatured=$isFeatured, title=${job['title']}', name: 'PostedJobsScreen');
-
-                    final title = job['title'] ?? 'Untitled Job';
-                    final company = job['company'] ?? 'Unknown Company';
-                    final location = job['location'] ?? 'Unspecified';
-                    final salary = job['salary'] ?? 'Not specified';
-                    final skills = (job['skills'] as List<dynamic>?)?.join(', ') ?? 'N/A';
-                    final education = job['education'] ?? 'N/A';
-                    final experience = job['experience'] ?? 'N/A';
-                    final specialization = job['specialization'] ?? 'N/A';
-                    final status = job['status'] ?? 'unknown';
-                    final timestamp = job['createdAt'] as Timestamp?;
-                    final postedDate = timestamp != null
-                        ? DateFormat('dd MMM yyyy').format(timestamp.toDate())
-                        : 'N/A';
-
-                    return FutureBuilder<Map<String, dynamic>>(
-                      future: _getApplicantData(jobId),
-                      builder: (context, applicantSnapshot) {
-                        final applicantCount = applicantSnapshot.data?['count'] ?? 0;
-                        final applicants = applicantSnapshot.data?['applicants'] ?? [];
-
-                        return AnimatedListItem(
-                          child: Card(
-                            elevation: 3,
-                            margin: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
-                            child: Container(
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [Colors.blue.shade50, Colors.blue.shade100],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                ),
-                                borderRadius: BorderRadius.circular(12.r),
-                              ),
-                              child: ExpansionTile(
-                                title: Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Flexible(
-                                      child: Row(
-                                        children: [
-                                          Flexible(
-                                            child: Text(
-                                              title,
-                                              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 18.sp, color: Colors.black87),
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                          if (isFeatured)
-                                            Padding(
-                                              padding: EdgeInsets.only(left: 8.w),
-                                              child: Chip(
-                                                label: Text(
-                                                  'Featured',
-                                                  style: TextStyle(fontSize: 12.sp, color: Colors.white),
-                                                ),
-                                                backgroundColor: Colors.blue.shade600,
-                                                padding: EdgeInsets.symmetric(horizontal: 8.w),
-                                              ),
-                                            ),
-                                        ],
-                                      ),
-                                    ),
-                                    Container(
-                                      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
-                                      decoration: BoxDecoration(
-                                        color: status == 'open' ? Colors.green.shade100 : Colors.red.shade100,
-                                        borderRadius: BorderRadius.circular(12.r),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: Colors.black.withValues(alpha: 0.1),
-                                            blurRadius: 2.r,
-                                            offset: Offset(0, 1.h),
-                                          ),
-                                        ],
-                                      ),
-                                      child: Text(
-                                        status.toUpperCase(),
-                                        style: TextStyle(
-                                          fontSize: 12.sp,
-                                          fontWeight: FontWeight.bold,
-                                          color: status == 'open' ? Colors.green.shade700 : Colors.red.shade700,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                subtitle: Padding(
-                                  padding: EdgeInsets.only(top: 8.h),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text('Company: $company', style: TextStyle(color: Colors.grey.shade700, fontSize: 14.sp)),
-                                      Text('Location: $location', style: TextStyle(color: Colors.grey.shade700, fontSize: 14.sp)),
-                                      Text('Salary: $salary', style: TextStyle(color: Colors.grey.shade700, fontSize: 14.sp)),
-                                      Text('Skills: $skills', style: TextStyle(color: Colors.grey.shade700, fontSize: 14.sp)),
-                                      Text('Education: $education', style: TextStyle(color: Colors.grey.shade700, fontSize: 14.sp)),
-                                      Text('Experience: $experience', style: TextStyle(color: Colors.grey.shade700, fontSize: 14.sp)),
-                                      Text('Specialization: $specialization', style: TextStyle(color: Colors.grey.shade700, fontSize: 14.sp)),
-                                      Text('Posted: $postedDate', style: TextStyle(color: Colors.grey.shade700, fontSize: 14.sp)),
-                                      Text('Applicants: $applicantCount', style: TextStyle(color: Colors.grey.shade700, fontSize: 14.sp)),
-                                    ],
-                                  ),
-                                ),
-                                children: applicantSnapshot.hasError
-                                    ? [
-                                        ListTile(
-                                          title: Text(
-                                            'Error loading applicants',
-                                            style: TextStyle(color: Colors.red.shade700, fontSize: 14.sp),
-                                          ),
-                                        ),
-                                      ]
-                                    : applicants.isNotEmpty
-                                        ? applicants.map<Widget>((applicant) => ListTile(
-                                              title: Text(applicant['name'], style: TextStyle(color: Colors.black87, fontSize: 14.sp)),
-                                              subtitle: Text('Resume URL: ${applicant['resumeUrl'] ?? 'N/A'}', style: TextStyle(color: Colors.blue.shade600, fontSize: 12.sp)),
-                                            )).toList()
-                                        : [
-                                            const ListTile(
-                                              title: Text('No applicants yet', style: TextStyle(color: Colors.grey)),
-                                            ),
-                                          ],
-                                trailing: PopupMenuButton<String>(
-                                  icon: const Icon(Icons.more_vert, color: Colors.teal),
-                                  onSelected: (value) {
-                                    if (value == 'edit') {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (_) => PostJobScreen(editJobData: {...job, 'jobId': jobId}),
-                                        ),
-                                      );
-                                    } else if (value == 'delete') {
-                                      _confirmDeleteJob(context, jobId);
-                                    }
-                                  },
-                                  itemBuilder: (context) => [
-                                    const PopupMenuItem(
-                                      value: 'edit',
-                                      child: Text('Edit', style: TextStyle(color: Colors.teal)),
-                                    ),
-                                    const PopupMenuItem(
-                                      value: 'delete',
-                                      child: Text('Delete', style: TextStyle(color: Colors.red)),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    );
-                  },
-                );
-              },
+  Widget _buildApplicantInfoCard({
+    required IconData icon,
+    required String text,
+    required Color color,
+    required Color background,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(10.r),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 16.sp, color: color),
+          SizedBox(width: 8.w),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(fontSize: 12.sp, color: color, fontWeight: FontWeight.w600),
             ),
           ),
         ],
@@ -417,7 +709,6 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
                   dev.log('[2025-09-01 15:05 IST] Queued delete for recruiter notification at ${doc.reference.path}', name: 'PostedJobsScreen');
                 }
 
-                // Attempt to delete seeker notifications, handle permission errors gracefully
                 try {
                   final seekerNotifsSnapshot = await FirebaseFirestore.instance
                       .collectionGroup('Notifications')
