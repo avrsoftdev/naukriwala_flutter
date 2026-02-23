@@ -6,6 +6,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:cloud_functions/cloud_functions.dart';
@@ -404,6 +405,14 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
             ),
             SizedBox(height: 16.h),
             ListTile(
+              leading: const Icon(Icons.copy, color: Colors.teal),
+              title: Text('Copy Message', style: TextStyle(fontSize: 16.sp)),
+              onTap: () {
+                Navigator.pop(context);
+                _copyMessage(currentMessage);
+              },
+            ),
+            ListTile(
               leading: const Icon(Icons.edit, color: Colors.blue),
               title: Text('Edit Message', style: TextStyle(fontSize: 16.sp)),
               onTap: () {
@@ -428,6 +437,22 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
         ),
       ),
     );
+  }
+
+  Future<void> _copyMessage(String message) async {
+    final text = message.trim();
+    if (text.isEmpty) {
+      _showError('Nothing to copy');
+      return;
+    }
+
+    try {
+      await Clipboard.setData(ClipboardData(text: text));
+      _showSuccess('Message copied');
+    } catch (e) {
+      _showError('Failed to copy message: $e');
+      dev.log('Error copying message: $e', name: 'ChatScreen');
+    }
   }
 
   void _showEditDialog(String messageId, String currentMessage) {
