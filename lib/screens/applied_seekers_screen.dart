@@ -443,12 +443,16 @@ class _AppliedSeekersScreenState extends State<AppliedSeekersScreen> {
     if (recruiterId == null) {
       return Scaffold(
         appBar: AppBar(
-          title: const Text('Applied Seekers'),
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
-            onPressed: () => Navigator.pop(context),
-          ),
-        ),
+  backgroundColor: const Color(0xFF0E4A88),
+  automaticallyImplyLeading: false,
+  title: const Text(
+    'Applied Seekers',
+    style: TextStyle(
+      color: Colors.white,
+      fontWeight: FontWeight.w700,
+    ),
+  ),
+),
         body: const Center(child: Text('Please log in to view applicants')),
       );
     }
@@ -463,17 +467,18 @@ class _AppliedSeekersScreenState extends State<AppliedSeekersScreen> {
       builder: (context, child) {
         return Scaffold(
           appBar: AppBar(
-            elevation: 0,
-            backgroundColor: const Color(0xFF0E4A88),
-            title: Text(
-              titleText,
-              style: TextStyle(fontSize: 19.sp, fontWeight: FontWeight.w700),
-            ),
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back),
-              onPressed: () => Navigator.pop(context),
-            ),
-          ),
+  elevation: 0,
+  backgroundColor: const Color(0xFF0E4A88),
+  automaticallyImplyLeading: false, // removes back arrow
+  title: Text(
+    titleText,
+    style: TextStyle(
+      fontSize: 19.sp,
+      fontWeight: FontWeight.w700,
+      color: Colors.white, // makes text white
+    ),
+  ),
+),
           body: Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
