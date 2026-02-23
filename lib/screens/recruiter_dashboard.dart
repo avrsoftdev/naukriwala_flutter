@@ -5,8 +5,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:naukariwala/screens/posted_jobs_screen.dart';
-// import 'package:naukariwala/screens/posted_jobs_screen.dart';
-// import 'package:naukariwala/screens/posted_jobs_screen.dart';
 import 'package:naukariwala/screens/profile_screen.dart';
 import 'package:naukariwala/screens/post_job_screen.dart';
 import 'package:naukariwala/screens/post_job_screen.dart';
