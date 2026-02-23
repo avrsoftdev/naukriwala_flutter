@@ -655,10 +655,25 @@ class _AppliedSeekersScreenState extends State<AppliedSeekersScreen> {
                                   final skillsDisplay = skillsList.isNotEmpty ? skillsList.join(', ') : 'N/A';
                                   final status = (applicant['status'] ?? 'N/A').toString();
 
+                                  final normalizedStatus = status.toLowerCase();
+                                  final bool isShortlisted = normalizedStatus == 'shortlisted';
+                                  final bool isRejected = normalizedStatus == 'rejected';
+                                  final Color outlineColor = isShortlisted
+                                      ? const Color(0xFF2E7D32)
+                                      : isRejected
+                                          ? const Color(0xFFC62828)
+                                          : Colors.transparent;
+
                                   return Card(
                                     elevation: 2,
                                     margin: EdgeInsets.symmetric(vertical: 5.h),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14.r)),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14.r),
+                                      side: BorderSide(
+                                        color: outlineColor,
+                                        width: isShortlisted || isRejected ? 1.4 : 0,
+                                      ),
+                                    ),
                                     child: InkWell(
                                       borderRadius: BorderRadius.circular(14.r),
                                       onTap: () => _openSeekerDetails(seekerId, jobId),
@@ -690,7 +705,6 @@ class _AppliedSeekersScreenState extends State<AppliedSeekersScreen> {
                                                     ],
                                                   ),
                                                 ),
-                                                _statusBadge(status),
                                                 IconButton(
                                                   tooltip: 'View seeker details',
                                                   onPressed: () => _openSeekerDetails(seekerId, jobId),
@@ -714,7 +728,13 @@ class _AppliedSeekersScreenState extends State<AppliedSeekersScreen> {
                                             _detailLine(Icons.work_outline, 'Experience', resume['experience'] ?? applicant['experience'] ?? 'N/A'),
                                             _detailLine(Icons.account_tree_outlined, 'Specialization', specialization),
                                             _detailLine(Icons.psychology_outlined, 'Skills', skillsDisplay),
-                                            SizedBox(height: 4.h),
+                                            SizedBox(height: 8.h),
+                                            Row(
+                                              children: [
+                                                const Spacer(),
+                                                _statusBadge(status),
+                                              ],
+                                            ),
                                             // Container(
                                             //   padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
                                             //   decoration: BoxDecoration(
