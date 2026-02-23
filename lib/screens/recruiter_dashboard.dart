@@ -138,14 +138,14 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
           appBar: AppBar(
             backgroundColor: Colors.white,
             elevation: 2,
-            title: Text(
-              'Recruiter Dashboard',
-              style: TextStyle(
-                color: const Color.fromARGB(221, 12, 20, 108),
-                fontWeight: FontWeight.bold,
-                fontSize: 22.sp,
-              ),
-            ),
+            // title: Text(
+            //   'Recruiter Dashboard',
+            //   style: TextStyle(
+            //     color: const Color.fromARGB(221, 12, 20, 108),
+            //     fontWeight: FontWeight.bold,
+            //     fontSize: 22.sp,
+            //   ),
+            // ),
             centerTitle: true,
             leading: Builder(
               builder: (context) => IconButton(

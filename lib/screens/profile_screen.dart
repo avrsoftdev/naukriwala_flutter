@@ -184,7 +184,7 @@ class ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _pickAndUploadProfilePhoto() async {
-    if (widget.isRecruiter || _isUploadingProfilePhoto) return;
+    if (_isUploadingProfilePhoto) return;
 
     try {
       final picker = ImagePicker();
@@ -1104,42 +1104,41 @@ class ProfileScreenState extends State<ProfileScreen> {
                                           )
                                         : null,
                                   ),
-                                  if (!widget.isRecruiter)
-                                    Positioned(
-                                      right: -1.w,
-                                      bottom: -1.h,
-                                      child: GestureDetector(
-                                        onTap: _pickAndUploadProfilePhoto,
-                                        child: Container(
-                                          width: 20.w,
-                                          height: 20.w,
-                                          decoration: BoxDecoration(
-                                            color: Colors.white,
-                                            shape: BoxShape.circle,
-                                            border: Border.all(
-                                              color: Colors.teal.shade400,
-                                              width: 1.5.w,
-                                            ),
+                                  Positioned(
+                                    right: -1.w,
+                                    bottom: -1.h,
+                                    child: GestureDetector(
+                                      onTap: _pickAndUploadProfilePhoto,
+                                      child: Container(
+                                        width: 20.w,
+                                        height: 20.w,
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          shape: BoxShape.circle,
+                                          border: Border.all(
+                                            color: Colors.teal.shade400,
+                                            width: 1.5.w,
                                           ),
-                                          child: _isUploadingProfilePhoto
-                                              ? Padding(
-                                                  padding: EdgeInsets.all(4.w),
-                                                  child: CircularProgressIndicator(
-                                                    strokeWidth: 2.w,
-                                                    valueColor:
-                                                        AlwaysStoppedAnimation<Color>(
-                                                          Colors.teal.shade600,
-                                                        ),
-                                                  ),
-                                                )
-                                              : Icon(
-                                                  Icons.camera_alt_rounded,
-                                                  size: 11.sp,
-                                                  color: Colors.teal.shade700,
-                                                ),
                                         ),
+                                        child: _isUploadingProfilePhoto
+                                            ? Padding(
+                                                padding: EdgeInsets.all(4.w),
+                                                child: CircularProgressIndicator(
+                                                  strokeWidth: 2.w,
+                                                  valueColor:
+                                                      AlwaysStoppedAnimation<Color>(
+                                                        Colors.teal.shade600,
+                                                      ),
+                                                ),
+                                              )
+                                            : Icon(
+                                                Icons.camera_alt_rounded,
+                                                size: 11.sp,
+                                                color: Colors.teal.shade700,
+                                              ),
                                       ),
                                     ),
+                                  ),
                                 ],
                               ),
                               SizedBox(width: 12.w),
