@@ -15,6 +15,7 @@ import 'dart:developer' as dev;
 import '../services/auth_service.dart';
 import '../services/play_integrity_service.dart';
 import '../providers/message_state_provider.dart';
+import 'seeker_details_screen.dart';
 
 class ChatScreen extends StatefulWidget {
   final String chatId;
@@ -147,6 +148,20 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     if (mounted) {
       setState(() => _chatDetails = details);
     }
+  }
+
+  void _openSeekerDetails() {
+    if (_isRecruiter != true) return;
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => SeekerDetailsScreen(
+          seekerId: widget.recipientId,
+          jobId: widget.jobId,
+        ),
+      ),
+    );
   }
 
   // ────────────────────────────── FCM & LOCAL NOTIF ──────────────────────────────
@@ -543,11 +558,25 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                         ? (_chatDetails != null ? _chatDetails!['recipientName'] : null) ?? widget.recipientId
                         : _chatDetails?['company'] ?? widget.recipientId;
 
-                    return Text(
+                    final titleText = Text(
                       title,
-                      style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold, color: Colors.white),
+                      style: TextStyle(
+                        fontSize: 16.sp,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                        decoration: _isRecruiter == true ? TextDecoration.underline : TextDecoration.none,
+                      ),
                       overflow: TextOverflow.ellipsis,
                     );
+
+                    if (_isRecruiter == true) {
+                      return GestureDetector(
+                        onTap: _openSeekerDetails,
+                        child: titleText,
+                      );
+                    }
+
+                    return titleText;
                   },
                 ),
           actions: [

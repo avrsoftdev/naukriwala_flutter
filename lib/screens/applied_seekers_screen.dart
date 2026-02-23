@@ -11,6 +11,7 @@ import 'dart:typed_data';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:add_2_calendar/add_2_calendar.dart';
 import 'package:naukariwala/screens/chat_screen.dart';
+import 'package:naukariwala/screens/seeker_details_screen.dart';
 import '../../services/auth_service.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'dart:developer' as dev;
@@ -381,6 +382,18 @@ class _AppliedSeekersScreenState extends State<AppliedSeekersScreen> {
     }
   }
 
+  void _openSeekerDetails(String seekerId, String jobId) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => SeekerDetailsScreen(
+          seekerId: seekerId,
+          jobId: jobId,
+        ),
+      ),
+    );
+  }
+
   Future<void> _exportToExcel(List<Map<String, dynamic>> applicants) async {
     try {
       var excel = Excel.createExcel();
@@ -646,54 +659,86 @@ class _AppliedSeekersScreenState extends State<AppliedSeekersScreen> {
                                     elevation: 2,
                                     margin: EdgeInsets.symmetric(vertical: 5.h),
                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14.r)),
-                                    child: Padding(
-                                      padding: EdgeInsets.all(10.w),
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Row(
-                                            children: [
-                                              _buildApplicantAvatar(
-                                                seekerId: seekerId,
-                                                applicant: applicant,
-                                                resume: resume,
-                                              ),
-                                              SizedBox(width: 10.w),
-                                              Expanded(
-                                                child: Column(
-                                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                                  children: [
-                                                    Text(
-                                                      _displayName(resume, applicant, seekerId),
-                                                      style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.w700),
-                                                    ),
-                                                    Text(
-                                                      applicant['jobTitle'] ?? jobId,
-                                                      style: TextStyle(fontSize: 12.sp, color: Colors.blueGrey.shade600),
-                                                    ),
+                                    child: InkWell(
+                                      borderRadius: BorderRadius.circular(14.r),
+                                      onTap: () => _openSeekerDetails(seekerId, jobId),
+                                      child: Padding(
+                                        padding: EdgeInsets.all(10.w),
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Row(
+                                              children: [
+                                                _buildApplicantAvatar(
+                                                  seekerId: seekerId,
+                                                  applicant: applicant,
+                                                  resume: resume,
+                                                ),
+                                                SizedBox(width: 10.w),
+                                                Expanded(
+                                                  child: Column(
+                                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                                    children: [
+                                                      Text(
+                                                        _displayName(resume, applicant, seekerId),
+                                                        style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.w700),
+                                                      ),
+                                                      Text(
+                                                        applicant['jobTitle'] ?? jobId,
+                                                        style: TextStyle(fontSize: 12.sp, color: Colors.blueGrey.shade600),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                                _statusBadge(status),
+                                                IconButton(
+                                                  tooltip: 'View seeker details',
+                                                  onPressed: () => _openSeekerDetails(seekerId, jobId),
+                                                  icon: Icon(Icons.open_in_new, size: 18.sp, color: Colors.blue.shade700),
+                                                ),
+                                                PopupMenuButton<String>(
+                                                  onSelected: (action) => _handleAction(action, jobId, seekerId, {'resume': resume, ...applicant}),
+                                                  itemBuilder: (context) => [
+                                                    const PopupMenuItem(value: 'shortlist', child: Text('Shortlist')),
+                                                    const PopupMenuItem(value: 'reject', child: Text('Reject')),
+                                                    const PopupMenuItem(value: 'schedule', child: Text('Schedule Interview')),
+                                                    const PopupMenuItem(value: 'download_cv', child: Text('Download CV')),
+                                                    const PopupMenuItem(value: 'chat', child: Text('Chat')),
                                                   ],
                                                 ),
-                                              ),
-                                              _statusBadge(status),
-                                              PopupMenuButton<String>(
-                                                onSelected: (action) => _handleAction(action, jobId, seekerId, {'resume': resume, ...applicant}),
-                                                itemBuilder: (context) => [
-                                                  const PopupMenuItem(value: 'shortlist', child: Text('Shortlist')),
-                                                  const PopupMenuItem(value: 'reject', child: Text('Reject')),
-                                                  const PopupMenuItem(value: 'schedule', child: Text('Schedule Interview')),
-                                                  const PopupMenuItem(value: 'download_cv', child: Text('Download CV')),
-                                                  const PopupMenuItem(value: 'chat', child: Text('Chat')),
-                                                ],
-                                              ),
-                                            ],
-                                          ),
-                                          SizedBox(height: 8.h),
-                                          _detailLine(Icons.mail_outline, 'Email', resume['email'] ?? 'N/A'),
-                                          _detailLine(Icons.school_outlined, 'Education', resume['education'] ?? applicant['education'] ?? 'N/A'),
-                                          _detailLine(Icons.work_outline, 'Experience', resume['experience'] ?? applicant['experience'] ?? 'N/A'),
-                                          _detailLine(Icons.account_tree_outlined, 'Specialization', specialization),
-                                          _detailLine(Icons.psychology_outlined, 'Skills', skillsDisplay),
-                                        ],
+                                              ],
+                                            ),
+                                            SizedBox(height: 8.h),
+                                            _detailLine(Icons.mail_outline, 'Email', resume['email'] ?? 'N/A'),
+                                            _detailLine(Icons.school_outlined, 'Education', resume['education'] ?? applicant['education'] ?? 'N/A'),
+                                            _detailLine(Icons.work_outline, 'Experience', resume['experience'] ?? applicant['experience'] ?? 'N/A'),
+                                            _detailLine(Icons.account_tree_outlined, 'Specialization', specialization),
+                                            _detailLine(Icons.psychology_outlined, 'Skills', skillsDisplay),
+                                            SizedBox(height: 4.h),
+                                            // Container(
+                                            //   padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
+                                            //   decoration: BoxDecoration(
+                                            //     color: Colors.blue.shade50,
+                                            //     borderRadius: BorderRadius.circular(999.r),
+                                            //   ),
+                                            //   // child: Row(
+                                            //   //   mainAxisSize: MainAxisSize.min,
+                                            //   //   children: [
+                                            //   //     Icon(Icons.touch_app_outlined, size: 14.sp, color: Colors.blue.shade700),
+                                            //   //     SizedBox(width: 6.w),
+                                            //   //     // Text(
+                                            //   //     //   'Tap card to view full seeker details',
+                                            //   //     //   style: TextStyle(
+                                            //   //     //     fontSize: 11.sp,
+                                            //   //     //     fontWeight: FontWeight.w600,
+                                            //   //     //     color: Colors.blue.shade700,
+                                            //   //     //   ),
+                                            //   //     // ),
+                                            //   //   ],
+                                            //   // ),
+                                            // ),
+                                          ],
+                                        ),
                                       ),
                                     ),
                                   );
