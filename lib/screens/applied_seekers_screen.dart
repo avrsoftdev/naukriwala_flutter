@@ -34,6 +34,7 @@ class AppliedSeekersScreen extends StatefulWidget {
 class _AppliedSeekersScreenState extends State<AppliedSeekersScreen> {
   final String? recruiterId = FirebaseAuth.instance.currentUser?.uid;
   String _searchQuery = '';
+  final Map<String, String?> _photoUrlCache = {};
 
   final List<String> experienceOptions = [
     'Fresher',
@@ -451,6 +452,10 @@ class _AppliedSeekersScreenState extends State<AppliedSeekersScreen> {
         body: const Center(child: Text('Please log in to view applicants')),
       );
     }
+    final titleText = (widget.jobTitle.trim().isNotEmpty)
+        ? 'Applied Seekers for ${widget.jobTitle}'
+        : 'Applied Seekers';
+
     return ScreenUtilInit(
       designSize: const Size(360, 690),
       minTextAdapt: true,
@@ -458,162 +463,445 @@ class _AppliedSeekersScreenState extends State<AppliedSeekersScreen> {
       builder: (context, child) {
         return Scaffold(
           appBar: AppBar(
-            title: Text('Applied Seekers for ${widget.jobTitle}', style: TextStyle(fontSize: 20.sp)),
+            elevation: 0,
+            backgroundColor: const Color(0xFF0E4A88),
+            title: Text(
+              titleText,
+              style: TextStyle(fontSize: 19.sp, fontWeight: FontWeight.w700),
+            ),
             leading: IconButton(
               icon: const Icon(Icons.arrow_back),
               onPressed: () => Navigator.pop(context),
             ),
           ),
-          body: Padding(
-            padding: EdgeInsets.all(8.w),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        decoration: InputDecoration(
-                          labelText: 'Search applicants...',
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.r)),
-                          prefixIcon: Icon(Icons.search, size: 20),
+          body: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFFEAF1FA), Color(0xFFF8FBFF)],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+            ),
+            child: Padding(
+              padding: EdgeInsets.all(12.w),
+              child: Column(
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(10.w),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(14.r),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.06),
+                          blurRadius: 10.r,
+                          offset: Offset(0, 3.h),
                         ),
-                        onChanged: (value) {
-                          setState(() {
-                            _searchQuery = value.toLowerCase();
-                          });
-                        },
-                      ),
+                      ],
                     ),
-                    SizedBox(width: 10.w),
-                    ElevatedButton.icon(
-                      onPressed: () async {
-                        try {
-                          final applicants = await widget.authService.fetchAppliedSeekers();
-                          if (applicants.isEmpty) {
-                            dev.log('[2025-09-01 14:37 IST] No applicants to export for recruiter $recruiterId', name: 'AppliedSeekersScreen');
-                            if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('No applicants available to export.')),
-                              );
-                            }
-                            return;
-                          }
-                          await _exportToExcel(applicants);
-                        } catch (e) {
-                          dev.log('[2025-09-01 14:37 IST] Error exporting applicants for recruiter $recruiterId: $e', name: 'AppliedSeekersScreen', error: e);
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Error exporting applicants. Check logs.')),
-                            );
-                          }
-                        }
-                      },
-                      icon: const Icon(Icons.download),
-                      label: const Text('Export'),
-                      style: ElevatedButton.styleFrom(backgroundColor: const Color.fromARGB(255, 220, 217, 226)),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 10.h),
-                Expanded(
-                  child: FutureBuilder<List<Map<String, dynamic>>>(
-                    future: widget.authService.fetchAppliedSeekers(),
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return Center(child: CircularProgressIndicator(strokeWidth: 4.w));
-                      }
-                      if (snapshot.hasError) {
-                        final error = snapshot.error;
-                        String errorMessage = 'Error loading applied seekers. Please verify Firestore permissions or contact support.';
-                        if (error is FirebaseException) {
-                          errorMessage = 'Firebase error: ${error.code} - ${error.message}';
-                          if (error.code == 'permission-denied') {
-                            errorMessage +=
-                                '\nEnsure /Applications/{jobId} exists with recruiterId=$recruiterId and job exists in /Recruiters/$recruiterId/Jobs/{jobId}.';
-                            dev.log('[2025-09-01 14:37 IST] Permission denied in fetchAppliedSeekers. Check /Applications/{jobId} and /Recruiters/$recruiterId/Jobs for recruiter $recruiterId', name: 'AppliedSeekersScreen');
-                          }
-                        }
-                        dev.log('[2025-09-01 14:37 IST] Error loading applied seekers for recruiter $recruiterId: $error', name: 'AppliedSeekersScreen', error: error, stackTrace: snapshot.stackTrace);
-                        return Center(child: Text(errorMessage, textAlign: TextAlign.center, style: TextStyle(fontSize: 14.sp)));
-                      }
-                      final applicants = snapshot.data ?? [];
-
-                      if (applicants.isEmpty) {
-                        dev.log('[2025-09-01 14:37 IST] No applicants found for recruiter $recruiterId. Verify /Applications/{jobId} exists with correct recruiterId.', name: 'AppliedSeekersScreen');
-                        return const Center(
-                          child: Text(
-                            'No applied seekers found',
-                            textAlign: TextAlign.center,
-                          ),
-                        );
-                      }
-
-                      final filteredApplicants = applicants.where((applicant) {
-                        final name = (applicant['resume']?['name'] ?? applicant['name'] ?? '').toLowerCase();
-                        final jobTitle = (applicant['jobTitle'] ?? '').toLowerCase();
-                        return name.contains(_searchQuery) || jobTitle.contains(_searchQuery);
-                      }).toList();
-
-                      return ListView.builder(
-                        itemCount: filteredApplicants.length,
-                        itemBuilder: (_, index) {
-                          final applicant = filteredApplicants[index];
-                          final seekerId = applicant['seekerId'] as String? ?? 'Unknown';
-                          final jobId = applicant['jobId'] as String? ?? 'Unknown';
-                          final resume = applicant['resume'] as Map<String, dynamic>? ?? {};
-                          final specialization = specializationOptions.contains(resume['specialization'] ?? applicant['specialization'])
-                              ? (resume['specialization'] ?? applicant['specialization'] ?? 'N/A')
-                              : 'N/A';
-                          // Prioritize applicant.skills if available, fall back to resume.skills
-                          final skillsList = (applicant['skills'] is List<dynamic> && applicant['skills'].isNotEmpty)
-                              ? applicant['skills'].cast<String>()
-                              : (resume['skills'] is List<dynamic> && resume['skills'].isNotEmpty)
-                                  ? resume['skills'].cast<String>()
-                                  : (applicant['skills'] is String && applicant['skills'].isNotEmpty)
-                                      ? applicant['skills'].split(', ')
-                                      : [];
-                          final skillsDisplay = skillsList.isNotEmpty ? skillsList.join(', ') : 'N/A';
-
-                          return Card(
-                            elevation: 2,
-                            margin: EdgeInsets.symmetric(vertical: 5.h),
-                            child: ListTile(
-                              title: Text(resume['name'] ?? applicant['name'] ?? seekerId, style: TextStyle(fontSize: 16.sp)),
-                              subtitle: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text('Job: ${applicant['jobTitle'] ?? jobId}', style: TextStyle(fontSize: 14.sp)),
-                                  Text('Name: ${resume['name'] ?? 'N/A'}', style: TextStyle(fontSize: 14.sp)),
-                                  Text('Email: ${resume['email'] ?? 'N/A'}', style: TextStyle(fontSize: 14.sp)),
-                                  Text('Skills: $skillsDisplay', style: TextStyle(fontSize: 14.sp)),
-                                  Text('Specialization: $specialization', style: TextStyle(fontSize: 14.sp)),
-                                  Text('Education: ${resume['education'] ?? applicant['education'] ?? 'N/A'}', style: TextStyle(fontSize: 14.sp)),
-                                  Text('Experience: ${resume['experience'] ?? applicant['experience'] ?? 'N/A'}', style: TextStyle(fontSize: 14.sp)),
-                                  Text('Status: ${applicant['status'] ?? 'N/A'}', style: TextStyle(fontSize: 14.sp)),
-                                ],
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            decoration: InputDecoration(
+                              hintText: 'Search by name or job title',
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.r)),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12.r),
+                                borderSide: const BorderSide(color: Color(0xFF0E4A88), width: 1.3),
                               ),
-                              trailing: PopupMenuButton<String>(
-                                onSelected: (action) => _handleAction(action, jobId, seekerId, {'resume': resume, ...applicant}),
-                                itemBuilder: (context) => [
-                                  const PopupMenuItem(value: 'shortlist', child: Text('Shortlist')),
-                                  const PopupMenuItem(value: 'reject', child: Text('Reject')),
-                                  const PopupMenuItem(value: 'schedule', child: Text('Schedule Interview')),
-                                  const PopupMenuItem(value: 'download_cv', child: Text('Download CV')),
-                                  const PopupMenuItem(value: 'chat', child: Text('Chat')),
-                                ],
+                              prefixIcon: Icon(Icons.search, size: 20.sp),
+                              isDense: true,
+                            ),
+                            onChanged: (value) {
+                              setState(() {
+                                _searchQuery = value.toLowerCase();
+                              });
+                            },
+                          ),
+                        ),
+                        SizedBox(width: 10.w),
+                        ElevatedButton.icon(
+                          onPressed: () async {
+                            try {
+                              final applicants = await widget.authService.fetchAppliedSeekers();
+                              if (applicants.isEmpty) {
+                                dev.log('[2025-09-01 14:37 IST] No applicants to export for recruiter $recruiterId', name: 'AppliedSeekersScreen');
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('No applicants available to export.')),
+                                  );
+                                }
+                                return;
+                              }
+                              await _exportToExcel(applicants);
+                            } catch (e) {
+                              dev.log('[2025-09-01 14:37 IST] Error exporting applicants for recruiter $recruiterId: $e', name: 'AppliedSeekersScreen', error: e);
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Error exporting applicants. Check logs.')),
+                                );
+                              }
+                            }
+                          },
+                          icon: Icon(Icons.download_rounded, size: 18.sp),
+                          label: Text('Export', style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w600)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF0E4A88),
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 12.h),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: 10.h),
+                  Expanded(
+                    child: FutureBuilder<List<Map<String, dynamic>>>(
+                      future: widget.authService.fetchAppliedSeekers(),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return Center(child: CircularProgressIndicator(strokeWidth: 3.w));
+                        }
+                        if (snapshot.hasError) {
+                          final error = snapshot.error;
+                          String errorMessage = 'Error loading applied seekers. Please verify Firestore permissions or contact support.';
+                          if (error is FirebaseException) {
+                            errorMessage = 'Firebase error: ${error.code} - ${error.message}';
+                            if (error.code == 'permission-denied') {
+                              errorMessage +=
+                                  '\nEnsure /Applications/{jobId} exists with recruiterId=$recruiterId and job exists in /Recruiters/$recruiterId/Jobs/{jobId}.';
+                              dev.log('[2025-09-01 14:37 IST] Permission denied in fetchAppliedSeekers. Check /Applications/{jobId} and /Recruiters/$recruiterId/Jobs for recruiter $recruiterId', name: 'AppliedSeekersScreen');
+                            }
+                          }
+                          dev.log('[2025-09-01 14:37 IST] Error loading applied seekers for recruiter $recruiterId: $error', name: 'AppliedSeekersScreen', error: error, stackTrace: snapshot.stackTrace);
+                          return _buildStateCard(
+                            icon: Icons.error_outline,
+                            text: errorMessage,
+                            color: Colors.red.shade700,
+                          );
+                        }
+
+                        final applicants = snapshot.data ?? [];
+
+                        if (applicants.isEmpty) {
+                          dev.log('[2025-09-01 14:37 IST] No applicants found for recruiter $recruiterId. Verify /Applications/{jobId} exists with correct recruiterId.', name: 'AppliedSeekersScreen');
+                          return _buildStateCard(
+                            icon: Icons.group_off_outlined,
+                            text: 'No applied seekers found',
+                            color: Colors.blueGrey.shade600,
+                          );
+                        }
+
+                        final filteredApplicants = applicants.where((applicant) {
+                          final name = (applicant['resume']?['name'] ?? applicant['name'] ?? '').toLowerCase();
+                          final jobTitle = (applicant['jobTitle'] ?? '').toLowerCase();
+                          return name.contains(_searchQuery) || jobTitle.contains(_searchQuery);
+                        }).toList();
+
+                        return Column(
+                          children: [
+                            Container(
+                              width: double.infinity,
+                              padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF0E4A88),
+                                borderRadius: BorderRadius.circular(12.r),
+                              ),
+                              child: Text(
+                                '${filteredApplicants.length} of ${applicants.length} seekers shown',
+                                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13.sp),
                               ),
                             ),
-                          );
-                        },
-                      );
-                    },
+                            SizedBox(height: 8.h),
+                            Expanded(
+                              child: ListView.builder(
+                                itemCount: filteredApplicants.length,
+                                itemBuilder: (_, index) {
+                                  final applicant = filteredApplicants[index];
+                                  final seekerId = applicant['seekerId'] as String? ?? 'Unknown';
+                                  final jobId = applicant['jobId'] as String? ?? 'Unknown';
+                                  final resume = applicant['resume'] as Map<String, dynamic>? ?? {};
+                                  final specialization = specializationOptions.contains(resume['specialization'] ?? applicant['specialization'])
+                                      ? (resume['specialization'] ?? applicant['specialization'] ?? 'N/A')
+                                      : 'N/A';
+                                  final skillsList = (applicant['skills'] is List<dynamic> && applicant['skills'].isNotEmpty)
+                                      ? applicant['skills'].cast<String>()
+                                      : (resume['skills'] is List<dynamic> && resume['skills'].isNotEmpty)
+                                          ? resume['skills'].cast<String>()
+                                          : (applicant['skills'] is String && applicant['skills'].isNotEmpty)
+                                              ? applicant['skills'].split(', ')
+                                              : [];
+                                  final skillsDisplay = skillsList.isNotEmpty ? skillsList.join(', ') : 'N/A';
+                                  final status = (applicant['status'] ?? 'N/A').toString();
+
+                                  return Card(
+                                    elevation: 2,
+                                    margin: EdgeInsets.symmetric(vertical: 5.h),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14.r)),
+                                    child: Padding(
+                                      padding: EdgeInsets.all(10.w),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              _buildApplicantAvatar(
+                                                seekerId: seekerId,
+                                                applicant: applicant,
+                                                resume: resume,
+                                              ),
+                                              SizedBox(width: 10.w),
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      _displayName(resume, applicant, seekerId),
+                                                      style: TextStyle(fontSize: 15.sp, fontWeight: FontWeight.w700),
+                                                    ),
+                                                    Text(
+                                                      applicant['jobTitle'] ?? jobId,
+                                                      style: TextStyle(fontSize: 12.sp, color: Colors.blueGrey.shade600),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              _statusBadge(status),
+                                              PopupMenuButton<String>(
+                                                onSelected: (action) => _handleAction(action, jobId, seekerId, {'resume': resume, ...applicant}),
+                                                itemBuilder: (context) => [
+                                                  const PopupMenuItem(value: 'shortlist', child: Text('Shortlist')),
+                                                  const PopupMenuItem(value: 'reject', child: Text('Reject')),
+                                                  const PopupMenuItem(value: 'schedule', child: Text('Schedule Interview')),
+                                                  const PopupMenuItem(value: 'download_cv', child: Text('Download CV')),
+                                                  const PopupMenuItem(value: 'chat', child: Text('Chat')),
+                                                ],
+                                              ),
+                                            ],
+                                          ),
+                                          SizedBox(height: 8.h),
+                                          _detailLine(Icons.mail_outline, 'Email', resume['email'] ?? 'N/A'),
+                                          _detailLine(Icons.school_outlined, 'Education', resume['education'] ?? applicant['education'] ?? 'N/A'),
+                                          _detailLine(Icons.work_outline, 'Experience', resume['experience'] ?? applicant['experience'] ?? 'N/A'),
+                                          _detailLine(Icons.account_tree_outlined, 'Specialization', specialization),
+                                          _detailLine(Icons.psychology_outlined, 'Skills', skillsDisplay),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         );
       },
+    );
+  }
+
+  Widget _detailLine(IconData icon, String label, String value) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: 4.h),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 14.sp, color: Colors.blueGrey.shade600),
+          SizedBox(width: 6.w),
+          SizedBox(
+            width: 90.w,
+            child: Text(
+              '$label:',
+              style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w600, color: Colors.blueGrey.shade700),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: TextStyle(fontSize: 12.sp, color: Colors.black87),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _displayName(
+    Map<String, dynamic> resume,
+    Map<String, dynamic> applicant,
+    String seekerId,
+  ) {
+    final text = (resume['name'] ?? applicant['name'] ?? seekerId).toString().trim();
+    return text.isEmpty ? seekerId : text;
+  }
+
+  String _initialFromName(String name) {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) return '?';
+    return trimmed[0].toUpperCase();
+  }
+
+  String? _extractPhotoUrl(Map<String, dynamic> applicant, Map<String, dynamic> resume) {
+    final candidates = <dynamic>[
+      resume['photoUrl'],
+      resume['profilePhotoUrl'],
+      applicant['photoUrl'],
+      applicant['profilePhotoUrl'],
+      applicant['seekerPhotoUrl'],
+    ];
+    for (final candidate in candidates) {
+      final value = candidate?.toString().trim() ?? '';
+      if (value.isNotEmpty) return value;
+    }
+    return null;
+  }
+
+  Future<String?> _getSeekerPhotoUrl(String seekerId) async {
+    if (_photoUrlCache.containsKey(seekerId)) return _photoUrlCache[seekerId];
+    try {
+      final usersIndexDoc = await FirebaseFirestore.instance.collection('UsersIndex').doc(seekerId).get();
+      final usersIndexUrl = usersIndexDoc.data()?['photoUrl']?.toString().trim() ?? '';
+      if (usersIndexUrl.isNotEmpty) {
+        _photoUrlCache[seekerId] = usersIndexUrl;
+        return usersIndexUrl;
+      }
+
+      final seekersDoc = await FirebaseFirestore.instance.collection('Seekers').doc(seekerId).get();
+      final seekersUrl = seekersDoc.data()?['photoUrl']?.toString().trim() ?? '';
+      _photoUrlCache[seekerId] = seekersUrl.isNotEmpty ? seekersUrl : null;
+      return _photoUrlCache[seekerId];
+    } catch (e) {
+      dev.log('[2026-02-23 16:50 IST] Failed to fetch profile photo for seeker $seekerId: $e', name: 'AppliedSeekersScreen', error: e);
+      _photoUrlCache[seekerId] = null;
+      return null;
+    }
+  }
+
+  Widget _buildApplicantAvatar({
+    required String seekerId,
+    required Map<String, dynamic> applicant,
+    required Map<String, dynamic> resume,
+  }) {
+    final name = _displayName(resume, applicant, seekerId);
+    final directUrl = _extractPhotoUrl(applicant, resume);
+    if (directUrl != null && directUrl.isNotEmpty) {
+      return _networkAvatar(directUrl, name);
+    }
+
+    return FutureBuilder<String?>(
+      future: _getSeekerPhotoUrl(seekerId),
+      builder: (context, snapshot) {
+        final url = snapshot.data;
+        if (url != null && url.isNotEmpty) {
+          return _networkAvatar(url, name);
+        }
+        return CircleAvatar(
+          radius: 20.r,
+          backgroundColor: const Color(0xFF0E4A88),
+          child: Text(
+            _initialFromName(name),
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14.sp),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _networkAvatar(String url, String name) {
+    return CircleAvatar(
+      radius: 20.r,
+      backgroundColor: const Color(0xFF0E4A88),
+      child: ClipOval(
+        child: Image.network(
+          url,
+          width: 40.r,
+          height: 40.r,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) {
+            return Center(
+              child: Text(
+                _initialFromName(name),
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14.sp),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _statusBadge(String status) {
+    final normalized = status.toLowerCase();
+    Color bg = const Color(0xFFE8F5E9);
+    Color fg = const Color(0xFF1B5E20);
+    if (normalized == 'rejected') {
+      bg = const Color(0xFFFFEBEE);
+      fg = const Color(0xFFC62828);
+    } else if (normalized == 'scheduled') {
+      bg = const Color(0xFFE3F2FD);
+      fg = const Color(0xFF0D47A1);
+    } else if (normalized == 'applied' || normalized == 'pending') {
+      bg = const Color(0xFFFFF3E0);
+      fg = const Color(0xFFEF6C00);
+    }
+
+    return Container(
+      margin: EdgeInsets.only(right: 4.w),
+      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(20.r),
+      ),
+      child: Text(
+        status.toUpperCase(),
+        style: TextStyle(fontSize: 10.sp, fontWeight: FontWeight.w700, color: fg),
+      ),
+    );
+  }
+
+  Widget _buildStateCard({
+    required IconData icon,
+    required String text,
+    required Color color,
+  }) {
+    return Center(
+      child: Container(
+        width: double.infinity,
+        margin: EdgeInsets.symmetric(horizontal: 8.w),
+        padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 18.h),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14.r),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 10.r,
+              offset: Offset(0, 4.h),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: color, size: 28.sp),
+            SizedBox(height: 8.h),
+            Text(
+              text,
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 13.sp, color: color),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

@@ -662,6 +662,7 @@ class AuthService {
       'jobTitle': jobTitle,
       'company': jobData['company']?.toString() ?? 'Unknown',
       'coverLetter': coverLetter,
+      'photoUrl': seekerProfile['photoUrl']?.toString() ?? seekerProfile['profilePhotoUrl']?.toString() ?? '',
       'resume': {
         'name': seekerProfile['name']?.toString() ?? '',
         'email': seekerProfile['email']?.toString() ?? '',
@@ -674,6 +675,7 @@ class AuthService {
         'currentCtc': seekerProfile['currentCtc']?.toString() ?? '',
         'expectedCtc': seekerProfile['expectedCtc']?.toString() ?? '',
         'cvUrl': seekerProfile['resumeUrl']?.toString() ?? '',
+        'photoUrl': seekerProfile['photoUrl']?.toString() ?? seekerProfile['profilePhotoUrl']?.toString() ?? '',
       },
       'fcmToken': fcmToken,
     };
