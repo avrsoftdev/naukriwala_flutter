@@ -6,7 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:multi_select_flutter/multi_select_flutter.dart';
 import '../services/auth_middleware.dart';
 import 'preview_job_screen.dart';
-import 'posted_jobs_screen.dart';
+import 'posted_jobs_view.dart';
 import 'dart:developer' as dev;
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
@@ -417,7 +417,7 @@ class PostJobScreenState extends State<PostJobScreen> {
       if (!mounted) return;
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (_) => const PostedJobsScreen()),
+        MaterialPageRoute(builder: (_) => PostedJobsScreen()),
       );
     } catch (e) {
       dev.log('Error submitting job: $e', name: 'PostJobScreen');

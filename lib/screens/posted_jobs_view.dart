@@ -1,8 +1,8 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
-import 'package:naukariwala/screens/post_job_screen.dart';
+import 'package:naukariwala/screens/edit_job_screen.dart';
 import 'dart:developer' as dev;
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
@@ -312,7 +312,7 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
           SizedBox(width: 10.w),
           Expanded(
             child: Text(
-              '$totalJobs jobs found  �  $featuredJobs featured',
+              '$totalJobs jobs found  •  $featuredJobs featured',
               style: TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w600,
@@ -438,7 +438,10 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => PostJobScreen(editJobData: {...job, 'jobId': jobId}),
+                    builder: (_) => EditJobScreen(
+                      jobId: jobId,
+                      jobData: {...job, 'jobId': jobId},
+                    ),
                   ),
                 );
               } else if (value == 'delete') {
@@ -875,3 +878,4 @@ class AnimatedListItemState extends State<AnimatedListItem> with SingleTickerPro
     );
   }
 }
+

@@ -4,10 +4,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
-import 'package:naukariwala/screens/posted_jobs_screen.dart';
 import 'package:naukariwala/screens/profile_screen.dart';
 import 'package:naukariwala/screens/post_job_screen.dart';
-import 'package:naukariwala/screens/post_job_screen.dart';
+import 'posted_jobs_view.dart';
 import 'package:naukariwala/screens/applied_seekers_screen.dart';
 import 'package:naukariwala/screens/calls_screen.dart';
 import 'package:naukariwala/screens/notifications_screen.dart';
@@ -223,7 +222,7 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const PostedJobsScreen(),
+                          builder: (context) => PostedJobsScreen(),
                         ),
                       );
                     },
@@ -336,7 +335,7 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
                     child: TabBarView(
                       children: [
                         const ProfileScreen(isRecruiter: true),
-                        const PostedJobsScreen(),
+                        PostedJobsScreen(),
                         AppliedSeekersScreen(
                           authService: _authService,
                           jobId: '',
