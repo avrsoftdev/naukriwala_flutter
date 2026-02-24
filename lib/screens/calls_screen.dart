@@ -189,7 +189,7 @@ class _CallsScreenState extends State<CallsScreen> {
                                   begin: Alignment.topLeft,
                                   end: Alignment.bottomRight,
                                 ),
-                                border: Border.all(color: const Color(0xFFDCE8F7)),
+                                border: Border.all(color: const Color(0xFF134B8A), width: 1.2),
                                 boxShadow: [
                                   BoxShadow(
                                     color: Colors.black.withOpacity(0.05),

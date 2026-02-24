@@ -4,10 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
-import 'package:excel/excel.dart';
-import 'package:path_provider/path_provider.dart';
-import 'dart:io';
-import 'dart:typed_data';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:add_2_calendar/add_2_calendar.dart';
 import 'package:naukariwala/screens/chat_screen.dart';
@@ -394,63 +390,6 @@ class _AppliedSeekersScreenState extends State<AppliedSeekersScreen> {
     );
   }
 
-  Future<void> _exportToExcel(List<Map<String, dynamic>> applicants) async {
-    try {
-      var excel = Excel.createExcel();
-      Sheet sheet = excel['Applicants'];
-      sheet.appendRow([
-       TextCellValue('Name'),
-       TextCellValue('Mobile'),
-       TextCellValue('Specialization'),
-       TextCellValue('Education'),
-       TextCellValue('Experience'),
-       TextCellValue('Skills'),
-       TextCellValue('Status'),
-       TextCellValue('Job Title'),
-]);
-
-      for (var a in applicants) {
-        final resume = a['resume'] as Map<String, dynamic>? ?? {};
-        final specialization = specializationOptions.contains(resume['specialization'] ?? a['specialization'])
-            ? (resume['specialization'] ?? a['specialization'] ?? 'N/A')
-            : 'N/A';
-        // Prioritize applicant.skills if available, fall back to resume.skills
-        final skillsList = (a['skills'] is List<dynamic> && a['skills'].isNotEmpty)
-            ? a['skills'].cast<String>()
-            : (resume['skills'] is List<dynamic> && resume['skills'].isNotEmpty)
-                ? resume['skills'].cast<String>()
-                : (a['skills'] is String && a['skills'].isNotEmpty)
-                    ? a['skills'].split(', ')
-                    : [];
-        final skillsDisplay = skillsList.isNotEmpty ? skillsList.join(', ') : 'N/A';
-
-        sheet.appendRow([
-          resume['name'] ?? a['name'] ?? '',
-          resume['mobileNumber'] ?? a['mobile'] ?? '',
-          specialization,
-          resume['education'] ?? a['education'] ?? '',
-          resume['experience'] ?? a['experience'] ?? '',
-          skillsDisplay,
-          a['status'] ?? '',
-          a['jobTitle'] ?? '',
-        ]);
-      }
-      final bytes = excel.encode();
-      final dir = await getApplicationDocumentsDirectory();
-      final path = '${dir.path}/applicants_export_${DateTime.now().millisecondsSinceEpoch}.xlsx';
-      final file = File(path);
-      await file.writeAsBytes(Uint8List.fromList(bytes!));
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Exported to $path')));
-      dev.log('[2025-09-01 14:37 IST] Exported applicants to $path', name: 'AppliedSeekersScreen');
-    } catch (e) {
-      dev.log('[2025-09-01 14:37 IST] Error exporting to Excel: $e', name: 'AppliedSeekersScreen', error: e);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Error exporting applicants. Check logs.')));
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     if (recruiterId == null) {
@@ -536,40 +475,6 @@ class _AppliedSeekersScreenState extends State<AppliedSeekersScreen> {
                                 _searchQuery = value.toLowerCase();
                               });
                             },
-                          ),
-                        ),
-                        SizedBox(width: 10.w),
-                        ElevatedButton.icon(
-                          onPressed: () async {
-                            try {
-                              final applicants = await widget.authService.fetchAppliedSeekers();
-                              if (applicants.isEmpty) {
-                                dev.log('[2025-09-01 14:37 IST] No applicants to export for recruiter $recruiterId', name: 'AppliedSeekersScreen');
-                                if (mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('No applicants available to export.')),
-                                  );
-                                }
-                                return;
-                              }
-                              await _exportToExcel(applicants);
-                            } catch (e) {
-                              dev.log('[2025-09-01 14:37 IST] Error exporting applicants for recruiter $recruiterId: $e', name: 'AppliedSeekersScreen', error: e);
-                              if (mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Error exporting applicants. Check logs.')),
-                                );
-                              }
-                            }
-                          },
-                          icon: Icon(Icons.download_rounded, size: 18.sp),
-                          label: Text('Export', style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w600)),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF0E4A88),
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                            padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 12.h),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
                           ),
                         ),
                       ],
