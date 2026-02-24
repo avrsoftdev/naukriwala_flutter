@@ -183,7 +183,7 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
                         child: ListView.separated(
                           padding: EdgeInsets.fromLTRB(16.w, 0, 16.w, 16.h),
                           itemCount: jobs.length,
-                          separatorBuilder: (_, __) => SizedBox(height: 10.h),
+                          separatorBuilder: (_, index) => SizedBox(height: 10.h),
                           itemBuilder: (context, index) {
                             final job = jobs[index].data() as Map<String, dynamic>;
                             final jobId = jobs[index].id;
@@ -357,7 +357,10 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
     return Card(
       elevation: 2.5,
       margin: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16.r),
+        side: const BorderSide(color: Color(0xFF0D47A1), width: 1.2),
+      ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16.r),
         child: ExpansionTile(
