@@ -65,11 +65,32 @@ class _ChatListScreenState extends State<ChatListScreen> {
         photoUrl = data['photoUrl'];
       }
 
-      // Get job title
+      // Get job title from application first, since chat is created from an application.
       String jobTitle = 'Unknown Job';
-      final jobDoc = await _firestore.collection('Jobs').doc(jobId).get();
-      if (jobDoc.exists) {
-        jobTitle = jobDoc.get('title') ?? 'Unknown Job';
+      final uid = _auth.currentUser?.uid;
+      if (uid != null) {
+        final applicationIds = ['${uid}_$jobId', '${otherUserId}_$jobId'];
+        for (final applicationId in applicationIds) {
+          final appDoc = await _firestore.collection('Applications').doc(applicationId).get();
+          if (!appDoc.exists) continue;
+          final appData = appDoc.data();
+          final title = appData?['jobTitle']?.toString().trim();
+          if (title != null && title.isNotEmpty) {
+            jobTitle = title;
+            break;
+          }
+        }
+      }
+
+      // Fallback for older data models.
+      if (jobTitle == 'Unknown Job') {
+        final jobDoc = await _firestore.collection('Jobs').doc(jobId).get();
+        if (jobDoc.exists) {
+          final title = jobDoc.data()?['title']?.toString().trim();
+          if (title != null && title.isNotEmpty) {
+            jobTitle = title;
+          }
+        }
       }
 
       return {
