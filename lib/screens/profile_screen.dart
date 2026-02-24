@@ -989,28 +989,28 @@ class ProfileScreenState extends State<ProfileScreen> {
                     },
                   ),
                 ),
-                Container(
-                  margin: EdgeInsets.only(
-                    right: 8.w,
-                    left: 4.w,
-                    top: 6.h,
-                    bottom: 6.h,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.18),
-                    shape: BoxShape.circle,
-                  ),
-                  child: IconButton(
-                    icon: const Icon(
-                      Icons.edit_outlined,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                    padding: EdgeInsets.all(2.w),
-                    onPressed: _showUpdateProfileDialog,
-                  ),
-                ),
               ],
+              Container(
+                margin: EdgeInsets.only(
+                  right: 8.w,
+                  left: 4.w,
+                  top: 6.h,
+                  bottom: 6.h,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.18),
+                  shape: BoxShape.circle,
+                ),
+                child: IconButton(
+                  icon: const Icon(
+                    Icons.edit_outlined,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                  padding: EdgeInsets.all(2.w),
+                  onPressed: _showUpdateProfileDialog,
+                ),
+              ),
             ],
           ),
           body: Container(
@@ -1883,10 +1883,19 @@ class ProfileDialogState extends State<ProfileDialog> {
           onPressed: _isLoading
               ? null
               : () {
+                  final mobileNumber = widget.mobileNumber?.trim() ?? '';
+                  if (mobileNumber.isEmpty) {
+                    setState(() {
+                      _errorMessage =
+                          'Mobile number is required to update profile.';
+                    });
+                    return;
+                  }
+
                   final profileData = widget.isRecruiter
                       ? {
                           'name': _nameController.text.trim(),
-                          'mobileNumber': widget.mobileNumber!.trim(),
+                          'mobileNumber': mobileNumber,
                           'companyName': _companyNameController.text.trim(),
                           'companyProfile': _companyProfileController.text
                               .trim(),
@@ -1895,7 +1904,7 @@ class ProfileDialogState extends State<ProfileDialog> {
                         }
                       : {
                           'name': _nameController.text.trim(),
-                          'mobileNumber': widget.mobileNumber!.trim(),
+                          'mobileNumber': mobileNumber,
                           'skills': _skills,
                           'education': _education,
                           'experience': _experienceController.text.trim(),
