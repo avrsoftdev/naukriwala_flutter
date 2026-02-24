@@ -203,7 +203,10 @@ class _SeekerDashboardState extends State<SeekerDashboard> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => MyApplicationsScreen(seekerId: uid),
+                      builder: (context) => MyApplicationsScreen(
+                        seekerId: uid,
+                        showAppBar: true,
+                      ),
                     ),
                   );
                 },

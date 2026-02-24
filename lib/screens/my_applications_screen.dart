@@ -11,7 +11,13 @@ import 'dart:developer' as dev;
 
 class MyApplicationsScreen extends StatefulWidget {
   final String seekerId;
-  const MyApplicationsScreen({super.key, required this.seekerId});
+  final bool showAppBar;
+
+  const MyApplicationsScreen({
+    super.key,
+    required this.seekerId,
+    this.showAppBar = false,
+  });
 
   @override
   State<MyApplicationsScreen> createState() => _MyApplicationsScreenState();
@@ -22,6 +28,20 @@ class _MyApplicationsScreenState extends State<MyApplicationsScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final AuthService _authService = AuthService();
   String _searchQuery = '';
+
+  Color _statusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'shortlisted':
+        return const Color(0xFF0E9F6E);
+      case 'rejected':
+        return const Color(0xFFE02424);
+      case 'interview scheduled':
+        return const Color(0xFF1C64F2);
+      case 'applied':
+      default:
+        return const Color(0xFFF59E0B);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -71,39 +91,49 @@ class _MyApplicationsScreenState extends State<MyApplicationsScreen> {
       splitScreenMode: true,
       builder: (context, child) {
         return Scaffold(
-          appBar: AppBar(
-            title: Text(
-              'My Applications',
-              style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 22.sp),
-            ),
-            flexibleSpace: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Colors.blue.shade700, Colors.blue.shade900],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
+          appBar: widget.showAppBar
+              ? AppBar(
+                  title: Text(
+                    'My Applications',
+                    style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 22.sp),
+                  ),
+                  flexibleSpace: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Colors.blue.shade700, Colors.blue.shade900],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                    ),
+                  ),
+                  elevation: 4,
+                )
+              : null,
+          body: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFFF5F7FB), Color(0xFFEAF2FF)],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
               ),
             ),
-            elevation: 4,
-          ),
-          body: Column(
+            child: Column(
             children: [
               Padding(
                 padding: EdgeInsets.all(16.w),
                 child: TextField(
                   decoration: InputDecoration(
-                    labelText: 'Search by title...',
-                    labelStyle: TextStyle(color: Colors.grey, fontSize: 14.sp),
+                    hintText: 'Search by title...',
+                    hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 14.sp),
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12.r),
-                      borderSide: BorderSide(color: Colors.grey.shade400),
+                      borderRadius: BorderRadius.circular(14.r),
+                      borderSide: BorderSide.none,
                     ),
                     focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12.r),
-                      borderSide: BorderSide(color: Colors.teal, width: 2.w),
+                      borderRadius: BorderRadius.circular(14.r),
+                      borderSide: BorderSide(color: const Color(0xFF1C64F2), width: 1.6.w),
                     ),
-                    prefixIcon: const Icon(Icons.search, color: Colors.teal),
+                    prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF1C64F2)),
                     filled: true,
                     fillColor: Colors.white,
                     contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
@@ -168,57 +198,91 @@ class _MyApplicationsScreenState extends State<MyApplicationsScreen> {
                       );
                     }
 
-                    final applications = snapshot.data!.docs.where((doc) {
+                    final allApplications = snapshot.data!.docs;
+                    final applications = allApplications.where((doc) {
                       final data = doc.data() as Map<String, dynamic>;
                       final title = (data['jobTitle'] ?? '').toString().toLowerCase();
                       return title.contains(_searchQuery);
                     }).toList();
 
-                    return ListView.builder(
-                      padding: EdgeInsets.all(16.w),
-                      itemCount: applications.length,
-                      itemBuilder: (context, index) {
-                        final data = applications[index].data() as Map<String, dynamic>;
-                        final jobId = data['jobId'] as String? ?? 'Unknown';
-                        final title = data['jobTitle'] as String? ?? 'Unknown';
-                        final company = data['company'] as String? ?? 'Unknown';
-                        final status = data['status'] as String? ?? 'Unknown';
-                        final appliedAt = data['appliedAt'] as Timestamp?;
-                        final interviewDate = data['interviewDate'] as Timestamp?;
-                        final recruiterId = data['recruiterId'] as String? ?? 'Unknown';
-                        final appliedAtStr = appliedAt != null ? DateFormat('dd MMM yyyy').format(appliedAt.toDate()) : 'N/A';
-                        final interviewDateStr = interviewDate != null ? DateFormat('dd MMM yyyy, hh:mm a').format(interviewDate.toDate()) : 'N/A';
+                    final interviewCount = allApplications.where((doc) {
+                      final data = doc.data() as Map<String, dynamic>;
+                      return (data['status'] ?? '').toString().toLowerCase() == 'interview scheduled';
+                    }).length;
+                    final shortlistedCount = allApplications.where((doc) {
+                      final data = doc.data() as Map<String, dynamic>;
+                      return (data['status'] ?? '').toString().toLowerCase() == 'shortlisted';
+                    }).length;
 
-                        return AnimatedListItem(
-                          child: Card(
-                            elevation: 3,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
-                            child: Container(
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [Colors.blue.shade50, Colors.blue.shade100],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
+                    if (applications.isEmpty) {
+                      return Center(
+                        child: Text(
+                          'No matching applications found.',
+                          style: TextStyle(fontSize: 14.sp, color: Colors.grey.shade600),
+                        ),
+                      );
+                    }
+
+                    return Column(
+                      children: [
+                        Padding(
+                          padding: EdgeInsets.fromLTRB(16.w, 0, 16.w, 10.h),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: _StatCard(
+                                  label: 'Total',
+                                  value: '${allApplications.length}',
+                                  icon: Icons.inventory_2_rounded,
+                                  color: const Color(0xFF2563EB),
                                 ),
-                                borderRadius: BorderRadius.circular(12.r),
                               ),
-                              child: ListTile(
-                                contentPadding: EdgeInsets.all(16.w),
-                                title: Text(
-                                  title,
-                                  style: TextStyle(fontWeight: FontWeight.w600, color: Colors.black87, fontSize: 16.sp),
+                              SizedBox(width: 8.w),
+                              Expanded(
+                                child: _StatCard(
+                                  label: 'Interviews',
+                                  value: '$interviewCount',
+                                  icon: Icons.event_note_rounded,
+                                  color: const Color(0xFF0284C7),
                                 ),
-                                subtitle: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text('Company: $company', style: TextStyle(fontSize: 14.sp)),
-                                    Text('Status: $status', style: TextStyle(fontSize: 14.sp)),
-                                    Text('Applied: $appliedAtStr', style: TextStyle(fontSize: 14.sp)),
-                                    if (status == 'Interview Scheduled') Text('Interview: $interviewDateStr', style: TextStyle(fontSize: 14.sp)),
-                                  ],
+                              ),
+                              SizedBox(width: 8.w),
+                              Expanded(
+                                child: _StatCard(
+                                  label: 'Shortlisted',
+                                  value: '$shortlistedCount',
+                                  icon: Icons.verified_rounded,
+                                  color: const Color(0xFF16A34A),
                                 ),
-                                trailing: AnimatedScaleButton(
-                                  onPressed: () async {
+                              ),
+                            ],
+                          ),
+                        ),
+                        Expanded(
+                          child: ListView.builder(
+                            padding: EdgeInsets.fromLTRB(16.w, 0, 16.w, 16.h),
+                            itemCount: applications.length,
+                            itemBuilder: (context, index) {
+                              final data = applications[index].data() as Map<String, dynamic>;
+                              final jobId = data['jobId'] as String? ?? 'Unknown';
+                              final title = data['jobTitle'] as String? ?? 'Unknown';
+                              final company = data['company'] as String? ?? 'Unknown';
+                              final status = data['status'] as String? ?? 'Unknown';
+                              final appliedAt = data['appliedAt'] as Timestamp?;
+                              final interviewDate = data['interviewDate'] as Timestamp?;
+                              final recruiterId = data['recruiterId'] as String? ?? 'Unknown';
+                              final appliedAtStr = appliedAt != null ? DateFormat('dd MMM yyyy').format(appliedAt.toDate()) : 'N/A';
+                              final interviewDateStr = interviewDate != null ? DateFormat('dd MMM yyyy, hh:mm a').format(interviewDate.toDate()) : 'N/A';
+
+                              return AnimatedListItem(
+                                child: _ApplicationCard(
+                                  title: title,
+                                  company: company,
+                                  status: status,
+                                  appliedAtStr: appliedAtStr,
+                                  interviewDateStr: interviewDateStr,
+                                  statusColor: _statusColor(status),
+                                  onChatTap: () async {
                                     if (!mounted) {
                                       dev.log('[2025-08-19 04:14 IST] Widget not mounted, cannot start chat', name: 'MyApplicationsScreen');
                                       return;
@@ -258,35 +322,229 @@ class _MyApplicationsScreenState extends State<MyApplicationsScreen> {
                                       );
                                     }
                                   },
-                                  child: Container(
-                                    padding: EdgeInsets.all(8.w),
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: Colors.teal,
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: Colors.black.withOpacity(0.2),
-                                          blurRadius: 4.r,
-                                          offset: Offset(0, 2.h),
-                                        ),
-                                      ],
-                                    ),
-                                    child: const Icon(Icons.chat, color: Colors.white, size: 24),
-                                  ),
                                 ),
-                              ),
-                            ),
+                              );
+                            },
                           ),
-                        );
-                      },
+                        ),
+                      ],
                     );
                   },
                 ),
               ),
             ],
-          ),
+          )),
         );
       },
+    );
+  }
+}
+
+class _StatCard extends StatelessWidget {
+  final String label;
+  final String value;
+  final IconData icon;
+  final Color color;
+
+  const _StatCard({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 10.h),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12.r),
+        border: Border.all(color: color.withOpacity(0.25)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: EdgeInsets.all(6.w),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(8.r),
+            ),
+            child: Icon(icon, size: 15.sp, color: color),
+          ),
+          SizedBox(width: 8.w),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  value,
+                  style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w700),
+                ),
+                Text(
+                  label,
+                  style: TextStyle(fontSize: 11.sp, color: Colors.grey.shade600),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ApplicationCard extends StatelessWidget {
+  final String title;
+  final String company;
+  final String status;
+  final String appliedAtStr;
+  final String interviewDateStr;
+  final Color statusColor;
+  final VoidCallback onChatTap;
+
+  const _ApplicationCard({
+    required this.title,
+    required this.company,
+    required this.status,
+    required this.appliedAtStr,
+    required this.interviewDateStr,
+    required this.statusColor,
+    required this.onChatTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: EdgeInsets.only(bottom: 12.h),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14.r),
+        border: Border.all(color: statusColor.withOpacity(0.24)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8.r,
+            offset: Offset(0, 3.h),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: EdgeInsets.all(14.w),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.blueGrey.shade900,
+                    ),
+                  ),
+                ),
+                SizedBox(width: 10.w),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
+                  decoration: BoxDecoration(
+                    color: statusColor.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(999.r),
+                  ),
+                  child: Text(
+                    status,
+                    style: TextStyle(
+                      color: statusColor,
+                      fontSize: 11.5.sp,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 6.h),
+            Row(
+              children: [
+                Icon(Icons.apartment_rounded, size: 15.sp, color: Colors.grey.shade600),
+                SizedBox(width: 6.w),
+                Expanded(
+                  child: Text(
+                    company,
+                    style: TextStyle(fontSize: 13.sp, color: Colors.grey.shade700),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 6.h),
+            Row(
+              children: [
+                Icon(Icons.calendar_month_rounded, size: 15.sp, color: Colors.grey.shade600),
+                SizedBox(width: 6.w),
+                Text(
+                  'Applied $appliedAtStr',
+                  style: TextStyle(fontSize: 12.5.sp, color: Colors.grey.shade700),
+                ),
+              ],
+            ),
+            if (status.toLowerCase() == 'interview scheduled') ...[
+              SizedBox(height: 10.h),
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEFF6FF),
+                  borderRadius: BorderRadius.circular(10.r),
+                  border: Border.all(color: const Color(0xFFBFDBFE)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.video_camera_front_rounded, color: Color(0xFF1D4ED8), size: 17),
+                    SizedBox(width: 6.w),
+                    Expanded(
+                      child: Text(
+                        'Interview: $interviewDateStr',
+                        style: TextStyle(
+                          fontSize: 12.5.sp,
+                          color: const Color(0xFF1E3A8A),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            SizedBox(height: 10.h),
+            Align(
+              alignment: Alignment.centerRight,
+              child: AnimatedScaleButton(
+                onPressed: onChatTap,
+                child: Container(
+                  padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0F766E),
+                    borderRadius: BorderRadius.circular(999.r),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.chat_bubble_rounded, color: Colors.white, size: 14.sp),
+                      SizedBox(width: 6.w),
+                      Text(
+                        'Message',
+                        style: TextStyle(color: Colors.white, fontSize: 12.sp, fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
