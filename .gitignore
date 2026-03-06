@@ -49,6 +49,12 @@ app.*.map.json
 functions/fcm-service-account-key.json
 functions/play-integrity-service-account-key.json
 
+# Environment variables (AdMob credentials, etc.)
+.env
+
+# Config files with sensitive data
+lib/config/
+
 # Any other potential secret files
 *.env
 *.key

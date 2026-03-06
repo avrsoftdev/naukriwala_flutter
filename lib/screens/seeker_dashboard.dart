@@ -12,7 +12,9 @@ import 'package:naukariwala/screens/my_applications_screen.dart';
 import 'package:naukariwala/screens/notifications_screen.dart';
 import 'package:naukariwala/widgets/notification_bell.dart';
 import 'package:naukariwala/services/auth_service.dart';
+import 'package:naukariwala/services/ads_service.dart';
 import 'package:naukariwala/screens/chat_list_screen.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import '../widgets/chat_icon_with_badge.dart';
 import 'dart:developer' as dev;
 
@@ -57,6 +59,33 @@ class SeekerDashboard extends StatefulWidget {
 class _SeekerDashboardState extends State<SeekerDashboard> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final AuthService _authService = AuthService();
+  late BannerAd _bannerAd;
+  bool _isBannerAdReady = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeBannerAd();
+  }
+
+  void _initializeBannerAd() {
+    _bannerAd = AdsService.createBannerAd();
+    _bannerAd.load().then((_) {
+      if (mounted) {
+        setState(() {
+          _isBannerAdReady = true;
+        });
+      }
+    }).catchError((error) {
+      dev.log('Banner ad failed to load: $error', name: 'SeekerDashboard');
+    });
+  }
+
+  @override
+  void dispose() {
+    _bannerAd.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -328,6 +357,13 @@ class _SeekerDashboardState extends State<SeekerDashboard> {
                 ],
               ),
             ),
+            // Banner Ad
+            if (_isBannerAdReady)
+              SizedBox(
+                height: _bannerAd.size.height.toDouble(),
+                width: _bannerAd.size.width.toDouble(),
+                child: AdWidget(ad: _bannerAd),
+              ),
             Expanded(
               child: Container(
                 color: Colors.grey[100],

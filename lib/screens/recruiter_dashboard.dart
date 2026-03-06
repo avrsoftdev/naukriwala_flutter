@@ -14,6 +14,8 @@ import 'package:naukariwala/widgets/notification_bell.dart';
 import 'package:naukariwala/screens/chat_list_screen.dart';
 import '../widgets/chat_icon_with_badge.dart';
 import '../services/auth_service.dart';
+import 'package:naukariwala/services/ads_service.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'dart:developer' as dev;
 
@@ -30,6 +32,8 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
   final String? recruiterId = FirebaseAuth.instance.currentUser?.uid;
   final AuthService _authService = AuthService();
   String? recruiterName; // State variable to store the recruiter's name
+  late BannerAd _bannerAd;
+  bool _isBannerAdReady = false;
 
   @override
   void initState() {
@@ -47,6 +51,26 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
     }
     _requestNotificationPermissions();
     _checkRoleAndFetchName();
+    _initializeBannerAd();
+  }
+
+  void _initializeBannerAd() {
+    _bannerAd = AdsService.createBannerAd();
+    _bannerAd.load().then((_) {
+      if (mounted) {
+        setState(() {
+          _isBannerAdReady = true;
+        });
+      }
+    }).catchError((error) {
+      dev.log('Banner ad failed to load: $error', name: 'RecruiterDashboard');
+    });
+  }
+
+  @override
+  void dispose() {
+    _bannerAd.dispose();
+    super.dispose();
   }
 
   void _requestNotificationPermissions() async {
@@ -330,6 +354,13 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
                       ],
                     ),
                   ),
+                  // Banner Ad
+                  if (_isBannerAdReady)
+                    SizedBox(
+                      height: _bannerAd.size.height.toDouble(),
+                      width: _bannerAd.size.width.toDouble(),
+                      child: AdWidget(ad: _bannerAd),
+                    ),
                   SizedBox(
                     height: MediaQuery.of(context).size.height * 0.7,
                     child: TabBarView(

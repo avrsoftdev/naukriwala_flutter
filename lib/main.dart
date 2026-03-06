@@ -13,6 +13,7 @@ import 'package:flutter/foundation.dart';
 import 'firebase_options.dart';
 import 'screens/unified_screen.dart';
 import 'services/auth_service.dart';
+import 'services/ads_service.dart';
 import 'providers/message_state_provider.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -37,8 +38,18 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Google Mobile Ads
+  try {
+    await AdsService.initializeAds();
+  } catch (e) {
+    dev.log('Failed to initialize ads: $e', name: 'main', error: e);
+    // Continue without ads if initialization fails
+  }
+
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
 
+  // Initialize Firebase
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   // App Check
