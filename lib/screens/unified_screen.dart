@@ -18,6 +18,10 @@ class UnifiedScreen extends StatefulWidget {
 }
 
 class UnifiedScreenState extends State<UnifiedScreen> {
+  static const Color _primaryBlue = Color(0xFF0C4A7D);
+  static const Color _accentTeal = Color(0xFF00A6A6);
+  static const Color _deepNavy = Color(0xFF0B1E39);
+
   String? _selectedRole;
   ScreenState _currentState = ScreenState.roleSelection;
   final _nameController = TextEditingController();
@@ -384,6 +388,16 @@ class UnifiedScreenState extends State<UnifiedScreen> {
     TextEditingController? controller,
   }) {
     final isPhone = label.toLowerCase().contains('mobile') || label.toLowerCase().contains('phone');
+    final lowerLabel = label.toLowerCase();
+    final IconData icon = lowerLabel.contains('email')
+        ? Icons.alternate_email_rounded
+        : lowerLabel.contains('password')
+            ? Icons.lock_outline_rounded
+            : lowerLabel.contains('mobile') || lowerLabel.contains('phone')
+                ? Icons.call_outlined
+                : lowerLabel.contains('company')
+                    ? Icons.business_center_outlined
+                    : Icons.person_outline_rounded;
 
     return Padding(
       padding: EdgeInsets.symmetric(vertical: 8.h),
@@ -399,17 +413,22 @@ class UnifiedScreenState extends State<UnifiedScreen> {
             : null,
         decoration: InputDecoration(
           labelText: label,
+          prefixIcon: Icon(icon, color: _primaryBlue.withOpacity(0.85), size: 22.sp),
           prefixText: isPhone ? '+91 ' : null,
-          prefixStyle: const TextStyle(color: Colors.black87, fontWeight: FontWeight.w500),
-          labelStyle: TextStyle(color: Colors.grey.shade600, fontSize: 14.sp),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.r)),
+          prefixStyle: TextStyle(color: Colors.grey.shade700, fontWeight: FontWeight.w600, fontSize: 14.sp),
+          labelStyle: TextStyle(color: Colors.blueGrey.shade700, fontSize: 14.sp, fontWeight: FontWeight.w500),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14.r),
+            borderSide: BorderSide(color: Colors.blueGrey.shade100, width: 1.2.w),
+          ),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(14.r)),
           focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12.r),
-            borderSide: BorderSide(color: Colors.teal, width: 2.w),
+            borderRadius: BorderRadius.circular(14.r),
+            borderSide: BorderSide(color: _accentTeal, width: 2.w),
           ),
           filled: true,
-          fillColor: Colors.white,
-          contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+          fillColor: Colors.white.withOpacity(0.95),
+          contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
         ),
         validator: (v) {
           if (v == null || v.trim().isEmpty) return 'Required';
@@ -433,6 +452,89 @@ class UnifiedScreenState extends State<UnifiedScreen> {
     );
   }
 
+  Widget _buildAuthBackground({
+    required String imagePath,
+    required String title,
+    required String subtitle,
+    required Widget child,
+  }) {
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: Image.asset(
+            imagePath,
+            fit: BoxFit.cover,
+          ),
+        ),
+        Positioned.fill(
+          child: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0x880B1E39),
+                  Color(0xAA0C4A7D),
+                  Color(0xEE0B1E39),
+                ],
+              ),
+            ),
+          ),
+        ),
+        SafeArea(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.symmetric(horizontal: 22.w, vertical: 18.h),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(height: 10.h),
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 32.sp,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+                SizedBox(height: 8.h),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    fontSize: 14.sp,
+                    color: Colors.white.withOpacity(0.9),
+                    height: 1.35,
+                  ),
+                ),
+                SizedBox(height: 24.h),
+                child,
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAuthCard({required Widget child}) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 18.w, vertical: 22.h),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24.r),
+        color: Colors.white.withOpacity(0.92),
+        border: Border.all(color: Colors.white.withOpacity(0.55)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.24),
+            blurRadius: 24.r,
+            offset: Offset(0, 8.h),
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return ScreenUtilInit(
@@ -441,6 +543,9 @@ class UnifiedScreenState extends State<UnifiedScreen> {
       splitScreenMode: true,
       builder: (context, _) {
         return Scaffold(
+          extendBodyBehindAppBar: _currentState == ScreenState.login ||
+              _currentState == ScreenState.seekerSignup ||
+              _currentState == ScreenState.recruiterSignup,
           appBar: AppBar(
             leading: _currentState != ScreenState.roleSelection
                 ? IconButton(
@@ -466,16 +571,19 @@ class UnifiedScreenState extends State<UnifiedScreen> {
                           : "Recruiter Signup",
               style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 20.sp),
             ),
-            flexibleSpace: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Colors.blue.shade700, Colors.blue.shade900],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-              ),
-            ),
-            elevation: 4,
+            backgroundColor: _currentState == ScreenState.roleSelection ? null : Colors.transparent,
+            flexibleSpace: _currentState == ScreenState.roleSelection
+                ? Container(
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [_primaryBlue, _deepNavy],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                    ),
+                  )
+                : null,
+            elevation: _currentState == ScreenState.roleSelection ? 4 : 0,
           ),
           body: _isLoading
               ? Center(child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(Colors.teal)))
@@ -611,108 +719,146 @@ class UnifiedScreenState extends State<UnifiedScreen> {
   }
 
   Widget _buildLogin() {
-    return SingleChildScrollView(
-      padding: EdgeInsets.all(24.w),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildTextField('Email Id', controller: _emailController),
-          SizedBox(height: 16.h),
-          _buildTextField('Password', isPassword: true, controller: _passwordController),
-          SizedBox(height: 8.h),
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton(
-              onPressed: _isLoading ? null : _resetPassword,
-              child: Text(
-                'Forgot Password?',
-                style: TextStyle(color: Colors.teal.shade700, fontWeight: FontWeight.w600, fontSize: 14.sp),
-              ),
-            ),
-          ),
-          SizedBox(height: 24.h),
-          AnimatedScaleButton(
-            onPressed: _isLoading ? () {} : _signInWithEmail,
-            child: Container(
-              width: double.infinity,
-              padding: EdgeInsets.symmetric(vertical: 16.h),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Colors.blue.shade700, Colors.teal.shade400],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(12.r),
-                boxShadow: [
-                  BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 4.r, offset: Offset(0, 2.h)),
-                ],
-              ),
-              child: Center(
-                child: Text(
-                  'Login with Email',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16.sp),
-                ),
-              ),
-            ),
-          ),
-          SizedBox(height: 32.h),
-          Center(
-            child: TextButton(
-              onPressed: () {
-                setState(() {
-                  _currentState = _selectedRole == 'seeker' ? ScreenState.seekerSignup : ScreenState.recruiterSignup;
-                });
-              },
-              child: Text(
-                'New here? Register',
-                style: TextStyle(fontSize: 16.sp, color: Colors.teal.shade700, fontWeight: FontWeight.w600),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSignupForm() {
-    return SingleChildScrollView(
-      padding: EdgeInsets.all(24.w),
-      child: Form(
-        key: _formKey,
+    return _buildAuthBackground(
+      imagePath: 'assets/loginpage.jpg',
+      title: 'Welcome Back',
+      subtitle: 'Sign in to continue your journey with Naukariwala.',
+      child: _buildAuthCard(
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildTextField('Name', controller: _nameController),
-            _buildTextField('Mobile Number', controller: _phoneController),
+            Text(
+              'Login',
+              style: TextStyle(fontSize: 24.sp, fontWeight: FontWeight.w800, color: _deepNavy),
+            ),
+            SizedBox(height: 4.h),
+            Text(
+              'Use your registered email and password.',
+              style: TextStyle(fontSize: 13.sp, color: Colors.blueGrey.shade700),
+            ),
+            SizedBox(height: 12.h),
             _buildTextField('Email Id', controller: _emailController),
+            SizedBox(height: 10.h),
             _buildTextField('Password', isPassword: true, controller: _passwordController),
-            if (_currentState == ScreenState.recruiterSignup)
-              _buildTextField('Company Name', controller: _companyNameController),
-            SizedBox(height: 32.h),
+            SizedBox(height: 4.h),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: _isLoading ? null : _resetPassword,
+                child: Text(
+                  'Forgot Password?',
+                  style: TextStyle(color: _primaryBlue, fontWeight: FontWeight.w700, fontSize: 13.sp),
+                ),
+              ),
+            ),
+            SizedBox(height: 14.h),
             AnimatedScaleButton(
-              onPressed: _isLoading ? () {} : _submitSignup,
+              onPressed: _isLoading ? () {} : _signInWithEmail,
               child: Container(
                 width: double.infinity,
-                padding: EdgeInsets.symmetric(vertical: 16.h),
+                padding: EdgeInsets.symmetric(vertical: 15.h),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Colors.blue.shade700, Colors.teal.shade400],
+                  gradient: const LinearGradient(
+                    colors: [_primaryBlue, _accentTeal],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
-                  borderRadius: BorderRadius.circular(12.r),
+                  borderRadius: BorderRadius.circular(14.r),
                   boxShadow: [
-                    BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 4.r, offset: Offset(0, 2.h)),
+                    BoxShadow(color: _primaryBlue.withOpacity(0.35), blurRadius: 10.r, offset: Offset(0, 4.h)),
                   ],
                 ),
                 child: Center(
                   child: Text(
-                    'Submit',
+                    'Login with Email',
                     style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16.sp),
                   ),
                 ),
               ),
             ),
+            SizedBox(height: 16.h),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text('New here?', style: TextStyle(fontSize: 14.sp, color: Colors.blueGrey.shade700)),
+                TextButton(
+                  onPressed: () {
+                    setState(() {
+                      _currentState = _selectedRole == 'seeker' ? ScreenState.seekerSignup : ScreenState.recruiterSignup;
+                    });
+                  },
+                  child: Text(
+                    'Register',
+                    style: TextStyle(fontSize: 14.sp, color: _primaryBlue, fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ],
+            ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSignupForm() {
+    return _buildAuthBackground(
+      imagePath: 'assets/signup_page.jpg',
+      title: 'Create Account',
+      subtitle: 'Build your profile and unlock better opportunities.',
+      child: _buildAuthCard(
+        child: Form(
+          key: _formKey,
+          child: Column(
+            children: [
+              _buildTextField('Name', controller: _nameController),
+              _buildTextField('Mobile Number', controller: _phoneController),
+              _buildTextField('Email Id', controller: _emailController),
+              _buildTextField('Password', isPassword: true, controller: _passwordController),
+              if (_currentState == ScreenState.recruiterSignup)
+                _buildTextField('Company Name', controller: _companyNameController),
+              SizedBox(height: 18.h),
+              AnimatedScaleButton(
+                onPressed: _isLoading ? () {} : _submitSignup,
+                child: Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.symmetric(vertical: 15.h),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [_primaryBlue, _accentTeal],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(14.r),
+                    boxShadow: [
+                      BoxShadow(color: _primaryBlue.withOpacity(0.35), blurRadius: 10.r, offset: Offset(0, 4.h)),
+                    ],
+                  ),
+                  child: Center(
+                    child: Text(
+                      'Create Account',
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16.sp),
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(height: 14.h),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text('Already have an account?', style: TextStyle(fontSize: 14.sp, color: Colors.blueGrey.shade700)),
+                  TextButton(
+                    onPressed: () {
+                      setState(() => _currentState = ScreenState.login);
+                    },
+                    child: Text(
+                      'Login',
+                      style: TextStyle(fontSize: 14.sp, color: _primaryBlue, fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
