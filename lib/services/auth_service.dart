@@ -14,6 +14,7 @@ import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:flutter/foundation.dart'; // For kDebugMode
 import 'dart:math';
 import 'package:flutter/services.dart'; // Added for MethodChannel
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:naukariwala/main.dart'; // For exponential backoff
 
@@ -1099,6 +1100,43 @@ Future<void> sendMessage(
   User? getCurrentUser() => _auth.currentUser;
 
   Future<void> signOut() async => await _auth.signOut();
+
+  /// Save the user's email to local storage for easier login next time
+  Future<void> saveUserEmail(String email) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('saved_email', email);
+      dev.log('Email saved for faster login: $email', name: 'AuthService');
+    } catch (e) {
+      dev.log('Error saving email: $e', name: 'AuthService', error: e);
+    }
+  }
+
+  /// Retrieve the saved email from local storage
+  Future<String?> getSavedEmail() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedEmail = prefs.getString('saved_email');
+      if (savedEmail != null) {
+        dev.log('Retrieved saved email: $savedEmail', name: 'AuthService');
+      }
+      return savedEmail;
+    } catch (e) {
+      dev.log('Error retrieving saved email: $e', name: 'AuthService', error: e);
+      return null;
+    }
+  }
+
+  /// Clear the saved email (call this on logout or manual clearing)
+  Future<void> clearSavedEmail() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('saved_email');
+      dev.log('Saved email cleared', name: 'AuthService');
+    } catch (e) {
+      dev.log('Error clearing saved email: $e', name: 'AuthService', error: e);
+    }
+  }
 
   Future<String?> getUserRole() async {
     final uid = _auth.currentUser?.uid;

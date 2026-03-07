@@ -40,6 +40,7 @@ class UnifiedScreenState extends State<UnifiedScreen> {
   void initState() {
     super.initState();
     _checkIfLoggedIn();
+    _loadSavedEmail();
 
     _phoneController.addListener(() {
       final text = _phoneController.text;
@@ -53,6 +54,21 @@ class UnifiedScreenState extends State<UnifiedScreen> {
         );
       }
     });
+  }
+
+  /// Load the saved email and pre-fill the email field
+  Future<void> _loadSavedEmail() async {
+    try {
+      final savedEmail = await _authService.getSavedEmail();
+      if (savedEmail != null && mounted) {
+        setState(() {
+          _emailController.text = savedEmail;
+        });
+        dev.log('Saved email loaded: $savedEmail', name: 'UnifiedScreen');
+      }
+    } catch (e) {
+      dev.log('Error loading saved email: $e', name: 'UnifiedScreen', error: e);
+    }
   }
 
   void _checkIfLoggedIn() async {
@@ -108,6 +124,8 @@ class UnifiedScreenState extends State<UnifiedScreen> {
     setState(() => _isLoading = true);
     try {
       await FirebaseAuth.instance.signInWithEmailAndPassword(email: email, password: pass);
+      // Save email for faster login next time
+      await _authService.saveUserEmail(email);
       await _redirectBasedOnRole();
     } on FirebaseAuthException catch (e) {
       dev.log('Email sign-in error: $e', name: 'UnifiedScreen');
