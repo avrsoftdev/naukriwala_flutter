@@ -175,18 +175,10 @@ class _SeekerDashboardState extends State<SeekerDashboard> {
             ),
           ),
           child: ListView(
-            padding: EdgeInsets.zero,
+            padding: EdgeInsets.fromLTRB(14.w, 18.h, 14.w, 18.h),
             children: [
-              DrawerHeader(
-                decoration: const BoxDecoration(color: Colors.transparent),
-                child: Center(
-                  child: Icon(
-                    Icons.person_outline,
-                    color: Colors.white,
-                    size: 44.sp,
-                  ),
-                ),
-              ),
+              _buildDrawerHeader(),
+              SizedBox(height: 10.h),
               _buildDrawerItem(
                 icon: Icons.person,
                 title: 'Profile',
@@ -392,26 +384,81 @@ class _SeekerDashboardState extends State<SeekerDashboard> {
     required String title,
     required VoidCallback onTap,
   }) {
-    return ListTile(
-      leading: Icon(icon, color: Colors.white, size: 28.sp),
-      title: Container(
-        constraints: BoxConstraints(maxWidth: 180.w),
-        child: Text(
-          title,
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 14.sp,
-            fontWeight: FontWeight.w500,
+    return Padding(
+      padding: EdgeInsets.only(bottom: 8.h),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.14),
+          borderRadius: BorderRadius.circular(14.r),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+        ),
+        child: ListTile(
+          leading: Container(
+            padding: EdgeInsets.all(7.r),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.18),
+              borderRadius: BorderRadius.circular(10.r),
+            ),
+            child: Icon(icon, color: Colors.white, size: 20.sp),
           ),
-          overflow: TextOverflow.ellipsis,
-          maxLines: 1,
+          title: Text(
+            title,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 14.sp,
+              fontWeight: FontWeight.w600,
+            ),
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
+          ),
+          trailing: Icon(
+            Icons.arrow_forward_ios_rounded,
+            size: 15.sp,
+            color: Colors.white70,
+          ),
+          onTap: onTap,
+          contentPadding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 4.h),
+          tileColor: Colors.transparent,
+          hoverColor: Colors.white12,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14.r)),
         ),
       ),
-      onTap: onTap,
-      contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 4.h),
-      tileColor: Colors.white,
-      hoverColor: Colors.white12,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
+    );
+  }
+
+  Widget _buildDrawerHeader() {
+    final displayName = (widget.seekerName ?? '').trim().isNotEmpty
+        ? widget.seekerName!.trim()
+        : 'Seeker';
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 16.h),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(18.r),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(14.r),
+            child: Image.asset(
+              'assets/logo.png',
+              height: 62.h,
+              fit: BoxFit.contain,
+            ),
+          ),
+          SizedBox(height: 10.h),
+          Text(
+            displayName,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16.sp,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
     );
   }
 

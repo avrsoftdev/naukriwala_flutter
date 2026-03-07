@@ -206,24 +206,16 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
             child: Container(
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Color(0xFF4A00E0), Color(0xFF8E2DE2)],
+                  colors: [Color(0xFF00B4DB), Color(0xFF0083B0)],
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                 ),
               ),
               child: ListView(
-                padding: EdgeInsets.zero,
+                padding: EdgeInsets.fromLTRB(14.w, 18.h, 14.w, 18.h),
                 children: [
-                  DrawerHeader(
-                    decoration: const BoxDecoration(color: Colors.transparent),
-                    child: Center(
-                      child: Icon(
-                        Icons.business_center_outlined,
-                        color: Colors.white,
-                        size: 44.sp,
-                      ),
-                    ),
-                  ),
+                  _buildDrawerHeader(),
+                  SizedBox(height: 10.h),
                   _buildDrawerItem(
                     icon: Icons.person,
                     title: 'Profile',
@@ -391,21 +383,76 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
     required String title,
     required VoidCallback onTap,
   }) {
-    return ListTile(
-      leading: Icon(icon, color: Colors.white, size: 28.r),
-      title: Text(
-        title,
-        style: TextStyle(
-          color: Colors.white,
-          fontSize: 16.sp,
-          fontWeight: FontWeight.w500,
+    return Padding(
+      padding: EdgeInsets.only(bottom: 8.h),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.14),
+          borderRadius: BorderRadius.circular(14.r),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+        ),
+        child: ListTile(
+          leading: Container(
+            padding: EdgeInsets.all(7.r),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.18),
+              borderRadius: BorderRadius.circular(10.r),
+            ),
+            child: Icon(icon, color: Colors.white, size: 20.r),
+          ),
+          title: Text(
+            title,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 15.sp,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          trailing: Icon(
+            Icons.arrow_forward_ios_rounded,
+            size: 15.r,
+            color: Colors.white70,
+          ),
+          onTap: onTap,
+          contentPadding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 4.h),
+          tileColor: Colors.transparent,
+          hoverColor: Colors.white12,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14.r)),
         ),
       ),
-      onTap: onTap,
-      contentPadding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 5.h),
-      tileColor: Colors.transparent,
-      hoverColor: Colors.white12,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
+    );
+  }
+
+  Widget _buildDrawerHeader() {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 16.h),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(18.r),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(14.r),
+            child: Image.asset(
+              'assets/logo.png',
+              height: 62.h,
+              fit: BoxFit.contain,
+            ),
+          ),
+          SizedBox(height: 10.h),
+          Text(
+            recruiterName?.trim().isNotEmpty == true ? recruiterName! : 'Recruiter',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16.sp,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
