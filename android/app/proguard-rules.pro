@@ -4,6 +4,9 @@
 -keep class io.flutter.** { *; }
 -keep class io.flutter.plugins.** { *; }
 -keep class io.flutter.embedding.** { *; }
+# Keep Flutter Google Mobile Ads plugin
+-keep class com.google.android.gms.ads.** { *; }
+-keep class io.flutter.plugins.googlemobileads.** { *; }
 # Keep app entry points and potential services
 -keep class **.MainApplication { *; }
 -keep class **.MainActivity { *; }
@@ -36,6 +39,29 @@
 #########################################
 -keep class com.google.android.gms.** { *; }
 -dontwarn com.google.android.gms.**
+
+#########################################
+# ✅ Google Mobile Ads (AdMob)
+#########################################
+-keep class com.google.android.gms.ads.** { *; }
+-keep interface com.google.android.gms.ads.** { *; }
+-keep class com.google.ads.** { *; }
+-dontwarn com.google.ads.**
+-keep public class com.google.android.gms.ads.AdManager { public *; }
+-keep class * extends com.google.android.gms.ads.AdListener { *; }
+-keep class * extends com.google.android.gms.ads.reward.RewardedVideoAdListener { *; }
+-keep interface com.google.android.gms.ads.reward.RewardedVideoAdListener { *; }
+# Keep AdView and BannerAdListener
+-keep class com.google.android.gms.ads.AdView { *; }
+-keep class com.google.android.gms.ads.BaseAdView { *; }
+-keepclassmembers class * {
+    *** onAdLoaded(...);
+    *** onAdFailedToLoad(...);
+    *** onAdOpened(...);
+    *** onAdClosed(...);
+    *** onAdClicked(...);
+    *** onAdImpression(...);
+}
 # Keep Play Integrity classes
 -keep class com.google.android.play.core.integrity.** { *; }
 -dontwarn com.google.android.play.core.integrity.**
