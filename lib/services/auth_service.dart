@@ -9,14 +9,41 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/material.dart';
 import 'dart:developer' as dev;
 import 'package:intl/intl.dart';
+import 'dart:convert';
 import 'dart:io';
 import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:flutter/foundation.dart'; // For kDebugMode
 import 'dart:math';
 import 'package:flutter/services.dart'; // Added for MethodChannel
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'package:naukariwala/main.dart'; // For exponential backoff
+
+class AccountInfo {
+  final String email;
+  final String? role;
+  final String? name;
+  String? password; // Made non-final to allow setting after loading
+
+  AccountInfo({
+    required this.email,
+    this.role,
+    this.name,
+    this.password,
+  });
+
+  Map<String, dynamic> toJson() => {
+    'email': email,
+    'role': role,
+    'name': name,
+  };
+
+  factory AccountInfo.fromJson(Map<String, dynamic> json) => AccountInfo(
+    email: json['email'],
+    role: json['role'],
+    name: json['name'],
+  );
+}
 
 class AuthException implements Exception {
   final String message;
@@ -31,6 +58,7 @@ class AuthService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseStorage _storage = FirebaseStorage.instance;
   final FirebaseMessaging _messaging = FirebaseMessaging.instance;
+  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
 
   Future<User> _getFreshAuthenticatedUser() async {
     final user = _auth.currentUser;
@@ -1101,41 +1129,94 @@ Future<void> sendMessage(
 
   Future<void> signOut() async => await _auth.signOut();
 
-  /// Save the user's email to local storage for easier login next time
-  Future<void> saveUserEmail(String email) async {
+  /// Save account information after successful login
+  Future<void> saveAccountInfo(String email, String password, {String? role, String? name}) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('saved_email', email);
-      dev.log('Email saved for faster login: $email', name: 'AuthService');
-    } catch (e) {
-      dev.log('Error saving email: $e', name: 'AuthService', error: e);
-    }
-  }
+      // Get existing accounts
+      final accounts = await getSavedAccounts();
 
-  /// Retrieve the saved email from local storage
-  Future<String?> getSavedEmail() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final savedEmail = prefs.getString('saved_email');
-      if (savedEmail != null) {
-        dev.log('Retrieved saved email: $savedEmail', name: 'AuthService');
+      // Remove if already exists
+      accounts.removeWhere((acc) => acc.email == email);
+
+      // Add new account
+      final newAccount = AccountInfo(
+        email: email,
+        role: role,
+        name: name,
+        password: password,
+      );
+      accounts.insert(0, newAccount); // Add to beginning
+
+      // Keep only last 5 accounts
+      if (accounts.length > 5) {
+        accounts.removeRange(5, accounts.length);
       }
-      return savedEmail;
+
+      // Save to secure storage
+      final accountsJson = accounts.map((acc) => acc.toJson()).toList();
+      await _secureStorage.write(key: 'saved_accounts', value: jsonEncode(accountsJson));
+
+      // Save passwords securely
+      for (final acc in accounts) {
+        if (acc.password != null) {
+          await _secureStorage.write(key: 'password_${acc.email}', value: acc.password);
+        }
+      }
+
+      dev.log('Account info saved for: $email', name: 'AuthService');
     } catch (e) {
-      dev.log('Error retrieving saved email: $e', name: 'AuthService', error: e);
-      return null;
+      dev.log('Error saving account info: $e', name: 'AuthService', error: e);
     }
   }
 
-  /// Clear the saved email (call this on logout or manual clearing)
-  Future<void> clearSavedEmail() async {
+  /// Retrieve saved accounts
+  Future<List<AccountInfo>> getSavedAccounts() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('saved_email');
-      dev.log('Saved email cleared', name: 'AuthService');
+      final accountsJson = await _secureStorage.read(key: 'saved_accounts');
+      if (accountsJson == null) return [];
+
+      final accountsData = jsonDecode(accountsJson) as List;
+      final accounts = accountsData.map((data) => AccountInfo.fromJson(data)).toList();
+
+      // Load passwords
+      for (final acc in accounts) {
+        acc.password = await _secureStorage.read(key: 'password_${acc.email}');
+      }
+
+      dev.log('Retrieved ${accounts.length} saved accounts', name: 'AuthService');
+      return accounts;
     } catch (e) {
-      dev.log('Error clearing saved email: $e', name: 'AuthService', error: e);
+      dev.log('Error retrieving saved accounts: $e', name: 'AuthService', error: e);
+      return [];
     }
+  }
+
+  /// Clear all saved accounts
+  Future<void> clearSavedAccounts() async {
+    try {
+      final accounts = await getSavedAccounts();
+      for (final acc in accounts) {
+        await _secureStorage.delete(key: 'password_${acc.email}');
+      }
+      await _secureStorage.delete(key: 'saved_accounts');
+      dev.log('All saved accounts cleared', name: 'AuthService');
+    } catch (e) {
+      dev.log('Error clearing saved accounts: $e', name: 'AuthService', error: e);
+    }
+  }
+
+  /// Legacy methods for backward compatibility
+  Future<void> saveUserEmail(String email) async {
+    // Keep for backward compatibility, but don't use
+  }
+
+  Future<String?> getSavedEmail() async {
+    final accounts = await getSavedAccounts();
+    return accounts.isNotEmpty ? accounts.first.email : null;
+  }
+
+  Future<void> clearSavedEmail() async {
+    // Keep for backward compatibility
   }
 
   Future<String?> getUserRole() async {

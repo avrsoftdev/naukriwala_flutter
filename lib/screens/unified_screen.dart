@@ -35,12 +35,13 @@ class UnifiedScreenState extends State<UnifiedScreen> {
   final Map<String, dynamic> _tempFormData = {};
 
   final AuthService _authService = AuthService();
+  List<AccountInfo> _savedAccounts = [];
 
   @override
   void initState() {
     super.initState();
     _checkIfLoggedIn();
-    _loadSavedEmail();
+    _loadSavedAccounts();
 
     _phoneController.addListener(() {
       final text = _phoneController.text;
@@ -56,18 +57,49 @@ class UnifiedScreenState extends State<UnifiedScreen> {
     });
   }
 
-  /// Load the saved email and pre-fill the email field
-  Future<void> _loadSavedEmail() async {
+  /// Load the saved accounts
+  Future<void> _loadSavedAccounts() async {
     try {
-      final savedEmail = await _authService.getSavedEmail();
-      if (savedEmail != null && mounted) {
+      final accounts = await _authService.getSavedAccounts();
+      if (mounted) {
         setState(() {
-          _emailController.text = savedEmail;
+          _savedAccounts = accounts;
         });
-        dev.log('Saved email loaded: $savedEmail', name: 'UnifiedScreen');
+        dev.log('Loaded ${accounts.length} saved accounts', name: 'UnifiedScreen');
       }
     } catch (e) {
-      dev.log('Error loading saved email: $e', name: 'UnifiedScreen', error: e);
+      dev.log('Error loading saved accounts: $e', name: 'UnifiedScreen', error: e);
+    }
+  }
+
+  /// Handle account selection from saved accounts list
+  Future<void> _onAccountSelected(AccountInfo account) async {
+    setState(() {
+      _emailController.text = account.email;
+      _passwordController.text = account.password ?? '';
+      _isLoading = true;
+    });
+
+    // If password is saved, attempt auto-login
+    if (account.password != null && account.password!.isNotEmpty) {
+      try {
+        await FirebaseAuth.instance.signInWithEmailAndPassword(
+          email: account.email,
+          password: account.password!,
+        );
+        await _redirectBasedOnRole();
+      } on FirebaseAuthException catch (e) {
+        dev.log('Auto-login failed for ${account.email}: $e', name: 'UnifiedScreen');
+        // If auto-login fails, just fill the fields and let user enter password
+        setState(() => _isLoading = false);
+        _showSnack("Please enter your password to continue");
+      } catch (e) {
+        setState(() => _isLoading = false);
+        _showSnack("Something went wrong");
+      }
+    } else {
+      setState(() => _isLoading = false);
+      _showSnack("Please enter your password to continue");
     }
   }
 
@@ -124,8 +156,12 @@ class UnifiedScreenState extends State<UnifiedScreen> {
     setState(() => _isLoading = true);
     try {
       await FirebaseAuth.instance.signInWithEmailAndPassword(email: email, password: pass);
-      // Save email for faster login next time
-      await _authService.saveUserEmail(email);
+      // Get user info for saving account
+      final role = await _authService.getUserRole();
+      final profile = role == 'seeker' ? await _authService.fetchProfileData(isRecruiter: false) : null;
+      final name = profile?['name']?.toString();
+      // Save account info for faster login next time
+      await _authService.saveAccountInfo(email, pass, role: role, name: name);
       await _redirectBasedOnRole();
     } on FirebaseAuthException catch (e) {
       dev.log('Email sign-in error: $e', name: 'UnifiedScreen');
@@ -755,6 +791,53 @@ class UnifiedScreenState extends State<UnifiedScreen> {
               style: TextStyle(fontSize: 13.sp, color: Colors.blueGrey.shade700),
             ),
             SizedBox(height: 12.h),
+            if (_savedAccounts.isNotEmpty) ...[
+              Text(
+                'Quick Login',
+                style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w600, color: _deepNavy),
+              ),
+              SizedBox(height: 8.h),
+              ..._savedAccounts.map((account) => Container(
+                margin: EdgeInsets.only(bottom: 8.h),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey.shade300),
+                  borderRadius: BorderRadius.circular(8.r),
+                ),
+                child: ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: _primaryBlue,
+                    child: Text(
+                      (account.name?.isNotEmpty ?? false) ? account.name![0].toUpperCase() : account.email[0].toUpperCase(),
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  title: Text(
+                    account.name ?? account.email,
+                    style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w500),
+                  ),
+                  subtitle: Text(
+                    account.email,
+                    style: TextStyle(fontSize: 12.sp, color: Colors.grey.shade600),
+                  ),
+                  trailing: Icon(Icons.arrow_forward_ios, size: 16.sp, color: _primaryBlue),
+                  onTap: _isLoading ? null : () => _onAccountSelected(account),
+                  dense: true,
+                  contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 4.h),
+                ),
+              )),
+              SizedBox(height: 16.h),
+              Row(
+                children: [
+                  Expanded(child: Divider(color: Colors.grey.shade300)),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 8.w),
+                    child: Text('or', style: TextStyle(color: Colors.grey.shade500, fontSize: 12.sp)),
+                  ),
+                  Expanded(child: Divider(color: Colors.grey.shade300)),
+                ],
+              ),
+              SizedBox(height: 16.h),
+            ],
             _buildTextField('Email Id', controller: _emailController),
             SizedBox(height: 10.h),
             _buildTextField('Password', isPassword: true, controller: _passwordController),
