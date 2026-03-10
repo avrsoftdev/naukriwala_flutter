@@ -31,6 +31,7 @@ class ProfileScreenState extends State<ProfileScreen> {
   final TextEditingController _experienceController = TextEditingController();
   final TextEditingController _currentCtcController = TextEditingController();
   final TextEditingController _expectedCtcController = TextEditingController();
+  final TextEditingController _linkedinUrlController = TextEditingController();
 
   // Non-editable fields
   String? _mobileNumber;
@@ -124,6 +125,8 @@ class ProfileScreenState extends State<ProfileScreen> {
             if (_profilePhotoUrl != null && _profilePhotoUrl!.isEmpty) {
               _profilePhotoUrl = null;
             }
+            _linkedinUrlController.text =
+                data['linkedinUrl']?.toString().trim() ?? '';
             if (widget.isRecruiter) {
               _companyNameController.text =
                   data['companyName']?.toString().trim() ?? '';
@@ -281,6 +284,7 @@ class ProfileScreenState extends State<ProfileScreen> {
       'expectedCtc': _expectedCtcController.text
           .replaceAll(' LPA (INR)', '')
           .trim(),
+      'linkedinUrl': _linkedinUrlController.text.trim(),
       'updatedAt': FieldValue.serverTimestamp(),
     };
   }
@@ -351,6 +355,7 @@ class ProfileScreenState extends State<ProfileScreen> {
         setState(() {
           _isProfileUpdated = true;
           _nameController.text = profileData['name'];
+          _linkedinUrlController.text = profileData['linkedinUrl'] ?? '';
           if (widget.isRecruiter) {
             _companyNameController.text = profileData['companyName'];
             _companyProfileController.text = profileData['companyProfile'];
@@ -404,6 +409,7 @@ class ProfileScreenState extends State<ProfileScreen> {
           'specialization': _selectedSpecialization,
           'education': _selectedEducation,
           'skills': List<String>.from(_selectedSkills),
+          'linkedinUrl': _linkedinUrlController.text,
         },
         experienceOptions: experienceOptions,
         specializationOptions: specializationOptions,
@@ -475,6 +481,8 @@ class ProfileScreenState extends State<ProfileScreen> {
       case 'current ctc':
       case 'expected ctc':
         return Icons.currency_rupee_outlined;
+      case 'linkedin url':
+        return Icons.link_outlined;
       default:
         return Icons.info_outline;
     }
@@ -505,6 +513,23 @@ class ProfileScreenState extends State<ProfileScreen> {
         ],
       ),
     );
+  }
+
+  /// Validate LinkedIn URL
+  String? _validateLinkedInUrl(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return null; // LinkedIn URL is optional
+    }
+    final trimmed = value.trim();
+    // Check if it's a valid LinkedIn URL pattern
+    final linkedinRegex = RegExp(
+      r'^(https?://)?(www\.)?linkedin\.com/(in|pub|company)/[a-zA-Z0-9_-]+/?$',
+      caseSensitive: false,
+    );
+    if (!linkedinRegex.hasMatch(trimmed)) {
+      return 'Please enter a valid LinkedIn profile URL';
+    }
+    return null;
   }
 
   Widget _buildTextField(
@@ -968,6 +993,14 @@ class ProfileScreenState extends State<ProfileScreen> {
                                     'Expected CTC: ${_formatCtc(resumeData['expectedCtc'] ?? '0.0')}',
                                     style: TextStyle(fontSize: 14.sp),
                                   ),
+                                  if (resumeData['linkedinUrl'] != null &&
+                                      resumeData['linkedinUrl']
+                                          .toString()
+                                          .isNotEmpty)
+                                    Text(
+                                      'LinkedIn: ${resumeData['linkedinUrl']}',
+                                      style: TextStyle(fontSize: 14.sp),
+                                    ),
                                 ],
                               ),
                             ),
@@ -1087,11 +1120,15 @@ class ProfileScreenState extends State<ProfileScreen> {
                                     width: 52.w,
                                     height: 52.w,
                                     decoration: BoxDecoration(
-                                      color: Colors.white.withValues(alpha: 0.2),
+                                      color: Colors.white.withValues(
+                                        alpha: 0.2,
+                                      ),
                                       shape: BoxShape.circle,
                                       image: _profilePhotoUrl != null
                                           ? DecorationImage(
-                                              image: NetworkImage(_profilePhotoUrl!),
+                                              image: NetworkImage(
+                                                _profilePhotoUrl!,
+                                              ),
                                               fit: BoxFit.cover,
                                             )
                                           : null,
@@ -1126,9 +1163,9 @@ class ProfileScreenState extends State<ProfileScreen> {
                                                 child: CircularProgressIndicator(
                                                   strokeWidth: 2.w,
                                                   valueColor:
-                                                      AlwaysStoppedAnimation<Color>(
-                                                        Colors.teal.shade600,
-                                                      ),
+                                                      AlwaysStoppedAnimation<
+                                                        Color
+                                                      >(Colors.teal.shade600),
                                                 ),
                                               )
                                             : Icon(
@@ -1277,6 +1314,18 @@ class ProfileScreenState extends State<ProfileScreen> {
                                         'Designation',
                                         controller: _designationController,
                                       ),
+                                    if (_isProfileUpdated &&
+                                        _linkedinUrlController.text.isNotEmpty)
+                                      _buildNonEditableField(
+                                        'LinkedIn URL',
+                                        _linkedinUrlController.text,
+                                      )
+                                    else if (!_isProfileUpdated)
+                                      _buildTextField(
+                                        'LinkedIn URL',
+                                        controller: _linkedinUrlController,
+                                        validator: _validateLinkedInUrl,
+                                      ),
                                   ] else ...[
                                     if (_isProfileUpdated)
                                       _buildNonEditableField(
@@ -1327,6 +1376,18 @@ class ProfileScreenState extends State<ProfileScreen> {
                                       _buildTextField(
                                         'Expected CTC',
                                         controller: _expectedCtcController,
+                                      ),
+                                    if (_isProfileUpdated &&
+                                        _linkedinUrlController.text.isNotEmpty)
+                                      _buildNonEditableField(
+                                        'LinkedIn URL',
+                                        _linkedinUrlController.text,
+                                      )
+                                    else if (!_isProfileUpdated)
+                                      _buildTextField(
+                                        'LinkedIn URL',
+                                        controller: _linkedinUrlController,
+                                        validator: _validateLinkedInUrl,
                                       ),
                                   ],
                                   SizedBox(height: 14.h),
@@ -1434,6 +1495,7 @@ class ProfileDialogState extends State<ProfileDialog> {
   late final TextEditingController _experienceController;
   late final TextEditingController _currentCtcController;
   late final TextEditingController _expectedCtcController;
+  late final TextEditingController _linkedinUrlController;
   String? _specialization;
   String? _education;
   List<String> _skills = [];
@@ -1463,6 +1525,9 @@ class ProfileDialogState extends State<ProfileDialog> {
     _expectedCtcController = TextEditingController(
       text: widget.initialData['expectedCtc'],
     );
+    _linkedinUrlController = TextEditingController(
+      text: widget.initialData['linkedinUrl'],
+    );
     _specialization = widget.initialData['specialization'];
     _education = widget.initialData['education'];
     _skills = List<String>.from(widget.initialData['skills']);
@@ -1477,7 +1542,25 @@ class ProfileDialogState extends State<ProfileDialog> {
     _experienceController.dispose();
     _currentCtcController.dispose();
     _expectedCtcController.dispose();
+    _linkedinUrlController.dispose();
     super.dispose();
+  }
+
+  /// Validate LinkedIn URL
+  String? _validateLinkedInUrl(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return null; // LinkedIn URL is optional
+    }
+    final trimmed = value.trim();
+    // Check if it's a valid LinkedIn URL pattern
+    final linkedinRegex = RegExp(
+      r'^(https?://)?(www\.)?linkedin\.com/(in|pub|company)/[a-zA-Z0-9_-]+/?$',
+      caseSensitive: false,
+    );
+    if (!linkedinRegex.hasMatch(trimmed)) {
+      return 'Please enter a valid LinkedIn profile URL';
+    }
+    return null;
   }
 
   Widget _buildTextField(
@@ -1585,6 +1668,11 @@ class ProfileDialogState extends State<ProfileDialog> {
                 _buildTextField(
                   'Designation',
                   controller: _designationController,
+                ),
+                _buildTextField(
+                  'LinkedIn URL',
+                  controller: _linkedinUrlController,
+                  validator: _validateLinkedInUrl,
                 ),
               ] else ...[
                 Padding(
@@ -1865,6 +1953,11 @@ class ProfileDialogState extends State<ProfileDialog> {
                 _buildTextField(
                   'Expected CTC',
                   controller: _expectedCtcController,
+                ),
+                _buildTextField(
+                  'LinkedIn URL',
+                  controller: _linkedinUrlController,
+                  validator: _validateLinkedInUrl,
                 ),
               ],
             ],

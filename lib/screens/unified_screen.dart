@@ -57,6 +57,18 @@ class UnifiedScreenState extends State<UnifiedScreen> {
     });
   }
 
+  /// Validate Indian phone number
+  String? _validatePhoneNumber(String? value) {
+    if (value == null || value.trim().isEmpty) return 'Required';
+    final digits = value.replaceAll(RegExp(r'\D'), '');
+    if (digits.length != 10) return 'Enter valid 10-digit number';
+    if (!RegExp(r'^[6-9]').hasMatch(digits)) return 'Invalid phone number';
+    // Check for obviously invalid patterns
+    if (RegExp(r'^(\d)\1{9}$').hasMatch(digits)) return 'Invalid phone number';
+    if (RegExp(r'^0123456789$|^1234567890$|^0987654321$').hasMatch(digits)) return 'Invalid phone number';
+    return null;
+  }
+
   /// Load the saved accounts
   Future<void> _loadSavedAccounts() async {
     try {
@@ -480,15 +492,22 @@ class UnifiedScreenState extends State<UnifiedScreen> {
             borderRadius: BorderRadius.circular(14.r),
             borderSide: BorderSide(color: _accentTeal, width: 2.w),
           ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14.r),
+            borderSide: BorderSide(color: Colors.red, width: 2.w),
+          ),
+          focusedErrorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14.r),
+            borderSide: BorderSide(color: Colors.red, width: 2.w),
+          ),
+          errorStyle: TextStyle(color: Colors.red, fontWeight: FontWeight.w600, fontSize: 12.sp),
           filled: true,
           fillColor: Colors.white.withOpacity(0.95),
           contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
         ),
         validator: (v) {
           if (v == null || v.trim().isEmpty) return 'Required';
-          if (isPhone && v.replaceAll(RegExp(r'\D'), '').length != 10) {
-            return 'Enter valid 10-digit number';
-          }
+          if (isPhone) return _validatePhoneNumber(v);
           if (label == 'Email Id' && !v.contains('@')) return 'Invalid email';
           if (label == 'Password' && v.length < 6) return 'Min 6 characters';
           return null;
