@@ -559,6 +559,7 @@ class _AppliedSeekersScreenState extends State<AppliedSeekersScreen> {
                                               : [];
                                   final skillsDisplay = skillsList.isNotEmpty ? skillsList.join(', ') : 'N/A';
                                   final status = (applicant['status'] ?? 'N/A').toString();
+                                  final mobileNumber = resume['mobileNumber'] ?? applicant['mobileNumber'] ?? '';
 
                                   final normalizedStatus = status.toLowerCase();
                                   final bool isShortlisted = normalizedStatus == 'shortlisted';
@@ -615,6 +616,24 @@ class _AppliedSeekersScreenState extends State<AppliedSeekersScreen> {
                                                   onPressed: () => _openSeekerDetails(seekerId, jobId),
                                                   icon: Icon(Icons.open_in_new, size: 18.sp, color: Colors.blue.shade700),
                                                 ),
+                                                if (mobileNumber.isNotEmpty)
+                                                  IconButton(
+                                                    tooltip: 'Call seeker',
+                                                    onPressed: () async {
+                                                      final Uri launchUri = Uri(
+                                                        scheme: 'tel',
+                                                        path: mobileNumber,
+                                                      );
+                                                      if (await canLaunchUrl(launchUri)) {
+                                                        await launchUrl(launchUri);
+                                                      } else {
+                                                        ScaffoldMessenger.of(context).showSnackBar(
+                                                          const SnackBar(content: Text('Unable to make call')),
+                                                        );
+                                                      }
+                                                    },
+                                                    icon: Icon(Icons.call, size: 18.sp, color: Colors.green.shade700),
+                                                  ),
                                                 PopupMenuButton<String>(
                                                   onSelected: (action) => _handleAction(action, jobId, seekerId, {'resume': resume, ...applicant}),
                                                   itemBuilder: (context) => [
