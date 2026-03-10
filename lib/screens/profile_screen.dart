@@ -340,6 +340,18 @@ class ProfileScreenState extends State<ProfileScreen> {
       }
     }
 
+    // Validate LinkedIn URL if provided
+    if (profileData['linkedinUrl'] != null &&
+        profileData['linkedinUrl'].toString().trim().isNotEmpty) {
+      final linkedinValidationError = _validateLinkedInUrl(
+        profileData['linkedinUrl'],
+      );
+      if (linkedinValidationError != null) {
+        setDialogState(() => errorMessage = linkedinValidationError);
+        return;
+      }
+    }
+
     setDialogState(() => isLoading = true);
     try {
       dev.log(
@@ -379,7 +391,7 @@ class ProfileScreenState extends State<ProfileScreen> {
             behavior: SnackBarBehavior.floating,
           ),
         );
-        Navigator.pop(context);
+        // Don't pop here - let the dialog close itself from the save button
       }
     } catch (e) {
       dev.log('Error updating profile: $e', name: 'ProfileScreen', error: e);
@@ -521,9 +533,9 @@ class ProfileScreenState extends State<ProfileScreen> {
       return null; // LinkedIn URL is optional
     }
     final trimmed = value.trim();
-    // Check if it's a valid LinkedIn URL pattern
+    // Check if it's a valid LinkedIn URL pattern (allows query parameters and fragments)
     final linkedinRegex = RegExp(
-      r'^(https?://)?(www\.)?linkedin\.com/(in|pub|company)/[a-zA-Z0-9_-]+/?$',
+      r'^(https?://)?(www\.)?linkedin\.com/(in|pub|company)/[a-zA-Z0-9_-]+/?',
       caseSensitive: false,
     );
     if (!linkedinRegex.hasMatch(trimmed)) {
@@ -1552,9 +1564,9 @@ class ProfileDialogState extends State<ProfileDialog> {
       return null; // LinkedIn URL is optional
     }
     final trimmed = value.trim();
-    // Check if it's a valid LinkedIn URL pattern
+    // Check if it's a valid LinkedIn URL pattern (allows query parameters and fragments)
     final linkedinRegex = RegExp(
-      r'^(https?://)?(www\.)?linkedin\.com/(in|pub|company)/[a-zA-Z0-9_-]+/?$',
+      r'^(https?://)?(www\.)?linkedin\.com/(in|pub|company)/[a-zA-Z0-9_-]+/?',
       caseSensitive: false,
     );
     if (!linkedinRegex.hasMatch(trimmed)) {
@@ -1569,6 +1581,9 @@ class ProfileDialogState extends State<ProfileDialog> {
     TextEditingController? controller,
     String? Function(String?)? validator,
   }) {
+    final isUrl =
+        label.toLowerCase().contains('url') ||
+        label.toLowerCase().contains('link');
     return Padding(
       padding: EdgeInsets.symmetric(vertical: 8.h),
       child: Container(
@@ -1576,7 +1591,7 @@ class ProfileDialogState extends State<ProfileDialog> {
         child: TextFormField(
           controller: controller,
           maxLines: multiline ? 4 : 1,
-          maxLength: multiline ? 500 : 100,
+          maxLength: multiline ? 500 : (isUrl ? 255 : 100),
           decoration: InputDecoration(
             labelText: label,
             labelStyle: TextStyle(color: Colors.grey, fontSize: 12.sp),
@@ -1587,6 +1602,19 @@ class ProfileDialogState extends State<ProfileDialog> {
             focusedBorder: OutlineInputBorder(
               borderSide: BorderSide(color: Colors.teal, width: 2.w),
               borderRadius: BorderRadius.circular(12.r),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderSide: BorderSide(color: Colors.red, width: 2.w),
+              borderRadius: BorderRadius.circular(12.r),
+            ),
+            focusedErrorBorder: OutlineInputBorder(
+              borderSide: BorderSide(color: Colors.red, width: 2.w),
+              borderRadius: BorderRadius.circular(12.r),
+            ),
+            errorStyle: TextStyle(
+              color: Colors.red.shade700,
+              fontWeight: FontWeight.w600,
+              fontSize: 11.sp,
             ),
             filled: true,
             fillColor: Colors.white,
@@ -1975,12 +2003,23 @@ class ProfileDialogState extends State<ProfileDialog> {
         TextButton(
           onPressed: _isLoading
               ? null
-              : () {
+              : () async {
                   final mobileNumber = widget.mobileNumber?.trim() ?? '';
                   if (mobileNumber.isEmpty) {
                     setState(() {
                       _errorMessage =
                           'Mobile number is required to update profile.';
+                    });
+                    return;
+                  }
+
+                  // Validate LinkedIn URL if provided
+                  final linkedinValidationError = _validateLinkedInUrl(
+                    _linkedinUrlController.text,
+                  );
+                  if (linkedinValidationError != null) {
+                    setState(() {
+                      _errorMessage = linkedinValidationError;
                     });
                     return;
                   }
@@ -1993,6 +2032,7 @@ class ProfileDialogState extends State<ProfileDialog> {
                           'companyProfile': _companyProfileController.text
                               .trim(),
                           'designation': _designationController.text.trim(),
+                          'linkedinUrl': _linkedinUrlController.text.trim(),
                           'updatedAt': FieldValue.serverTimestamp(),
                         }
                       : {
@@ -2008,9 +2048,17 @@ class ProfileDialogState extends State<ProfileDialog> {
                           'expectedCtc': _expectedCtcController.text
                               .replaceAll(' LPA (INR)', '')
                               .trim(),
+                          'linkedinUrl': _linkedinUrlController.text.trim(),
                           'updatedAt': FieldValue.serverTimestamp(),
                         };
-                  widget.onUpdate(profileData, setState);
+
+                  // Call the update and wait for it to complete
+                  await widget.onUpdate(profileData, setState);
+
+                  // After successful update, close the dialog
+                  if (mounted && _errorMessage == null) {
+                    Navigator.of(context).pop();
+                  }
                 },
           child: _isLoading
               ? SizedBox(
