@@ -1500,6 +1500,7 @@ class ProfileDialog extends StatefulWidget {
 }
 
 class ProfileDialogState extends State<ProfileDialog> {
+  final _formKey = GlobalKey<FormState>();
   late final TextEditingController _nameController;
   late final TextEditingController _companyNameController;
   late final TextEditingController _companyProfileController;
@@ -1625,6 +1626,7 @@ class ProfileDialogState extends State<ProfileDialog> {
             counterText: multiline ? null : '',
           ),
           validator: validator,
+          autovalidateMode: AutovalidateMode.onUserInteraction,
           onChanged: (value) {
             if (mounted) setState(() => _errorMessage = null);
           },
@@ -1659,336 +1661,341 @@ class ProfileDialogState extends State<ProfileDialog> {
       content: SingleChildScrollView(
         child: Container(
           constraints: BoxConstraints(maxWidth: 300.w),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (_errorMessage != null)
-                Padding(
-                  padding: EdgeInsets.only(bottom: 8.h),
-                  child: Text(
-                    _errorMessage!,
-                    style: TextStyle(
-                      color: Colors.red.shade700,
-                      fontSize: 12.sp,
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (_errorMessage != null)
+                  Padding(
+                    padding: EdgeInsets.only(bottom: 8.h),
+                    child: Text(
+                      _errorMessage!,
+                      style: TextStyle(
+                        color: Colors.red.shade700,
+                        fontSize: 12.sp,
+                      ),
                     ),
                   ),
-                ),
-              _buildTextField(
-                'Name',
-                controller: _nameController,
-                validator: (value) => value == null || value.trim().isEmpty
-                    ? 'Name is required'
-                    : null,
-              ),
-              if (widget.isRecruiter) ...[
                 _buildTextField(
-                  'Company Name',
-                  controller: _companyNameController,
+                  'Name',
+                  controller: _nameController,
                   validator: (value) => value == null || value.trim().isEmpty
-                      ? 'Company Name is required'
+                      ? 'Name is required'
                       : null,
                 ),
-                _buildTextField(
-                  'Company Profile',
-                  multiline: true,
-                  controller: _companyProfileController,
-                ),
-                _buildTextField(
-                  'Designation',
-                  controller: _designationController,
-                ),
-                _buildTextField(
-                  'LinkedIn URL',
-                  controller: _linkedinUrlController,
-                  validator: _validateLinkedInUrl,
-                ),
-              ] else ...[
-                Padding(
-                  padding: EdgeInsets.symmetric(vertical: 8.h),
-                  child: Container(
-                    constraints: BoxConstraints(maxWidth: 300.w),
-                    child: DropdownButtonFormField<String>(
-                      initialValue: _specialization,
-                      decoration: InputDecoration(
-                        labelText: 'Specialization',
-                        labelStyle: TextStyle(
-                          color: Colors.grey,
-                          fontSize: 12.sp,
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: Colors.grey.shade400),
-                          borderRadius: BorderRadius.circular(12.r),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderSide: BorderSide(
-                            color: Colors.teal,
-                            width: 2.w,
-                          ),
-                          borderRadius: BorderRadius.circular(12.r),
-                        ),
-                        filled: true,
-                        fillColor: Colors.white,
-                        contentPadding: EdgeInsets.symmetric(
-                          horizontal: 12.w,
-                          vertical: 10.h,
-                        ),
-                      ),
-                      isExpanded: true,
-                      menuMaxHeight: 300.h,
-                      items: widget.specializationOptions.map((
-                        String specialization,
-                      ) {
-                        return DropdownMenuItem<String>(
-                          value: specialization,
-                          child: Container(
-                            constraints: BoxConstraints(maxWidth: 250.w),
-                            child: Text(
-                              specialization,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: Colors.black87,
-                                fontSize: 12.sp,
-                              ),
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                      onChanged: (value) {
-                        setState(() {
-                          _specialization = value;
-                          _skills = [];
-                          _errorMessage = null;
-                        });
-                      },
-                      validator: (value) =>
-                          value == null ? 'Specialization is required' : null,
-                    ),
+                if (widget.isRecruiter) ...[
+                  _buildTextField(
+                    'Company Name',
+                    controller: _companyNameController,
+                    validator: (value) => value == null || value.trim().isEmpty
+                        ? 'Company Name is required'
+                        : null,
                   ),
-                ),
-                Padding(
-                  padding: EdgeInsets.symmetric(vertical: 8.h),
-                  child: Card(
-                    elevation: 2,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12.r),
-                    ),
+                  _buildTextField(
+                    'Company Profile',
+                    multiline: true,
+                    controller: _companyProfileController,
+                  ),
+                  _buildTextField(
+                    'Designation',
+                    controller: _designationController,
+                  ),
+                  _buildTextField(
+                    'LinkedIn URL',
+                    controller: _linkedinUrlController,
+                    validator: _validateLinkedInUrl,
+                  ),
+                ] else ...[
+                  Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8.h),
                     child: Container(
                       constraints: BoxConstraints(maxWidth: 300.w),
-                      padding: EdgeInsets.all(12.w),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [Colors.blue.shade50, Colors.blue.shade100],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
+                      child: DropdownButtonFormField<String>(
+                        initialValue: _specialization,
+                        decoration: InputDecoration(
+                          labelText: 'Specialization',
+                          labelStyle: TextStyle(
+                            color: Colors.grey,
+                            fontSize: 12.sp,
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderSide: BorderSide(color: Colors.grey.shade400),
+                            borderRadius: BorderRadius.circular(12.r),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderSide: BorderSide(
+                              color: Colors.teal,
+                              width: 2.w,
+                            ),
+                            borderRadius: BorderRadius.circular(12.r),
+                          ),
+                          filled: true,
+                          fillColor: Colors.white,
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 12.w,
+                            vertical: 10.h,
+                          ),
                         ),
-                        borderRadius: BorderRadius.circular(12.r),
-                      ),
-                      child: GestureDetector(
-                        onTap: () async {
-                          final selected = await showDialog<List<String>>(
-                            context: context,
-                            builder: (context) => MultiSelectDialog(
-                              items:
-                                  widget
-                                      .skillsBySpecialization[_specialization ??
-                                      'Others'] ??
-                                  [],
-                              selectedItems: _skills,
-                            ),
-                          );
-                          if (selected != null) {
-                            setState(() {
-                              _skills = selected;
-                              _errorMessage = null;
-                            });
-                          }
-                        },
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Skills',
-                              style: TextStyle(
-                                fontSize: 12.sp,
-                                color: Colors.blue.shade800,
-                                fontWeight: FontWeight.w600,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                              maxLines: 1,
-                            ),
-                            SizedBox(height: 6.h),
-                            Container(
+                        isExpanded: true,
+                        menuMaxHeight: 300.h,
+                        items: widget.specializationOptions.map((
+                          String specialization,
+                        ) {
+                          return DropdownMenuItem<String>(
+                            value: specialization,
+                            child: Container(
                               constraints: BoxConstraints(maxWidth: 250.w),
                               child: Text(
-                                _skills.isEmpty
-                                    ? 'Select skills'
-                                    : _skills.join(', '),
+                                specialization,
                                 overflow: TextOverflow.ellipsis,
-                                maxLines: 2,
                                 style: TextStyle(
-                                  fontSize: 14.sp,
-                                  color: _skills.isEmpty
-                                      ? Colors.grey
-                                      : Colors.black87,
+                                  color: Colors.black87,
+                                  fontSize: 12.sp,
                                 ),
                               ),
                             ),
-                            if (_skills.isEmpty)
-                              Padding(
-                                padding: EdgeInsets.only(top: 6.h),
+                          );
+                        }).toList(),
+                        onChanged: (value) {
+                          setState(() {
+                            _specialization = value;
+                            _skills = [];
+                            _errorMessage = null;
+                          });
+                        },
+                        validator: (value) =>
+                            value == null ? 'Specialization is required' : null,
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8.h),
+                    child: Card(
+                      elevation: 2,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12.r),
+                      ),
+                      child: Container(
+                        constraints: BoxConstraints(maxWidth: 300.w),
+                        padding: EdgeInsets.all(12.w),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [Colors.blue.shade50, Colors.blue.shade100],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(12.r),
+                        ),
+                        child: GestureDetector(
+                          onTap: () async {
+                            final selected = await showDialog<List<String>>(
+                              context: context,
+                              builder: (context) => MultiSelectDialog(
+                                items:
+                                    widget
+                                        .skillsBySpecialization[_specialization ??
+                                        'Others'] ??
+                                    [],
+                                selectedItems: _skills,
+                              ),
+                            );
+                            if (selected != null) {
+                              setState(() {
+                                _skills = selected;
+                                _errorMessage = null;
+                              });
+                            }
+                          },
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Skills',
+                                style: TextStyle(
+                                  fontSize: 12.sp,
+                                  color: Colors.blue.shade800,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 1,
+                              ),
+                              SizedBox(height: 6.h),
+                              Container(
+                                constraints: BoxConstraints(maxWidth: 250.w),
                                 child: Text(
-                                  'At least one skill is required',
+                                  _skills.isEmpty
+                                      ? 'Select skills'
+                                      : _skills.join(', '),
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 2,
                                   style: TextStyle(
-                                    fontSize: 10.sp,
-                                    color: Colors.red.shade700,
+                                    fontSize: 14.sp,
+                                    color: _skills.isEmpty
+                                        ? Colors.grey
+                                        : Colors.black87,
                                   ),
                                 ),
                               ),
-                          ],
+                              if (_skills.isEmpty)
+                                Padding(
+                                  padding: EdgeInsets.only(top: 6.h),
+                                  child: Text(
+                                    'At least one skill is required',
+                                    style: TextStyle(
+                                      fontSize: 10.sp,
+                                      color: Colors.red.shade700,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
-                Padding(
-                  padding: EdgeInsets.symmetric(vertical: 8.h),
-                  child: Container(
-                    constraints: BoxConstraints(maxWidth: 300.w),
-                    child: DropdownButtonFormField<String>(
-                      initialValue: _education,
-                      decoration: InputDecoration(
-                        labelText: 'Education',
-                        labelStyle: TextStyle(
-                          color: Colors.grey,
-                          fontSize: 12.sp,
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: Colors.grey.shade400),
-                          borderRadius: BorderRadius.circular(12.r),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderSide: BorderSide(
-                            color: Colors.teal,
-                            width: 2.w,
+                  Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8.h),
+                    child: Container(
+                      constraints: BoxConstraints(maxWidth: 300.w),
+                      child: DropdownButtonFormField<String>(
+                        initialValue: _education,
+                        decoration: InputDecoration(
+                          labelText: 'Education',
+                          labelStyle: TextStyle(
+                            color: Colors.grey,
+                            fontSize: 12.sp,
                           ),
-                          borderRadius: BorderRadius.circular(12.r),
+                          enabledBorder: OutlineInputBorder(
+                            borderSide: BorderSide(color: Colors.grey.shade400),
+                            borderRadius: BorderRadius.circular(12.r),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderSide: BorderSide(
+                              color: Colors.teal,
+                              width: 2.w,
+                            ),
+                            borderRadius: BorderRadius.circular(12.r),
+                          ),
+                          filled: true,
+                          fillColor: Colors.white,
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 12.w,
+                            vertical: 10.h,
+                          ),
                         ),
-                        filled: true,
-                        fillColor: Colors.white,
-                        contentPadding: EdgeInsets.symmetric(
-                          horizontal: 12.w,
-                          vertical: 10.h,
-                        ),
-                      ),
-                      isExpanded: true,
-                      menuMaxHeight: 300.h,
-                      items: widget.educationOptions.map((String education) {
-                        return DropdownMenuItem<String>(
-                          value: education,
-                          child: Container(
-                            constraints: BoxConstraints(maxWidth: 250.w),
-                            child: Text(
-                              education,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: Colors.black87,
-                                fontSize: 12.sp,
+                        isExpanded: true,
+                        menuMaxHeight: 300.h,
+                        items: widget.educationOptions.map((String education) {
+                          return DropdownMenuItem<String>(
+                            value: education,
+                            child: Container(
+                              constraints: BoxConstraints(maxWidth: 250.w),
+                              child: Text(
+                                education,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: Colors.black87,
+                                  fontSize: 12.sp,
+                                ),
                               ),
                             ),
-                          ),
-                        );
-                      }).toList(),
-                      onChanged: (value) {
-                        setState(() {
-                          _education = value;
-                          _errorMessage = null;
-                        });
-                      },
-                      validator: (value) =>
-                          value == null ? 'Education is required' : null,
+                          );
+                        }).toList(),
+                        onChanged: (value) {
+                          setState(() {
+                            _education = value;
+                            _errorMessage = null;
+                          });
+                        },
+                        validator: (value) =>
+                            value == null ? 'Education is required' : null,
+                      ),
                     ),
                   ),
-                ),
-                Padding(
-                  padding: EdgeInsets.symmetric(vertical: 8.h),
-                  child: Container(
-                    constraints: BoxConstraints(maxWidth: 300.w),
-                    child: DropdownButtonFormField<String>(
-                      initialValue:
-                          _experienceController.text.isNotEmpty &&
-                              widget.experienceOptions.contains(
-                                _experienceController.text,
-                              )
-                          ? _experienceController.text
-                          : null,
-                      decoration: InputDecoration(
-                        labelText: 'Experience',
-                        labelStyle: TextStyle(
-                          color: Colors.grey,
-                          fontSize: 12.sp,
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: Colors.grey.shade400),
-                          borderRadius: BorderRadius.circular(12.r),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderSide: BorderSide(
-                            color: Colors.teal,
-                            width: 2.w,
+                  Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8.h),
+                    child: Container(
+                      constraints: BoxConstraints(maxWidth: 300.w),
+                      child: DropdownButtonFormField<String>(
+                        initialValue:
+                            _experienceController.text.isNotEmpty &&
+                                widget.experienceOptions.contains(
+                                  _experienceController.text,
+                                )
+                            ? _experienceController.text
+                            : null,
+                        decoration: InputDecoration(
+                          labelText: 'Experience',
+                          labelStyle: TextStyle(
+                            color: Colors.grey,
+                            fontSize: 12.sp,
                           ),
-                          borderRadius: BorderRadius.circular(12.r),
+                          enabledBorder: OutlineInputBorder(
+                            borderSide: BorderSide(color: Colors.grey.shade400),
+                            borderRadius: BorderRadius.circular(12.r),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderSide: BorderSide(
+                              color: Colors.teal,
+                              width: 2.w,
+                            ),
+                            borderRadius: BorderRadius.circular(12.r),
+                          ),
+                          filled: true,
+                          fillColor: Colors.white,
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 12.w,
+                            vertical: 10.h,
+                          ),
                         ),
-                        filled: true,
-                        fillColor: Colors.white,
-                        contentPadding: EdgeInsets.symmetric(
-                          horizontal: 12.w,
-                          vertical: 10.h,
-                        ),
-                      ),
-                      isExpanded: true,
-                      menuMaxHeight: 300.h,
-                      items: widget.experienceOptions.map((String experience) {
-                        return DropdownMenuItem<String>(
-                          value: experience,
-                          child: Container(
-                            constraints: BoxConstraints(maxWidth: 250.w),
-                            child: Text(
-                              experience,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: Colors.black87,
-                                fontSize: 12.sp,
+                        isExpanded: true,
+                        menuMaxHeight: 300.h,
+                        items: widget.experienceOptions.map((
+                          String experience,
+                        ) {
+                          return DropdownMenuItem<String>(
+                            value: experience,
+                            child: Container(
+                              constraints: BoxConstraints(maxWidth: 250.w),
+                              child: Text(
+                                experience,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: Colors.black87,
+                                  fontSize: 12.sp,
+                                ),
                               ),
                             ),
-                          ),
-                        );
-                      }).toList(),
-                      onChanged: (value) {
-                        setState(() {
-                          _experienceController.text = value ?? '';
-                          _errorMessage = null;
-                        });
-                      },
-                      validator: (value) =>
-                          value == null ? 'Experience is required' : null,
+                          );
+                        }).toList(),
+                        onChanged: (value) {
+                          setState(() {
+                            _experienceController.text = value ?? '';
+                            _errorMessage = null;
+                          });
+                        },
+                        validator: (value) =>
+                            value == null ? 'Experience is required' : null,
+                      ),
                     ),
                   ),
-                ),
-                _buildTextField(
-                  'Current CTC',
-                  controller: _currentCtcController,
-                ),
-                _buildTextField(
-                  'Expected CTC',
-                  controller: _expectedCtcController,
-                ),
-                _buildTextField(
-                  'LinkedIn URL',
-                  controller: _linkedinUrlController,
-                  validator: _validateLinkedInUrl,
-                ),
-              ],
-            ],
+                  _buildTextField(
+                    'Current CTC',
+                    controller: _currentCtcController,
+                  ),
+                  _buildTextField(
+                    'Expected CTC',
+                    controller: _expectedCtcController,
+                  ),
+                  _buildTextField(
+                    'LinkedIn URL',
+                    controller: _linkedinUrlController,
+                    validator: _validateLinkedInUrl,
+                  ),
+                ], // end of seeker/recruiter fields (else block)
+              ], // end of children list
+            ),
           ),
         ),
       ),
@@ -2004,6 +2011,11 @@ class ProfileDialogState extends State<ProfileDialog> {
           onPressed: _isLoading
               ? null
               : () async {
+                  // run field validators first
+                  if (!_formKey.currentState!.validate()) {
+                    return;
+                  }
+
                   final mobileNumber = widget.mobileNumber?.trim() ?? '';
                   if (mobileNumber.isEmpty) {
                     setState(() {
@@ -2013,16 +2025,7 @@ class ProfileDialogState extends State<ProfileDialog> {
                     return;
                   }
 
-                  // Validate LinkedIn URL if provided
-                  final linkedinValidationError = _validateLinkedInUrl(
-                    _linkedinUrlController.text,
-                  );
-                  if (linkedinValidationError != null) {
-                    setState(() {
-                      _errorMessage = linkedinValidationError;
-                    });
-                    return;
-                  }
+                  // no need for separate LinkedIn validation; field validator covers it
 
                   final profileData = widget.isRecruiter
                       ? {
@@ -2052,12 +2055,15 @@ class ProfileDialogState extends State<ProfileDialog> {
                           'updatedAt': FieldValue.serverTimestamp(),
                         };
 
+                  // Capture context before asynchronous gap
+                  final dialogContext = context;
                   // Call the update and wait for it to complete
                   await widget.onUpdate(profileData, setState);
 
-                  // After successful update, close the dialog
-                  if (mounted && _errorMessage == null) {
-                    Navigator.of(context).pop();
+                  // After successful update, close the dialog if still mounted
+                  if (!mounted) return;
+                  if (_errorMessage == null) {
+                    Navigator.of(dialogContext).pop();
                   }
                 },
           child: _isLoading
