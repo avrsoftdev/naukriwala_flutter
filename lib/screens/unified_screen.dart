@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:naukariwala/screens/recruiter_dashboard.dart';
 import 'package:naukariwala/screens/seeker_dashboard.dart';
+import 'package:naukariwala/screens/profile_setup_onboarding.dart';
 import '../services/auth_service.dart';
 import 'dart:developer' as dev;
 import 'dart:async';
@@ -129,11 +130,24 @@ class UnifiedScreenState extends State<UnifiedScreen> {
 
   Future<void> _redirectBasedOnRole() async {
     setState(() => _isLoading = true);
-    final role = await _authService.getUserRole();
+    final indexData = await _authService.fetchUserIndexData();
+    final role = (indexData?['role'] as String?) ?? await _authService.getUserRole();
+    final profileSetupStatus = indexData?['profileSetupStatus'] as String?;
     setState(() => _isLoading = false);
 
-    dev.log('Redirecting with role: $role', name: 'UnifiedScreen');
+    dev.log(
+      'Redirecting with role: $role, profileSetupStatus: $profileSetupStatus',
+      name: 'UnifiedScreen',
+    );
     if (!mounted) return;
+
+    if ((role == 'recruiter' || role == 'seeker') && profileSetupStatus == 'not_started') {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => ProfileSetupOnboarding(role: role!)),
+      );
+      return;
+    }
 
     if (role == 'recruiter') {
       Navigator.pushReplacement(
@@ -1044,6 +1058,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
             ...widget.tempFormData,
             'UID': user.uid,
             'role': widget.role,
+            'profileSetupStatus': 'not_started',
           };
 
           await widget.authService.storeSignupData(
@@ -1056,19 +1071,15 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
               const SnackBar(content: Text("Email verified! Welcome!")),
             );
 
-            if (widget.role == 'recruiter') {
-              Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const RecruiterDashboard()));
-            } else {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => SeekerDashboard(
-                    seekerName: widget.tempFormData['Name'] ?? 'User',
-                    photoUrl: null,
-                  ),
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (_) => ProfileSetupOnboarding(
+                  role: widget.role,
+                  initialData: widget.tempFormData,
                 ),
-              );
-            }
+              ),
+            );
           }
         } catch (e) {
           if (mounted) {

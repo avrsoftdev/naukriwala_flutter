@@ -420,6 +420,8 @@ class AuthService {
 
       final batch = _firestore.batch();
       batch.set(_firestore.collection(collection).doc(uid), normalizedData, SetOptions(merge: true));
+
+      final profileSetupStatus = data['profileSetupStatus']?.toString().trim();
       batch.set(
         _firestore.collection('UsersIndex').doc(uid),
         {
@@ -428,6 +430,7 @@ class AuthService {
           'mobileNumber': mobileNumber,
           'name': normalizedData['name'],
           'fcmToken': fcmToken,
+          if (profileSetupStatus != null && profileSetupStatus.isNotEmpty) 'profileSetupStatus': profileSetupStatus,
           'updatedAt': FieldValue.serverTimestamp(),
         },
         SetOptions(merge: true),
@@ -484,19 +487,33 @@ class AuthService {
 
     try {
       dev.log('[2025-10-10 00:35 IST] Uploading resume for seeker $uid', name: 'AuthService');
-      final ref = _storage.ref().child('seeker_resumes/$uid/resume.pdf');
+      final extension = file.path.split('.').last.toLowerCase();
+      final isPdf = extension == 'pdf';
+      final isDoc = extension == 'doc';
+      final isDocx = extension == 'docx';
+      if (!isPdf && !isDoc && !isDocx) {
+        throw const AuthException('Unsupported resume format. Please upload PDF, DOC, or DOCX.');
+      }
+
+      final contentType = isPdf
+          ? 'application/pdf'
+          : isDoc
+              ? 'application/msword'
+              : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+
+      final ref = _storage.ref().child('seeker_resumes/$uid/resume.$extension');
       TaskSnapshot uploadTask;
       try {
         uploadTask = await ref.putFile(
           file,
-          SettableMetadata(contentType: 'application/pdf'),
+          SettableMetadata(contentType: contentType),
         );
       } on FirebaseException catch (e) {
         if (e.code == 'unauthenticated') {
           await user.getIdToken(true);
           uploadTask = await ref.putFile(
             file,
-            SettableMetadata(contentType: 'application/pdf'),
+            SettableMetadata(contentType: contentType),
           );
         } else {
           rethrow;
@@ -1334,6 +1351,35 @@ Future<void> sendMessage(
       dev.log("[2025-10-10 00:35 IST] getUserRole ERROR: $e", name: 'AuthService', error: e);
       return null;
     }
+  }
+
+  Future<Map<String, dynamic>?> fetchUserIndexData() async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) return null;
+
+    try {
+      final doc = await _firestore.collection('UsersIndex').doc(uid).get();
+      return doc.data();
+    } catch (e) {
+      dev.log('[2026-03-11 00:00 IST] fetchUserIndexData ERROR: $e', name: 'AuthService', error: e);
+      return null;
+    }
+  }
+
+  Future<void> setProfileSetupStatus(String status) async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) throw const AuthException('User not logged in');
+
+    final trimmed = status.trim();
+    if (trimmed.isEmpty) throw const AuthException('Invalid profile setup status');
+
+    await _firestore.collection('UsersIndex').doc(uid).set(
+      {
+        'profileSetupStatus': trimmed,
+        'updatedAt': FieldValue.serverTimestamp(),
+      },
+      SetOptions(merge: true),
+    );
   }
 }
 
