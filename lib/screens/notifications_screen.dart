@@ -43,9 +43,15 @@ class NotificationsScreenState extends State<NotificationsScreen> {
           .where('to', isEqualTo: uid);
 
       if (widget.isRecruiter) {
-        query = query.where('type', whereIn: ['application', 'message']);
+        query = query.where('type', whereIn: ['application', 'message', 'interview_confirmation_response']);
       } else {
-        query = query.where('type', whereIn: ['application', 'status_update', 'message']);
+        query = query.where('type', whereIn: [
+          'application',
+          'status_update',
+          'message',
+          'interview_scheduled', // legacy
+          'interview_confirmation_request',
+        ]);
       }
 
       _notificationsStream = query
@@ -540,11 +546,14 @@ class NotificationsScreenState extends State<NotificationsScreen> {
                   final read = data['read'] ?? false;
                   final jobId = data['jobId'] as String? ?? 'Unknown';
                   final seekerId = data['seekerId'] as String? ?? 'Unknown';
-                  final notificationId = data['notificationId'] as String? ?? docs[index].id;
+                  final notificationDocId = docs[index].id;
+                  final notificationId = data['notificationId'] as String? ?? notificationDocId;
                   final type = data['type'] as String? ?? 'Unknown';
                   final jobTitle = data['jobTitle'] as String? ?? 'Untitled';
-                  final isSelected = _selectedNotifications.contains(notificationId);
-                  final wasInitiallyUnread = _initiallyUnreadNotifications.contains(notificationId);
+                  final isSelected = _selectedNotifications.contains(notificationDocId);
+                  final wasInitiallyUnread = _initiallyUnreadNotifications.contains(notificationDocId);
+                  final actionStatus = (data['actionStatus'] as String?)?.toLowerCase();
+                  final interviewDate = data['interviewDate'] as Timestamp?;
 
                   return FutureBuilder<String?>(
                     future: _getResumeUrl(jobId, seekerId),
@@ -555,7 +564,7 @@ class NotificationsScreenState extends State<NotificationsScreen> {
                         child: GestureDetector(
                           onTap: () {
                             if (_isSelectionMode) {
-                              _toggleSelection(notificationId);
+                              _toggleSelection(notificationDocId);
                             } else {
                               if (type == 'message') {
                                 try {
@@ -596,7 +605,7 @@ class NotificationsScreenState extends State<NotificationsScreen> {
                           onLongPress: () {
                             setState(() {
                               _isSelectionMode = true;
-                              _toggleSelection(notificationId);
+                              _toggleSelection(notificationDocId);
                             });
                           },
                           child: Card(
@@ -638,6 +647,20 @@ class NotificationsScreenState extends State<NotificationsScreen> {
                                       Text(
                                         _formatTimestamp(timestamp),
                                         style: TextStyle(color: Colors.grey.shade600, fontSize: 14.sp),
+                                      ),
+                                    if (!widget.isRecruiter &&
+                                        uid != null &&
+                                        (type == 'interview_confirmation_request' || type == 'interview_scheduled'))
+                                      Padding(
+                                        padding: EdgeInsets.only(top: 10.h),
+                                        child: InterviewConfirmationActions(
+                                          authService: _authService,
+                                          jobId: jobId,
+                                          seekerId: uid!,
+                                          notificationId: notificationDocId,
+                                          actionStatus: actionStatus ?? 'pending',
+                                          interviewDate: interviewDate,
+                                        ),
                                       ),
                                     if (resumeUrl != null && widget.isRecruiter)
                                       Padding(
@@ -711,6 +734,137 @@ class AnimatedListItemState extends State<AnimatedListItem> with SingleTickerPro
         position: _slideAnimation,
         child: widget.child,
       ),
+    );
+  }
+}
+
+class InterviewConfirmationActions extends StatefulWidget {
+  final AuthService authService;
+  final String jobId;
+  final String seekerId;
+  final String notificationId;
+  final String actionStatus; // pending/accepted/declined
+  final Timestamp? interviewDate;
+
+  const InterviewConfirmationActions({
+    required this.authService,
+    required this.jobId,
+    required this.seekerId,
+    required this.notificationId,
+    required this.actionStatus,
+    required this.interviewDate,
+    super.key,
+  });
+
+  @override
+  State<InterviewConfirmationActions> createState() => _InterviewConfirmationActionsState();
+}
+
+class _InterviewConfirmationActionsState extends State<InterviewConfirmationActions> {
+  bool _isLoading = false;
+
+  String _labelForStatus(String status) {
+    switch (status.toLowerCase()) {
+      case 'accepted':
+        return 'You confirmed availability';
+      case 'declined':
+        return 'You are not available';
+      case 'pending':
+      default:
+        return 'Confirm your availability';
+    }
+  }
+
+  Future<void> _respond(bool isAvailable) async {
+    if (_isLoading) return;
+    setState(() => _isLoading = true);
+    try {
+      await widget.authService.respondToInterviewConfirmation(
+        jobId: widget.jobId,
+        seekerId: widget.seekerId,
+        notificationId: widget.notificationId,
+        isAvailable: isAvailable,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(isAvailable ? 'Interview confirmed' : 'Marked not available'),
+          backgroundColor: Colors.teal,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to respond: $e'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final status = widget.actionStatus.toLowerCase();
+    final dt = widget.interviewDate?.toDate();
+    final dateStr = dt != null ? DateFormat('dd MMM yyyy, hh:mm a').format(dt) : null;
+
+    if (status != 'pending') {
+      return Row(
+        children: [
+          Icon(status == 'accepted' ? Icons.check_circle_rounded : Icons.cancel_rounded,
+              size: 18, color: status == 'accepted' ? Colors.green.shade700 : Colors.red.shade700),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              '${_labelForStatus(status)}${dateStr != null ? ' for $dateStr' : ''}',
+              style: TextStyle(fontSize: 13.sp, color: Colors.grey.shade800, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '${_labelForStatus(status)}${dateStr != null ? ' for $dateStr' : ''}',
+          style: TextStyle(fontSize: 13.sp, color: Colors.grey.shade800, fontWeight: FontWeight.w600),
+        ),
+        SizedBox(height: 8.h),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton(
+                onPressed: _isLoading ? null : () => _respond(false),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.red.shade700,
+                  side: BorderSide(color: Colors.red.shade300),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
+                ),
+                child: _isLoading ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('Not Available'),
+              ),
+            ),
+            SizedBox(width: 10.w),
+            Expanded(
+              child: ElevatedButton(
+                onPressed: _isLoading ? null : () => _respond(true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF0F766E),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
+                ),
+                child: _isLoading ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text('Available'),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }

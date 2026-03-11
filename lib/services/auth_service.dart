@@ -770,6 +770,8 @@ class AuthService {
     batch.update(applicationRef, {
       'status': 'Interview Scheduled',
       'interviewDate': Timestamp.fromDate(interviewDate),
+      'interviewConfirmationStatus': 'pending',
+      'interviewConfirmationAt': null,
       'updatedAt': FieldValue.serverTimestamp(),
     });
 
@@ -781,11 +783,15 @@ class AuthService {
         'recipientId': seekerId,
         'from': uid,
         'jobId': jobId,
+        'jobTitle': appData['jobTitle']?.toString() ?? 'Untitled',
+        'seekerId': seekerId,
         'notificationId': notificationId,
-        'type': 'interview_scheduled',
+        'type': 'interview_confirmation_request',
+        'interviewDate': Timestamp.fromDate(interviewDate),
+        'actionStatus': 'pending',
         'read': false,
         'timestamp': FieldValue.serverTimestamp(),
-        'message': 'Interview for ${appData['jobTitle']} scheduled on ${DateFormat('dd MMM yyyy, hh:mm a').format(interviewDate)}',
+        'message': 'Interview scheduled on ${DateFormat('dd MMM yyyy, hh:mm a').format(interviewDate)}. Please confirm your availability.',
       },
     );
 
@@ -796,14 +802,99 @@ class AuthService {
     if (seekerFcmToken != null) {
       await _sendFcmNotification(
         recipientFcmToken: seekerFcmToken,
-        title: 'Interview Scheduled',
-        body: 'Interview for ${appData['jobTitle']} scheduled on ${DateFormat('dd MMM yyyy, hh:mm a').format(interviewDate)}',
+        title: 'Interview Confirmation',
+        body: 'Interview scheduled on ${DateFormat('dd MMM yyyy, hh:mm a').format(interviewDate)}. Confirm availability.',
         data: {
           'notificationId': notificationId,
           'jobId': jobId,
           'seekerId': seekerId,
           'from': uid,
-          'type': 'interview_scheduled',
+          'type': 'interview_confirmation_request',
+        },
+      );
+    }
+  }
+
+  Future<void> respondToInterviewConfirmation({
+    required String jobId,
+    required String seekerId,
+    required String notificationId,
+    required bool isAvailable,
+  }) async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) throw const AuthException('User not logged in');
+    if (uid != seekerId) throw const AuthException('Not authorized to respond for this seeker');
+
+    final applicationId = '${seekerId}_$jobId';
+    final applicationRef = _firestore.collection('Applications').doc(applicationId);
+    final notificationRef = _firestore.collection('SeekerNotifications').doc(seekerId).collection('Notifications').doc(notificationId);
+
+    final appDoc = await applicationRef.get();
+    if (!appDoc.exists) {
+      throw const AuthException('Application does not exist');
+    }
+    final appData = appDoc.data()!;
+    final recruiterId = appData['recruiterId']?.toString();
+    if (recruiterId == null || recruiterId.isEmpty) {
+      throw const AuthException('Invalid recruiter for this application');
+    }
+
+    final interviewDate = appData['interviewDate'] as Timestamp?;
+    final jobTitle = appData['jobTitle']?.toString() ?? 'Untitled';
+    final newStatus = isAvailable ? 'accepted' : 'declined';
+
+    final batch = _firestore.batch();
+
+    batch.update(applicationRef, {
+      'interviewConfirmationStatus': newStatus,
+      'interviewConfirmationAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+
+    // Mark the original notification as actioned so the UI can disable buttons.
+    batch.set(notificationRef, {
+      'actionStatus': newStatus,
+      'actionedAt': FieldValue.serverTimestamp(),
+      'read': true,
+    }, SetOptions(merge: true));
+
+    final recruiterNotificationId = _firestore.collection('RecruiterNotifications').doc(recruiterId).collection('Notifications').doc().id;
+    final recruiterNotifRef = _firestore.collection('RecruiterNotifications').doc(recruiterId).collection('Notifications').doc(recruiterNotificationId);
+    final interviewStr = interviewDate != null ? DateFormat('dd MMM yyyy, hh:mm a').format(interviewDate.toDate()) : 'N/A';
+    final recruiterMessage = isAvailable
+        ? 'Seeker confirmed availability for "$jobTitle" interview on $interviewStr.'
+        : 'Seeker is not available for "$jobTitle" interview on $interviewStr.';
+
+    batch.set(recruiterNotifRef, {
+      'to': recruiterId,
+      'recipientId': recruiterId,
+      'from': seekerId,
+      'jobId': jobId,
+      'jobTitle': jobTitle,
+      'seekerId': seekerId,
+      'notificationId': recruiterNotificationId,
+      'type': 'interview_confirmation_response',
+      'read': false,
+      'timestamp': FieldValue.serverTimestamp(),
+      'message': recruiterMessage,
+      'interviewDate': interviewDate,
+      'response': newStatus,
+    });
+
+    await batch.commit();
+
+    final recruiterFcmToken = await _getFcmToken(recruiterId);
+    if (recruiterFcmToken != null) {
+      await _sendFcmNotification(
+        recipientFcmToken: recruiterFcmToken,
+        title: 'Interview Confirmation',
+        body: recruiterMessage,
+        data: {
+          'notificationId': recruiterNotificationId,
+          'jobId': jobId,
+          'seekerId': seekerId,
+          'from': seekerId,
+          'type': 'interview_confirmation_response',
         },
       );
     }
@@ -906,10 +997,12 @@ class AuthService {
           batch.update(applicationRef, {
             'status': 'Interview Scheduled',
             'interviewDate': interviewDate,
+            'interviewConfirmationStatus': 'pending',
+            'interviewConfirmationAt': null,
             'updatedAt': FieldValue.serverTimestamp(),
           });
-          notificationMessage = 'Interview for "$jobTitle" scheduled on ${DateFormat('dd MMM yyyy').format(interviewDate.toDate())}';
-          notificationType = 'interview_scheduled';
+          notificationMessage = 'Interview scheduled on ${DateFormat('dd MMM yyyy, hh:mm a').format(interviewDate.toDate())}. Please confirm your availability.';
+          notificationType = 'interview_confirmation_request';
           break;
 
         default:
@@ -927,6 +1020,11 @@ class AuthService {
         'jobId': jobId,
         'jobTitle': jobTitle,
         'notificationId': notificationId,
+        if (notificationType == 'interview_confirmation_request') ...{
+          'seekerId': seekerId,
+          'interviewDate': additionalData?['interviewDate'],
+          'actionStatus': 'pending',
+        },
       });
 
       await batch.commit();
@@ -936,7 +1034,7 @@ class AuthService {
       if (seekerFcmToken != null) {
         await _sendFcmNotification(
           recipientFcmToken: seekerFcmToken,
-          title: notificationType == 'interview_scheduled' ? 'Interview Scheduled' : 'Application Update',
+          title: notificationType == 'interview_confirmation_request' ? 'Interview Confirmation' : 'Application Update',
           body: notificationMessage,
           data: {
             'notificationId': notificationId,

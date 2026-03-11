@@ -178,6 +178,7 @@ class _CallsScreenState extends State<CallsScreen> {
                           final jobId = data['jobId'] as String? ?? 'Unknown';
                           final resume = data['resume'] as Map<String, dynamic>? ?? {};
                           final interviewDate = data['interviewDate'] as Timestamp?;
+                          final confirmationStatus = (data['interviewConfirmationStatus'] as String?)?.toLowerCase() ?? 'pending';
                           final dateStr = interviewDate != null ? DateFormat('dd MMM yyyy, hh:mm a').format(interviewDate.toDate()) : 'N/A';
 
                           return AnimatedListItem(
@@ -245,6 +246,7 @@ class _CallsScreenState extends State<CallsScreen> {
                                             children: [
                                               _InfoChip(label: 'Seeker: $seekerId'),
                                               _InfoChip(label: 'Job: $jobId'),
+                                              _InfoChip(label: 'Confirm: ${confirmationStatus.isEmpty ? 'pending' : confirmationStatus}'),
                                             ],
                                           ),
                                         ],

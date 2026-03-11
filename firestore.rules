@@ -101,7 +101,14 @@ service cloud.firestore {
                       exists(/databases/$(database)/documents/Applications/$(seekerId + '_' + request.resource.data.jobId));
       allow update: if request.auth != null &&
                       request.auth.uid == seekerId &&
-                      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+                      (
+                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']) ||
+                        (
+                          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read', 'actionStatus', 'actionedAt']) &&
+                          resource.data.type in ['interview_confirmation_request', 'interview_scheduled'] &&
+                          request.resource.data.actionStatus in ['accepted', 'declined']
+                        )
+                      );
       allow delete: if request.auth != null &&
                       (request.auth.uid == seekerId ||
                        (request.resource.data.jobId != null &&
@@ -205,12 +212,36 @@ service cloud.firestore {
                       request.resource.data.coverLetter is string &&
                       applicationId == request.resource.data.seekerId + '_' + request.resource.data.jobId &&
                       exists(/databases/$(database)/documents/Recruiters/$(request.resource.data.recruiterId)/Jobs/$(request.resource.data.jobId));
-      allow update: if isRecruiter() &&
+      allow update: if (
+                      isRecruiter() &&
                       isRecruiterJob(resource.data.jobId) &&
                       request.resource.data.seekerId == resource.data.seekerId &&
                       request.resource.data.jobId == resource.data.jobId &&
                       request.resource.data.recruiterId == resource.data.recruiterId &&
-                      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'interviewDate', 'updatedAt']);
+                      request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                        'status',
+                        'interviewDate',
+                        'interviewConfirmationStatus',
+                        'interviewConfirmationAt',
+                        'updatedAt'
+                      ])
+                    ) ||
+                    (
+                      isSeeker() &&
+                      request.auth.uid == resource.data.seekerId &&
+                      request.resource.data.seekerId == resource.data.seekerId &&
+                      request.resource.data.jobId == resource.data.jobId &&
+                      request.resource.data.recruiterId == resource.data.recruiterId &&
+                      resource.data.status == 'Interview Scheduled' &&
+                      request.resource.data.status == resource.data.status &&
+                      request.resource.data.interviewDate == resource.data.interviewDate &&
+                      request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                        'interviewConfirmationStatus',
+                        'interviewConfirmationAt',
+                        'updatedAt'
+                      ]) &&
+                      request.resource.data.interviewConfirmationStatus in ['accepted', 'declined']
+                    );
       allow delete: if isRecruiter() && isRecruiterJob(resource.data.jobId);
     }
     match /{path=**}/AppliedJobs/{docId} {

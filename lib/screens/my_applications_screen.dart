@@ -273,6 +273,7 @@ class _MyApplicationsScreenState extends State<MyApplicationsScreen> {
                               final recruiterId = data['recruiterId'] as String? ?? 'Unknown';
                               final appliedAtStr = appliedAt != null ? DateFormat('dd MMM yyyy').format(appliedAt.toDate()) : 'N/A';
                               final interviewDateStr = interviewDate != null ? DateFormat('dd MMM yyyy, hh:mm a').format(interviewDate.toDate()) : 'N/A';
+                              final interviewConfirmationStatus = (data['interviewConfirmationStatus'] as String?) ?? 'pending';
 
                               return AnimatedListItem(
                                 child: _ApplicationCard(
@@ -281,6 +282,7 @@ class _MyApplicationsScreenState extends State<MyApplicationsScreen> {
                                   status: status,
                                   appliedAtStr: appliedAtStr,
                                   interviewDateStr: interviewDateStr,
+                                  interviewConfirmationStatus: interviewConfirmationStatus,
                                   statusColor: _statusColor(status),
                                   onChatTap: () async {
                                     if (!mounted) {
@@ -400,6 +402,7 @@ class _ApplicationCard extends StatelessWidget {
   final String status;
   final String appliedAtStr;
   final String interviewDateStr;
+  final String interviewConfirmationStatus;
   final Color statusColor;
   final VoidCallback onChatTap;
 
@@ -409,6 +412,7 @@ class _ApplicationCard extends StatelessWidget {
     required this.status,
     required this.appliedAtStr,
     required this.interviewDateStr,
+    required this.interviewConfirmationStatus,
     required this.statusColor,
     required this.onChatTap,
   });
@@ -499,19 +503,33 @@ class _ApplicationCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(10.r),
                   border: Border.all(color: const Color(0xFFBFDBFE)),
                 ),
-                child: Row(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(Icons.video_camera_front_rounded, color: Color(0xFF1D4ED8), size: 17),
-                    SizedBox(width: 6.w),
-                    Expanded(
-                      child: Text(
-                        'Interview: $interviewDateStr',
-                        style: TextStyle(
-                          fontSize: 12.5.sp,
-                          color: const Color(0xFF1E3A8A),
-                          fontWeight: FontWeight.w600,
+                    Row(
+                      children: [
+                        const Icon(Icons.video_camera_front_rounded, color: Color(0xFF1D4ED8), size: 17),
+                        SizedBox(width: 6.w),
+                        Expanded(
+                          child: Text(
+                            'Interview: $interviewDateStr',
+                            style: TextStyle(
+                              fontSize: 12.5.sp,
+                              color: const Color(0xFF1E3A8A),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ),
-                      ),
+                      ],
+                    ),
+                    SizedBox(height: 6.h),
+                    Text(
+                      () {
+                        final s = interviewConfirmationStatus.trim();
+                        final label = s.isEmpty ? 'Pending' : '${s[0].toUpperCase()}${s.substring(1).toLowerCase()}';
+                        return 'Confirmation: $label';
+                      }(),
+                      style: TextStyle(fontSize: 12.sp, color: Colors.blueGrey.shade700, fontWeight: FontWeight.w600),
                     ),
                   ],
                 ),
