@@ -32,6 +32,7 @@ class ProfileScreenState extends State<ProfileScreen> {
   final TextEditingController _currentCtcController = TextEditingController();
   final TextEditingController _expectedCtcController = TextEditingController();
   final TextEditingController _linkedinUrlController = TextEditingController();
+  final TextEditingController _cityController = TextEditingController();
 
   // Non-editable fields
   String? _mobileNumber;
@@ -41,6 +42,7 @@ class ProfileScreenState extends State<ProfileScreen> {
   // Dropdown and multi-select fields for seekers
   String? _selectedSpecialization;
   String? _selectedEducation;
+  String? _selectedCity;
   List<String> _selectedSkills = [];
 
   // Track if profile has been updated
@@ -73,6 +75,291 @@ class ProfileScreenState extends State<ProfileScreen> {
     'Diploma/Certificate',
     'Undergraduate (Bachelor\'s Degree)',
     'Postgraduate (Master\'s Degree)',
+  ];
+
+  final List<String> cityOptions = [
+    'Mumbai',
+    'Delhi',
+    'Bangalore',
+    'Hyderabad',
+    'Ahmedabad',
+    'Chennai',
+    'Kolkata',
+    'Surat',
+    'Pune',
+    'Jaipur',
+    'Lucknow',
+    'Kanpur',
+    'Nagpur',
+    'Indore',
+    'Thane',
+    'Bhopal',
+    'Visakhapatnam',
+    'Pimpri-Chinchwad',
+    'Patna',
+    'Vadodara',
+    'Ghaziabad',
+    'Ludhiana',
+    'Agra',
+    'Nashik',
+    'Faridabad',
+    'Meerut',
+    'Rajkot',
+    'Kalyan-Dombivali',
+    'Vasai-Virar',
+    'Varanasi',
+    'Srinagar',
+    'Aurangabad',
+    'Dhanbad',
+    'Amritsar',
+    'Navi Mumbai',
+    'Allahabad',
+    'Ranchi',
+    'Howrah',
+    'Coimbatore',
+    'Jabalpur',
+    'Gwalior',
+    'Vijayawada',
+    'Jodhpur',
+    'Madurai',
+    'Raipur',
+    'Kota',
+    'Guwahati',
+    'Chandigarh',
+    'Solapur',
+    'Hubballi-Dharwad',
+    'Bareilly',
+    'Moradabad',
+    'Mysore',
+    'Gurgaon',
+    'Aligarh',
+    'Jalandhar',
+    'Tiruchirappalli',
+    'Bhubaneswar',
+    'Salem',
+    'Warangal',
+    'Guntur',
+    'Bhiwandi',
+    'Saharanpur',
+    'Gorakhpur',
+    'Bikaner',
+    'Amravati',
+    'Noida',
+    'Jamshedpur',
+    'Bhilai',
+    'Cuttack',
+    'Firozabad',
+    'Kochi',
+    'Nellore',
+    'Bhavnagar',
+    'Dehradun',
+    'Durgapur',
+    'Asansol',
+    'Rourkela',
+    'Nanded',
+    'Kolhapur',
+    'Ajmer',
+    'Akola',
+    'Gulbarga',
+    'Jamnagar',
+    'Ujjain',
+    'Loni',
+    'Siliguri',
+    'Jhansi',
+    'Ulhasnagar',
+    'Jammu',
+    'Sangli-Miraj & Kupwad',
+    'Mangalore',
+    'Erode',
+    'Belgaum',
+    'Ambattur',
+    'Tirunelveli',
+    'Malegaon',
+    'Gaya',
+    'Tiruppur',
+    'Davanagere',
+    'Kozhikode',
+    'Akbarpur',
+    'Kurnool',
+    'Rajpur Sonarpur',
+    'Bokaro',
+    'South Dumdum',
+    'Bellary',
+    'Patiala',
+    'Gopalpur',
+    'Agartala',
+    'Bhagalpur',
+    'Muzaffarnagar',
+    'Bhatpara',
+    'Panihati',
+    'Latur',
+    'Dhule',
+    'Tirupati',
+    'Rohtak',
+    'Korba',
+    'Bhilwara',
+    'Berhampur',
+    'Muzaffarpur',
+    'Ahmednagar',
+    'Mathura',
+    'Kollam',
+    'Avadi',
+    'Kadapa',
+    'Kamarhati',
+    'Sambalpur',
+    'Bilaspur',
+    'Shahjahanpur',
+    'Satara',
+    'Bijapur',
+    'Rampur',
+    'Shore',
+    'Nagarcoil',
+    'Alwar',
+    'Bardhaman',
+    'Kulti',
+    'Kakinada',
+    'Nizamabad',
+    'Parbhani',
+    'Tumkur',
+    'Khammam',
+    'Ozhukarai',
+    'Bihar Sharif',
+    'Panipat',
+    'Darbhanga',
+    'Bally',
+    'Aizawl',
+    'Dewas',
+    'Ichalkaranji',
+    'Karnal',
+    'Bathinda',
+    'Jalna',
+    'Eluru',
+    'Kirari Suleman Nagar',
+    'Barasat',
+    'Purnia',
+    'Satna',
+    'Mau',
+    'Sonipat',
+    'Farrukhabad',
+    'Sagar',
+    'Rourkela',
+    'Durg',
+    'Imphal',
+    'Ratlam',
+    'Hapur',
+    'Arrah',
+    'Karimnagar',
+    'Anantapur',
+    'Etawah',
+    'Ambarnath',
+    'North Dumdum',
+    'Bharatpur',
+    'Begusarai',
+    'New Delhi',
+    'Gandhidham',
+    'Baranagar',
+    'Tiruvottiyur',
+    'Pondicherry',
+    'Sikar',
+    'Thoothukudi',
+    'Rewa',
+    'Mirzapur',
+    'Raichur',
+    'Pali',
+    'Ramagundam',
+    'Silchar',
+    'Haridwar',
+    'Vijayanagaram',
+    'Tenali',
+    'Nagercoil',
+    'Sri Ganganagar',
+    'Karawal Nagar',
+    'Mango',
+    'Thanjavur',
+    'Bulandshahr',
+    'Uluberia',
+    'Katni',
+    'Sambhal',
+    'Singrauli',
+    'Nadiad',
+    'Secunderabad',
+    'Naihati',
+    'Yamunanagar',
+    'Bidhan Nagar',
+    'Pallavaram',
+    'Bidar',
+    'Munger',
+    'Panchkula',
+    'Burhanpur',
+    'Raurkela Industrial Township',
+    'Kharagpur',
+    'Dindigul',
+    'Gandhinagar',
+    'Hospet',
+    'Nangloi Jat',
+    'Malda',
+    'Ongole',
+    'Deoghar',
+    'Chapra',
+    'Haldia',
+    'Khandwa',
+    'Nandyal',
+    'Morena',
+    'Amroha',
+    'Anand',
+    'Bhind',
+    'Bhalswa Jahangir Pur',
+    'Madhyamgram',
+    'Bhiwani',
+    'Berhampore',
+    'Ambala',
+    'Morbi',
+    'Fatehpur',
+    'Raebareli',
+    'Khora',
+    'Chittoor',
+    'Bhusawal',
+    'Orai',
+    'Bahraich',
+    'Phusro',
+    'Vellore',
+    'Mehsana',
+    'Raiganj',
+    'Sirsa',
+    'Danapur',
+    'Serampore',
+    'Sultan Pur Majra',
+    'Guna',
+    'Jaunpur',
+    'Panvel',
+    'Shivpuri',
+    'Surendranagar Dudhrej',
+    'Unnao',
+    'Chinsurah',
+    'Alappuzha',
+    'Kottayam',
+    'Machilipatnam',
+    'Shimla',
+    'Adoni',
+    'Udupi',
+    'Katihar',
+    'Proddatur',
+    'Mahbubnagar',
+    'Saharsa',
+    'Dibrugarh',
+    'Jorhat',
+    'Hazaribagh',
+    'Hindupur',
+    'Nagaon',
+    'Sasaram',
+    'Hajipur',
+    'Giridih',
+    'Bhimavaram',
+    'Kumbakonam',
+    'Rajahmundry',
+    'Kottayam',
+    'Visakhapatnam',
+    'Other',
   ];
 
   final Map<String, List<String>> skillsBySpecialization = {
@@ -157,9 +444,14 @@ class ProfileScreenState extends State<ProfileScreen> {
                 data['expectedCtc']?.toString().trim() ?? '',
               );
             }
+            final city = data['city']?.toString().trim();
+            _selectedCity = city != null && cityOptions.contains(city) ? city : null;
+            _cityController.text = _selectedCity ?? '';
             _isProfileUpdated =
                 data['name'] != null &&
                 data['name'].toString().trim().isNotEmpty &&
+                data['city'] != null &&
+                data['city'].toString().trim().isNotEmpty &&
                 (widget.isRecruiter
                     ? data['companyName'] != null
                     : data['education'] != null);
@@ -274,6 +566,7 @@ class ProfileScreenState extends State<ProfileScreen> {
       'name': _nameController.text.trim(),
       'email': _email ?? '',
       'mobileNumber': _mobileNumber ?? '',
+      'city': _selectedCity ?? '',
       'skills': _selectedSkills,
       'education': _selectedEducation ?? 'Other',
       'experience': _experienceController.text.trim(),
@@ -420,18 +713,46 @@ class ProfileScreenState extends State<ProfileScreen> {
           'expectedCtc': _expectedCtcController.text,
           'specialization': _selectedSpecialization,
           'education': _selectedEducation,
+          'city': _selectedCity,
           'skills': List<String>.from(_selectedSkills),
           'linkedinUrl': _linkedinUrlController.text,
         },
         experienceOptions: experienceOptions,
         specializationOptions: specializationOptions,
         educationOptions: educationOptions,
+        cityOptions: cityOptions,
         skillsBySpecialization: skillsBySpecialization,
         isProfileUpdated: _isProfileUpdated,
         mobileNumber: _mobileNumber,
         onUpdate: _updateProfile,
       ),
     );
+  }
+
+  double _calculateProfileCompletion() {
+    if (widget.isRecruiter) {
+      // For recruiters, calculate based on their fields
+      int filled = 0;
+      int total = 4; // name, companyName, companyProfile, designation
+      if (_nameController.text.trim().isNotEmpty) filled++;
+      if (_companyNameController.text.trim().isNotEmpty) filled++;
+      if (_companyProfileController.text.trim().isNotEmpty) filled++;
+      if (_designationController.text.trim().isNotEmpty) filled++;
+      return (filled / total) * 100;
+    } else {
+      // For seekers
+      int filled = 0;
+      int total = 8; // name, city, specialization, education, experience, skills, currentCtc, expectedCtc
+      if (_nameController.text.trim().isNotEmpty) filled++;
+      if (_selectedCity != null && _selectedCity!.trim().isNotEmpty) filled++;
+      if (_selectedSpecialization != null && _selectedSpecialization!.trim().isNotEmpty) filled++;
+      if (_selectedEducation != null && _selectedEducation!.trim().isNotEmpty) filled++;
+      if (_experienceController.text.trim().isNotEmpty) filled++;
+      if (_selectedSkills.isNotEmpty) filled++;
+      if (_currentCtcController.text.trim().isNotEmpty && _currentCtcController.text.trim() != '0') filled++;
+      if (_expectedCtcController.text.trim().isNotEmpty && _expectedCtcController.text.trim() != '0') filled++;
+      return (filled / total) * 100;
+    }
   }
 
   InputDecoration _fieldDecoration(
@@ -495,6 +816,8 @@ class ProfileScreenState extends State<ProfileScreen> {
         return Icons.currency_rupee_outlined;
       case 'linkedin url':
         return Icons.link_outlined;
+      case 'city':
+        return Icons.location_city_outlined;
       default:
         return Icons.info_outline;
     }
@@ -831,6 +1154,92 @@ class ProfileScreenState extends State<ProfileScreen> {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCityAutocompleteField() {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 8.h),
+      child: Container(
+        constraints: BoxConstraints(maxWidth: 300.w),
+        child: Autocomplete<String>(
+          optionsBuilder: (TextEditingValue textEditingValue) {
+            if (textEditingValue.text.isEmpty) {
+              return const Iterable<String>.empty();
+            }
+            return cityOptions.where((String option) {
+              return option.toLowerCase().contains(textEditingValue.text.toLowerCase());
+            });
+          },
+          onSelected: (String selection) {
+            setState(() {
+              _selectedCity = selection;
+              _cityController.text = selection;
+              errorMessage = null;
+            });
+          },
+          fieldViewBuilder: (BuildContext context, TextEditingController textEditingController, FocusNode focusNode, VoidCallback onFieldSubmitted) {
+            // Initialize the autocomplete controller with our current value
+            if (textEditingController.text != _cityController.text) {
+              textEditingController.text = _cityController.text;
+            }
+            // Add listener to update our state when text changes
+            textEditingController.addListener(() {
+              if (_selectedCity != textEditingController.text) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted) {
+                    setState(() {
+                      _selectedCity = textEditingController.text;
+                      _cityController.text = textEditingController.text;
+                      errorMessage = null;
+                    });
+                  }
+                });
+              }
+            });
+            return TextFormField(
+              controller: textEditingController,
+              focusNode: focusNode,
+              decoration: _fieldDecoration(
+                'City',
+                icon: _iconForLabel('City'),
+              ),
+              validator: (value) => value == null || value.trim().isEmpty
+                  ? 'City is required'
+                  : null,
+              autovalidateMode: AutovalidateMode.onUserInteraction,
+            );
+          },
+          optionsViewBuilder: (BuildContext context, AutocompleteOnSelected<String> onSelected, Iterable<String> options) {
+            return Align(
+              alignment: Alignment.topLeft,
+              child: Material(
+                elevation: 4.0,
+                child: Container(
+                  constraints: BoxConstraints(maxWidth: 300.w, maxHeight: 200.h),
+                  child: ListView.builder(
+                    padding: EdgeInsets.zero,
+                    shrinkWrap: true,
+                    itemCount: options.length,
+                    itemBuilder: (BuildContext context, int index) {
+                      final String option = options.elementAt(index);
+                      return ListTile(
+                        title: Text(
+                          option,
+                          style: TextStyle(fontSize: 14.sp),
+                        ),
+                        onTap: () {
+                          onSelected(option);
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ),
+            );
+          },
         ),
       ),
     );
@@ -1243,6 +1652,85 @@ class ProfileScreenState extends State<ProfileScreen> {
                             ],
                           ),
                         ),
+                        if (!widget.isRecruiter) ...[
+                          SizedBox(height: 14.h),
+                          Container(
+                            padding: EdgeInsets.all(16.w),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16.r),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.blueGrey.withValues(alpha: 0.08),
+                                  blurRadius: 12.r,
+                                  offset: Offset(0, 4.h),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Stack(
+                                  alignment: Alignment.center,
+                                  children: [
+                                    SizedBox(
+                                      width: 60.w,
+                                      height: 60.w,
+                                      child: CircularProgressIndicator(
+                                        value: _calculateProfileCompletion() / 100,
+                                        strokeWidth: 6.w,
+                                        backgroundColor: Colors.grey.shade200,
+                                        valueColor: AlwaysStoppedAnimation<Color>(
+                                          _calculateProfileCompletion() >= 80
+                                              ? Colors.green.shade500
+                                              : _calculateProfileCompletion() >= 50
+                                                  ? Colors.orange.shade500
+                                                  : Colors.red.shade500,
+                                        ),
+                                      ),
+                                    ),
+                                    Text(
+                                      '${_calculateProfileCompletion().toInt()}%',
+                                      style: TextStyle(
+                                        fontSize: 14.sp,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.black87,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                SizedBox(width: 16.w),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Profile Completion',
+                                        style: TextStyle(
+                                          fontSize: 16.sp,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.black87,
+                                        ),
+                                      ),
+                                      SizedBox(height: 4.h),
+                                      Text(
+                                        _calculateProfileCompletion() >= 80
+                                            ? 'Great! Your profile is almost complete.'
+                                            : _calculateProfileCompletion() >= 50
+                                                ? 'Good progress! Keep filling in your details.'
+                                                : 'Complete your profile to get better job matches.',
+                                        style: TextStyle(
+                                          fontSize: 12.sp,
+                                          color: Colors.grey.shade600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                         SizedBox(height: 14.h),
                         Container(
                           width: double.infinity,
@@ -1283,6 +1771,13 @@ class ProfileScreenState extends State<ProfileScreen> {
                                           ? 'Name is required'
                                           : null,
                                     ),
+                                  if (_isProfileUpdated)
+                                    _buildNonEditableField(
+                                      'City',
+                                      _selectedCity,
+                                    )
+                                  else
+                                    _buildCityAutocompleteField(),
                                   SizedBox(height: 8.h),
                                   _buildSectionHeader(
                                     widget.isRecruiter
@@ -1477,6 +1972,7 @@ class ProfileDialog extends StatefulWidget {
   final List<String> experienceOptions;
   final List<String> specializationOptions;
   final List<String> educationOptions;
+  final List<String> cityOptions;
   final Map<String, List<String>> skillsBySpecialization;
   final bool isProfileUpdated;
   final String? mobileNumber;
@@ -1488,6 +1984,7 @@ class ProfileDialog extends StatefulWidget {
     required this.experienceOptions,
     required this.specializationOptions,
     required this.educationOptions,
+    required this.cityOptions,
     required this.skillsBySpecialization,
     required this.isProfileUpdated,
     required this.mobileNumber,
@@ -1509,8 +2006,10 @@ class ProfileDialogState extends State<ProfileDialog> {
   late final TextEditingController _currentCtcController;
   late final TextEditingController _expectedCtcController;
   late final TextEditingController _linkedinUrlController;
+  late final TextEditingController _cityController;
   String? _specialization;
   String? _education;
+  String? _selectedCity;
   List<String> _skills = [];
   // ignore: prefer_final_fields
   bool _isLoading = false;
@@ -1541,8 +2040,12 @@ class ProfileDialogState extends State<ProfileDialog> {
     _linkedinUrlController = TextEditingController(
       text: widget.initialData['linkedinUrl'],
     );
+    _cityController = TextEditingController(
+      text: widget.initialData['city'],
+    );
     _specialization = widget.initialData['specialization'];
     _education = widget.initialData['education'];
+    _selectedCity = widget.initialData['city'];
     _skills = List<String>.from(widget.initialData['skills']);
   }
 
@@ -1556,6 +2059,7 @@ class ProfileDialogState extends State<ProfileDialog> {
     _currentCtcController.dispose();
     _expectedCtcController.dispose();
     _linkedinUrlController.dispose();
+    _cityController.dispose();
     super.dispose();
   }
 
@@ -1635,6 +2139,124 @@ class ProfileDialogState extends State<ProfileDialog> {
     );
   }
 
+  Widget _buildCityAutocompleteField() {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 8.h),
+      child: Container(
+        constraints: BoxConstraints(maxWidth: 300.w),
+        child: Autocomplete<String>(
+          optionsBuilder: (TextEditingValue textEditingValue) {
+            if (textEditingValue.text.isEmpty) {
+              return const Iterable<String>.empty();
+            }
+            return widget.cityOptions.where((String option) {
+              return option.toLowerCase().contains(textEditingValue.text.toLowerCase());
+            });
+          },
+          onSelected: (String selection) {
+            setState(() {
+              _selectedCity = selection;
+              _cityController.text = selection;
+              _errorMessage = null;
+            });
+          },
+          fieldViewBuilder: (BuildContext context, TextEditingController textEditingController, FocusNode focusNode, VoidCallback onFieldSubmitted) {
+            // Initialize the autocomplete controller with our current value
+            if (textEditingController.text != _cityController.text) {
+              textEditingController.text = _cityController.text;
+            }
+            // Add listener to update our state when text changes
+            textEditingController.addListener(() {
+              if (_selectedCity != textEditingController.text) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted) {
+                    setState(() {
+                      _selectedCity = textEditingController.text;
+                      _cityController.text = textEditingController.text;
+                      _errorMessage = null;
+                    });
+                  }
+                });
+              }
+            });
+            return TextFormField(
+              controller: textEditingController,
+              focusNode: focusNode,
+              decoration: InputDecoration(
+                labelText: 'City',
+                labelStyle: TextStyle(color: Colors.grey, fontSize: 12.sp),
+                enabledBorder: OutlineInputBorder(
+                  borderSide: BorderSide(color: Colors.grey.shade400),
+                  borderRadius: BorderRadius.circular(12.r),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderSide: BorderSide(color: Colors.teal, width: 2.w),
+                  borderRadius: BorderRadius.circular(12.r),
+                ),
+                errorBorder: OutlineInputBorder(
+                  borderSide: BorderSide(color: Colors.red, width: 2.w),
+                  borderRadius: BorderRadius.circular(12.r),
+                ),
+                focusedErrorBorder: OutlineInputBorder(
+                  borderSide: BorderSide(color: Colors.red, width: 2.w),
+                  borderRadius: BorderRadius.circular(12.r),
+                ),
+                errorStyle: TextStyle(
+                  color: Colors.red.shade700,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 11.sp,
+                ),
+                filled: true,
+                fillColor: Colors.white,
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 12.w,
+                  vertical: 10.h,
+                ),
+                prefixIcon: Icon(
+                  Icons.location_city_outlined,
+                  color: Colors.teal.shade600,
+                  size: 18.sp,
+                ),
+              ),
+              validator: (value) => value == null || value.trim().isEmpty
+                  ? 'City is required'
+                  : null,
+              autovalidateMode: AutovalidateMode.onUserInteraction,
+            );
+          },
+          optionsViewBuilder: (BuildContext context, AutocompleteOnSelected<String> onSelected, Iterable<String> options) {
+            return Align(
+              alignment: Alignment.topLeft,
+              child: Material(
+                elevation: 4.0,
+                child: Container(
+                  constraints: BoxConstraints(maxWidth: 300.w, maxHeight: 200.h),
+                  child: ListView.builder(
+                    padding: EdgeInsets.zero,
+                    shrinkWrap: true,
+                    itemCount: options.length,
+                    itemBuilder: (BuildContext context, int index) {
+                      final String option = options.elementAt(index);
+                      return ListTile(
+                        title: Text(
+                          option,
+                          style: TextStyle(fontSize: 14.sp),
+                        ),
+                        onTap: () {
+                          onSelected(option);
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
@@ -1684,6 +2306,7 @@ class ProfileDialogState extends State<ProfileDialog> {
                       ? 'Name is required'
                       : null,
                 ),
+                _buildCityAutocompleteField(),
                 if (widget.isRecruiter) ...[
                   _buildTextField(
                     'Company Name',
@@ -2031,6 +2654,7 @@ class ProfileDialogState extends State<ProfileDialog> {
                       ? {
                           'name': _nameController.text.trim(),
                           'mobileNumber': mobileNumber,
+                          'city': _selectedCity ?? '',
                           'companyName': _companyNameController.text.trim(),
                           'companyProfile': _companyProfileController.text
                               .trim(),
@@ -2041,6 +2665,7 @@ class ProfileDialogState extends State<ProfileDialog> {
                       : {
                           'name': _nameController.text.trim(),
                           'mobileNumber': mobileNumber,
+                          'city': _selectedCity ?? '',
                           'skills': _skills,
                           'education': _education,
                           'experience': _experienceController.text.trim(),
@@ -2056,6 +2681,7 @@ class ProfileDialogState extends State<ProfileDialog> {
                         };
 
                   // Capture context before asynchronous gap
+                  // ignore: use_build_context_synchronously
                   final dialogContext = context;
                   // Call the update and wait for it to complete
                   await widget.onUpdate(profileData, setState);
@@ -2063,6 +2689,7 @@ class ProfileDialogState extends State<ProfileDialog> {
                   // After successful update, close the dialog if still mounted
                   if (!mounted) return;
                   if (_errorMessage == null) {
+                    // ignore: use_build_context_synchronously
                     Navigator.of(dialogContext).pop();
                   }
                 },
