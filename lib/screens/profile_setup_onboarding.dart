@@ -2,10 +2,12 @@
 
 import 'dart:io';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:multi_select_flutter/multi_select_flutter.dart';
 import 'package:naukariwala/screens/recruiter_dashboard.dart';
@@ -29,6 +31,8 @@ class ProfileSetupOnboarding extends StatefulWidget {
 class _ProfileSetupOnboardingState extends State<ProfileSetupOnboarding> {
   final AuthService _authService = AuthService();
   final PageController _pageController = PageController();
+  final DateFormat _monthYearFormat = DateFormat('MMM yyyy');
+  final DateFormat _isoDateFormat = DateFormat('yyyy-MM-dd');
 
   late final bool _isRecruiter;
   late final int _totalSteps;
@@ -46,6 +50,9 @@ class _ProfileSetupOnboardingState extends State<ProfileSetupOnboarding> {
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
   final _locationController = TextEditingController();
+
+  // Career details (Seeker)
+  String? _currentStatus; // 'Fresher' | 'Student' | 'Working Professional'
 
   // Education (Seeker)
   final _tenthPassingYearController = TextEditingController();
@@ -84,14 +91,38 @@ class _ProfileSetupOnboardingState extends State<ProfileSetupOnboarding> {
 
   final _jobTitleController = TextEditingController();
   final _industryController = TextEditingController();
-  String? _selectedExperience;
   String? _selectedSpecialization;
   List<String> _selectedSkills = [];
 
+  // Fresher / Student
+  final _projectsController = TextEditingController();
+  final _internshipsController = TextEditingController();
+  final _softSkillsController = TextEditingController();
+  final _githubUrlController = TextEditingController();
+  final _linkedinUrlController = TextEditingController();
+  final _portfolioUrlController = TextEditingController();
+
+  // Experienced
+  final _currentCompanyController = TextEditingController();
+  String? _employmentType;
+  DateTime? _currentJobStartDate;
+  DateTime? _currentJobEndDate;
+  bool _currentlyWorkingHere = true;
+  final _currentJobStartDateController = TextEditingController();
+  final _currentJobEndDateController = TextEditingController();
+  final List<_ExperienceEntry> _previousExperiences = [];
+  final _achievementsController = TextEditingController();
+
   final _preferredRoleController = TextEditingController();
   final _preferredLocationController = TextEditingController();
-  final _expectedSalaryController = TextEditingController();
-  String? _selectedWorkType;
+  final _preferredIndustriesController = TextEditingController();
+
+  // Preferences / compensation (mostly for experienced)
+  final _expectedSalaryMinController = TextEditingController();
+  final _expectedSalaryMaxController = TextEditingController();
+  String? _noticePeriod;
+  String? _preferredEmploymentType;
+  String? _preferredWorkMode; // Remote | Hybrid | On-site
 
   final _companyNameController = TextEditingController();
   final _companyWebsiteController = TextEditingController();
@@ -114,7 +145,41 @@ class _ProfileSetupOnboardingState extends State<ProfileSetupOnboarding> {
     '10+ years',
   ];
 
-  static const List<String> _workTypeOptions = ['Remote', 'Hybrid', 'On-site'];
+  static const List<String> _currentStatusOptions = [
+    'Fresher',
+    'Student',
+    'Working Professional',
+  ];
+
+  static const List<String> _employmentTypeOptions = [
+    'Full-time',
+    'Part-time',
+    'Internship',
+    'Contract',
+    'Freelance',
+  ];
+
+  static const List<String> _preferredEmploymentTypeOptions = [
+    'Full-time',
+    'Internship',
+    'Contract',
+    'Freelance',
+  ];
+
+  static const List<String> _preferredWorkModeOptions = [
+    'Remote',
+    'Hybrid',
+    'On-site',
+  ];
+
+  static const List<String> _noticePeriodOptions = [
+    'Immediate',
+    '15 days',
+    '1 month',
+    '2 months',
+    '3 months',
+    'More',
+  ];
 
   static const List<String> _scoreTypeOptions = ['Percentage', 'CGPA'];
 
@@ -154,6 +219,7 @@ class _ProfileSetupOnboardingState extends State<ProfileSetupOnboarding> {
     _isRecruiter = widget.role == 'recruiter';
     _totalSteps = _isRecruiter ? 3 : 5;
     _formKeys = List.generate(_totalSteps, (_) => GlobalKey<FormState>());
+    _currentJobEndDateController.text = 'Present';
     _bootstrap();
   }
 
@@ -185,9 +251,21 @@ class _ProfileSetupOnboardingState extends State<ProfileSetupOnboarding> {
 
     _jobTitleController.dispose();
     _industryController.dispose();
+    _projectsController.dispose();
+    _internshipsController.dispose();
+    _softSkillsController.dispose();
+    _githubUrlController.dispose();
+    _linkedinUrlController.dispose();
+    _portfolioUrlController.dispose();
+    _currentCompanyController.dispose();
+    _currentJobStartDateController.dispose();
+    _currentJobEndDateController.dispose();
+    _achievementsController.dispose();
     _preferredRoleController.dispose();
     _preferredLocationController.dispose();
-    _expectedSalaryController.dispose();
+    _preferredIndustriesController.dispose();
+    _expectedSalaryMinController.dispose();
+    _expectedSalaryMaxController.dispose();
     _companyNameController.dispose();
     _companyWebsiteController.dispose();
     _companyIndustryController.dispose();
@@ -198,6 +276,90 @@ class _ProfileSetupOnboardingState extends State<ProfileSetupOnboarding> {
     _recruiterDesignationController.dispose();
     _recruiterContactController.dispose();
     super.dispose();
+  }
+
+  DateTime? _parseFlexibleDate(dynamic value) {
+    if (value == null) return null;
+    if (value is DateTime) return value;
+    if (value is Timestamp) return value.toDate();
+    if (value is int) {
+      return DateTime.fromMillisecondsSinceEpoch(value);
+    }
+    if (value is String) {
+      final trimmed = value.trim();
+      if (trimmed.isEmpty) return null;
+      final iso = DateTime.tryParse(trimmed);
+      if (iso != null) return iso;
+      try {
+        return _isoDateFormat.parseStrict(trimmed);
+      } catch (_) {
+        return null;
+      }
+    }
+    return null;
+  }
+
+  String _formatMonthYear(DateTime date) => _monthYearFormat.format(date);
+
+  String _formatIsoDate(DateTime date) => _isoDateFormat.format(date);
+
+  Future<void> _pickDate({
+    BuildContext? pickerContext,
+    required DateTime? initial,
+    required void Function(DateTime) onPicked,
+    DateTime? firstDate,
+    DateTime? lastDate,
+  }) async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: pickerContext ?? context,
+      initialDate: initial ?? now,
+      firstDate: firstDate ?? DateTime(1950, 1, 1),
+      lastDate: lastDate ?? now,
+    );
+    if (picked == null) return;
+    onPicked(picked);
+  }
+
+  double? _computeTotalExperienceYears() {
+    if (!_isWorkingProfessional) return null;
+    if (_currentJobStartDate == null) return null;
+
+    final now = DateTime.now();
+    double totalDays = 0;
+
+    DateTime currentEnd = _currentJobEndDate ?? now;
+    if (currentEnd.isBefore(_currentJobStartDate!)) {
+      return null;
+    }
+    totalDays += currentEnd.difference(_currentJobStartDate!).inDays.toDouble();
+
+    for (final exp in _previousExperiences) {
+      final end = exp.endDate ?? now;
+      if (end.isBefore(exp.startDate)) continue;
+      totalDays += end.difference(exp.startDate).inDays.toDouble();
+    }
+
+    final years = totalDays / 365.25;
+    return double.parse(years.toStringAsFixed(2));
+  }
+
+  Future<void> _showAddExperienceSheet() async {
+    final entry = await showModalBottomSheet<_ExperienceEntry>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18.r)),
+      ),
+      builder: (_) => const _AddExperienceSheet(),
+    );
+
+    if (!mounted || entry == null) return;
+    setState(() {
+      _previousExperiences.add(entry);
+      _previousExperiences.sort((a, b) => b.startDate.compareTo(a.startDate));
+    });
   }
 
   Future<void> _bootstrap() async {
@@ -246,20 +408,109 @@ class _ProfileSetupOnboardingState extends State<ProfileSetupOnboarding> {
       _photoUrl = merged['photoUrl']?.toString();
       _resumeUrl = merged['resumeUrl']?.toString();
 
+      final status = merged['currentStatus']?.toString();
+      if (status != null && _currentStatusOptions.contains(status)) {
+        _currentStatus = status;
+      } else {
+        final exp = merged['experience']?.toString() ?? '';
+        if (exp.toLowerCase().contains('fresher')) {
+          _currentStatus = 'Fresher';
+        } else if (exp.trim().isNotEmpty) {
+          _currentStatus = 'Working Professional';
+        }
+      }
+
       _jobTitleController.text = merged['jobTitle']?.toString() ?? '';
       _industryController.text = merged['industry']?.toString() ?? '';
-      _selectedExperience = merged['experience']?.toString();
       _selectedSpecialization = merged['specialization']?.toString();
       _selectedSkills =
           (merged['skills'] as List<dynamic>?)?.cast<String>() ?? [];
+
+      _projectsController.text = merged['projects']?.toString() ?? '';
+      _internshipsController.text = merged['internships']?.toString() ?? '';
+      _softSkillsController.text = merged['softSkills']?.toString() ?? '';
+      _githubUrlController.text = merged['githubUrl']?.toString() ?? '';
+      _linkedinUrlController.text =
+          merged['linkedinUrl']?.toString() ?? merged['linkedin']?.toString() ?? '';
+      _portfolioUrlController.text = merged['portfolioUrl']?.toString() ?? '';
+
+      _currentCompanyController.text =
+          merged['currentCompany']?.toString() ?? '';
+      final empType = merged['employmentType']?.toString();
+      if (empType != null && _employmentTypeOptions.contains(empType)) {
+        _employmentType = empType;
+      }
+
+      _currentJobStartDate = _parseFlexibleDate(
+        merged['currentJobStartDate'] ?? merged['employmentStartDate'],
+      );
+      _currentJobEndDate = _parseFlexibleDate(
+        merged['currentJobEndDate'] ?? merged['employmentEndDate'],
+      );
+      _currentlyWorkingHere = _currentJobEndDate == null;
+      _currentJobStartDateController.text =
+          _currentJobStartDate == null ? '' : _formatMonthYear(_currentJobStartDate!);
+      _currentJobEndDateController.text = _currentlyWorkingHere
+          ? 'Present'
+          : (_currentJobEndDate == null ? '' : _formatMonthYear(_currentJobEndDate!));
+
+      _previousExperiences.clear();
+      final exps =
+          (merged['previousExperiences'] ?? merged['experiences'] ?? merged['experienceEntries']);
+      if (exps is List) {
+        for (final item in exps) {
+          if (item is! Map) continue;
+          final company = item['companyName']?.toString() ?? item['company']?.toString() ?? '';
+          final title = item['jobTitle']?.toString() ?? item['role']?.toString() ?? '';
+          final start = _parseFlexibleDate(item['startDate'] ?? item['from']);
+          final end = _parseFlexibleDate(item['endDate'] ?? item['to']);
+          if (company.trim().isEmpty || start == null) continue;
+          _previousExperiences.add(
+            _ExperienceEntry(
+              companyName: company.trim(),
+              jobTitle: title.trim(),
+              startDate: start,
+              endDate: end,
+            ),
+          );
+        }
+      }
+      _achievementsController.text =
+          merged['achievements']?.toString() ?? merged['majorAchievements']?.toString() ?? '';
 
       _preferredRoleController.text =
           merged['preferredJobRole']?.toString() ?? '';
       _preferredLocationController.text =
           merged['preferredLocation']?.toString() ?? '';
-      _expectedSalaryController.text =
-          merged['expectedSalary']?.toString() ?? '';
-      _selectedWorkType = merged['workType']?.toString();
+      _preferredIndustriesController.text =
+          merged['preferredIndustries']?.toString() ??
+              merged['preferredIndustry']?.toString() ??
+              '';
+
+      final preferredMode =
+          (merged['preferredWorkMode'] ?? merged['workType'])?.toString();
+      if (preferredMode != null && _preferredWorkModeOptions.contains(preferredMode)) {
+        _preferredWorkMode = preferredMode;
+      }
+      final preferredEmp = merged['preferredEmploymentType']?.toString();
+      if (preferredEmp != null &&
+          _preferredEmploymentTypeOptions.contains(preferredEmp)) {
+        _preferredEmploymentType = preferredEmp;
+      }
+
+      _expectedSalaryMinController.text =
+          merged['expectedSalaryMin']?.toString() ??
+              merged['expectedCtcMin']?.toString() ??
+              merged['expectedSalary']?.toString() ??
+              '';
+      _expectedSalaryMaxController.text =
+          merged['expectedSalaryMax']?.toString() ??
+              merged['expectedCtcMax']?.toString() ??
+              '';
+      final np = merged['noticePeriod']?.toString();
+      if (np != null && _noticePeriodOptions.contains(np)) {
+        _noticePeriod = np;
+      }
 
       _companyWebsiteController.text =
           merged['companyWebsite']?.toString() ?? '';
@@ -512,6 +763,13 @@ class _ProfileSetupOnboardingState extends State<ProfileSetupOnboarding> {
     }
 
     if (!_isRecruiter && _stepIndex == 2) {
+      if ((_currentStatus ?? '').trim().isEmpty ||
+          !_currentStatusOptions.contains(_currentStatus)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please select your current status')),
+        );
+        return;
+      }
       if ((_selectedSpecialization ?? '').trim().isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Please select a specialization')),
@@ -581,6 +839,20 @@ class _ProfileSetupOnboardingState extends State<ProfileSetupOnboarding> {
         return;
       }
 
+      final totalYears = _computeTotalExperienceYears();
+      final experienceBucket = _isWorkingProfessional
+          ? _experienceBucketFromYears(totalYears ?? 0)
+          : _experienceOptions.first;
+
+      final previousCompaniesSummary = _previousExperiences
+          .map((e) => e.companyName)
+          .where((e) => e.trim().isNotEmpty)
+          .join(', ');
+
+      final preferredLocation = (_preferredWorkMode == 'Remote')
+          ? 'Remote'
+          : _preferredLocationController.text.trim();
+
       final data = <String, dynamic>{
         'uid': uid,
         'name': _nameController.text.trim(),
@@ -589,16 +861,47 @@ class _ProfileSetupOnboardingState extends State<ProfileSetupOnboarding> {
         'city': _locationController.text.trim(),
         'education': _deriveHighestEducation(),
         'educationDetails': _buildEducationDetailsPayload(),
+        'currentStatus': _currentStatus,
+
+        // Career details (conditional)
+        'currentCompany': _currentCompanyController.text.trim(),
         'jobTitle': _jobTitleController.text.trim(),
-        'experience': _selectedExperience?.trim() ?? '',
+        'employmentType': _employmentType,
+        'totalExperienceYears': totalYears,
+        'currentJobStartDate':
+            _currentJobStartDate == null ? null : _formatIsoDate(_currentJobStartDate!),
+        'currentJobEndDate': (_currentlyWorkingHere || _currentJobEndDate == null)
+            ? null
+            : _formatIsoDate(_currentJobEndDate!),
+        'experience': experienceBucket,
         'industry': _industryController.text.trim(),
+        'previousCompanies': previousCompaniesSummary,
+        'previousExperiences': _previousExperiences
+            .map((e) => e.toJson(dateFormatter: _formatIsoDate))
+            .toList(),
+        'achievements': _achievementsController.text.trim(),
+        'projects': _projectsController.text.trim(),
+        'internships': _internshipsController.text.trim(),
+        'softSkills': _softSkillsController.text.trim(),
+        'githubUrl': _githubUrlController.text.trim(),
+        'linkedinUrl': _linkedinUrlController.text.trim(),
+        'portfolioUrl': _portfolioUrlController.text.trim(),
         'specialization': _selectedSpecialization,
         'skills': List<String>.from(_selectedSkills),
         if (_resumeUrl != null) 'resumeUrl': _resumeUrl,
+
+        // Preferences
         'preferredJobRole': _preferredRoleController.text.trim(),
-        'preferredLocation': _preferredLocationController.text.trim(),
-        'expectedSalary': _expectedSalaryController.text.trim(),
-        'workType': _selectedWorkType,
+        'preferredIndustries': _preferredIndustriesController.text.trim(),
+        'preferredEmploymentType': _preferredEmploymentType,
+        'preferredWorkMode': _preferredWorkMode,
+        'preferredLocation': preferredLocation,
+        'expectedSalaryMin': _expectedSalaryMinController.text.trim(),
+        'expectedSalaryMax': _expectedSalaryMaxController.text.trim(),
+        'noticePeriod': _noticePeriod,
+
+        // Backward-compatible fields
+        'workType': _preferredWorkMode,
       };
 
       await _authService.storeSignupData(isRecruiter: false, data: data);
@@ -806,89 +1109,12 @@ class _ProfileSetupOnboardingState extends State<ProfileSetupOnboarding> {
       ),
       _cardStep(
         formKey: _formKeys[2],
-        title: 'Professional details',
-        children: [
-          TextFormField(
-            controller: _jobTitleController,
-            textInputAction: TextInputAction.next,
-            decoration: const InputDecoration(labelText: 'Current job title'),
-          ),
-          SizedBox(height: 10.h),
-          DropdownButtonFormField<String>(
-            value:
-                (_selectedExperience != null &&
-                    _experienceOptions.contains(_selectedExperience))
-                ? _selectedExperience
-                : null,
-            decoration: const InputDecoration(labelText: 'Years of experience'),
-            items: _experienceOptions
-                .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                .toList(),
-            onChanged: (v) => setState(() => _selectedExperience = v),
-          ),
-          SizedBox(height: 10.h),
-          TextFormField(
-            controller: _industryController,
-            textInputAction: TextInputAction.next,
-            decoration: const InputDecoration(labelText: 'Industry'),
-          ),
-          SizedBox(height: 10.h),
-          DropdownButtonFormField<String>(
-            value:
-                (_selectedSpecialization != null &&
-                    _authService.specializationOptions.contains(
-                      _selectedSpecialization,
-                    ))
-                ? _selectedSpecialization
-                : null,
-            decoration: const InputDecoration(labelText: 'Specialization'),
-            items: _authService.specializationOptions
-                .map(
-                  (s) => DropdownMenuItem(
-                    value: s,
-                    child: Text(s, overflow: TextOverflow.ellipsis),
-                  ),
-                )
-                .toList(),
-            onChanged: (v) {
-              setState(() {
-                _selectedSpecialization = v;
-                _selectedSkills = [];
-              });
-            },
-            validator: (v) =>
-                (v == null || v.trim().isEmpty) ? 'Required' : null,
-          ),
-          SizedBox(height: 10.h),
-          MultiSelectDialogField<String>(
-            items:
-                (_authService.skillsBySpecialization[_selectedSpecialization ??
-                            'Others'] ??
-                        const <String>[])
-                    .map((s) => MultiSelectItem<String>(s, s))
-                    .toList(),
-            title: const Text('Skills'),
-            buttonText: const Text('Select skills'),
-            initialValue: _selectedSkills,
-            searchable: true,
-            onConfirm: (values) => setState(() => _selectedSkills = values),
-            chipDisplay: MultiSelectChipDisplay(
-              onTap: (item) => setState(() => _selectedSkills.remove(item)),
-            ),
-          ),
-          if (_selectedSkills.isEmpty)
-            Padding(
-              padding: EdgeInsets.only(top: 6.h),
-              child: Text(
-                'Select at least one skill.',
-                style: TextStyle(fontSize: 12.sp, color: Colors.red.shade700),
-              ),
-            ),
-        ],
+        title: 'Career details',
+        children: _buildCareerDetailsChildren(),
       ),
       _cardStep(
         formKey: _formKeys[3],
-        title: 'Resume upload',
+        title: 'Resume (optional)',
         children: [
           Container(
             width: double.infinity,
@@ -903,6 +1129,11 @@ class _ProfileSetupOnboardingState extends State<ProfileSetupOnboarding> {
               children: [
                 Text(
                   'Supported formats: PDF, DOC, DOCX',
+                  style: TextStyle(fontSize: 12.sp, color: Colors.black54),
+                ),
+                SizedBox(height: 4.h),
+                Text(
+                  'Upload now to reuse your resume later (auto-fill may be added in future updates).',
                   style: TextStyle(fontSize: 12.sp, color: Colors.black54),
                 ),
                 SizedBox(height: 8.h),
@@ -923,7 +1154,7 @@ class _ProfileSetupOnboardingState extends State<ProfileSetupOnboarding> {
                       child: OutlinedButton.icon(
                         onPressed: _saving ? null : _pickAndUploadResume,
                         icon: const Icon(Icons.upload_file_outlined),
-                        label: const Text('Upload resume'),
+                        label: const Text('Upload / import resume'),
                       ),
                     ),
                   ],
@@ -940,39 +1171,563 @@ class _ProfileSetupOnboardingState extends State<ProfileSetupOnboarding> {
       ),
       _cardStep(
         formKey: _formKeys[4],
-        title: 'Job preferences',
-        children: [
-          TextFormField(
-            controller: _preferredRoleController,
-            textInputAction: TextInputAction.next,
-            decoration: const InputDecoration(labelText: 'Preferred job role'),
+        title: 'Preferences',
+        children: _buildPreferencesChildren(),
+      ),
+    ];
+  }
+
+  bool get _isWorkingProfessional => _currentStatus == 'Working Professional';
+  bool get _isStudent => _currentStatus == 'Student';
+  bool get _isFresher => _currentStatus == 'Fresher';
+
+  void _onCurrentStatusChanged(String status, void Function(String?) didChange) {
+    if (status == _currentStatus) return;
+
+    setState(() {
+      _currentStatus = status;
+      didChange(status);
+
+      // Clear fields that are not relevant to the selected status to keep the
+      // flow personalized and avoid saving stale data.
+      if (_isWorkingProfessional) {
+        _projectsController.clear();
+        _internshipsController.clear();
+        _softSkillsController.clear();
+      } else {
+        _currentCompanyController.clear();
+        _employmentType = null;
+        _currentJobStartDate = null;
+        _currentJobEndDate = null;
+        _currentlyWorkingHere = true;
+        _currentJobStartDateController.clear();
+        _currentJobEndDateController.text = 'Present';
+        _previousExperiences.clear();
+        _achievementsController.clear();
+        _noticePeriod = null;
+        _expectedSalaryMinController.clear();
+        _expectedSalaryMaxController.clear();
+      }
+    });
+  }
+
+  String? _validateOptionalUrl(String? value) {
+    final v = value?.trim() ?? '';
+    if (v.isEmpty) return null;
+    final uri = Uri.tryParse(v);
+    if (uri == null || !uri.isAbsolute || uri.host.isEmpty) {
+      return 'Enter a valid URL';
+    }
+    if (uri.scheme != 'http' && uri.scheme != 'https') {
+      return 'Use http/https';
+    }
+    return null;
+  }
+
+  String? _validateCurrentJobStartDate(String? _) {
+    if (!_isWorkingProfessional) return null;
+    if (_currentJobStartDate == null) return 'Required';
+    return null;
+  }
+
+  String? _validateCurrentJobEndDate(String? _) {
+    if (!_isWorkingProfessional) return null;
+    if (_currentlyWorkingHere) return null;
+    if (_currentJobEndDate == null) return 'Required';
+    if (_currentJobStartDate != null &&
+        _currentJobEndDate!.isBefore(_currentJobStartDate!)) {
+      return 'End date must be after start date';
+    }
+    return null;
+  }
+
+  String _experienceBucketFromYears(double years) {
+    if (years <= 0) return _experienceOptions[0];
+    if (years < 1) return '0-1 years';
+    if (years < 3) return '1-3 years';
+    if (years < 5) return '3-5 years';
+    if (years < 10) return '5-10 years';
+    return '10+ years';
+  }
+
+  List<Widget> _buildCareerDetailsChildren() {
+    final statusSelected =
+        _currentStatus != null && _currentStatusOptions.contains(_currentStatus);
+
+    return [
+      FormField<String>(
+        initialValue: _currentStatus,
+        validator: (v) {
+          if (v == null || v.trim().isEmpty) return 'Required';
+          if (!_currentStatusOptions.contains(v)) return 'Invalid selection';
+          return null;
+        },
+        builder: (field) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Current status',
+                style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w700),
+              ),
+              SizedBox(height: 8.h),
+              Wrap(
+                spacing: 8.w,
+                runSpacing: 8.h,
+                children: _currentStatusOptions.map((s) {
+                  final selected = _currentStatus == s;
+                  return ChoiceChip(
+                    label: Text(s),
+                    selected: selected,
+                    onSelected: (_) => _onCurrentStatusChanged(s, field.didChange),
+                  );
+                }).toList(),
+              ),
+              if (field.hasError)
+                Padding(
+                  padding: EdgeInsets.only(top: 6.h),
+                  child: Text(
+                    field.errorText ?? 'Required',
+                    style: TextStyle(fontSize: 12.sp, color: Colors.red.shade700),
+                  ),
+                ),
+            ],
+          );
+        },
+      ),
+      SizedBox(height: 12.h),
+      if (!statusSelected) ...[
+        Text(
+          'Select your current status to continue.',
+          style: TextStyle(fontSize: 12.sp, color: Colors.black54),
+        ),
+      ] else if (_isWorkingProfessional) ...[
+        TextFormField(
+          controller: _currentCompanyController,
+          textInputAction: TextInputAction.next,
+          decoration: const InputDecoration(
+            labelText: 'Current / most recent company',
           ),
-          SizedBox(height: 10.h),
-          TextFormField(
-            controller: _preferredLocationController,
-            textInputAction: TextInputAction.next,
-            decoration: const InputDecoration(labelText: 'Preferred location'),
+          validator: (v) =>
+              _isWorkingProfessional && (v == null || v.trim().isEmpty)
+                  ? 'Required'
+                  : null,
+        ),
+        SizedBox(height: 10.h),
+        TextFormField(
+          controller: _jobTitleController,
+          textInputAction: TextInputAction.next,
+          decoration: const InputDecoration(labelText: 'Job title'),
+          validator: (v) =>
+              _isWorkingProfessional && (v == null || v.trim().isEmpty)
+                  ? 'Required'
+                  : null,
+        ),
+        SizedBox(height: 10.h),
+        DropdownButtonFormField<String>(
+          value: _employmentTypeOptions.contains(_employmentType)
+              ? _employmentType
+              : null,
+          decoration: const InputDecoration(labelText: 'Employment type'),
+          items: _employmentTypeOptions
+              .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+              .toList(),
+          onChanged: (v) => setState(() => _employmentType = v),
+          validator: (v) => _isWorkingProfessional && (v == null || v.isEmpty)
+              ? 'Required'
+              : null,
+        ),
+        SizedBox(height: 10.h),
+        TextFormField(
+          controller: _currentJobStartDateController,
+          readOnly: true,
+          decoration: const InputDecoration(
+            labelText: 'Start date',
+            suffixIcon: Icon(Icons.calendar_month_outlined),
           ),
-          SizedBox(height: 10.h),
-          TextFormField(
-            controller: _expectedSalaryController,
-            keyboardType: TextInputType.number,
-            textInputAction: TextInputAction.next,
-            decoration: const InputDecoration(labelText: 'Expected salary'),
+          onTap: _saving
+              ? null
+              : () => _pickDate(
+                    initial: _currentJobStartDate,
+                    onPicked: (d) {
+                      setState(() {
+                        _currentJobStartDate = d;
+                        _currentJobStartDateController.text = _formatMonthYear(d);
+                        if (_currentJobEndDate != null &&
+                            _currentJobEndDate!.isBefore(d)) {
+                          _currentJobEndDate = null;
+                          _currentlyWorkingHere = true;
+                          _currentJobEndDateController.text = 'Present';
+                        }
+                      });
+                    },
+                  ),
+          validator: _validateCurrentJobStartDate,
+        ),
+        SizedBox(height: 10.h),
+        TextFormField(
+          controller: _currentJobEndDateController,
+          readOnly: true,
+          enabled: !_currentlyWorkingHere,
+          decoration: const InputDecoration(
+            labelText: 'End date',
+            suffixIcon: Icon(Icons.calendar_month_outlined),
           ),
-          SizedBox(height: 10.h),
-          DropdownButtonFormField<String>(
-            value: _workTypeOptions.contains(_selectedWorkType)
-                ? _selectedWorkType
-                : null,
-            decoration: const InputDecoration(labelText: 'Preferred work type'),
-            items: _workTypeOptions
-                .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                .toList(),
-            onChanged: (v) => setState(() => _selectedWorkType = v),
+          onTap: _saving || _currentlyWorkingHere
+              ? null
+              : () => _pickDate(
+                    initial: _currentJobEndDate ?? DateTime.now(),
+                    onPicked: (d) {
+                      setState(() {
+                        _currentJobEndDate = d;
+                        _currentJobEndDateController.text = _formatMonthYear(d);
+                      });
+                    },
+                  ),
+          validator: _validateCurrentJobEndDate,
+        ),
+        SwitchListTile.adaptive(
+          contentPadding: EdgeInsets.zero,
+          title: const Text('Currently working here'),
+          value: _currentlyWorkingHere,
+          onChanged: _saving
+              ? null
+              : (v) {
+                  setState(() {
+                    _currentlyWorkingHere = v;
+                    if (v) {
+                      _currentJobEndDate = null;
+                      _currentJobEndDateController.text = 'Present';
+                    } else {
+                      _currentJobEndDateController.text =
+                          _currentJobEndDate == null
+                              ? ''
+                              : _formatMonthYear(_currentJobEndDate!);
+                    }
+                  });
+                },
+        ),
+        SizedBox(height: 10.h),
+        TextFormField(
+          controller: _industryController,
+          textInputAction: TextInputAction.next,
+          decoration: const InputDecoration(labelText: 'Industry (optional)'),
+        ),
+        SizedBox(height: 10.h),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Previous experience (optional)',
+                style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w700),
+              ),
+            ),
+            OutlinedButton.icon(
+              onPressed: _saving ? null : _showAddExperienceSheet,
+              icon: const Icon(Icons.add),
+              label: const Text('Add experience'),
+            ),
+          ],
+        ),
+        if (_previousExperiences.isNotEmpty) ...[
+          SizedBox(height: 8.h),
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: _previousExperiences.length,
+            separatorBuilder: (_, __) => SizedBox(height: 8.h),
+            itemBuilder: (context, index) {
+              final exp = _previousExperiences[index];
+              final range = '${_formatMonthYear(exp.startDate)} - '
+                  '${exp.endDate == null ? 'Present' : _formatMonthYear(exp.endDate!)}';
+              return Container(
+                padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade50,
+                  border: Border.all(color: Colors.grey.shade200),
+                  borderRadius: BorderRadius.circular(12.r),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            exp.companyName,
+                            style: TextStyle(
+                              fontSize: 14.sp,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          if (exp.jobTitle.trim().isNotEmpty) ...[
+                            SizedBox(height: 2.h),
+                            Text(
+                              exp.jobTitle,
+                              style: TextStyle(
+                                fontSize: 12.sp,
+                                color: Colors.black87,
+                              ),
+                            ),
+                          ],
+                          SizedBox(height: 2.h),
+                          Text(
+                            range,
+                            style: TextStyle(
+                              fontSize: 12.sp,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: 'Remove',
+                      onPressed: _saving
+                          ? null
+                          : () =>
+                              setState(() => _previousExperiences.removeAt(index)),
+                      icon: Icon(Icons.close, color: Colors.grey.shade700),
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
         ],
+        SizedBox(height: 10.h),
+        TextFormField(
+          controller: _achievementsController,
+          minLines: 3,
+          maxLines: 6,
+          textInputAction: TextInputAction.done,
+          decoration: const InputDecoration(
+            labelText: 'Major achievements / projects (optional)',
+            helperText: 'Keep it short (2–4 bullets)',
+          ),
+        ),
+        SizedBox(height: 12.h),
+      ] else ...[
+        TextFormField(
+          controller: _projectsController,
+          minLines: 3,
+          maxLines: 6,
+          textInputAction: TextInputAction.next,
+          decoration: InputDecoration(
+            labelText: _isStudent ? 'Key projects' : 'Key projects',
+            helperText: '1–3 projects is enough',
+          ),
+          validator: (v) =>
+              (_isFresher || _isStudent) && (v == null || v.trim().isEmpty)
+                  ? 'Required'
+                  : null,
+        ),
+        SizedBox(height: 10.h),
+        TextFormField(
+          controller: _internshipsController,
+          minLines: 2,
+          maxLines: 4,
+          textInputAction: TextInputAction.next,
+          decoration: const InputDecoration(
+            labelText: 'Internships (optional)',
+            helperText: 'Company + role + duration (if any)',
+          ),
+        ),
+        SizedBox(height: 10.h),
+        TextFormField(
+          controller: _softSkillsController,
+          textInputAction: TextInputAction.next,
+          decoration: const InputDecoration(
+            labelText: 'Soft skills (optional)',
+            helperText: 'Comma separated (e.g., communication, teamwork)',
+          ),
+        ),
+        SizedBox(height: 10.h),
+        TextFormField(
+          controller: _githubUrlController,
+          textInputAction: TextInputAction.next,
+          decoration: const InputDecoration(labelText: 'GitHub (optional)'),
+          validator: _validateOptionalUrl,
+        ),
+        SizedBox(height: 10.h),
+        TextFormField(
+          controller: _linkedinUrlController,
+          textInputAction: TextInputAction.next,
+          decoration: const InputDecoration(labelText: 'LinkedIn (optional)'),
+          validator: _validateOptionalUrl,
+        ),
+        SizedBox(height: 10.h),
+        TextFormField(
+          controller: _portfolioUrlController,
+          textInputAction: TextInputAction.done,
+          decoration: const InputDecoration(
+            labelText: 'Portfolio / website (optional)',
+          ),
+          validator: _validateOptionalUrl,
+        ),
+        SizedBox(height: 12.h),
+      ],
+      if (statusSelected) ...[
+        DropdownButtonFormField<String>(
+          value: (_selectedSpecialization != null &&
+                  _authService.specializationOptions.contains(
+                    _selectedSpecialization,
+                  ))
+              ? _selectedSpecialization
+              : null,
+          decoration: const InputDecoration(labelText: 'Specialization'),
+          items: _authService.specializationOptions
+              .map(
+                (s) => DropdownMenuItem(
+                  value: s,
+                  child: Text(s, overflow: TextOverflow.ellipsis),
+                ),
+              )
+              .toList(),
+          onChanged: (v) {
+            setState(() {
+              _selectedSpecialization = v;
+              _selectedSkills = [];
+            });
+          },
+          validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+        ),
+        SizedBox(height: 10.h),
+        MultiSelectDialogField<String>(
+          items: (_authService.skillsBySpecialization[_selectedSpecialization ??
+                      'Others'] ??
+                  const <String>[])
+              .map((s) => MultiSelectItem<String>(s, s))
+              .toList(),
+          title: const Text('Skills'),
+          buttonText: const Text('Select skills'),
+          initialValue: _selectedSkills,
+          searchable: true,
+          onConfirm: (values) => setState(() => _selectedSkills = values),
+          chipDisplay: MultiSelectChipDisplay(
+            onTap: (item) => setState(() => _selectedSkills.remove(item)),
+          ),
+        ),
+        if (_selectedSkills.isEmpty)
+          Padding(
+            padding: EdgeInsets.only(top: 6.h),
+            child: Text(
+              'Select at least one skill.',
+              style: TextStyle(fontSize: 12.sp, color: Colors.red.shade700),
+            ),
+          ),
+      ],
+    ];
+  }
+
+  List<Widget> _buildPreferencesChildren() {
+    final isRemote = _preferredWorkMode == 'Remote';
+
+    return [
+      TextFormField(
+        controller: _preferredRoleController,
+        textInputAction: TextInputAction.next,
+        decoration: const InputDecoration(labelText: 'Preferred roles (optional)'),
       ),
+      SizedBox(height: 10.h),
+      TextFormField(
+        controller: _preferredIndustriesController,
+        textInputAction: TextInputAction.next,
+        decoration: const InputDecoration(
+          labelText: 'Preferred industries (optional)',
+        ),
+      ),
+      SizedBox(height: 10.h),
+      DropdownButtonFormField<String>(
+        value: _preferredEmploymentTypeOptions.contains(_preferredEmploymentType)
+            ? _preferredEmploymentType
+            : null,
+        decoration: const InputDecoration(labelText: 'Preferred work type'),
+        items: _preferredEmploymentTypeOptions
+            .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+            .toList(),
+        onChanged: (v) => setState(() => _preferredEmploymentType = v),
+      ),
+      SizedBox(height: 10.h),
+      DropdownButtonFormField<String>(
+        value: _preferredWorkModeOptions.contains(_preferredWorkMode)
+            ? _preferredWorkMode
+            : null,
+        decoration: const InputDecoration(labelText: 'Preferred work mode'),
+        items: _preferredWorkModeOptions
+            .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+            .toList(),
+        onChanged: (v) => setState(() => _preferredWorkMode = v),
+      ),
+      SizedBox(height: 10.h),
+      TextFormField(
+        controller: _preferredLocationController,
+        enabled: !isRemote,
+        textInputAction: TextInputAction.next,
+        decoration: InputDecoration(
+          labelText: isRemote ? 'Preferred location' : 'Preferred location (City)',
+          helperText: isRemote ? 'Remote selected' : 'Pick a city or choose Remote above',
+        ),
+        validator: (v) {
+          if (isRemote) return null;
+          if (v == null || v.trim().isEmpty) return 'Required';
+          return null;
+        },
+      ),
+      if (_isWorkingProfessional) ...[
+        SizedBox(height: 12.h),
+        Row(
+          children: [
+            Expanded(
+              child: TextFormField(
+                controller: _expectedSalaryMinController,
+                keyboardType: TextInputType.number,
+                textInputAction: TextInputAction.next,
+                decoration: const InputDecoration(labelText: 'Expected salary (min)'),
+                validator: (v) {
+                  if (!_isWorkingProfessional) return null;
+                  final value = v?.trim() ?? '';
+                  if (value.isEmpty) return 'Required';
+                  if (double.tryParse(value) == null) return 'Enter a number';
+                  return null;
+                },
+              ),
+            ),
+            SizedBox(width: 10.w),
+            Expanded(
+              child: TextFormField(
+                controller: _expectedSalaryMaxController,
+                keyboardType: TextInputType.number,
+                textInputAction: TextInputAction.done,
+                decoration: const InputDecoration(
+                  labelText: 'Expected salary (max)',
+                ),
+                validator: (v) {
+                  if (!_isWorkingProfessional) return null;
+                  final min = double.tryParse(_expectedSalaryMinController.text.trim());
+                  final maxText = v?.trim() ?? '';
+                  if (maxText.isEmpty) return 'Required';
+                  final max = double.tryParse(maxText);
+                  if (max == null) return 'Enter a number';
+                  if (min != null && max < min) return 'Max < Min';
+                  return null;
+                },
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: 10.h),
+        DropdownButtonFormField<String>(
+          value: _noticePeriodOptions.contains(_noticePeriod) ? _noticePeriod : null,
+          decoration: const InputDecoration(labelText: 'Notice period'),
+          items: _noticePeriodOptions
+              .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+              .toList(),
+          onChanged: (v) => setState(() => _noticePeriod = v),
+          validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+        ),
+      ],
     ];
   }
 
@@ -1894,5 +2649,211 @@ class _CertificationEntry {
     institute.dispose();
     year.dispose();
     score.dispose();
+  }
+}
+
+class _ExperienceEntry {
+  final String companyName;
+  final String jobTitle;
+  final DateTime startDate;
+  final DateTime? endDate;
+
+  const _ExperienceEntry({
+    required this.companyName,
+    required this.jobTitle,
+    required this.startDate,
+    required this.endDate,
+  });
+
+  Map<String, dynamic> toJson({
+    required String Function(DateTime date) dateFormatter,
+  }) {
+    return {
+      'companyName': companyName,
+      'jobTitle': jobTitle,
+      'startDate': dateFormatter(startDate),
+      'endDate': endDate == null ? null : dateFormatter(endDate!),
+    };
+  }
+}
+
+class _AddExperienceSheet extends StatefulWidget {
+  const _AddExperienceSheet();
+
+  @override
+  State<_AddExperienceSheet> createState() => _AddExperienceSheetState();
+}
+
+class _AddExperienceSheetState extends State<_AddExperienceSheet> {
+  final _companyController = TextEditingController();
+  final _titleController = TextEditingController();
+  final _startController = TextEditingController();
+  final _endController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+
+  final DateFormat _monthYearFormat = DateFormat('MMM yyyy');
+
+  DateTime? _startDate;
+  DateTime? _endDate;
+  bool _currentlyWorking = false;
+
+  @override
+  void dispose() {
+    _companyController.dispose();
+    _titleController.dispose();
+    _startController.dispose();
+    _endController.dispose();
+    super.dispose();
+  }
+
+  String _formatMonthYear(DateTime date) => _monthYearFormat.format(date);
+
+  Future<void> _pickDate({
+    required DateTime? initial,
+    required void Function(DateTime) onPicked,
+    DateTime? firstDate,
+    DateTime? lastDate,
+  }) async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initial ?? now,
+      firstDate: firstDate ?? DateTime(1950, 1, 1),
+      lastDate: lastDate ?? now,
+    );
+    if (!mounted || picked == null) return;
+    onPicked(picked);
+  }
+
+  void _submit() {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+
+    final entry = _ExperienceEntry(
+      companyName: _companyController.text.trim(),
+      jobTitle: _titleController.text.trim(),
+      startDate: _startDate!,
+      endDate: _currentlyWorking ? null : _endDate,
+    );
+    Navigator.of(context).pop(entry);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, bottomInset + 16.h),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Add experience',
+              style: TextStyle(
+                fontSize: 16.sp,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            SizedBox(height: 12.h),
+            TextFormField(
+              controller: _companyController,
+              textInputAction: TextInputAction.next,
+              decoration: const InputDecoration(
+                labelText: 'Company name',
+              ),
+              validator: (v) =>
+                  (v == null || v.trim().isEmpty) ? 'Required' : null,
+            ),
+            SizedBox(height: 10.h),
+            TextFormField(
+              controller: _titleController,
+              textInputAction: TextInputAction.next,
+              decoration: const InputDecoration(
+                labelText: 'Role / job title (optional)',
+              ),
+            ),
+            SizedBox(height: 10.h),
+            TextFormField(
+              controller: _startController,
+              readOnly: true,
+              decoration: const InputDecoration(
+                labelText: 'Start date',
+                suffixIcon: Icon(Icons.calendar_month_outlined),
+              ),
+              onTap: () => _pickDate(
+                initial: _startDate,
+                onPicked: (d) {
+                  setState(() {
+                    _startDate = d;
+                    _startController.text = _formatMonthYear(d);
+                    if (_endDate != null && _endDate!.isBefore(d)) {
+                      _endDate = null;
+                      _endController.clear();
+                    }
+                  });
+                },
+              ),
+              validator: (_) => _startDate == null ? 'Required' : null,
+            ),
+            SizedBox(height: 10.h),
+            TextFormField(
+              controller: _endController,
+              readOnly: true,
+              enabled: !_currentlyWorking,
+              decoration: const InputDecoration(
+                labelText: 'End date',
+                suffixIcon: Icon(Icons.calendar_month_outlined),
+              ),
+              onTap: _currentlyWorking
+                  ? null
+                  : () => _pickDate(
+                        initial: _endDate ?? DateTime.now(),
+                        onPicked: (d) {
+                          setState(() {
+                            _endDate = d;
+                            _endController.text = _formatMonthYear(d);
+                          });
+                        },
+                      ),
+              validator: (_) {
+                if (_currentlyWorking) return null;
+                if (_endDate == null) return 'Required';
+                if (_startDate != null && _endDate!.isBefore(_startDate!)) {
+                  return 'End date must be after start date';
+                }
+                return null;
+              },
+            ),
+            SwitchListTile.adaptive(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Currently working here'),
+              value: _currentlyWorking,
+              onChanged: (v) {
+                setState(() {
+                  _currentlyWorking = v;
+                  if (v) {
+                    _endDate = null;
+                    _endController.text = 'Present';
+                  } else {
+                    _endController.text =
+                        _endDate == null ? '' : _formatMonthYear(_endDate!);
+                  }
+                });
+              },
+            ),
+            SizedBox(height: 12.h),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _submit,
+                child: const Text('Add'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
