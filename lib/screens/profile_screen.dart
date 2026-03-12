@@ -22,6 +22,8 @@ class ProfileScreenState extends State<ProfileScreen> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final AuthService _authService = AuthService();
 
+  Map<String, dynamic>? _profileData;
+
   // Controllers for editable fields
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _companyNameController = TextEditingController();
@@ -396,6 +398,7 @@ class ProfileScreenState extends State<ProfileScreen> {
         if (data != null) {
           dev.log('Firestore data: $data', name: 'ProfileScreen');
           setState(() {
+            _profileData = Map<String, dynamic>.from(data);
             _nameController.text = data['name']?.toString().trim() ?? '';
             _mobileNumber =
                 data['mobileNumber']?.toString().trim() ??
@@ -459,6 +462,7 @@ class ProfileScreenState extends State<ProfileScreen> {
         } else {
           setState(() {
             errorMessage = 'Profile not found';
+            _profileData = null;
             dev.log(
               'No profile data found for UID: ${user.uid}',
               name: 'ProfileScreen',
@@ -469,13 +473,299 @@ class ProfileScreenState extends State<ProfileScreen> {
     } catch (e) {
       dev.log('Error loading profile: $e', name: 'ProfileScreen', error: e);
       if (mounted) {
-        setState(() => errorMessage = 'Error loading profile: $e');
+        setState(() {
+          errorMessage = 'Error loading profile: $e';
+          _profileData = null;
+        });
       }
     } finally {
       if (mounted) {
         setState(() => isLoading = false);
       }
     }
+  }
+
+  String _displayValue(dynamic v) {
+    if (v == null) return 'N/A';
+    if (v is String) {
+      final t = v.trim();
+      return t.isEmpty ? 'N/A' : t;
+    }
+    if (v is num || v is bool) return v.toString();
+    if (v is Timestamp) return v.toDate().toIso8601String();
+    return v.toString();
+  }
+
+  Widget _buildOnboardingDetailsCard() {
+    final data = _profileData;
+    if (data == null || data.isEmpty) return const SizedBox.shrink();
+
+    Widget row(String label, dynamic value) {
+      final text = _displayValue(value);
+      if (text == 'N/A') return const SizedBox.shrink();
+      return Padding(
+        padding: EdgeInsets.only(bottom: 8.h),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              width: 140.w,
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12.sp,
+                  color: Colors.blueGrey.shade700,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            Expanded(
+              child: Text(
+                text,
+                style: TextStyle(fontSize: 12.sp, color: Colors.black87),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    Widget chips(String label, List<dynamic>? values) {
+      final list = values
+              ?.map((e) => e.toString().trim())
+              .where((e) => e.isNotEmpty)
+              .toList() ??
+          [];
+      if (list.isEmpty) return const SizedBox.shrink();
+      return Padding(
+        padding: EdgeInsets.only(bottom: 10.h),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12.sp,
+                color: Colors.blueGrey.shade700,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            SizedBox(height: 6.h),
+            Wrap(
+              spacing: 6.w,
+              runSpacing: 6.h,
+              children: list
+                  .map(
+                    (t) => Chip(
+                      label: Text(t, style: TextStyle(fontSize: 11.sp)),
+                      backgroundColor: Colors.teal.shade50,
+                      side: BorderSide(color: Colors.teal.shade100),
+                    ),
+                  )
+                  .toList(),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final educationDetails = data['educationDetails'];
+    final previousExps = data['previousExperiences'];
+
+    return Container(
+      width: double.infinity,
+      margin: EdgeInsets.only(top: 14.h),
+      padding: EdgeInsets.all(14.w),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22.r),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.blueGrey.withValues(alpha: 0.08),
+            blurRadius: 18.r,
+            offset: Offset(0, 8.h),
+          ),
+        ],
+      ),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          initiallyExpanded: false,
+          tilePadding: EdgeInsets.zero,
+          childrenPadding: EdgeInsets.only(top: 10.h),
+          title: Text(
+            'Onboarding Details',
+            style: TextStyle(
+              fontSize: 15.sp,
+              fontWeight: FontWeight.w700,
+              color: Colors.black87,
+            ),
+          ),
+          subtitle: Text(
+            'Everything filled during profile setup',
+            style: TextStyle(fontSize: 11.sp, color: Colors.blueGrey.shade500),
+          ),
+          children: [
+            _buildSectionHeader(widget.isRecruiter ? 'Recruiter' : 'Seeker'),
+            row('Current Status', data['currentStatus']),
+            row('Job Title', data['jobTitle']),
+            row('Industry', data['industry']),
+            row('Current Company', data['currentCompany']),
+            row('Employment Type', data['employmentType']),
+            row('Total Experience (years)', data['totalExperienceYears']),
+            row('Current Job Start', data['currentJobStartDate']),
+            row('Current Job End', data['currentJobEndDate']),
+            row('Previous Companies', data['previousCompanies']),
+            row('Achievements', data['achievements']),
+            row('Projects', data['projects']),
+            row('Internships', data['internships']),
+            row('Soft Skills', data['softSkills']),
+            row('Preferred Role', data['preferredJobRole']),
+            row('Preferred Industries', data['preferredIndustries']),
+            row('Preferred Employment Type', data['preferredEmploymentType']),
+            row('Preferred Work Mode', data['preferredWorkMode']),
+            row('Preferred Location', data['preferredLocation']),
+            row('Expected Salary Min', data['expectedSalaryMin']),
+            row('Expected Salary Max', data['expectedSalaryMax']),
+            row('Notice Period', data['noticePeriod']),
+            row('GitHub URL', data['githubUrl']),
+            row('Portfolio URL', data['portfolioUrl']),
+            row('Resume URL', data['resumeUrl']),
+            if (widget.isRecruiter) ...[
+              row('Company Website', data['companyWebsite']),
+              row('Company Industry', data['companyIndustry']),
+              row('Company Size', data['companySize']),
+            ],
+            chips('Skills', (data['skills'] as List?)?.cast<dynamic>()),
+            if (educationDetails is Map) ...[
+              SizedBox(height: 6.h),
+              _buildSectionHeader('Education Details'),
+              row(
+                '10th - Passing Year',
+                (educationDetails['tenth'] as Map?)?['passingYear'],
+              ),
+              row('10th - Score', (educationDetails['tenth'] as Map?)?['score']),
+              row(
+                '10th - Score Type',
+                (educationDetails['tenth'] as Map?)?['scoreType'],
+              ),
+              row('After 10th', educationDetails['afterTenth']),
+              row(
+                '12th - Stream',
+                (educationDetails['twelfth'] as Map?)?['stream'],
+              ),
+              row(
+                '12th - Stream Other',
+                (educationDetails['twelfth'] as Map?)?['streamOther'],
+              ),
+              row(
+                '12th - Passing Year',
+                (educationDetails['twelfth'] as Map?)?['passingYear'],
+              ),
+              row(
+                '12th - Score',
+                (educationDetails['twelfth'] as Map?)?['score'],
+              ),
+              row(
+                '12th - Score Type',
+                (educationDetails['twelfth'] as Map?)?['scoreType'],
+              ),
+              row('After 12th', educationDetails['afterTwelfth']),
+              row(
+                'Diploma - Branch',
+                (educationDetails['diploma'] as Map?)?['branch'],
+              ),
+              row(
+                'Diploma - University',
+                (educationDetails['diploma'] as Map?)?['university'],
+              ),
+              row(
+                'Diploma - Start Year',
+                (educationDetails['diploma'] as Map?)?['startYear'],
+              ),
+              row(
+                'Diploma - End Year',
+                (educationDetails['diploma'] as Map?)?['endYear'],
+              ),
+              row(
+                'Diploma - Score',
+                (educationDetails['diploma'] as Map?)?['score'],
+              ),
+              row(
+                'Diploma - Score Type',
+                (educationDetails['diploma'] as Map?)?['scoreType'],
+              ),
+              row(
+                'Graduation After Diploma',
+                educationDetails['graduationAfterDiploma'],
+              ),
+              row(
+                'Graduation - Degree',
+                (educationDetails['graduation'] as Map?)?['degree'],
+              ),
+              row(
+                'Graduation - Major',
+                (educationDetails['graduation'] as Map?)?['major'],
+              ),
+              row(
+                'Graduation - University',
+                (educationDetails['graduation'] as Map?)?['university'],
+              ),
+              row(
+                'Graduation - Start Year',
+                (educationDetails['graduation'] as Map?)?['startYear'],
+              ),
+              row(
+                'Graduation - End Year',
+                (educationDetails['graduation'] as Map?)?['endYear'],
+              ),
+              row(
+                'Graduation - Score',
+                (educationDetails['graduation'] as Map?)?['score'],
+              ),
+              row(
+                'Graduation - Score Type',
+                (educationDetails['graduation'] as Map?)?['scoreType'],
+              ),
+              row(
+                'Graduation - Currently Studying',
+                (educationDetails['graduation'] as Map?)?['currentlyStudying'],
+              ),
+            ],
+            if (previousExps is List && previousExps.isNotEmpty) ...[
+              SizedBox(height: 6.h),
+              _buildSectionHeader('Previous Experiences'),
+              ...previousExps.take(10).whereType<Map>().map((e) {
+                final company = e['companyName'] ?? e['company'] ?? '';
+                final title = e['jobTitle'] ?? e['role'] ?? '';
+                final from = e['startDate'] ?? e['from'] ?? '';
+                final to = e['endDate'] ?? e['to'] ?? '';
+                final line =
+                    '${_displayValue(company)} • ${_displayValue(title)} • ${_displayValue(from)} - ${_displayValue(to)}';
+                return Padding(
+                  padding: EdgeInsets.only(bottom: 6.h),
+                  child: Text(
+                    line,
+                    style: TextStyle(fontSize: 12.sp, color: Colors.black87),
+                  ),
+                );
+              }),
+              if (previousExps.length > 10)
+                Padding(
+                  padding: EdgeInsets.only(top: 4.h),
+                  child: Text(
+                    'Showing first 10 experiences',
+                    style: TextStyle(
+                      fontSize: 11.sp,
+                      color: Colors.blueGrey.shade500,
+                    ),
+                  ),
+                ),
+            ],
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _pickAndUploadProfilePhoto() async {
@@ -1956,6 +2246,7 @@ class ProfileScreenState extends State<ProfileScreen> {
                             ),
                           ),
                         ),
+                        _buildOnboardingDetailsCard(),
                       ],
                     ),
                   ),

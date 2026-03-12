@@ -1576,11 +1576,23 @@ class _ProfileSetupOnboardingState extends State<ProfileSetupOnboarding> {
                   ))
               ? _selectedSpecialization
               : null,
+          isExpanded: true,
           decoration: const InputDecoration(labelText: 'Specialization'),
           items: _authService.specializationOptions
               .map(
                 (s) => DropdownMenuItem(
                   value: s,
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: Text(s, overflow: TextOverflow.ellipsis),
+                  ),
+                ),
+              )
+              .toList(),
+          selectedItemBuilder: (context) => _authService.specializationOptions
+              .map(
+                (s) => Align(
+                  alignment: Alignment.centerLeft,
                   child: Text(s, overflow: TextOverflow.ellipsis),
                 ),
               )
@@ -2623,9 +2635,9 @@ class _ProfileSetupOnboardingState extends State<ProfileSetupOnboarding> {
                 border: Border.all(color: Colors.grey.shade200),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
-                    blurRadius: 14,
-                    offset: const Offset(0, 6),
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 14.r,
+                    offset: Offset(0, 6.h),
                   ),
                 ],
               ),
