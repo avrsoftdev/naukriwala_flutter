@@ -3,11 +3,38 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_typeahead/flutter_typeahead.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:naukariwala/services/auth_service.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:developer' as dev;
+
+Future<List<String>> _loadSkillsFromAsset() async {
+  final raw = await rootBundle.loadString('assets/data/skills.json');
+  final decoded = jsonDecode(raw);
+
+  if (decoded is List) {
+    final skills = decoded
+        .map((e) {
+          if (e is String) return e;
+          if (e is Map && e['skill'] is String) return e['skill'] as String;
+          return null;
+        })
+        .whereType<String>()
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty)
+        .toSet()
+        .toList();
+
+    skills.sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+    return skills;
+  }
+
+  return const <String>[];
+}
 
 class ProfileScreen extends StatefulWidget {
   final bool isRecruiter;
@@ -46,6 +73,10 @@ class ProfileScreenState extends State<ProfileScreen> {
   String? _selectedEducation;
   String? _selectedCity;
   List<String> _selectedSkills = [];
+  List<String> _allSkills = [];
+  bool _skillsLoading = false;
+  final TextEditingController _skillsSearchController = TextEditingController();
+  final FocusNode _skillsSearchFocusNode = FocusNode();
 
   // Track if profile has been updated
   bool _isProfileUpdated = false;
@@ -375,9 +406,30 @@ class ProfileScreenState extends State<ProfileScreen> {
   @override
   void initState() {
     super.initState();
+    _initSkills();
     _loadUserData();
     _currentCtcController.addListener(_formatCtcOnChange);
     _expectedCtcController.addListener(_formatCtcOnChange);
+  }
+
+  Future<void> _initSkills() async {
+    if (_skillsLoading || _allSkills.isNotEmpty) return;
+    _skillsLoading = true;
+    try {
+      final skills = await _loadSkillsFromAsset();
+      if (!mounted) return;
+      setState(() {
+        _allSkills = skills;
+      });
+    } catch (e, st) {
+      dev.log(
+        'Failed to load skills.json: $e',
+        name: 'ProfileScreen',
+        stackTrace: st,
+      );
+    } finally {
+      _skillsLoading = false;
+    }
   }
 
   Future<void> _loadUserData() async {
@@ -1344,9 +1396,7 @@ class ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildSkillsMultiSelect({bool enabled = true}) {
-    final availableSkills =
-        skillsBySpecialization[_selectedSpecialization ?? 'Others'] ?? [];
+  Widget _buildSkillsAutocomplete({bool enabled = true}) {
     return Padding(
       padding: EdgeInsets.symmetric(vertical: 8.h),
       child: Card(
@@ -1367,82 +1417,114 @@ class ProfileScreenState extends State<ProfileScreen> {
             border: Border.all(color: Colors.teal.shade100),
             borderRadius: BorderRadius.circular(16.r),
           ),
-          child: GestureDetector(
-            onTap: enabled
-                ? () async {
-                    final selected = await showDialog<List<String>>(
-                      context: context,
-                      builder: (context) => MultiSelectDialog(
-                        items: availableSkills,
-                        selectedItems: _selectedSkills,
-                      ),
-                    );
-                    if (selected != null && mounted) {
-                      setState(() {
-                        _selectedSkills = selected;
-                        errorMessage = null;
-                      });
-                    }
-                  }
-                : null,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(
-                      Icons.bolt_outlined,
-                      size: 18.sp,
-                      color: Colors.teal.shade700,
-                    ),
-                    SizedBox(width: 6.w),
-                    Text(
-                      'Skills',
-                      style: TextStyle(
-                        fontSize: 12.sp,
-                        color: Colors.teal.shade800,
-                        fontWeight: FontWeight.w700,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
-                    ),
-                    const Spacer(),
-                    Icon(
-                      Icons.chevron_right_rounded,
-                      color: Colors.teal.shade700,
-                    ),
-                  ],
-                ),
-                SizedBox(height: 6.h),
-                Container(
-                  constraints: BoxConstraints(maxWidth: 250.w),
-                  child: Text(
-                    _selectedSkills.isEmpty
-                        ? 'Select skills'
-                        : _selectedSkills.join(', '),
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 2,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.bolt_outlined,
+                    size: 18.sp,
+                    color: Colors.teal.shade700,
+                  ),
+                  SizedBox(width: 6.w),
+                  Text(
+                    'Skills',
                     style: TextStyle(
-                      fontSize: 14.sp,
-                      color: _selectedSkills.isEmpty
-                          ? Colors.grey
-                          : Colors.black87,
+                      fontSize: 12.sp,
+                      color: Colors.teal.shade800,
+                      fontWeight: FontWeight.w700,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                  ),
+                ],
+              ),
+              SizedBox(height: 10.h),
+              TypeAheadField<String>(
+                controller: _skillsSearchController,
+                focusNode: _skillsSearchFocusNode,
+                hideOnEmpty: true,
+                suggestionsCallback: (search) {
+                  final q = search.trim().toLowerCase();
+                  if (q.isEmpty) return const <String>[];
+                  final selectedLower =
+                      _selectedSkills.map((e) => e.toLowerCase()).toSet();
+                  return _allSkills
+                      .where((s) =>
+                          !selectedLower.contains(s.toLowerCase()) &&
+                          s.toLowerCase().contains(q))
+                      .take(20)
+                      .toList();
+                },
+                itemBuilder: (context, suggestion) {
+                  return ListTile(
+                    dense: true,
+                    title: Text(
+                      suggestion,
+                      style: TextStyle(fontSize: 13.sp),
+                    ),
+                  );
+                },
+                onSelected: enabled
+                    ? (suggestion) {
+                        if (!mounted) return;
+                        setState(() {
+                          if (!_selectedSkills.contains(suggestion)) {
+                            _selectedSkills = [..._selectedSkills, suggestion];
+                          }
+                          errorMessage = null;
+                        });
+                        _skillsSearchController.clear();
+                        _skillsSearchFocusNode.requestFocus();
+                      }
+                    : null,
+                builder: (context, controller, focusNode) {
+                  return TextField(
+                    controller: controller,
+                    focusNode: focusNode,
+                    enabled: enabled,
+                    decoration: _fieldDecoration(
+                      'Select Skills',
+                      icon: Icons.search,
+                    ).copyWith(
+                      hintText: 'Type a skill',
+                    ),
+                  );
+                },
+              ),
+              if (_selectedSkills.isNotEmpty) ...[
+                SizedBox(height: 10.h),
+                Wrap(
+                  spacing: 8.w,
+                  runSpacing: 8.h,
+                  children: _selectedSkills.map((s) {
+                    return Chip(
+                      label: Text(s, overflow: TextOverflow.ellipsis),
+                      onDeleted: enabled
+                          ? () {
+                              setState(() {
+                                _selectedSkills =
+                                    _selectedSkills.where((x) => x != s).toList();
+                              });
+                            }
+                          : null,
+                    );
+                  }).toList(),
+                ),
+              ],
+              if (_selectedSkills.isEmpty)
+                Padding(
+                  padding: EdgeInsets.only(top: 6.h),
+                  child: Text(
+                    'At least one skill is required',
+                    style: TextStyle(
+                      fontSize: 10.sp,
+                      color: Colors.red.shade700,
                     ),
                   ),
                 ),
-                if (_selectedSkills.isEmpty)
-                  Padding(
-                    padding: EdgeInsets.only(top: 6.h),
-                    child: Text(
-                      'At least one skill is required',
-                      style: TextStyle(
-                        fontSize: 10.sp,
-                        color: Colors.red.shade700,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
+            ],
           ),
         ),
       ),
@@ -1546,6 +1628,10 @@ class ProfileScreenState extends State<ProfileScreen> {
     _experienceController.dispose();
     _currentCtcController.dispose();
     _expectedCtcController.dispose();
+    _cityController.dispose();
+    _linkedinUrlController.dispose();
+    _skillsSearchController.dispose();
+    _skillsSearchFocusNode.dispose();
     super.dispose();
   }
 
@@ -2139,7 +2225,7 @@ class ProfileScreenState extends State<ProfileScreen> {
                                             : _selectedSkills.join(', '),
                                       )
                                     else
-                                      _buildSkillsMultiSelect(),
+                                      _buildSkillsAutocomplete(),
                                     if (_isProfileUpdated)
                                       _buildNonEditableField(
                                         'Education',
@@ -2302,6 +2388,10 @@ class ProfileDialogState extends State<ProfileDialog> {
   String? _education;
   String? _selectedCity;
   List<String> _skills = [];
+  List<String> _allSkills = [];
+  bool _skillsLoading = false;
+  final TextEditingController _skillsSearchController = TextEditingController();
+  final FocusNode _skillsSearchFocusNode = FocusNode();
   // ignore: prefer_final_fields
   bool _isLoading = false;
   String? _errorMessage;
@@ -2309,6 +2399,7 @@ class ProfileDialogState extends State<ProfileDialog> {
   @override
   void initState() {
     super.initState();
+    _initSkills();
     _nameController = TextEditingController(text: widget.initialData['name']);
     _companyNameController = TextEditingController(
       text: widget.initialData['companyName'],
@@ -2340,6 +2431,26 @@ class ProfileDialogState extends State<ProfileDialog> {
     _skills = List<String>.from(widget.initialData['skills']);
   }
 
+  Future<void> _initSkills() async {
+    if (_skillsLoading || _allSkills.isNotEmpty) return;
+    _skillsLoading = true;
+    try {
+      final skills = await _loadSkillsFromAsset();
+      if (!mounted) return;
+      setState(() {
+        _allSkills = skills;
+      });
+    } catch (e, st) {
+      dev.log(
+        'Failed to load skills.json: $e',
+        name: 'ProfileDialog',
+        stackTrace: st,
+      );
+    } finally {
+      _skillsLoading = false;
+    }
+  }
+
   @override
   void dispose() {
     _nameController.dispose();
@@ -2351,7 +2462,144 @@ class ProfileDialogState extends State<ProfileDialog> {
     _expectedCtcController.dispose();
     _linkedinUrlController.dispose();
     _cityController.dispose();
+    _skillsSearchController.dispose();
+    _skillsSearchFocusNode.dispose();
     super.dispose();
+  }
+
+  Widget _buildSkillsAutocomplete() {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 8.h),
+      child: Card(
+        elevation: 2,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12.r),
+        ),
+        child: Container(
+          constraints: BoxConstraints(maxWidth: 300.w),
+          padding: EdgeInsets.all(12.w),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.blue.shade50, Colors.blue.shade100],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(12.r),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Skills',
+                style: TextStyle(
+                  fontSize: 12.sp,
+                  color: Colors.blue.shade800,
+                  fontWeight: FontWeight.w600,
+                ),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+              ),
+              SizedBox(height: 10.h),
+              TypeAheadField<String>(
+                controller: _skillsSearchController,
+                focusNode: _skillsSearchFocusNode,
+                hideOnEmpty: true,
+                suggestionsCallback: (search) {
+                  final q = search.trim().toLowerCase();
+                  if (q.isEmpty) return const <String>[];
+                  final selectedLower =
+                      _skills.map((e) => e.toLowerCase()).toSet();
+                  return _allSkills
+                      .where((s) =>
+                          !selectedLower.contains(s.toLowerCase()) &&
+                          s.toLowerCase().contains(q))
+                      .take(20)
+                      .toList();
+                },
+                itemBuilder: (context, suggestion) {
+                  return ListTile(
+                    dense: true,
+                    title: Text(
+                      suggestion,
+                      style: TextStyle(fontSize: 13.sp),
+                    ),
+                  );
+                },
+                onSelected: (suggestion) {
+                  if (!mounted) return;
+                  setState(() {
+                    if (!_skills.contains(suggestion)) {
+                      _skills = [..._skills, suggestion];
+                    }
+                    _errorMessage = null;
+                  });
+                  _skillsSearchController.clear();
+                  _skillsSearchFocusNode.requestFocus();
+                },
+                builder: (context, controller, focusNode) {
+                  return TextField(
+                    controller: controller,
+                    focusNode: focusNode,
+                    decoration: InputDecoration(
+                      labelText: 'Select Skills',
+                      labelStyle: TextStyle(color: Colors.grey, fontSize: 12.sp),
+                      enabledBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: Colors.grey.shade400),
+                        borderRadius: BorderRadius.circular(12.r),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: Colors.teal, width: 2.w),
+                        borderRadius: BorderRadius.circular(12.r),
+                      ),
+                      filled: true,
+                      fillColor: Colors.white,
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 12.w,
+                        vertical: 10.h,
+                      ),
+                      prefixIcon: Icon(
+                        Icons.search,
+                        color: Colors.teal.shade600,
+                        size: 18.sp,
+                      ),
+                      hintText: 'Type a skill',
+                    ),
+                  );
+                },
+              ),
+              if (_skills.isNotEmpty) ...[
+                SizedBox(height: 10.h),
+                Wrap(
+                  spacing: 8.w,
+                  runSpacing: 8.h,
+                  children: _skills.map((s) {
+                    return Chip(
+                      label: Text(s, overflow: TextOverflow.ellipsis),
+                      onDeleted: () {
+                        setState(() {
+                          _skills = _skills.where((x) => x != s).toList();
+                        });
+                      },
+                    );
+                  }).toList(),
+                ),
+              ],
+              if (_skills.isEmpty)
+                Padding(
+                  padding: EdgeInsets.only(top: 6.h),
+                  child: Text(
+                    'At least one skill is required',
+                    style: TextStyle(
+                      fontSize: 10.sp,
+                      color: Colors.red.shade700,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   /// Validate LinkedIn URL
@@ -2683,91 +2931,7 @@ class ProfileDialogState extends State<ProfileDialog> {
                       ),
                     ),
                   ),
-                  Padding(
-                    padding: EdgeInsets.symmetric(vertical: 8.h),
-                    child: Card(
-                      elevation: 2,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12.r),
-                      ),
-                      child: Container(
-                        constraints: BoxConstraints(maxWidth: 300.w),
-                        padding: EdgeInsets.all(12.w),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [Colors.blue.shade50, Colors.blue.shade100],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          borderRadius: BorderRadius.circular(12.r),
-                        ),
-                        child: GestureDetector(
-                          onTap: () async {
-                            final selected = await showDialog<List<String>>(
-                              context: context,
-                              builder: (context) => MultiSelectDialog(
-                                items:
-                                    widget
-                                        .skillsBySpecialization[_specialization ??
-                                        'Others'] ??
-                                    [],
-                                selectedItems: _skills,
-                              ),
-                            );
-                            if (selected != null) {
-                              setState(() {
-                                _skills = selected;
-                                _errorMessage = null;
-                              });
-                            }
-                          },
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Skills',
-                                style: TextStyle(
-                                  fontSize: 12.sp,
-                                  color: Colors.blue.shade800,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                                maxLines: 1,
-                              ),
-                              SizedBox(height: 6.h),
-                              Container(
-                                constraints: BoxConstraints(maxWidth: 250.w),
-                                child: Text(
-                                  _skills.isEmpty
-                                      ? 'Select skills'
-                                      : _skills.join(', '),
-                                  overflow: TextOverflow.ellipsis,
-                                  maxLines: 2,
-                                  style: TextStyle(
-                                    fontSize: 14.sp,
-                                    color: _skills.isEmpty
-                                        ? Colors.grey
-                                        : Colors.black87,
-                                  ),
-                                ),
-                              ),
-                              if (_skills.isEmpty)
-                                Padding(
-                                  padding: EdgeInsets.only(top: 6.h),
-                                  child: Text(
-                                    'At least one skill is required',
-                                    style: TextStyle(
-                                      fontSize: 10.sp,
-                                      color: Colors.red.shade700,
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
+                  _buildSkillsAutocomplete(),
                   Padding(
                     padding: EdgeInsets.symmetric(vertical: 8.h),
                     child: Container(

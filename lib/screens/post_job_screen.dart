@@ -3,12 +3,12 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:multi_select_flutter/multi_select_flutter.dart';
 import '../services/auth_middleware.dart';
 import 'preview_job_screen.dart';
 import 'posted_jobs_view.dart';
 import 'dart:developer' as dev;
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:naukariwala/widgets/skills_autocomplete_multi_select.dart';
 
 class PostJobScreen extends StatefulWidget {
   final Map<String, dynamic>? editJobData;
@@ -456,9 +456,6 @@ class PostJobScreenState extends State<PostJobScreen> {
   @override
   Widget build(BuildContext context) {
     final isEditMode = widget.editJobData != null;
-    final availableSkills = _selectedSpecialization != null
-        ? skillsBySpecialization[_selectedSpecialization] ?? skillsBySpecialization['Others']!
-        : skillsBySpecialization['Others']!;
     const primaryColor = Color(0xFF1D4ED8);
     const accentColor = Color(0xFF0F766E);
 
@@ -633,45 +630,35 @@ class PostJobScreenState extends State<PostJobScreen> {
                               _buildSkillsSummary(),
                               Padding(
                                 padding: EdgeInsets.symmetric(vertical: 8.h),
-                                child: MultiSelectDialogField(
-                                  items: availableSkills
-                                      .map((skill) => MultiSelectItem<String>(skill, skill))
-                                      .toList(),
-                                  initialValue: _selectedSkills,
-                                  searchable: true,
-                                  title: Text('Required Skills', style: TextStyle(color: Colors.black87, fontSize: 16.sp)),
-                                  selectedColor: accentColor,
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFF8FAFC),
-                                    border: Border.all(color: const Color(0xFFD6DFEE)),
-                                    borderRadius: BorderRadius.circular(14.r),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withValues(alpha: 0.03),
-                                        blurRadius: 8.r,
-                                        offset: Offset(0, 3.h),
+                                child: Theme(
+                                  data: Theme.of(context).copyWith(
+                                    inputDecorationTheme: InputDecorationTheme(
+                                      filled: true,
+                                      fillColor: const Color(0xFFF8FAFC),
+                                      enabledBorder: OutlineInputBorder(
+                                        borderSide: const BorderSide(
+                                          color: Color(0xFFD6DFEE),
+                                        ),
+                                        borderRadius: BorderRadius.circular(14.r),
                                       ),
-                                    ],
-                                  ),
-                                  buttonText: Text(
-                                    'Choose Required Skills',
-                                    style: TextStyle(color: const Color(0xFF334155), fontSize: 14.sp),
-                                  ),
-                                  buttonIcon: const Icon(Icons.arrow_drop_down, color: accentColor),
-                                  validator: (values) =>
-                                      values == null || values.isEmpty ? 'Please select at least one skill' : null,
-                                  onConfirm: (values) {
-                                    setState(() {
-                                      _selectedSkills = values.cast<String>();
-                                    });
-                                  },
-                                  chipDisplay: MultiSelectChipDisplay(
-                                    chipColor: accentColor.withValues(alpha: 0.12),
-                                    textStyle: TextStyle(
-                                      color: const Color(0xFF0F172A),
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 12.sp,
+                                      focusedBorder: OutlineInputBorder(
+                                        borderSide: const BorderSide(
+                                          color: accentColor,
+                                          width: 2,
+                                        ),
+                                        borderRadius: BorderRadius.circular(14.r),
+                                      ),
                                     ),
+                                  ),
+                                  child: SkillsAutocompleteMultiSelect(
+                                    value: _selectedSkills,
+                                    onChanged: (v) => setState(() => _selectedSkills = v),
+                                    labelText: 'Required Skills',
+                                    hintText: 'Type to search skills',
+                                    validator: (values) =>
+                                        values == null || values.isEmpty
+                                            ? 'Please select at least one skill'
+                                            : null,
                                   ),
                                 ),
                               ),

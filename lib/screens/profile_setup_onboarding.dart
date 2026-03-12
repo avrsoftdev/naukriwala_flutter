@@ -9,10 +9,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:multi_select_flutter/multi_select_flutter.dart';
 import 'package:naukariwala/screens/recruiter_dashboard.dart';
 import 'package:naukariwala/screens/seeker_dashboard.dart';
 import 'package:naukariwala/services/auth_service.dart';
+import 'package:naukariwala/widgets/skills_autocomplete_multi_select.dart';
 
 class ProfileSetupOnboarding extends StatefulWidget {
   final String role; // 'seeker' | 'recruiter'
@@ -1606,20 +1606,13 @@ class _ProfileSetupOnboardingState extends State<ProfileSetupOnboarding> {
           validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
         ),
         SizedBox(height: 10.h),
-        MultiSelectDialogField<String>(
-          items: (_authService.skillsBySpecialization[_selectedSpecialization ??
-                      'Others'] ??
-                  const <String>[])
-              .map((s) => MultiSelectItem<String>(s, s))
-              .toList(),
-          title: const Text('Skills'),
-          buttonText: const Text('Select skills'),
-          initialValue: _selectedSkills,
-          searchable: true,
-          onConfirm: (values) => setState(() => _selectedSkills = values),
-          chipDisplay: MultiSelectChipDisplay(
-            onTap: (item) => setState(() => _selectedSkills.remove(item)),
-          ),
+        SkillsAutocompleteMultiSelect(
+          value: _selectedSkills,
+          onChanged: (v) => setState(() => _selectedSkills = v),
+          labelText: 'Skills',
+          hintText: 'Type to search skills',
+          validator: (values) =>
+              values == null || values.isEmpty ? 'Required' : null,
         ),
         if (_selectedSkills.isEmpty)
           Padding(
