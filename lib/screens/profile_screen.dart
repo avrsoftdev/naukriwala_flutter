@@ -1040,7 +1040,7 @@ class ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  void _showUpdateProfileDialog() {
+  void _showUpdateProfileDialog({String section = 'all'}) {
     showDialog(
       context: context,
       builder: (context) => ProfileDialog(
@@ -1067,6 +1067,7 @@ class ProfileScreenState extends State<ProfileScreen> {
         isProfileUpdated: _isProfileUpdated,
         mobileNumber: _mobileNumber,
         onUpdate: _updateProfile,
+        section: section,
       ),
     );
   }
@@ -1189,6 +1190,350 @@ class ProfileScreenState extends State<ProfileScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildInfoRow(String label, String? value) {
+    final display = (value ?? '').toString().trim();
+    final isEmpty = display.isEmpty || display.toLowerCase() == 'null';
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: 8.h),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11.sp,
+              color: Colors.blueGrey.shade700,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.1,
+            ),
+          ),
+          SizedBox(height: 4.h),
+          Container(
+            width: double.infinity,
+            padding: EdgeInsets.symmetric(
+              horizontal: 10.w,
+              vertical: 8.h,
+            ),
+            decoration: BoxDecoration(
+              color: isEmpty ? Colors.grey.shade50 : Colors.grey.shade100,
+              borderRadius: BorderRadius.circular(12.r),
+              border: Border.all(
+                color: Colors.grey.shade300,
+                width: 0.8,
+              ),
+            ),
+            child: Text(
+              isEmpty ? 'Not provided' : display,
+              style: TextStyle(
+                fontSize: 12.sp,
+                color: isEmpty ? Colors.blueGrey.shade400 : Colors.black87,
+                fontWeight: isEmpty ? FontWeight.w400 : FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Generic card layout used for each profile section.
+  Widget _buildProfileSectionCard({
+    required String title,
+    required List<Widget> children,
+    String section = 'all',
+  }) {
+    return Container(
+      width: double.infinity,
+      margin: EdgeInsets.only(top: 14.h),
+      padding: EdgeInsets.all(14.w),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22.r),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.blueGrey.withValues(alpha: 0.08),
+            blurRadius: 18.r,
+            offset: Offset(0, 8.h),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 15.sp,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.blueGrey.shade800,
+                  ),
+                ),
+              ),
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.teal.shade50,
+                  shape: BoxShape.circle,
+                ),
+                child: IconButton(
+                  icon: Icon(
+                    Icons.edit_outlined,
+                    size: 18.sp,
+                    color: Colors.teal.shade700,
+                  ),
+                  tooltip: 'Edit $title',
+                  onPressed: () => _showUpdateProfileDialog(section: section),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 10.h),
+          ...children,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBasicInformationCard() {
+    final data = _profileData ?? {};
+    final name = _nameController.text.trim().isNotEmpty
+        ? _nameController.text.trim()
+        : data['name']?.toString();
+    final city = _selectedCity ??
+        (_cityController.text.trim().isNotEmpty
+            ? _cityController.text.trim()
+            : data['city']?.toString());
+
+    return _buildProfileSectionCard(
+      title: 'Basic Information',
+      section: 'basic',
+      children: [
+        _buildInfoRow('Name', name),
+        _buildInfoRow('Email', _email),
+        _buildInfoRow('Mobile Number', _mobileNumber),
+        _buildInfoRow('City', city),
+        _buildInfoRow('Current Status', data['currentStatus']?.toString()),
+        _buildInfoRow('Job Title', data['jobTitle']?.toString()),
+        _buildInfoRow('Current Company', data['currentCompany']?.toString()),
+        _buildInfoRow('Employment Type', data['employmentType']?.toString()),
+        _buildInfoRow(
+          'Total Experience (years)',
+          data['totalExperienceYears']?.toString(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEducationalDetailsCard() {
+    final data = _profileData;
+    final educationDetails = data?['educationDetails'] as Map?;
+
+    final widgets = <Widget>[];
+
+    if (educationDetails is Map) {
+      final tenth = educationDetails['tenth'] as Map?;
+      final twelfth = educationDetails['twelfth'] as Map?;
+      final diploma = educationDetails['diploma'] as Map?;
+      final graduation = educationDetails['graduation'] as Map?;
+
+      widgets.addAll([
+        _buildInfoRow('After 10th', educationDetails['afterTenth']?.toString()),
+        _buildInfoRow(
+          '10th - Passing Year',
+          tenth?['passingYear']?.toString(),
+        ),
+        _buildInfoRow('10th - Score', tenth?['score']?.toString()),
+        _buildInfoRow('10th - Score Type', tenth?['scoreType']?.toString()),
+        _buildInfoRow('After 12th', educationDetails['afterTwelfth']?.toString()),
+        _buildInfoRow('12th - Stream', twelfth?['stream']?.toString()),
+        _buildInfoRow('12th - Stream Other', twelfth?['streamOther']?.toString()),
+        _buildInfoRow(
+          '12th - Passing Year',
+          twelfth?['passingYear']?.toString(),
+        ),
+        _buildInfoRow('12th - Score', twelfth?['score']?.toString()),
+        _buildInfoRow('12th - Score Type', twelfth?['scoreType']?.toString()),
+        _buildInfoRow('Diploma - Branch', diploma?['branch']?.toString()),
+        _buildInfoRow('Diploma - University', diploma?['university']?.toString()),
+        _buildInfoRow('Diploma - Start Year', diploma?['startYear']?.toString()),
+        _buildInfoRow('Diploma - End Year', diploma?['endYear']?.toString()),
+        _buildInfoRow('Diploma - Score', diploma?['score']?.toString()),
+        _buildInfoRow('Diploma - Score Type', diploma?['scoreType']?.toString()),
+        _buildInfoRow(
+          'Graduation After Diploma',
+          educationDetails['graduationAfterDiploma']?.toString(),
+        ),
+        _buildInfoRow('Graduation - Degree', graduation?['degree']?.toString()),
+        _buildInfoRow('Graduation - Major', graduation?['major']?.toString()),
+        _buildInfoRow(
+          'Graduation - University',
+          graduation?['university']?.toString(),
+        ),
+        _buildInfoRow(
+          'Graduation - Start Year',
+          graduation?['startYear']?.toString(),
+        ),
+        _buildInfoRow(
+          'Graduation - End Year',
+          graduation?['endYear']?.toString(),
+        ),
+        _buildInfoRow('Graduation - Score', graduation?['score']?.toString()),
+        _buildInfoRow(
+          'Graduation - Score Type',
+          graduation?['scoreType']?.toString(),
+        ),
+        _buildInfoRow(
+          'Graduation - Currently Studying',
+          graduation?['currentlyStudying']?.toString(),
+        ),
+      ]);
+    }
+
+    if (widgets.isEmpty) {
+      widgets.add(
+        Text(
+          'No educational details added yet.',
+          style: TextStyle(
+            fontSize: 12.sp,
+            color: Colors.blueGrey.shade500,
+          ),
+        ),
+      );
+    }
+
+    return _buildProfileSectionCard(
+      title: 'Educational Details',
+      children: widgets,
+    );
+  }
+
+  Widget _buildPreviousExperienceCard() {
+    final previousExps = _profileData?['previousExperiences'];
+
+    final widgets = <Widget>[];
+
+    if (previousExps is List && previousExps.isNotEmpty) {
+      widgets.addAll(
+        previousExps.take(10).whereType<Map>().map((e) {
+          final company = e['companyName'] ?? e['company'] ?? '';
+          final title = e['jobTitle'] ?? e['role'] ?? '';
+          final from = e['startDate'] ?? e['from'] ?? '';
+          final to = e['endDate'] ?? e['to'] ?? '';
+          final line =
+              '${company.toString().trim()} • ${title.toString().trim()} • ${from.toString().trim()} - ${to.toString().trim()}';
+          return Padding(
+            padding: EdgeInsets.only(bottom: 6.h),
+            child: Text(
+              line.trim(),
+              style: TextStyle(fontSize: 12.sp, color: Colors.black87),
+            ),
+          );
+        }),
+      );
+
+      if (previousExps.length > 10) {
+        widgets.add(
+          Padding(
+            padding: EdgeInsets.only(top: 4.h),
+            child: Text(
+              'Showing first 10 experiences',
+              style: TextStyle(
+                fontSize: 11.sp,
+                color: Colors.blueGrey.shade500,
+              ),
+            ),
+          ),
+        );
+      }
+    } else {
+      widgets.add(
+        Text(
+          'No previous experience added yet.',
+          style: TextStyle(
+            fontSize: 12.sp,
+            color: Colors.blueGrey.shade500,
+          ),
+        ),
+      );
+    }
+
+    return _buildProfileSectionCard(
+      title: 'Previous Experience',
+      children: widgets,
+    );
+  }
+
+  Widget _buildResumeCard() {
+    final data = _profileData ?? {};
+    final resumeUrl = data['resumeUrl']?.toString().trim();
+    final githubUrl = data['githubUrl']?.toString().trim();
+    final portfolioUrl = data['portfolioUrl']?.toString().trim();
+
+    return _buildProfileSectionCard(
+      title: 'Resume',
+      children: [
+        _buildInfoRow('Resume URL', resumeUrl),
+        _buildInfoRow('GitHub URL', githubUrl),
+        _buildInfoRow('Portfolio URL', portfolioUrl),
+        if (!widget.isRecruiter) ...[
+          SizedBox(height: 8.h),
+          Text(
+            'Your resume preview in the top bar is generated from the latest profile details.',
+            style: TextStyle(
+              fontSize: 11.sp,
+              color: Colors.blueGrey.shade500,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildPreferencesCard() {
+    final data = _profileData ?? {};
+
+    return _buildProfileSectionCard(
+      title: 'Preferences',
+      children: [
+        _buildInfoRow(
+          'Preferred Role',
+          data['preferredJobRole']?.toString(),
+        ),
+        _buildInfoRow(
+          'Preferred Industries',
+          data['preferredIndustries']?.toString(),
+        ),
+        _buildInfoRow(
+          'Preferred Employment Type',
+          data['preferredEmploymentType']?.toString(),
+        ),
+        _buildInfoRow(
+          'Preferred Work Mode',
+          data['preferredWorkMode']?.toString(),
+        ),
+        _buildInfoRow(
+          'Preferred Location',
+          data['preferredLocation']?.toString(),
+        ),
+        _buildInfoRow(
+          'Expected Salary Min',
+          data['expectedSalaryMin']?.toString(),
+        ),
+        _buildInfoRow(
+          'Expected Salary Max',
+          data['expectedSalaryMax']?.toString(),
+        ),
+        _buildInfoRow(
+          'Notice Period',
+          data['noticePeriod']?.toString(),
+        ),
+      ],
     );
   }
 
@@ -2108,231 +2453,11 @@ class ProfileScreenState extends State<ProfileScreen> {
                           ),
                         ],
                         SizedBox(height: 14.h),
-                        Container(
-                          width: double.infinity,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(22.r),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.blueGrey.withValues(alpha: 0.08),
-                                blurRadius: 18.r,
-                                offset: Offset(0, 8.h),
-                              ),
-                            ],
-                          ),
-                          child: Padding(
-                            padding: EdgeInsets.all(14.w),
-                            child: Form(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  _buildSectionHeader('Basic Information'),
-                                  _buildNonEditableField('Email', _email),
-                                  _buildNonEditableField(
-                                    'Mobile Number',
-                                    _mobileNumber,
-                                  ),
-                                  if (_isProfileUpdated)
-                                    _buildNonEditableField(
-                                      'Name',
-                                      _nameController.text,
-                                    )
-                                  else
-                                    _buildTextField(
-                                      'Name',
-                                      controller: _nameController,
-                                      validator: (value) =>
-                                          value == null || value.trim().isEmpty
-                                          ? 'Name is required'
-                                          : null,
-                                    ),
-                                  if (_isProfileUpdated)
-                                    _buildNonEditableField(
-                                      'City',
-                                      _selectedCity,
-                                    )
-                                  else
-                                    _buildCityAutocompleteField(),
-                                  SizedBox(height: 8.h),
-                                  _buildSectionHeader(
-                                    widget.isRecruiter
-                                        ? 'Organization Details'
-                                        : 'Career Details',
-                                  ),
-                                  if (widget.isRecruiter) ...[
-                                    if (_isProfileUpdated)
-                                      _buildNonEditableField(
-                                        'Company Name',
-                                        _companyNameController.text,
-                                      )
-                                    else
-                                      _buildTextField(
-                                        'Company Name',
-                                        controller: _companyNameController,
-                                        validator: (value) =>
-                                            value == null ||
-                                                value.trim().isEmpty
-                                            ? 'Company Name is required'
-                                            : null,
-                                      ),
-                                    if (_isProfileUpdated)
-                                      _buildNonEditableField(
-                                        'Company Profile',
-                                        _companyProfileController.text,
-                                      )
-                                    else
-                                      _buildTextField(
-                                        'Company Profile',
-                                        multiline: true,
-                                        controller: _companyProfileController,
-                                      ),
-                                    if (_isProfileUpdated)
-                                      _buildNonEditableField(
-                                        'Designation',
-                                        _designationController.text,
-                                      )
-                                    else
-                                      _buildTextField(
-                                        'Designation',
-                                        controller: _designationController,
-                                      ),
-                                    if (_isProfileUpdated &&
-                                        _linkedinUrlController.text.isNotEmpty)
-                                      _buildNonEditableField(
-                                        'LinkedIn URL',
-                                        _linkedinUrlController.text,
-                                      )
-                                    else if (!_isProfileUpdated)
-                                      _buildTextField(
-                                        'LinkedIn URL',
-                                        controller: _linkedinUrlController,
-                                        validator: _validateLinkedInUrl,
-                                      ),
-                                  ] else ...[
-                                    if (_isProfileUpdated)
-                                      _buildNonEditableField(
-                                        'Specialization',
-                                        _selectedSpecialization,
-                                      )
-                                    else
-                                      _buildSpecializationDropdown(),
-                                    if (_isProfileUpdated)
-                                      _buildNonEditableField(
-                                        'Skills',
-                                        _selectedSkills.isEmpty
-                                            ? 'N/A'
-                                            : _selectedSkills.join(', '),
-                                      )
-                                    else
-                                      _buildSkillsAutocomplete(),
-                                    if (_isProfileUpdated)
-                                      _buildNonEditableField(
-                                        'Education',
-                                        _selectedEducation,
-                                      )
-                                    else
-                                      _buildEducationDropdown(),
-                                    if (_isProfileUpdated)
-                                      _buildNonEditableField(
-                                        'Experience',
-                                        _experienceController.text,
-                                      )
-                                    else
-                                      _buildExperienceDropdown(),
-                                    if (_isProfileUpdated)
-                                      _buildNonEditableField(
-                                        'Current CTC',
-                                        _currentCtcController.text,
-                                      )
-                                    else
-                                      _buildTextField(
-                                        'Current CTC',
-                                        controller: _currentCtcController,
-                                      ),
-                                    if (_isProfileUpdated)
-                                      _buildNonEditableField(
-                                        'Expected CTC',
-                                        _expectedCtcController.text,
-                                      )
-                                    else
-                                      _buildTextField(
-                                        'Expected CTC',
-                                        controller: _expectedCtcController,
-                                      ),
-                                    if (_isProfileUpdated &&
-                                        _linkedinUrlController.text.isNotEmpty)
-                                      _buildNonEditableField(
-                                        'LinkedIn URL',
-                                        _linkedinUrlController.text,
-                                      )
-                                    else if (!_isProfileUpdated)
-                                      _buildTextField(
-                                        'LinkedIn URL',
-                                        controller: _linkedinUrlController,
-                                        validator: _validateLinkedInUrl,
-                                      ),
-                                  ],
-                                  SizedBox(height: 14.h),
-                                  if (!_isProfileUpdated)
-                                    AnimatedScaleButton(
-                                      onPressed: _showUpdateProfileDialog,
-                                      child: Container(
-                                        width: double.infinity,
-                                        padding: EdgeInsets.symmetric(
-                                          vertical: 12.h,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          gradient: LinearGradient(
-                                            colors: [
-                                              Colors.blue.shade700,
-                                              Colors.teal.shade500,
-                                            ],
-                                            begin: Alignment.topLeft,
-                                            end: Alignment.bottomRight,
-                                          ),
-                                          borderRadius: BorderRadius.circular(
-                                            14.r,
-                                          ),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: Colors.teal.withValues(
-                                                alpha: 0.24,
-                                              ),
-                                              blurRadius: 12.r,
-                                              offset: Offset(0, 5.h),
-                                            ),
-                                          ],
-                                        ),
-                                        child: Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.center,
-                                          children: [
-                                            Icon(
-                                              Icons.verified_outlined,
-                                              color: Colors.white,
-                                              size: 18.sp,
-                                            ),
-                                            SizedBox(width: 8.w),
-                                            Text(
-                                              'Update Profile',
-                                              style: TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 14.sp,
-                                                fontWeight: FontWeight.w700,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  SizedBox(height: 4.h),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                        _buildOnboardingDetailsCard(),
+                        _buildBasicInformationCard(),
+                        _buildEducationalDetailsCard(),
+                        _buildPreviousExperienceCard(),
+                        _buildResumeCard(),
+                        _buildPreferencesCard(),
                       ],
                     ),
                   ),
@@ -2354,6 +2479,7 @@ class ProfileDialog extends StatefulWidget {
   final bool isProfileUpdated;
   final String? mobileNumber;
   final Future<void> Function(Map<String, dynamic>, Function) onUpdate;
+  final String section; // 'all' | 'basic'
 
   const ProfileDialog({
     required this.isRecruiter,
@@ -2366,6 +2492,7 @@ class ProfileDialog extends StatefulWidget {
     required this.isProfileUpdated,
     required this.mobileNumber,
     required this.onUpdate,
+    this.section = 'all',
     super.key,
   });
 
@@ -2838,15 +2965,15 @@ class ProfileDialogState extends State<ProfileDialog> {
                       ),
                     ),
                   ),
-                _buildTextField(
-                  'Name',
-                  controller: _nameController,
-                  validator: (value) => value == null || value.trim().isEmpty
-                      ? 'Name is required'
-                      : null,
-                ),
-                _buildCityAutocompleteField(),
                 if (widget.isRecruiter) ...[
+                  _buildTextField(
+                    'Name',
+                    controller: _nameController,
+                    validator: (value) => value == null || value.trim().isEmpty
+                        ? 'Name is required'
+                        : null,
+                  ),
+                  _buildCityAutocompleteField(),
                   _buildTextField(
                     'Company Name',
                     controller: _companyNameController,
@@ -2869,208 +2996,245 @@ class ProfileDialogState extends State<ProfileDialog> {
                     validator: _validateLinkedInUrl,
                   ),
                 ] else ...[
-                  Padding(
-                    padding: EdgeInsets.symmetric(vertical: 8.h),
-                    child: Container(
-                      constraints: BoxConstraints(maxWidth: 300.w),
-                      child: DropdownButtonFormField<String>(
-                        initialValue: _specialization,
-                        decoration: InputDecoration(
-                          labelText: 'Specialization',
-                          labelStyle: TextStyle(
-                            color: Colors.grey,
-                            fontSize: 12.sp,
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderSide: BorderSide(color: Colors.grey.shade400),
-                            borderRadius: BorderRadius.circular(12.r),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderSide: BorderSide(
-                              color: Colors.teal,
-                              width: 2.w,
-                            ),
-                            borderRadius: BorderRadius.circular(12.r),
-                          ),
-                          filled: true,
-                          fillColor: Colors.white,
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 12.w,
-                            vertical: 10.h,
-                          ),
-                        ),
-                        isExpanded: true,
-                        menuMaxHeight: 300.h,
-                        items: widget.specializationOptions.map((
-                          String specialization,
-                        ) {
-                          return DropdownMenuItem<String>(
-                            value: specialization,
-                            child: Container(
-                              constraints: BoxConstraints(maxWidth: 250.w),
-                              child: Text(
-                                specialization,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: Colors.black87,
-                                  fontSize: 12.sp,
-                                ),
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                        onChanged: (value) {
-                          setState(() {
-                            _specialization = value;
-                            _skills = [];
-                            _errorMessage = null;
-                          });
-                        },
-                        validator: (value) =>
-                            value == null ? 'Specialization is required' : null,
-                      ),
+                  if (widget.section == 'basic') ...[
+                    _buildTextField(
+                      'Name',
+                      controller: _nameController,
+                      validator: (value) =>
+                          value == null || value.trim().isEmpty
+                              ? 'Name is required'
+                              : null,
                     ),
-                  ),
-                  _buildSkillsAutocomplete(),
-                  Padding(
-                    padding: EdgeInsets.symmetric(vertical: 8.h),
-                    child: Container(
-                      constraints: BoxConstraints(maxWidth: 300.w),
-                      child: DropdownButtonFormField<String>(
-                        initialValue: _education,
-                        decoration: InputDecoration(
-                          labelText: 'Education',
-                          labelStyle: TextStyle(
-                            color: Colors.grey,
-                            fontSize: 12.sp,
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderSide: BorderSide(color: Colors.grey.shade400),
-                            borderRadius: BorderRadius.circular(12.r),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderSide: BorderSide(
-                              color: Colors.teal,
-                              width: 2.w,
-                            ),
-                            borderRadius: BorderRadius.circular(12.r),
-                          ),
-                          filled: true,
-                          fillColor: Colors.white,
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 12.w,
-                            vertical: 10.h,
-                          ),
-                        ),
-                        isExpanded: true,
-                        menuMaxHeight: 300.h,
-                        items: widget.educationOptions.map((String education) {
-                          return DropdownMenuItem<String>(
-                            value: education,
-                            child: Container(
-                              constraints: BoxConstraints(maxWidth: 250.w),
-                              child: Text(
-                                education,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: Colors.black87,
-                                  fontSize: 12.sp,
-                                ),
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                        onChanged: (value) {
-                          setState(() {
-                            _education = value;
-                            _errorMessage = null;
-                          });
-                        },
-                        validator: (value) =>
-                            value == null ? 'Education is required' : null,
-                      ),
+                    _buildCityAutocompleteField(),
+                    _buildTextField(
+                      'LinkedIn URL',
+                      controller: _linkedinUrlController,
+                      validator: _validateLinkedInUrl,
                     ),
-                  ),
-                  Padding(
-                    padding: EdgeInsets.symmetric(vertical: 8.h),
+                  ] else ...[
+                    _buildTextField(
+                      'Name',
+                      controller: _nameController,
+                      validator: (value) =>
+                          value == null || value.trim().isEmpty
+                              ? 'Name is required'
+                              : null,
+                    ),
+                    _buildCityAutocompleteField(),
+                    Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8.h),
                     child: Container(
                       constraints: BoxConstraints(maxWidth: 300.w),
                       child: DropdownButtonFormField<String>(
                         initialValue:
-                            _experienceController.text.isNotEmpty &&
-                                widget.experienceOptions.contains(
-                                  _experienceController.text,
-                                )
-                            ? _experienceController.text
-                            : null,
-                        decoration: InputDecoration(
-                          labelText: 'Experience',
-                          labelStyle: TextStyle(
-                            color: Colors.grey,
-                            fontSize: 12.sp,
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderSide: BorderSide(color: Colors.grey.shade400),
-                            borderRadius: BorderRadius.circular(12.r),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderSide: BorderSide(
-                              color: Colors.teal,
-                              width: 2.w,
+                            widget.specializationOptions.contains(_specialization)
+                                ? _specialization
+                                : null,
+                          decoration: InputDecoration(
+                            labelText: 'Specialization',
+                            labelStyle: TextStyle(
+                              color: Colors.grey,
+                              fontSize: 12.sp,
                             ),
-                            borderRadius: BorderRadius.circular(12.r),
+                            enabledBorder: OutlineInputBorder(
+                              borderSide:
+                                  BorderSide(color: Colors.grey.shade400),
+                              borderRadius: BorderRadius.circular(12.r),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderSide: BorderSide(
+                                color: Colors.teal,
+                                width: 2.w,
+                              ),
+                              borderRadius: BorderRadius.circular(12.r),
+                            ),
+                            filled: true,
+                            fillColor: Colors.white,
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 12.w,
+                              vertical: 10.h,
+                            ),
                           ),
-                          filled: true,
-                          fillColor: Colors.white,
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 12.w,
-                            vertical: 10.h,
-                          ),
-                        ),
-                        isExpanded: true,
-                        menuMaxHeight: 300.h,
-                        items: widget.experienceOptions.map((
-                          String experience,
-                        ) {
-                          return DropdownMenuItem<String>(
-                            value: experience,
-                            child: Container(
-                              constraints: BoxConstraints(maxWidth: 250.w),
-                              child: Text(
-                                experience,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: Colors.black87,
-                                  fontSize: 12.sp,
+                          isExpanded: true,
+                          menuMaxHeight: 300.h,
+                          items: widget.specializationOptions.map((
+                            String specialization,
+                          ) {
+                            return DropdownMenuItem<String>(
+                              value: specialization,
+                              child: Container(
+                                constraints: BoxConstraints(maxWidth: 250.w),
+                                child: Text(
+                                  specialization,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: Colors.black87,
+                                    fontSize: 12.sp,
+                                  ),
                                 ),
                               ),
-                            ),
-                          );
-                        }).toList(),
-                        onChanged: (value) {
-                          setState(() {
-                            _experienceController.text = value ?? '';
-                            _errorMessage = null;
-                          });
-                        },
-                        validator: (value) =>
-                            value == null ? 'Experience is required' : null,
+                            );
+                          }).toList(),
+                          onChanged: (value) {
+                            setState(() {
+                              _specialization = value;
+                              _skills = [];
+                              _errorMessage = null;
+                            });
+                          },
+                          validator: (value) => value == null
+                              ? 'Specialization is required'
+                              : null,
+                        ),
                       ),
                     ),
-                  ),
-                  _buildTextField(
-                    'Current CTC',
-                    controller: _currentCtcController,
-                  ),
-                  _buildTextField(
-                    'Expected CTC',
-                    controller: _expectedCtcController,
-                  ),
-                  _buildTextField(
-                    'LinkedIn URL',
-                    controller: _linkedinUrlController,
-                    validator: _validateLinkedInUrl,
-                  ),
+                    _buildSkillsAutocomplete(),
+                    Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8.h),
+                    child: Container(
+                      constraints: BoxConstraints(maxWidth: 300.w),
+                      child: DropdownButtonFormField<String>(
+                        initialValue:
+                            widget.educationOptions.contains(_education)
+                                ? _education
+                                : null,
+                          decoration: InputDecoration(
+                            labelText: 'Education',
+                            labelStyle: TextStyle(
+                              color: Colors.grey,
+                              fontSize: 12.sp,
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderSide:
+                                  BorderSide(color: Colors.grey.shade400),
+                              borderRadius: BorderRadius.circular(12.r),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderSide: BorderSide(
+                                color: Colors.teal,
+                                width: 2.w,
+                              ),
+                              borderRadius: BorderRadius.circular(12.r),
+                            ),
+                            filled: true,
+                            fillColor: Colors.white,
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 12.w,
+                              vertical: 10.h,
+                            ),
+                          ),
+                          isExpanded: true,
+                          menuMaxHeight: 300.h,
+                          items:
+                              widget.educationOptions.map((String education) {
+                            return DropdownMenuItem<String>(
+                              value: education,
+                              child: Container(
+                                constraints: BoxConstraints(maxWidth: 250.w),
+                                child: Text(
+                                  education,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: Colors.black87,
+                                    fontSize: 12.sp,
+                                  ),
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: (value) {
+                            setState(() {
+                              _education = value;
+                              _errorMessage = null;
+                            });
+                          },
+                          validator: (value) =>
+                              value == null ? 'Education is required' : null,
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8.h),
+                      child: Container(
+                        constraints: BoxConstraints(maxWidth: 300.w),
+                        child: DropdownButtonFormField<String>(
+                          initialValue:
+                              _experienceController.text.isNotEmpty &&
+                                      widget.experienceOptions.contains(
+                                        _experienceController.text,
+                                      )
+                                  ? _experienceController.text
+                                  : null,
+                          decoration: InputDecoration(
+                            labelText: 'Experience',
+                            labelStyle: TextStyle(
+                              color: Colors.grey,
+                              fontSize: 12.sp,
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderSide:
+                                  BorderSide(color: Colors.grey.shade400),
+                              borderRadius: BorderRadius.circular(12.r),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderSide: BorderSide(
+                                color: Colors.teal,
+                                width: 2.w,
+                              ),
+                              borderRadius: BorderRadius.circular(12.r),
+                            ),
+                            filled: true,
+                            fillColor: Colors.white,
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 12.w,
+                              vertical: 10.h,
+                            ),
+                          ),
+                          isExpanded: true,
+                          menuMaxHeight: 300.h,
+                          items: widget.experienceOptions.map((
+                            String experience,
+                          ) {
+                            return DropdownMenuItem<String>(
+                              value: experience,
+                              child: Container(
+                                constraints: BoxConstraints(maxWidth: 250.w),
+                                child: Text(
+                                  experience,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: Colors.black87,
+                                    fontSize: 12.sp,
+                                  ),
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: (value) {
+                            setState(() {
+                              _experienceController.text = value ?? '';
+                              _errorMessage = null;
+                            });
+                          },
+                          validator: (value) =>
+                              value == null ? 'Experience is required' : null,
+                        ),
+                      ),
+                    ),
+                    _buildTextField(
+                      'Current CTC',
+                      controller: _currentCtcController,
+                    ),
+                    _buildTextField(
+                      'Expected CTC',
+                      controller: _expectedCtcController,
+                    ),
+                    _buildTextField(
+                      'LinkedIn URL',
+                      controller: _linkedinUrlController,
+                      validator: _validateLinkedInUrl,
+                    ),
+                  ],
                 ], // end of seeker/recruiter fields (else block)
               ], // end of children list
             ),
