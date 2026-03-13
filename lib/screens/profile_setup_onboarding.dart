@@ -11,6 +11,7 @@ import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:naukariwala/screens/recruiter_dashboard.dart';
 import 'package:naukariwala/screens/seeker_dashboard.dart';
+import 'package:naukariwala/screens/unified_screen.dart';
 import 'package:naukariwala/services/auth_service.dart';
 import 'package:naukariwala/widgets/skills_autocomplete_multi_select.dart';
 
@@ -923,6 +924,20 @@ class _ProfileSetupOnboardingState extends State<ProfileSetupOnboarding> {
 
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          tooltip: 'Back',
+          onPressed: _saving
+              ? null
+              : () {
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(
+                      builder: (_) => const UnifiedScreen(showWelcomeOnly: true),
+                    ),
+                    (route) => false,
+                  );
+                },
+          icon: const Icon(Icons.arrow_back),
+        ),
         title: Text(title),
         actions: [
           if (_stepIndex == 0)

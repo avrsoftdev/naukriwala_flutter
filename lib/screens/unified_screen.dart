@@ -12,7 +12,12 @@ import 'dart:developer' as dev;
 import 'dart:async';
 
 class UnifiedScreen extends StatefulWidget {
-  const UnifiedScreen({super.key});
+  final bool showWelcomeOnly;
+
+  const UnifiedScreen({
+    super.key,
+    this.showWelcomeOnly = false,
+  });
 
   @override
   UnifiedScreenState createState() => UnifiedScreenState();
@@ -41,7 +46,12 @@ class UnifiedScreenState extends State<UnifiedScreen> {
   @override
   void initState() {
     super.initState();
-    _checkIfLoggedIn();
+    if (widget.showWelcomeOnly) {
+      _currentState = ScreenState.roleSelection;
+      _isLoading = false;
+    } else {
+      _checkIfLoggedIn();
+    }
     _loadSavedAccounts();
 
     _phoneController.addListener(() {

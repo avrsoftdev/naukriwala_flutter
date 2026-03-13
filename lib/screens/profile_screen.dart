@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_typeahead/flutter_typeahead.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:naukariwala/services/auth_service.dart';
+import 'package:naukariwala/screens/profile_setup_onboarding.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'dart:convert';
 import 'dart:io';
@@ -999,24 +1000,11 @@ class ProfileScreenState extends State<ProfileScreen> {
       );
 
       if (mounted) {
+        // Refresh full profile data so all sections, including onboarding
+        // and preferences, reflect latest values.
+        await _loadUserData();
         setState(() {
           _isProfileUpdated = true;
-          _nameController.text = profileData['name'];
-          _linkedinUrlController.text = profileData['linkedinUrl'] ?? '';
-          if (widget.isRecruiter) {
-            _companyNameController.text = profileData['companyName'];
-            _companyProfileController.text = profileData['companyProfile'];
-            _designationController.text = profileData['designation'];
-          } else {
-            _selectedSkills = List<String>.from(profileData['skills']);
-            _selectedEducation = profileData['education'];
-            _experienceController.text = profileData['experience'];
-            _selectedSpecialization = profileData['specialization'];
-            _currentCtcController.text = _formatCtc(profileData['currentCtc']);
-            _expectedCtcController.text = _formatCtc(
-              profileData['expectedCtc'],
-            );
-          }
           errorMessage = null;
         });
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1058,6 +1046,9 @@ class ProfileScreenState extends State<ProfileScreen> {
           'city': _selectedCity,
           'skills': List<String>.from(_selectedSkills),
           'linkedinUrl': _linkedinUrlController.text,
+          // pass full profile data so dialog can show
+          // onboarding / additional sections read-only
+          'profileData': _profileData,
         },
         experienceOptions: experienceOptions,
         specializationOptions: specializationOptions,
@@ -2523,6 +2514,27 @@ class ProfileDialogState extends State<ProfileDialog> {
   bool _isLoading = false;
   String? _errorMessage;
 
+  Map<String, dynamic>? get _profileDataFromInitial =>
+      widget.initialData['profileData'] is Map<String, dynamic>
+          ? widget.initialData['profileData'] as Map<String, dynamic>
+          : null;
+
+  // Onboarding / preferences editable controllers
+  late final TextEditingController _currentStatusController;
+  late final TextEditingController _jobTitleController;
+  late final TextEditingController _currentCompanyController;
+  late final TextEditingController _employmentTypeController;
+  late final TextEditingController _totalExperienceYearsController;
+
+  late final TextEditingController _preferredJobRoleController;
+  late final TextEditingController _preferredIndustriesController;
+  late final TextEditingController _preferredEmploymentTypeController;
+  late final TextEditingController _preferredWorkModeController;
+  late final TextEditingController _preferredLocationController;
+  late final TextEditingController _expectedSalaryMinController;
+  late final TextEditingController _expectedSalaryMaxController;
+  late final TextEditingController _noticePeriodController;
+
   @override
   void initState() {
     super.initState();
@@ -2556,6 +2568,48 @@ class ProfileDialogState extends State<ProfileDialog> {
     _education = widget.initialData['education'];
     _selectedCity = widget.initialData['city'];
     _skills = List<String>.from(widget.initialData['skills']);
+
+    final p = _profileDataFromInitial ?? const <String, dynamic>{};
+    _currentStatusController = TextEditingController(
+      text: p['currentStatus']?.toString() ?? '',
+    );
+    _jobTitleController = TextEditingController(
+      text: p['jobTitle']?.toString() ?? '',
+    );
+    _currentCompanyController = TextEditingController(
+      text: p['currentCompany']?.toString() ?? '',
+    );
+    _employmentTypeController = TextEditingController(
+      text: p['employmentType']?.toString() ?? '',
+    );
+    _totalExperienceYearsController = TextEditingController(
+      text: p['totalExperienceYears']?.toString() ?? '',
+    );
+
+    _preferredJobRoleController = TextEditingController(
+      text: p['preferredJobRole']?.toString() ?? '',
+    );
+    _preferredIndustriesController = TextEditingController(
+      text: p['preferredIndustries']?.toString() ?? '',
+    );
+    _preferredEmploymentTypeController = TextEditingController(
+      text: p['preferredEmploymentType']?.toString() ?? '',
+    );
+    _preferredWorkModeController = TextEditingController(
+      text: p['preferredWorkMode']?.toString() ?? '',
+    );
+    _preferredLocationController = TextEditingController(
+      text: p['preferredLocation']?.toString() ?? '',
+    );
+    _expectedSalaryMinController = TextEditingController(
+      text: p['expectedSalaryMin']?.toString() ?? '',
+    );
+    _expectedSalaryMaxController = TextEditingController(
+      text: p['expectedSalaryMax']?.toString() ?? '',
+    );
+    _noticePeriodController = TextEditingController(
+      text: p['noticePeriod']?.toString() ?? '',
+    );
   }
 
   Future<void> _initSkills() async {
@@ -2591,6 +2645,19 @@ class ProfileDialogState extends State<ProfileDialog> {
     _cityController.dispose();
     _skillsSearchController.dispose();
     _skillsSearchFocusNode.dispose();
+    _currentStatusController.dispose();
+    _jobTitleController.dispose();
+    _currentCompanyController.dispose();
+    _employmentTypeController.dispose();
+    _totalExperienceYearsController.dispose();
+    _preferredJobRoleController.dispose();
+    _preferredIndustriesController.dispose();
+    _preferredEmploymentTypeController.dispose();
+    _preferredWorkModeController.dispose();
+    _preferredLocationController.dispose();
+    _expectedSalaryMinController.dispose();
+    _expectedSalaryMaxController.dispose();
+    _noticePeriodController.dispose();
     super.dispose();
   }
 
@@ -2724,6 +2791,79 @@ class ProfileDialogState extends State<ProfileDialog> {
                 ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildReadOnlyLabelValue(String label, String? value) {
+    final text = (value ?? '').trim();
+    if (text.isEmpty || text.toLowerCase() == 'null') {
+      return const SizedBox.shrink();
+    }
+    return Padding(
+      padding: EdgeInsets.only(bottom: 6.h),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11.sp,
+              color: Colors.blueGrey.shade700,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          SizedBox(height: 2.h),
+          Text(
+            text,
+            style: TextStyle(
+              fontSize: 12.sp,
+              color: Colors.black87,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReadOnlySectionTitle(String title) {
+    return Padding(
+      padding: EdgeInsets.only(top: 12.h, bottom: 6.h),
+      child: Text(
+        title,
+        style: TextStyle(
+          fontSize: 13.sp,
+          fontWeight: FontWeight.w700,
+          color: Colors.blueGrey.shade900,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEditableOnboardingField({
+    required String label,
+    required TextEditingController controller,
+  }) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 4.h),
+      child: TextFormField(
+        controller: controller,
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: TextStyle(
+            color: Colors.blueGrey.shade600,
+            fontSize: 12.sp,
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10.r),
+          ),
+          contentPadding: EdgeInsets.symmetric(
+            horizontal: 10.w,
+            vertical: 8.h,
+          ),
+          filled: true,
+          fillColor: Colors.white,
         ),
       ),
     );
@@ -2996,33 +3136,18 @@ class ProfileDialogState extends State<ProfileDialog> {
                     validator: _validateLinkedInUrl,
                   ),
                 ] else ...[
-                  if (widget.section == 'basic') ...[
-                    _buildTextField(
-                      'Name',
-                      controller: _nameController,
-                      validator: (value) =>
-                          value == null || value.trim().isEmpty
-                              ? 'Name is required'
-                              : null,
-                    ),
-                    _buildCityAutocompleteField(),
-                    _buildTextField(
-                      'LinkedIn URL',
-                      controller: _linkedinUrlController,
-                      validator: _validateLinkedInUrl,
-                    ),
-                  ] else ...[
-                    _buildTextField(
-                      'Name',
-                      controller: _nameController,
-                      validator: (value) =>
-                          value == null || value.trim().isEmpty
-                              ? 'Name is required'
-                              : null,
-                    ),
-                    _buildCityAutocompleteField(),
-                    Padding(
-                      padding: EdgeInsets.symmetric(vertical: 8.h),
+                  // For seekers, always show the full set of fields
+                  _buildTextField(
+                    'Name',
+                    controller: _nameController,
+                    validator: (value) =>
+                        value == null || value.trim().isEmpty
+                            ? 'Name is required'
+                            : null,
+                  ),
+                  _buildCityAutocompleteField(),
+                  Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8.h),
                     child: Container(
                       constraints: BoxConstraints(maxWidth: 300.w),
                       child: DropdownButtonFormField<String>(
@@ -3030,67 +3155,67 @@ class ProfileDialogState extends State<ProfileDialog> {
                             widget.specializationOptions.contains(_specialization)
                                 ? _specialization
                                 : null,
-                          decoration: InputDecoration(
-                            labelText: 'Specialization',
-                            labelStyle: TextStyle(
-                              color: Colors.grey,
-                              fontSize: 12.sp,
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderSide:
-                                  BorderSide(color: Colors.grey.shade400),
-                              borderRadius: BorderRadius.circular(12.r),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderSide: BorderSide(
-                                color: Colors.teal,
-                                width: 2.w,
-                              ),
-                              borderRadius: BorderRadius.circular(12.r),
-                            ),
-                            filled: true,
-                            fillColor: Colors.white,
-                            contentPadding: EdgeInsets.symmetric(
-                              horizontal: 12.w,
-                              vertical: 10.h,
-                            ),
+                        decoration: InputDecoration(
+                          labelText: 'Specialization',
+                          labelStyle: TextStyle(
+                            color: Colors.grey,
+                            fontSize: 12.sp,
                           ),
-                          isExpanded: true,
-                          menuMaxHeight: 300.h,
-                          items: widget.specializationOptions.map((
-                            String specialization,
-                          ) {
-                            return DropdownMenuItem<String>(
-                              value: specialization,
-                              child: Container(
-                                constraints: BoxConstraints(maxWidth: 250.w),
-                                child: Text(
-                                  specialization,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color: Colors.black87,
-                                    fontSize: 12.sp,
-                                  ),
+                          enabledBorder: OutlineInputBorder(
+                            borderSide:
+                                BorderSide(color: Colors.grey.shade400),
+                            borderRadius: BorderRadius.circular(12.r),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderSide: BorderSide(
+                              color: Colors.teal,
+                              width: 2.w,
+                            ),
+                            borderRadius: BorderRadius.circular(12.r),
+                          ),
+                          filled: true,
+                          fillColor: Colors.white,
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 12.w,
+                            vertical: 10.h,
+                          ),
+                        ),
+                        isExpanded: true,
+                        menuMaxHeight: 300.h,
+                        items: widget.specializationOptions.map((
+                          String specialization,
+                        ) {
+                          return DropdownMenuItem<String>(
+                            value: specialization,
+                            child: Container(
+                              constraints: BoxConstraints(maxWidth: 250.w),
+                              child: Text(
+                                specialization,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: Colors.black87,
+                                  fontSize: 12.sp,
                                 ),
                               ),
-                            );
-                          }).toList(),
-                          onChanged: (value) {
-                            setState(() {
-                              _specialization = value;
-                              _skills = [];
-                              _errorMessage = null;
-                            });
-                          },
-                          validator: (value) => value == null
-                              ? 'Specialization is required'
-                              : null,
-                        ),
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (value) {
+                          setState(() {
+                            _specialization = value;
+                            _skills = [];
+                            _errorMessage = null;
+                          });
+                        },
+                        validator: (value) => value == null
+                            ? 'Specialization is required'
+                            : null,
                       ),
                     ),
-                    _buildSkillsAutocomplete(),
-                    Padding(
-                      padding: EdgeInsets.symmetric(vertical: 8.h),
+                  ),
+                  _buildSkillsAutocomplete(),
+                  Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8.h),
                     child: Container(
                       constraints: BoxConstraints(maxWidth: 300.w),
                       child: DropdownButtonFormField<String>(
@@ -3098,150 +3223,388 @@ class ProfileDialogState extends State<ProfileDialog> {
                             widget.educationOptions.contains(_education)
                                 ? _education
                                 : null,
-                          decoration: InputDecoration(
-                            labelText: 'Education',
-                            labelStyle: TextStyle(
-                              color: Colors.grey,
-                              fontSize: 12.sp,
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderSide:
-                                  BorderSide(color: Colors.grey.shade400),
-                              borderRadius: BorderRadius.circular(12.r),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderSide: BorderSide(
-                                color: Colors.teal,
-                                width: 2.w,
-                              ),
-                              borderRadius: BorderRadius.circular(12.r),
-                            ),
-                            filled: true,
-                            fillColor: Colors.white,
-                            contentPadding: EdgeInsets.symmetric(
-                              horizontal: 12.w,
-                              vertical: 10.h,
-                            ),
+                        decoration: InputDecoration(
+                          labelText: 'Education',
+                          labelStyle: TextStyle(
+                            color: Colors.grey,
+                            fontSize: 12.sp,
                           ),
-                          isExpanded: true,
-                          menuMaxHeight: 300.h,
-                          items:
-                              widget.educationOptions.map((String education) {
-                            return DropdownMenuItem<String>(
-                              value: education,
-                              child: Container(
-                                constraints: BoxConstraints(maxWidth: 250.w),
-                                child: Text(
-                                  education,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color: Colors.black87,
-                                    fontSize: 12.sp,
-                                  ),
+                          enabledBorder: OutlineInputBorder(
+                            borderSide:
+                                BorderSide(color: Colors.grey.shade400),
+                            borderRadius: BorderRadius.circular(12.r),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderSide: BorderSide(
+                              color: Colors.teal,
+                              width: 2.w,
+                            ),
+                            borderRadius: BorderRadius.circular(12.r),
+                          ),
+                          filled: true,
+                          fillColor: Colors.white,
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 12.w,
+                            vertical: 10.h,
+                          ),
+                        ),
+                        isExpanded: true,
+                        menuMaxHeight: 300.h,
+                        items:
+                            widget.educationOptions.map((String education) {
+                          return DropdownMenuItem<String>(
+                            value: education,
+                            child: Container(
+                              constraints: BoxConstraints(maxWidth: 250.w),
+                              child: Text(
+                                education,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: Colors.black87,
+                                  fontSize: 12.sp,
                                 ),
                               ),
-                            );
-                          }).toList(),
-                          onChanged: (value) {
-                            setState(() {
-                              _education = value;
-                              _errorMessage = null;
-                            });
-                          },
-                          validator: (value) =>
-                              value == null ? 'Education is required' : null,
-                        ),
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (value) {
+                          setState(() {
+                            _education = value;
+                            _errorMessage = null;
+                          });
+                        },
+                        validator: (value) =>
+                            value == null ? 'Education is required' : null,
                       ),
                     ),
-                    Padding(
-                      padding: EdgeInsets.symmetric(vertical: 8.h),
-                      child: Container(
-                        constraints: BoxConstraints(maxWidth: 300.w),
-                        child: DropdownButtonFormField<String>(
-                          initialValue:
-                              _experienceController.text.isNotEmpty &&
-                                      widget.experienceOptions.contains(
-                                        _experienceController.text,
-                                      )
-                                  ? _experienceController.text
-                                  : null,
-                          decoration: InputDecoration(
-                            labelText: 'Experience',
-                            labelStyle: TextStyle(
-                              color: Colors.grey,
-                              fontSize: 12.sp,
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderSide:
-                                  BorderSide(color: Colors.grey.shade400),
-                              borderRadius: BorderRadius.circular(12.r),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderSide: BorderSide(
-                                color: Colors.teal,
-                                width: 2.w,
-                              ),
-                              borderRadius: BorderRadius.circular(12.r),
-                            ),
-                            filled: true,
-                            fillColor: Colors.white,
-                            contentPadding: EdgeInsets.symmetric(
-                              horizontal: 12.w,
-                              vertical: 10.h,
-                            ),
+                  ),
+                  Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8.h),
+                    child: Container(
+                      constraints: BoxConstraints(maxWidth: 300.w),
+                      child: DropdownButtonFormField<String>(
+                        initialValue:
+                            _experienceController.text.isNotEmpty &&
+                                    widget.experienceOptions.contains(
+                                      _experienceController.text,
+                                    )
+                                ? _experienceController.text
+                                : null,
+                        decoration: InputDecoration(
+                          labelText: 'Experience',
+                          labelStyle: TextStyle(
+                            color: Colors.grey,
+                            fontSize: 12.sp,
                           ),
-                          isExpanded: true,
-                          menuMaxHeight: 300.h,
-                          items: widget.experienceOptions.map((
-                            String experience,
-                          ) {
-                            return DropdownMenuItem<String>(
-                              value: experience,
-                              child: Container(
-                                constraints: BoxConstraints(maxWidth: 250.w),
-                                child: Text(
-                                  experience,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color: Colors.black87,
-                                    fontSize: 12.sp,
-                                  ),
+                          enabledBorder: OutlineInputBorder(
+                            borderSide:
+                                BorderSide(color: Colors.grey.shade400),
+                            borderRadius: BorderRadius.circular(12.r),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderSide: BorderSide(
+                              color: Colors.teal,
+                              width: 2.w,
+                            ),
+                            borderRadius: BorderRadius.circular(12.r),
+                          ),
+                          filled: true,
+                          fillColor: Colors.white,
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 12.w,
+                            vertical: 10.h,
+                          ),
+                        ),
+                        isExpanded: true,
+                        menuMaxHeight: 300.h,
+                        items: widget.experienceOptions.map((
+                          String experience,
+                        ) {
+                          return DropdownMenuItem<String>(
+                            value: experience,
+                            child: Container(
+                              constraints: BoxConstraints(maxWidth: 250.w),
+                              child: Text(
+                                experience,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: Colors.black87,
+                                  fontSize: 12.sp,
                                 ),
                               ),
-                            );
-                          }).toList(),
-                          onChanged: (value) {
-                            setState(() {
-                              _experienceController.text = value ?? '';
-                              _errorMessage = null;
-                            });
-                          },
-                          validator: (value) =>
-                              value == null ? 'Experience is required' : null,
-                        ),
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (value) {
+                          setState(() {
+                            _experienceController.text = value ?? '';
+                            _errorMessage = null;
+                          });
+                        },
+                        validator: (value) =>
+                            value == null ? 'Experience is required' : null,
                       ),
                     ),
-                    _buildTextField(
-                      'Current CTC',
-                      controller: _currentCtcController,
-                    ),
-                    _buildTextField(
-                      'Expected CTC',
-                      controller: _expectedCtcController,
-                    ),
-                    _buildTextField(
-                      'LinkedIn URL',
-                      controller: _linkedinUrlController,
-                      validator: _validateLinkedInUrl,
-                    ),
-                  ],
+                  ),
+                  _buildTextField(
+                    'Current CTC',
+                    controller: _currentCtcController,
+                  ),
+                  _buildTextField(
+                    'Expected CTC',
+                    controller: _expectedCtcController,
+                  ),
+                  _buildTextField(
+                    'LinkedIn URL',
+                    controller: _linkedinUrlController,
+                    validator: _validateLinkedInUrl,
+                  ),
                 ], // end of seeker/recruiter fields (else block)
+                const SizedBox(height: 16),
+                if (!widget.isRecruiter && _profileDataFromInitial != null) ...[
+                  _buildReadOnlySectionTitle('Basic Information (Onboarding)'),
+                  _buildEditableOnboardingField(
+                    label: 'Current Status',
+                    controller: _currentStatusController,
+                  ),
+                  _buildEditableOnboardingField(
+                    label: 'Job Title',
+                    controller: _jobTitleController,
+                  ),
+                  _buildEditableOnboardingField(
+                    label: 'Current Company',
+                    controller: _currentCompanyController,
+                  ),
+                  _buildEditableOnboardingField(
+                    label: 'Employment Type',
+                    controller: _employmentTypeController,
+                  ),
+                  _buildEditableOnboardingField(
+                    label: 'Total Experience (years)',
+                    controller: _totalExperienceYearsController,
+                  ),
+                  _buildReadOnlySectionTitle('Educational Details'),
+                  ...(() {
+                    final data = _profileDataFromInitial;
+                    final educationDetails =
+                        data?['educationDetails'] as Map<dynamic, dynamic>?;
+                    if (educationDetails == null) return <Widget>[];
+                    final widgets = <Widget>[];
+                    final tenth =
+                        educationDetails['tenth'] as Map<dynamic, dynamic>?;
+                    final twelfth =
+                        educationDetails['twelfth'] as Map<dynamic, dynamic>?;
+                    final diploma =
+                        educationDetails['diploma'] as Map<dynamic, dynamic>?;
+                    final graduation = educationDetails['graduation']
+                        as Map<dynamic, dynamic>?;
+
+                    widgets.addAll([
+                      _buildReadOnlyLabelValue(
+                        'After 10th',
+                        educationDetails['afterTenth']?.toString(),
+                      ),
+                      _buildReadOnlyLabelValue(
+                        '10th - Passing Year',
+                        tenth?['passingYear']?.toString(),
+                      ),
+                      _buildReadOnlyLabelValue(
+                        '10th - Score',
+                        tenth?['score']?.toString(),
+                      ),
+                      _buildReadOnlyLabelValue(
+                        '10th - Score Type',
+                        tenth?['scoreType']?.toString(),
+                      ),
+                      _buildReadOnlyLabelValue(
+                        'After 12th',
+                        educationDetails['afterTwelfth']?.toString(),
+                      ),
+                      _buildReadOnlyLabelValue(
+                        '12th - Stream',
+                        twelfth?['stream']?.toString(),
+                      ),
+                      _buildReadOnlyLabelValue(
+                        '12th - Stream Other',
+                        twelfth?['streamOther']?.toString(),
+                      ),
+                      _buildReadOnlyLabelValue(
+                        '12th - Passing Year',
+                        twelfth?['passingYear']?.toString(),
+                      ),
+                      _buildReadOnlyLabelValue(
+                        '12th - Score',
+                        twelfth?['score']?.toString(),
+                      ),
+                      _buildReadOnlyLabelValue(
+                        '12th - Score Type',
+                        twelfth?['scoreType']?.toString(),
+                      ),
+                      _buildReadOnlyLabelValue(
+                        'Diploma - Branch',
+                        diploma?['branch']?.toString(),
+                      ),
+                      _buildReadOnlyLabelValue(
+                        'Diploma - University',
+                        diploma?['university']?.toString(),
+                      ),
+                      _buildReadOnlyLabelValue(
+                        'Diploma - Start Year',
+                        diploma?['startYear']?.toString(),
+                      ),
+                      _buildReadOnlyLabelValue(
+                        'Diploma - End Year',
+                        diploma?['endYear']?.toString(),
+                      ),
+                      _buildReadOnlyLabelValue(
+                        'Diploma - Score',
+                        diploma?['score']?.toString(),
+                      ),
+                      _buildReadOnlyLabelValue(
+                        'Diploma - Score Type',
+                        diploma?['scoreType']?.toString(),
+                      ),
+                      _buildReadOnlyLabelValue(
+                        'Graduation After Diploma',
+                        educationDetails['graduationAfterDiploma']?.toString(),
+                      ),
+                      _buildReadOnlyLabelValue(
+                        'Graduation - Degree',
+                        graduation?['degree']?.toString(),
+                      ),
+                      _buildReadOnlyLabelValue(
+                        'Graduation - Major',
+                        graduation?['major']?.toString(),
+                      ),
+                      _buildReadOnlyLabelValue(
+                        'Graduation - University',
+                        graduation?['university']?.toString(),
+                      ),
+                      _buildReadOnlyLabelValue(
+                        'Graduation - Start Year',
+                        graduation?['startYear']?.toString(),
+                      ),
+                      _buildReadOnlyLabelValue(
+                        'Graduation - End Year',
+                        graduation?['endYear']?.toString(),
+                      ),
+                      _buildReadOnlyLabelValue(
+                        'Graduation - Score',
+                        graduation?['score']?.toString(),
+                      ),
+                      _buildReadOnlyLabelValue(
+                        'Graduation - Score Type',
+                        graduation?['scoreType']?.toString(),
+                      ),
+                      _buildReadOnlyLabelValue(
+                        'Graduation - Currently Studying',
+                        graduation?['currentlyStudying']?.toString(),
+                      ),
+                    ]);
+                    return widgets;
+                  })(),
+                  _buildReadOnlySectionTitle('Previous Experience'),
+                  ...(() {
+                    final previousExps =
+                        _profileDataFromInitial?['previousExperiences'];
+                    if (previousExps is! List || previousExps.isEmpty) {
+                      return <Widget>[
+                        Text(
+                          'No previous experience added yet.',
+                          style: TextStyle(
+                            fontSize: 12.sp,
+                            color: Colors.blueGrey.shade500,
+                          ),
+                        ),
+                      ];
+                    }
+                    return previousExps
+                        .whereType<Map>()
+                        .take(10)
+                        .map<Widget>((e) {
+                      final company =
+                          (e['companyName'] ?? e['company'] ?? '').toString();
+                      final title =
+                          (e['jobTitle'] ?? e['role'] ?? '').toString();
+                      final from =
+                          (e['startDate'] ?? e['from'] ?? '').toString();
+                      final to = (e['endDate'] ?? e['to'] ?? '').toString();
+                      final line =
+                          '${company.trim()} • ${title.trim()} • ${from.trim()} - ${to.trim()}';
+                      if (line.trim().isEmpty) return const SizedBox.shrink();
+                      return Padding(
+                        padding: EdgeInsets.only(bottom: 6.h),
+                        child: Text(
+                          line,
+                          style: TextStyle(
+                            fontSize: 12.sp,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      );
+                    }).toList();
+                  })(),
+                  _buildReadOnlySectionTitle('Preferences'),
+                  _buildEditableOnboardingField(
+                    label: 'Preferred Role',
+                    controller: _preferredJobRoleController,
+                  ),
+                  _buildEditableOnboardingField(
+                    label: 'Preferred Industries',
+                    controller: _preferredIndustriesController,
+                  ),
+                  _buildEditableOnboardingField(
+                    label: 'Preferred Employment Type',
+                    controller: _preferredEmploymentTypeController,
+                  ),
+                  _buildEditableOnboardingField(
+                    label: 'Preferred Work Mode',
+                    controller: _preferredWorkModeController,
+                  ),
+                  _buildEditableOnboardingField(
+                    label: 'Preferred Location',
+                    controller: _preferredLocationController,
+                  ),
+                  _buildEditableOnboardingField(
+                    label: 'Expected Salary Min',
+                    controller: _expectedSalaryMinController,
+                  ),
+                  _buildEditableOnboardingField(
+                    label: 'Expected Salary Max',
+                    controller: _expectedSalaryMaxController,
+                  ),
+                  _buildEditableOnboardingField(
+                    label: 'Notice Period',
+                    controller: _noticePeriodController,
+                  ),
+                ],
               ], // end of children list
             ),
           ),
         ),
       ),
       actions: [
+        if (!widget.isRecruiter && _profileDataFromInitial != null)
+          TextButton(
+            onPressed: _isLoading
+                ? null
+                : () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => ProfileSetupOnboarding(
+                          role: widget.isRecruiter ? 'recruiter' : 'seeker',
+                          initialData:
+                              _profileDataFromInitial ?? <String, dynamic>{},
+                        ),
+                      ),
+                    );
+                  },
+            child: Text(
+              'Edit onboarding details',
+              style:
+                  TextStyle(color: Colors.blueGrey.shade700, fontSize: 12.sp),
+            ),
+          ),
         TextButton(
           onPressed: _isLoading ? null : () => Navigator.pop(context),
           child: Text(
@@ -3275,8 +3638,8 @@ class ProfileDialogState extends State<ProfileDialog> {
                           'mobileNumber': mobileNumber,
                           'city': _selectedCity ?? '',
                           'companyName': _companyNameController.text.trim(),
-                          'companyProfile': _companyProfileController.text
-                              .trim(),
+                          'companyProfile':
+                              _companyProfileController.text.trim(),
                           'designation': _designationController.text.trim(),
                           'linkedinUrl': _linkedinUrlController.text.trim(),
                           'updatedAt': FieldValue.serverTimestamp(),
@@ -3296,6 +3659,44 @@ class ProfileDialogState extends State<ProfileDialog> {
                               .replaceAll(' LPA (INR)', '')
                               .trim(),
                           'linkedinUrl': _linkedinUrlController.text.trim(),
+                          // Onboarding extras (basic info)
+                          'currentStatus':
+                              _currentStatusController.text.trim(),
+                          'jobTitle': _jobTitleController.text.trim(),
+                          'currentCompany':
+                              _currentCompanyController.text.trim(),
+                          'employmentType':
+                              _employmentTypeController.text.trim(),
+                          'totalExperienceYears':
+                              _totalExperienceYearsController.text.trim(),
+                          // Preferences
+                          'preferredJobRole':
+                              _preferredJobRoleController.text.trim(),
+                          'preferredIndustries':
+                              _preferredIndustriesController.text.trim(),
+                          'preferredEmploymentType':
+                              _preferredEmploymentTypeController.text.trim(),
+                          'preferredWorkMode':
+                              _preferredWorkModeController.text.trim(),
+                          'preferredLocation':
+                              _preferredLocationController.text.trim(),
+                          'expectedSalaryMin':
+                              _expectedSalaryMinController.text.trim(),
+                          'expectedSalaryMax':
+                              _expectedSalaryMaxController.text.trim(),
+                          'noticePeriod':
+                              _noticePeriodController.text.trim(),
+                          // Preserve complex onboarding structures if present
+                          if (_profileDataFromInitial
+                                  ?['educationDetails'] !=
+                              null)
+                            'educationDetails':
+                                _profileDataFromInitial!['educationDetails'],
+                          if (_profileDataFromInitial
+                                  ?['previousExperiences'] !=
+                              null)
+                            'previousExperiences':
+                                _profileDataFromInitial!['previousExperiences'],
                           'updatedAt': FieldValue.serverTimestamp(),
                         };
 
