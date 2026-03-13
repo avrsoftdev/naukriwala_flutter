@@ -3362,27 +3362,6 @@ class ProfileDialogState extends State<ProfileDialog> {
                 ], // end of seeker/recruiter fields (else block)
                 const SizedBox(height: 16),
                 if (!widget.isRecruiter && _profileDataFromInitial != null) ...[
-                  _buildReadOnlySectionTitle('Basic Information (Onboarding)'),
-                  _buildEditableOnboardingField(
-                    label: 'Current Status',
-                    controller: _currentStatusController,
-                  ),
-                  _buildEditableOnboardingField(
-                    label: 'Job Title',
-                    controller: _jobTitleController,
-                  ),
-                  _buildEditableOnboardingField(
-                    label: 'Current Company',
-                    controller: _currentCompanyController,
-                  ),
-                  _buildEditableOnboardingField(
-                    label: 'Employment Type',
-                    controller: _employmentTypeController,
-                  ),
-                  _buildEditableOnboardingField(
-                    label: 'Total Experience (years)',
-                    controller: _totalExperienceYearsController,
-                  ),
                   _buildReadOnlySectionTitle('Educational Details'),
                   ...(() {
                     final data = _profileDataFromInitial;

@@ -119,6 +119,8 @@ class _ProfileSetupOnboardingState extends State<ProfileSetupOnboarding> {
   final _preferredIndustriesController = TextEditingController();
 
   // Preferences / compensation (mostly for experienced)
+  final _currentCtcController = TextEditingController();
+  final _expectedCtcController = TextEditingController();
   final _expectedSalaryMinController = TextEditingController();
   final _expectedSalaryMaxController = TextEditingController();
   String? _noticePeriod;
@@ -218,7 +220,7 @@ class _ProfileSetupOnboardingState extends State<ProfileSetupOnboarding> {
   void initState() {
     super.initState();
     _isRecruiter = widget.role == 'recruiter';
-    _totalSteps = _isRecruiter ? 3 : 5;
+    _totalSteps = _isRecruiter ? 3 : 4;
     _formKeys = List.generate(_totalSteps, (_) => GlobalKey<FormState>());
     _currentJobEndDateController.text = 'Present';
     _bootstrap();
@@ -265,6 +267,8 @@ class _ProfileSetupOnboardingState extends State<ProfileSetupOnboarding> {
     _preferredRoleController.dispose();
     _preferredLocationController.dispose();
     _preferredIndustriesController.dispose();
+    _currentCtcController.dispose();
+    _expectedCtcController.dispose();
     _expectedSalaryMinController.dispose();
     _expectedSalaryMaxController.dispose();
     _companyNameController.dispose();
@@ -508,6 +512,19 @@ class _ProfileSetupOnboardingState extends State<ProfileSetupOnboarding> {
           merged['expectedSalaryMax']?.toString() ??
               merged['expectedCtcMax']?.toString() ??
               '';
+
+      _currentCtcController.text =
+          merged['currentCtc']?.toString() ??
+              merged['currentCTC']?.toString() ??
+              merged['currentSalary']?.toString() ??
+              '';
+      _expectedCtcController.text =
+          merged['expectedCtc']?.toString() ??
+              merged['expectedCTC']?.toString() ??
+              merged['expectedSalary']?.toString() ??
+              merged['expectedSalaryMin']?.toString() ??
+              '';
+
       final np = merged['noticePeriod']?.toString();
       if (np != null && _noticePeriodOptions.contains(np)) {
         _noticePeriod = np;
@@ -1183,11 +1200,6 @@ class _ProfileSetupOnboardingState extends State<ProfileSetupOnboarding> {
             ),
           ),
         ],
-      ),
-      _cardStep(
-        formKey: _formKeys[4],
-        title: 'Preferences',
-        children: _buildPreferencesChildren(),
       ),
     ];
   }

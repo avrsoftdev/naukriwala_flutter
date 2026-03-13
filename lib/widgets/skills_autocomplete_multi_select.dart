@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_typeahead/flutter_typeahead.dart';
@@ -67,25 +68,42 @@ class _SkillsAutocompleteMultiSelectState
     super.dispose();
   }
 
-  void _addSkill(String skill) {
-    final trimmed = skill.trim();
-    if (trimmed.isEmpty) return;
-    if (widget.value.contains(trimmed)) return;
-    widget.onChanged([...widget.value, trimmed]);
-    _controller.clear();
-    _focusNode.requestFocus();
-  }
-
-  void _removeSkill(String skill) {
-    widget.onChanged(widget.value.where((s) => s != skill).toList());
-  }
-
   @override
   Widget build(BuildContext context) {
     return FormField<List<String>>(
       initialValue: widget.value,
       validator: widget.validator,
       builder: (field) {
+        // Keep FormField state in-sync with external value so validation/error
+        // clears immediately when parent state changes.
+        final fieldValue = field.value ?? const <String>[];
+        if (!listEquals(fieldValue, widget.value)) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            field.didChange(widget.value);
+          });
+        }
+
+        void updateValue(List<String> next) {
+          field.didChange(next);
+          widget.onChanged(next);
+          _controller.clear();
+          _focusNode.requestFocus();
+        }
+
+        void addSkill(String skill) {
+          final trimmed = skill.trim();
+          if (trimmed.isEmpty) return;
+          final current = field.value ?? const <String>[];
+          if (current.contains(trimmed)) return;
+          updateValue([...current, trimmed]);
+        }
+
+        void removeSkill(String skill) {
+          final current = field.value ?? const <String>[];
+          updateValue(current.where((s) => s != skill).toList());
+        }
+
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -101,7 +119,9 @@ class _SkillsAutocompleteMultiSelectState
                     final q = search.trim().toLowerCase();
                     if (q.isEmpty) return const <String>[];
                     final selectedLower =
-                        widget.value.map((e) => e.toLowerCase()).toSet();
+                        (field.value ?? const <String>[])
+                            .map((e) => e.toLowerCase())
+                            .toSet();
                     return allSkills
                         .where((s) =>
                             !selectedLower.contains(s.toLowerCase()) &&
@@ -115,7 +135,7 @@ class _SkillsAutocompleteMultiSelectState
                       title: Text(suggestion),
                     );
                   },
-                  onSelected: widget.enabled ? _addSkill : null,
+                  onSelected: widget.enabled ? addSkill : null,
                   builder: (context, controller, focusNode) {
                     return TextField(
                       controller: controller,
@@ -132,15 +152,15 @@ class _SkillsAutocompleteMultiSelectState
                 );
               },
             ),
-            if (widget.value.isNotEmpty) ...[
+            if ((field.value ?? const <String>[]).isNotEmpty) ...[
               const SizedBox(height: 10),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
-                children: widget.value.map((s) {
+                children: (field.value ?? const <String>[]).map((s) {
                   return Chip(
                     label: Text(s, overflow: TextOverflow.ellipsis),
-                    onDeleted: widget.enabled ? () => _removeSkill(s) : null,
+                    onDeleted: widget.enabled ? () => removeSkill(s) : null,
                   );
                 }).toList(),
               ),
