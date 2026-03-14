@@ -663,14 +663,6 @@ class ProfileScreenState extends State<ProfileScreen> {
             row('Projects', data['projects']),
             row('Internships', data['internships']),
             row('Soft Skills', data['softSkills']),
-            row('Preferred Role', data['preferredJobRole']),
-            row('Preferred Industries', data['preferredIndustries']),
-            row('Preferred Employment Type', data['preferredEmploymentType']),
-            row('Preferred Work Mode', data['preferredWorkMode']),
-            row('Preferred Location', data['preferredLocation']),
-            row('Expected Salary Min', data['expectedSalaryMin']),
-            row('Expected Salary Max', data['expectedSalaryMax']),
-            row('Notice Period', data['noticePeriod']),
             row('GitHub URL', data['githubUrl']),
             row('Portfolio URL', data['portfolioUrl']),
             row('Resume URL', data['resumeUrl']),
@@ -1472,48 +1464,6 @@ class ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
         ],
-      ],
-    );
-  }
-
-  Widget _buildPreferencesCard() {
-    final data = _profileData ?? {};
-
-    return _buildProfileSectionCard(
-      title: 'Preferences',
-      children: [
-        _buildInfoRow(
-          'Preferred Role',
-          data['preferredJobRole']?.toString(),
-        ),
-        _buildInfoRow(
-          'Preferred Industries',
-          data['preferredIndustries']?.toString(),
-        ),
-        _buildInfoRow(
-          'Preferred Employment Type',
-          data['preferredEmploymentType']?.toString(),
-        ),
-        _buildInfoRow(
-          'Preferred Work Mode',
-          data['preferredWorkMode']?.toString(),
-        ),
-        _buildInfoRow(
-          'Preferred Location',
-          data['preferredLocation']?.toString(),
-        ),
-        _buildInfoRow(
-          'Expected Salary Min',
-          data['expectedSalaryMin']?.toString(),
-        ),
-        _buildInfoRow(
-          'Expected Salary Max',
-          data['expectedSalaryMax']?.toString(),
-        ),
-        _buildInfoRow(
-          'Notice Period',
-          data['noticePeriod']?.toString(),
-        ),
       ],
     );
   }
@@ -2438,7 +2388,6 @@ class ProfileScreenState extends State<ProfileScreen> {
                         _buildEducationalDetailsCard(),
                         _buildPreviousExperienceCard(),
                         _buildResumeCard(),
-                        _buildPreferencesCard(),
                       ],
                     ),
                   ),
@@ -2515,15 +2464,6 @@ class ProfileDialogState extends State<ProfileDialog> {
   late final TextEditingController _currentCompanyController;
   late final TextEditingController _employmentTypeController;
   late final TextEditingController _totalExperienceYearsController;
-
-  late final TextEditingController _preferredJobRoleController;
-  late final TextEditingController _preferredIndustriesController;
-  late final TextEditingController _preferredEmploymentTypeController;
-  late final TextEditingController _preferredWorkModeController;
-  late final TextEditingController _preferredLocationController;
-  late final TextEditingController _expectedSalaryMinController;
-  late final TextEditingController _expectedSalaryMaxController;
-  late final TextEditingController _noticePeriodController;
 
   // Additional onboarding fields (seeker) – editable in Edit Profile
   late final TextEditingController _industryController;
@@ -2629,31 +2569,6 @@ class ProfileDialogState extends State<ProfileDialog> {
     );
     _totalExperienceYearsController = TextEditingController(
       text: p['totalExperienceYears']?.toString() ?? '',
-    );
-
-    _preferredJobRoleController = TextEditingController(
-      text: p['preferredJobRole']?.toString() ?? '',
-    );
-    _preferredIndustriesController = TextEditingController(
-      text: p['preferredIndustries']?.toString() ?? '',
-    );
-    _preferredEmploymentTypeController = TextEditingController(
-      text: p['preferredEmploymentType']?.toString() ?? '',
-    );
-    _preferredWorkModeController = TextEditingController(
-      text: p['preferredWorkMode']?.toString() ?? '',
-    );
-    _preferredLocationController = TextEditingController(
-      text: p['preferredLocation']?.toString() ?? '',
-    );
-    _expectedSalaryMinController = TextEditingController(
-      text: p['expectedSalaryMin']?.toString() ?? '',
-    );
-    _expectedSalaryMaxController = TextEditingController(
-      text: p['expectedSalaryMax']?.toString() ?? '',
-    );
-    _noticePeriodController = TextEditingController(
-      text: p['noticePeriod']?.toString() ?? '',
     );
 
     _industryController = TextEditingController(
@@ -2828,14 +2743,6 @@ class ProfileDialogState extends State<ProfileDialog> {
     _currentCompanyController.dispose();
     _employmentTypeController.dispose();
     _totalExperienceYearsController.dispose();
-    _preferredJobRoleController.dispose();
-    _preferredIndustriesController.dispose();
-    _preferredEmploymentTypeController.dispose();
-    _preferredWorkModeController.dispose();
-    _preferredLocationController.dispose();
-    _expectedSalaryMinController.dispose();
-    _expectedSalaryMaxController.dispose();
-    _noticePeriodController.dispose();
     _industryController.dispose();
     _projectsController.dispose();
     _internshipsController.dispose();
@@ -3818,39 +3725,6 @@ class ProfileDialogState extends State<ProfileDialog> {
                       ],
                     ),
                   ),
-                  _buildReadOnlySectionTitle('Preferences'),
-                  _buildEditableOnboardingField(
-                    label: 'Preferred Role',
-                    controller: _preferredJobRoleController,
-                  ),
-                  _buildEditableOnboardingField(
-                    label: 'Preferred Industries',
-                    controller: _preferredIndustriesController,
-                  ),
-                  _buildEditableOnboardingField(
-                    label: 'Preferred Employment Type',
-                    controller: _preferredEmploymentTypeController,
-                  ),
-                  _buildEditableOnboardingField(
-                    label: 'Preferred Work Mode',
-                    controller: _preferredWorkModeController,
-                  ),
-                  _buildEditableOnboardingField(
-                    label: 'Preferred Location',
-                    controller: _preferredLocationController,
-                  ),
-                  _buildEditableOnboardingField(
-                    label: 'Expected Salary Min',
-                    controller: _expectedSalaryMinController,
-                  ),
-                  _buildEditableOnboardingField(
-                    label: 'Expected Salary Max',
-                    controller: _expectedSalaryMaxController,
-                  ),
-                  _buildEditableOnboardingField(
-                    label: 'Notice Period',
-                    controller: _noticePeriodController,
-                  ),
                 ],
               ], // end of children list
             ),
@@ -3922,23 +3796,6 @@ class ProfileDialogState extends State<ProfileDialog> {
                               _employmentTypeController.text.trim(),
                           'totalExperienceYears':
                               _totalExperienceYearsController.text.trim(),
-                          // Preferences
-                          'preferredJobRole':
-                              _preferredJobRoleController.text.trim(),
-                          'preferredIndustries':
-                              _preferredIndustriesController.text.trim(),
-                          'preferredEmploymentType':
-                              _preferredEmploymentTypeController.text.trim(),
-                          'preferredWorkMode':
-                              _preferredWorkModeController.text.trim(),
-                          'preferredLocation':
-                              _preferredLocationController.text.trim(),
-                          'expectedSalaryMin':
-                              _expectedSalaryMinController.text.trim(),
-                          'expectedSalaryMax':
-                              _expectedSalaryMaxController.text.trim(),
-                          'noticePeriod':
-                              _noticePeriodController.text.trim(),
                           // Onboarding fields edited in-place
                           'industry': _industryController.text.trim(),
                           'projects': _projectsController.text.trim(),
