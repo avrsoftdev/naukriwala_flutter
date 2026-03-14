@@ -2978,7 +2978,6 @@ class ProfileDialogState extends State<ProfileDialog> {
     );
   }
 
-  static final _dateFormat = DateTime(2020, 1, 15); // for format pattern
   static String _formatDate(DateTime d) =>
       '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
@@ -2998,15 +2997,43 @@ class ProfileDialogState extends State<ProfileDialog> {
     return null;
   }
 
+  /// Computes total experience in years from all previous experience entries
+  /// (start/end dates) and updates [_totalExperienceYearsController].
+  void _updateTotalExperienceFromPrevExperiences() {
+    double totalYears = 0.0;
+    for (final ctrls in _prevExpControllers) {
+      final startText = ctrls['startDate']?.text.trim() ?? '';
+      final endText = ctrls['endDate']?.text.trim() ?? '';
+      final start = _parseDate(startText);
+      if (start == null) continue;
+      final end = endText.isEmpty
+          ? DateTime.now()
+          : _parseDate(endText) ?? DateTime.now();
+      if (end.isBefore(start)) continue;
+      totalYears += end.difference(start).inDays / 365.25;
+    }
+    final value = totalYears < 0.1
+        ? '0'
+        : totalYears >= 12
+            ? '12+'
+            : totalYears.toStringAsFixed(1).replaceFirst(RegExp(r'\.0$'), '');
+    if (_totalExperienceYearsController.text != value) {
+      _totalExperienceYearsController.text = value;
+    }
+  }
+
   Widget _buildDatePickerField({
     required String label,
     required TextEditingController controller,
     DateTime? firstDate,
     DateTime? lastDate,
+    VoidCallback? onDatePicked,
   }) {
     return Padding(
       padding: EdgeInsets.symmetric(vertical: 4.h),
-      child: InkWell(
+      child: TextFormField(
+        controller: controller,
+        readOnly: true,
         onTap: () async {
           final initial = _parseDate(controller.text) ?? DateTime.now();
           final picked = await showDatePicker(
@@ -3016,32 +3043,28 @@ class ProfileDialogState extends State<ProfileDialog> {
             lastDate: lastDate ?? DateTime.now(),
           );
           if (picked != null && mounted) {
-            setState(() => controller.text = _formatDate(picked));
+            setState(() {
+              controller.text = _formatDate(picked);
+              onDatePicked?.call();
+            });
           }
         },
-        child: InputDecorator(
-          decoration: InputDecoration(
-            labelText: label,
-            labelStyle: TextStyle(
-              color: Colors.blueGrey.shade600,
-              fontSize: 12.sp,
-            ),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10.r),
-            ),
-            contentPadding: EdgeInsets.symmetric(
-              horizontal: 10.w,
-              vertical: 8.h,
-            ),
-            filled: true,
-            fillColor: Colors.white,
-            suffixIcon: Icon(Icons.calendar_today, size: 20.sp, color: Colors.blueGrey.shade600),
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: TextStyle(
+            color: Colors.blueGrey.shade600,
+            fontSize: 12.sp,
           ),
-          controller: controller,
-          child: Text(
-            controller.text.isEmpty ? '' : controller.text,
-            style: TextStyle(fontSize: 14.sp),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10.r),
           ),
+          contentPadding: EdgeInsets.symmetric(
+            horizontal: 10.w,
+            vertical: 8.h,
+          ),
+          filled: true,
+          fillColor: Colors.white,
+          suffixIcon: Icon(Icons.calendar_today, size: 20.sp, color: Colors.blueGrey.shade600),
         ),
       ),
     );
@@ -3736,6 +3759,7 @@ class ProfileDialogState extends State<ProfileDialog> {
                                               if (i < _previousExperiencesList.length) {
                                                 _previousExperiencesList.removeAt(i);
                                               }
+                                              _updateTotalExperienceFromPrevExperiences();
                                             });
                                           },
                                           padding: EdgeInsets.zero,
@@ -3751,13 +3775,17 @@ class ProfileDialogState extends State<ProfileDialog> {
                                       label: 'Job Title',
                                       controller: ctrls['jobTitle']!,
                                     ),
-                                    _buildEditableOnboardingField(
+                                    _buildDatePickerField(
                                       label: 'Start Date',
                                       controller: ctrls['startDate']!,
+                                      lastDate: DateTime.now(),
+                                      onDatePicked: _updateTotalExperienceFromPrevExperiences,
                                     ),
-                                    _buildEditableOnboardingField(
+                                    _buildDatePickerField(
                                       label: 'End Date',
                                       controller: ctrls['endDate']!,
+                                      lastDate: DateTime.now(),
+                                      onDatePicked: _updateTotalExperienceFromPrevExperiences,
                                     ),
                                   ],
                                 ),
