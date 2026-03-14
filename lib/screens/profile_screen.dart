@@ -7,7 +7,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_typeahead/flutter_typeahead.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:naukariwala/services/auth_service.dart';
-import 'package:naukariwala/screens/profile_setup_onboarding.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'dart:convert';
 import 'dart:io';
@@ -2526,6 +2525,61 @@ class ProfileDialogState extends State<ProfileDialog> {
   late final TextEditingController _expectedSalaryMaxController;
   late final TextEditingController _noticePeriodController;
 
+  // Additional onboarding fields (seeker) – editable in Edit Profile
+  late final TextEditingController _industryController;
+  late final TextEditingController _projectsController;
+  late final TextEditingController _internshipsController;
+  late final TextEditingController _softSkillsController;
+  late final TextEditingController _achievementsController;
+  late final TextEditingController _githubUrlController;
+  late final TextEditingController _portfolioUrlController;
+  late final TextEditingController _resumeUrlController;
+
+  // Education details (seeker) – editable in Edit Profile
+  late final TextEditingController _tenthPassingYearController;
+  late final TextEditingController _tenthScoreController;
+  String? _tenthScoreType = 'Percentage';
+  String? _afterTenthChoice;
+  late final TextEditingController _twelfthStreamOtherController;
+  late final TextEditingController _twelfthPassingYearController;
+  late final TextEditingController _twelfthScoreController;
+  String? _twelfthScoreType = 'Percentage';
+  String? _twelfthStreamChoice;
+  String? _afterTwelfthChoice;
+  late final TextEditingController _diplomaBranchController;
+  late final TextEditingController _diplomaUniversityController;
+  late final TextEditingController _diplomaStartYearController;
+  late final TextEditingController _diplomaEndYearController;
+  late final TextEditingController _diplomaScoreController;
+  String? _diplomaScoreType = 'Percentage';
+  late final TextEditingController _graduationDegreeController;
+  late final TextEditingController _graduationMajorController;
+  late final TextEditingController _graduationUniversityController;
+  late final TextEditingController _graduationStartYearController;
+  late final TextEditingController _graduationEndYearController;
+  late final TextEditingController _graduationScoreController;
+  String? _graduationScoreType = 'CGPA';
+
+  static const List<String> _afterTenthOptions = ['Class 12th', 'Diploma'];
+  static const List<String> _twelfthStreamOptions = [
+    'Science',
+    'Commerce',
+    'Arts',
+    'Other',
+  ];
+  static const List<String> _afterTwelfthOptions = [
+    'Diploma',
+    'Graduation',
+    'Other certifications',
+    'None',
+  ];
+  static const List<String> _scoreTypeOptions = ['Percentage', 'CGPA'];
+
+  // Previous experiences – list of {companyName, jobTitle, startDate, endDate}
+  List<Map<String, String>> _previousExperiencesList = [];
+  // Controllers for each previous experience row (same length as list)
+  List<Map<String, TextEditingController>> _prevExpControllers = [];
+
   @override
   void initState() {
     super.initState();
@@ -2601,6 +2655,139 @@ class ProfileDialogState extends State<ProfileDialog> {
     _noticePeriodController = TextEditingController(
       text: p['noticePeriod']?.toString() ?? '',
     );
+
+    _industryController = TextEditingController(
+      text: p['industry']?.toString() ?? '',
+    );
+    _projectsController = TextEditingController(
+      text: p['projects']?.toString() ?? '',
+    );
+    _internshipsController = TextEditingController(
+      text: p['internships']?.toString() ?? '',
+    );
+    _softSkillsController = TextEditingController(
+      text: p['softSkills']?.toString() ?? '',
+    );
+    _achievementsController = TextEditingController(
+      text: p['achievements']?.toString() ?? '',
+    );
+    _githubUrlController = TextEditingController(
+      text: p['githubUrl']?.toString() ?? '',
+    );
+    _portfolioUrlController = TextEditingController(
+      text: p['portfolioUrl']?.toString() ?? '',
+    );
+    _resumeUrlController = TextEditingController(
+      text: p['resumeUrl']?.toString() ?? '',
+    );
+
+    _tenthPassingYearController = TextEditingController();
+    _tenthScoreController = TextEditingController();
+    _twelfthStreamOtherController = TextEditingController();
+    _twelfthPassingYearController = TextEditingController();
+    _twelfthScoreController = TextEditingController();
+    _diplomaBranchController = TextEditingController();
+    _diplomaUniversityController = TextEditingController();
+    _diplomaStartYearController = TextEditingController();
+    _diplomaEndYearController = TextEditingController();
+    _diplomaScoreController = TextEditingController();
+    _graduationDegreeController = TextEditingController();
+    _graduationMajorController = TextEditingController();
+    _graduationUniversityController = TextEditingController();
+    _graduationStartYearController = TextEditingController();
+    _graduationEndYearController = TextEditingController();
+    _graduationScoreController = TextEditingController();
+
+    final edu = p['educationDetails'];
+    if (edu is Map) {
+      final tenth = edu['tenth'];
+      if (tenth is Map) {
+        _tenthPassingYearController.text =
+            tenth['passingYear']?.toString() ?? '';
+        _tenthScoreController.text = tenth['score']?.toString() ?? '';
+        final st = tenth['scoreType']?.toString();
+        if (st != null && _scoreTypeOptions.contains(st)) _tenthScoreType = st;
+      }
+      final at = edu['afterTenth']?.toString();
+      if (at != null && _afterTenthOptions.contains(at)) _afterTenthChoice = at;
+      final twelfth = edu['twelfth'];
+      if (twelfth is Map) {
+        _twelfthStreamOtherController.text =
+            twelfth['streamOther']?.toString() ?? '';
+        _twelfthPassingYearController.text =
+            twelfth['passingYear']?.toString() ?? '';
+        _twelfthScoreController.text = twelfth['score']?.toString() ?? '';
+        final st = twelfth['scoreType']?.toString();
+        if (st != null && _scoreTypeOptions.contains(st)) {
+          _twelfthScoreType = st;
+        }
+        final stream = twelfth['stream']?.toString();
+        if (stream != null &&
+            _twelfthStreamOptions.contains(stream)) {
+          _twelfthStreamChoice = stream;
+        }
+      }
+      final at12 = edu['afterTwelfth']?.toString();
+      if (at12 != null &&
+          _afterTwelfthOptions.contains(at12)) _afterTwelfthChoice = at12;
+      final diploma = edu['diploma'];
+      if (diploma is Map) {
+        _diplomaBranchController.text = diploma['branch']?.toString() ?? '';
+        _diplomaUniversityController.text =
+            diploma['university']?.toString() ?? '';
+        _diplomaStartYearController.text =
+            diploma['startYear']?.toString() ?? '';
+        _diplomaEndYearController.text = diploma['endYear']?.toString() ?? '';
+        _diplomaScoreController.text = diploma['score']?.toString() ?? '';
+        final st = diploma['scoreType']?.toString();
+        if (st != null && _scoreTypeOptions.contains(st)) {
+          _diplomaScoreType = st;
+        }
+      }
+      final graduation = edu['graduation'];
+      if (graduation is Map) {
+        _graduationDegreeController.text =
+            graduation['degree']?.toString() ?? '';
+        _graduationMajorController.text =
+            graduation['major']?.toString() ?? '';
+        _graduationUniversityController.text =
+            graduation['university']?.toString() ?? '';
+        _graduationStartYearController.text =
+            graduation['startYear']?.toString() ?? '';
+        _graduationEndYearController.text =
+            graduation['endYear']?.toString() ?? '';
+        _graduationScoreController.text =
+            graduation['score']?.toString() ?? '';
+        final st = graduation['scoreType']?.toString();
+        if (st != null && _scoreTypeOptions.contains(st)) {
+          _graduationScoreType = st;
+        }
+      }
+    }
+
+    final prevExps = p['previousExperiences'];
+    if (prevExps is List) {
+      _previousExperiencesList = prevExps
+          .whereType<Map>()
+          .map<Map<String, String>>((e) => {
+                'companyName':
+                    (e['companyName'] ?? e['company'] ?? '').toString(),
+                'jobTitle':
+                    (e['jobTitle'] ?? e['role'] ?? '').toString(),
+                'startDate':
+                    (e['startDate'] ?? e['from'] ?? '').toString(),
+                'endDate': (e['endDate'] ?? e['to'] ?? '').toString(),
+              })
+          .toList();
+    }
+    for (final entry in _previousExperiencesList) {
+      _prevExpControllers.add({
+        'companyName': TextEditingController(text: entry['companyName'] ?? ''),
+        'jobTitle': TextEditingController(text: entry['jobTitle'] ?? ''),
+        'startDate': TextEditingController(text: entry['startDate'] ?? ''),
+        'endDate': TextEditingController(text: entry['endDate'] ?? ''),
+      });
+    }
   }
 
   Future<void> _initSkills() async {
@@ -2649,6 +2836,36 @@ class ProfileDialogState extends State<ProfileDialog> {
     _expectedSalaryMinController.dispose();
     _expectedSalaryMaxController.dispose();
     _noticePeriodController.dispose();
+    _industryController.dispose();
+    _projectsController.dispose();
+    _internshipsController.dispose();
+    _softSkillsController.dispose();
+    _achievementsController.dispose();
+    _githubUrlController.dispose();
+    _portfolioUrlController.dispose();
+    _resumeUrlController.dispose();
+    _tenthPassingYearController.dispose();
+    _tenthScoreController.dispose();
+    _twelfthStreamOtherController.dispose();
+    _twelfthPassingYearController.dispose();
+    _twelfthScoreController.dispose();
+    _diplomaBranchController.dispose();
+    _diplomaUniversityController.dispose();
+    _diplomaStartYearController.dispose();
+    _diplomaEndYearController.dispose();
+    _diplomaScoreController.dispose();
+    _graduationDegreeController.dispose();
+    _graduationMajorController.dispose();
+    _graduationUniversityController.dispose();
+    _graduationStartYearController.dispose();
+    _graduationEndYearController.dispose();
+    _graduationScoreController.dispose();
+    for (final map in _prevExpControllers) {
+      map['companyName']?.dispose();
+      map['jobTitle']?.dispose();
+      map['startDate']?.dispose();
+      map['endDate']?.dispose();
+    }
     super.dispose();
   }
 
@@ -2856,6 +3073,89 @@ class ProfileDialogState extends State<ProfileDialog> {
           filled: true,
           fillColor: Colors.white,
         ),
+      ),
+    );
+  }
+
+  /// Build educationDetails map for save (same shape as onboarding).
+  Map<String, dynamic> _buildEducationDetailsPayload() {
+    final payload = <String, dynamic>{
+      'tenth': {
+        'passingYear': _tenthPassingYearController.text.trim(),
+        'scoreType': _tenthScoreType ?? 'Percentage',
+        'score': _tenthScoreController.text.trim(),
+      },
+      'afterTenth': _afterTenthChoice,
+    };
+    if (_afterTenthChoice == 'Class 12th') {
+      payload['twelfth'] = {
+        'stream': _twelfthStreamChoice,
+        'streamOther': _twelfthStreamOtherController.text.trim(),
+        'passingYear': _twelfthPassingYearController.text.trim(),
+        'scoreType': _twelfthScoreType ?? 'Percentage',
+        'score': _twelfthScoreController.text.trim(),
+      };
+      payload['afterTwelfth'] = _afterTwelfthChoice;
+    }
+    final showDiploma =
+        _afterTenthChoice == 'Diploma' ||
+        (_afterTwelfthChoice == 'Diploma');
+    if (showDiploma) {
+      payload['diploma'] = {
+        'branch': _diplomaBranchController.text.trim(),
+        'university': _diplomaUniversityController.text.trim(),
+        'startYear': _diplomaStartYearController.text.trim(),
+        'endYear': _diplomaEndYearController.text.trim(),
+        'scoreType': _diplomaScoreType ?? 'Percentage',
+        'score': _diplomaScoreController.text.trim(),
+      };
+    }
+    final showGraduation = _afterTwelfthChoice == 'Graduation';
+    if (showGraduation) {
+      payload['graduation'] = {
+        'degree': _graduationDegreeController.text.trim(),
+        'major': _graduationMajorController.text.trim(),
+        'university': _graduationUniversityController.text.trim(),
+        'startYear': _graduationStartYearController.text.trim(),
+        'endYear': _graduationEndYearController.text.trim(),
+        'scoreType': _graduationScoreType ?? 'CGPA',
+        'score': _graduationScoreController.text.trim(),
+      };
+    }
+    return payload;
+  }
+
+  Widget _buildDropdownFormField<T>({
+    required String label,
+    required T? value,
+    required List<T> items,
+    required void Function(T?) onChanged,
+    String Function(T)? itemLabel,
+  }) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 4.h),
+      child: DropdownButtonFormField<T>(
+        value: value,
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: TextStyle(color: Colors.blueGrey.shade600, fontSize: 12.sp),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10.r)),
+          contentPadding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
+          filled: true,
+          fillColor: Colors.white,
+        ),
+        isExpanded: true,
+        items: items.map((T v) {
+          return DropdownMenuItem<T>(
+            value: v,
+            child: Text(
+              itemLabel != null ? itemLabel(v) : v.toString(),
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 12.sp),
+            ),
+          );
+        }).toList(),
+        onChanged: onChanged,
       ),
     );
   }
@@ -3220,168 +3520,304 @@ class ProfileDialogState extends State<ProfileDialog> {
                   ),
                 ], // end of seeker/recruiter fields (else block)
                 const SizedBox(height: 16),
-                if (!widget.isRecruiter && _profileDataFromInitial != null) ...[
-                  _buildReadOnlySectionTitle('Educational Details'),
-                  ...(() {
-                    final data = _profileDataFromInitial;
-                    final educationDetails =
-                        data?['educationDetails'] as Map<dynamic, dynamic>?;
-                    if (educationDetails == null) return <Widget>[];
-                    final widgets = <Widget>[];
-                    final tenth =
-                        educationDetails['tenth'] as Map<dynamic, dynamic>?;
-                    final twelfth =
-                        educationDetails['twelfth'] as Map<dynamic, dynamic>?;
-                    final diploma =
-                        educationDetails['diploma'] as Map<dynamic, dynamic>?;
-                    final graduation = educationDetails['graduation']
-                        as Map<dynamic, dynamic>?;
-
-                    widgets.addAll([
-                      _buildReadOnlyLabelValue(
-                        'After 10th',
-                        educationDetails['afterTenth']?.toString(),
-                      ),
-                      _buildReadOnlyLabelValue(
-                        '10th - Passing Year',
-                        tenth?['passingYear']?.toString(),
-                      ),
-                      _buildReadOnlyLabelValue(
-                        '10th - Score',
-                        tenth?['score']?.toString(),
-                      ),
-                      _buildReadOnlyLabelValue(
-                        '10th - Score Type',
-                        tenth?['scoreType']?.toString(),
-                      ),
-                      _buildReadOnlyLabelValue(
-                        'After 12th',
-                        educationDetails['afterTwelfth']?.toString(),
-                      ),
-                      _buildReadOnlyLabelValue(
-                        '12th - Stream',
-                        twelfth?['stream']?.toString(),
-                      ),
-                      _buildReadOnlyLabelValue(
-                        '12th - Stream Other',
-                        twelfth?['streamOther']?.toString(),
-                      ),
-                      _buildReadOnlyLabelValue(
-                        '12th - Passing Year',
-                        twelfth?['passingYear']?.toString(),
-                      ),
-                      _buildReadOnlyLabelValue(
-                        '12th - Score',
-                        twelfth?['score']?.toString(),
-                      ),
-                      _buildReadOnlyLabelValue(
-                        '12th - Score Type',
-                        twelfth?['scoreType']?.toString(),
-                      ),
-                      _buildReadOnlyLabelValue(
-                        'Diploma - Branch',
-                        diploma?['branch']?.toString(),
-                      ),
-                      _buildReadOnlyLabelValue(
-                        'Diploma - University',
-                        diploma?['university']?.toString(),
-                      ),
-                      _buildReadOnlyLabelValue(
-                        'Diploma - Start Year',
-                        diploma?['startYear']?.toString(),
-                      ),
-                      _buildReadOnlyLabelValue(
-                        'Diploma - End Year',
-                        diploma?['endYear']?.toString(),
-                      ),
-                      _buildReadOnlyLabelValue(
-                        'Diploma - Score',
-                        diploma?['score']?.toString(),
-                      ),
-                      _buildReadOnlyLabelValue(
-                        'Diploma - Score Type',
-                        diploma?['scoreType']?.toString(),
-                      ),
-                      _buildReadOnlyLabelValue(
-                        'Graduation After Diploma',
-                        educationDetails['graduationAfterDiploma']?.toString(),
-                      ),
-                      _buildReadOnlyLabelValue(
-                        'Graduation - Degree',
-                        graduation?['degree']?.toString(),
-                      ),
-                      _buildReadOnlyLabelValue(
-                        'Graduation - Major',
-                        graduation?['major']?.toString(),
-                      ),
-                      _buildReadOnlyLabelValue(
-                        'Graduation - University',
-                        graduation?['university']?.toString(),
-                      ),
-                      _buildReadOnlyLabelValue(
-                        'Graduation - Start Year',
-                        graduation?['startYear']?.toString(),
-                      ),
-                      _buildReadOnlyLabelValue(
-                        'Graduation - End Year',
-                        graduation?['endYear']?.toString(),
-                      ),
-                      _buildReadOnlyLabelValue(
-                        'Graduation - Score',
-                        graduation?['score']?.toString(),
-                      ),
-                      _buildReadOnlyLabelValue(
-                        'Graduation - Score Type',
-                        graduation?['scoreType']?.toString(),
-                      ),
-                      _buildReadOnlyLabelValue(
-                        'Graduation - Currently Studying',
-                        graduation?['currentlyStudying']?.toString(),
-                      ),
-                    ]);
-                    return widgets;
-                  })(),
-                  _buildReadOnlySectionTitle('Previous Experience'),
-                  ...(() {
-                    final previousExps =
-                        _profileDataFromInitial?['previousExperiences'];
-                    if (previousExps is! List || previousExps.isEmpty) {
-                      return <Widget>[
-                        Text(
-                          'No previous experience added yet.',
-                          style: TextStyle(
-                            fontSize: 12.sp,
-                            color: Colors.blueGrey.shade500,
-                          ),
+                if (!widget.isRecruiter) ...[
+                  _buildReadOnlySectionTitle('Career details'),
+                  _buildEditableOnboardingField(
+                    label: 'Current Status',
+                    controller: _currentStatusController,
+                  ),
+                  _buildEditableOnboardingField(
+                    label: 'Job Title',
+                    controller: _jobTitleController,
+                  ),
+                  _buildEditableOnboardingField(
+                    label: 'Current Company',
+                    controller: _currentCompanyController,
+                  ),
+                  _buildEditableOnboardingField(
+                    label: 'Employment Type',
+                    controller: _employmentTypeController,
+                  ),
+                  _buildEditableOnboardingField(
+                    label: 'Total Experience (years)',
+                    controller: _totalExperienceYearsController,
+                  ),
+                  _buildEditableOnboardingField(
+                    label: 'Industry',
+                    controller: _industryController,
+                  ),
+                  Theme(
+                    data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                    child: ExpansionTile(
+                      initiallyExpanded: false,
+                      title: Text(
+                        'Education details',
+                        style: TextStyle(
+                          fontSize: 13.sp,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.blueGrey.shade900,
                         ),
-                      ];
-                    }
-                    return previousExps
-                        .whereType<Map>()
-                        .take(10)
-                        .map<Widget>((e) {
-                      final company =
-                          (e['companyName'] ?? e['company'] ?? '').toString();
-                      final title =
-                          (e['jobTitle'] ?? e['role'] ?? '').toString();
-                      final from =
-                          (e['startDate'] ?? e['from'] ?? '').toString();
-                      final to = (e['endDate'] ?? e['to'] ?? '').toString();
-                      final line =
-                          '${company.trim()} • ${title.trim()} • ${from.trim()} - ${to.trim()}';
-                      if (line.trim().isEmpty) return const SizedBox.shrink();
-                      return Padding(
-                        padding: EdgeInsets.only(bottom: 6.h),
-                        child: Text(
-                          line,
-                          style: TextStyle(
-                            fontSize: 12.sp,
-                            color: Colors.black87,
-                          ),
+                      ),
+                      children: [
+                        _buildDropdownFormField<String>(
+                          label: 'After 10th',
+                          value: _afterTenthChoice,
+                          items: _afterTenthOptions,
+                          onChanged: (v) => setState(() => _afterTenthChoice = v),
                         ),
-                      );
-                    }).toList();
-                  })(),
+                        _buildEditableOnboardingField(
+                          label: '10th - Passing Year',
+                          controller: _tenthPassingYearController,
+                        ),
+                        _buildEditableOnboardingField(
+                          label: '10th - Score',
+                          controller: _tenthScoreController,
+                        ),
+                        _buildDropdownFormField<String>(
+                          label: '10th - Score Type',
+                          value: _tenthScoreType,
+                          items: _scoreTypeOptions,
+                          onChanged: (v) => setState(() => _tenthScoreType = v),
+                        ),
+                        if (_afterTenthChoice == 'Class 12th') ...[
+                          _buildDropdownFormField<String>(
+                            label: '12th - Stream',
+                            value: _twelfthStreamChoice,
+                            items: _twelfthStreamOptions,
+                            onChanged: (v) => setState(() => _twelfthStreamChoice = v),
+                          ),
+                          _buildEditableOnboardingField(
+                            label: '12th - Stream Other',
+                            controller: _twelfthStreamOtherController,
+                          ),
+                          _buildEditableOnboardingField(
+                            label: '12th - Passing Year',
+                            controller: _twelfthPassingYearController,
+                          ),
+                          _buildEditableOnboardingField(
+                            label: '12th - Score',
+                            controller: _twelfthScoreController,
+                          ),
+                          _buildDropdownFormField<String>(
+                            label: '12th - Score Type',
+                            value: _twelfthScoreType,
+                            items: _scoreTypeOptions,
+                            onChanged: (v) => setState(() => _twelfthScoreType = v),
+                          ),
+                          _buildDropdownFormField<String>(
+                            label: 'After 12th',
+                            value: _afterTwelfthChoice,
+                            items: _afterTwelfthOptions,
+                            onChanged: (v) => setState(() => _afterTwelfthChoice = v),
+                          ),
+                        ],
+                        if (_afterTenthChoice == 'Diploma' ||
+                            _afterTwelfthChoice == 'Diploma') ...[
+                          _buildEditableOnboardingField(
+                            label: 'Diploma - Branch',
+                            controller: _diplomaBranchController,
+                          ),
+                          _buildEditableOnboardingField(
+                            label: 'Diploma - University',
+                            controller: _diplomaUniversityController,
+                          ),
+                          _buildEditableOnboardingField(
+                            label: 'Diploma - Start Year',
+                            controller: _diplomaStartYearController,
+                          ),
+                          _buildEditableOnboardingField(
+                            label: 'Diploma - End Year',
+                            controller: _diplomaEndYearController,
+                          ),
+                          _buildEditableOnboardingField(
+                            label: 'Diploma - Score',
+                            controller: _diplomaScoreController,
+                          ),
+                          _buildDropdownFormField<String>(
+                            label: 'Diploma - Score Type',
+                            value: _diplomaScoreType,
+                            items: _scoreTypeOptions,
+                            onChanged: (v) => setState(() => _diplomaScoreType = v),
+                          ),
+                        ],
+                        if (_afterTwelfthChoice == 'Graduation') ...[
+                          _buildEditableOnboardingField(
+                            label: 'Graduation - Degree',
+                            controller: _graduationDegreeController,
+                          ),
+                          _buildEditableOnboardingField(
+                            label: 'Graduation - Major',
+                            controller: _graduationMajorController,
+                          ),
+                          _buildEditableOnboardingField(
+                            label: 'Graduation - University',
+                            controller: _graduationUniversityController,
+                          ),
+                          _buildEditableOnboardingField(
+                            label: 'Graduation - Start Year',
+                            controller: _graduationStartYearController,
+                          ),
+                          _buildEditableOnboardingField(
+                            label: 'Graduation - End Year',
+                            controller: _graduationEndYearController,
+                          ),
+                          _buildEditableOnboardingField(
+                            label: 'Graduation - Score',
+                            controller: _graduationScoreController,
+                          ),
+                          _buildDropdownFormField<String>(
+                            label: 'Graduation - Score Type',
+                            value: _graduationScoreType,
+                            items: _scoreTypeOptions,
+                            onChanged: (v) => setState(() => _graduationScoreType = v),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  Theme(
+                    data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                    child: ExpansionTile(
+                      initiallyExpanded: false,
+                      title: Text(
+                        'Projects, links & more',
+                        style: TextStyle(
+                          fontSize: 13.sp,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.blueGrey.shade900,
+                        ),
+                      ),
+                      children: [
+                        _buildEditableOnboardingField(
+                          label: 'Projects',
+                          controller: _projectsController,
+                        ),
+                        _buildEditableOnboardingField(
+                          label: 'Internships',
+                          controller: _internshipsController,
+                        ),
+                        _buildEditableOnboardingField(
+                          label: 'Soft skills',
+                          controller: _softSkillsController,
+                        ),
+                        _buildEditableOnboardingField(
+                          label: 'Achievements',
+                          controller: _achievementsController,
+                        ),
+                        _buildEditableOnboardingField(
+                          label: 'GitHub URL',
+                          controller: _githubUrlController,
+                        ),
+                        _buildEditableOnboardingField(
+                          label: 'Portfolio URL',
+                          controller: _portfolioUrlController,
+                        ),
+                        _buildEditableOnboardingField(
+                          label: 'Resume URL',
+                          controller: _resumeUrlController,
+                        ),
+                      ],
+                    ),
+                  ),
+                  Theme(
+                    data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                    child: ExpansionTile(
+                      initiallyExpanded: false,
+                      title: Text(
+                        'Previous experience',
+                        style: TextStyle(
+                          fontSize: 13.sp,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.blueGrey.shade900,
+                        ),
+                      ),
+                      children: [
+                        ...List.generate(_prevExpControllers.length, (i) {
+                          final ctrls = _prevExpControllers[i];
+                          return Padding(
+                            padding: EdgeInsets.only(bottom: 8.h),
+                            child: Card(
+                              margin: EdgeInsets.zero,
+                              child: Padding(
+                                padding: EdgeInsets.all(8.w),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          'Experience ${i + 1}',
+                                          style: TextStyle(
+                                            fontSize: 12.sp,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                        IconButton(
+                                          icon: Icon(Icons.remove_circle_outline,
+                                              size: 20.sp, color: Colors.red),
+                                          onPressed: () {
+                                            setState(() {
+                                              final removed = _prevExpControllers.removeAt(i);
+                                              removed['companyName']?.dispose();
+                                              removed['jobTitle']?.dispose();
+                                              removed['startDate']?.dispose();
+                                              removed['endDate']?.dispose();
+                                              if (i < _previousExperiencesList.length) {
+                                                _previousExperiencesList.removeAt(i);
+                                              }
+                                            });
+                                          },
+                                          padding: EdgeInsets.zero,
+                                          constraints: BoxConstraints(),
+                                        ),
+                                      ],
+                                    ),
+                                    _buildEditableOnboardingField(
+                                      label: 'Company',
+                                      controller: ctrls['companyName']!,
+                                    ),
+                                    _buildEditableOnboardingField(
+                                      label: 'Job Title',
+                                      controller: ctrls['jobTitle']!,
+                                    ),
+                                    _buildEditableOnboardingField(
+                                      label: 'Start Date',
+                                      controller: ctrls['startDate']!,
+                                    ),
+                                    _buildEditableOnboardingField(
+                                      label: 'End Date',
+                                      controller: ctrls['endDate']!,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        }),
+                        TextButton.icon(
+                          onPressed: () {
+                            setState(() {
+                              _previousExperiencesList.add({
+                                'companyName': '',
+                                'jobTitle': '',
+                                'startDate': '',
+                                'endDate': '',
+                              });
+                              _prevExpControllers.add({
+                                'companyName': TextEditingController(),
+                                'jobTitle': TextEditingController(),
+                                'startDate': TextEditingController(),
+                                'endDate': TextEditingController(),
+                              });
+                            });
+                          },
+                          icon: Icon(Icons.add, size: 18.sp),
+                          label: Text('Add experience'),
+                        ),
+                      ],
+                    ),
+                  ),
                   _buildReadOnlySectionTitle('Preferences'),
                   _buildEditableOnboardingField(
                     label: 'Preferred Role',
@@ -3422,27 +3858,6 @@ class ProfileDialogState extends State<ProfileDialog> {
         ),
       ),
       actions: [
-        if (!widget.isRecruiter && _profileDataFromInitial != null)
-          TextButton(
-            onPressed: _isLoading
-                ? null
-                : () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => ProfileSetupOnboarding(
-                          role: widget.isRecruiter ? 'recruiter' : 'seeker',
-                          initialData:
-                              _profileDataFromInitial ?? <String, dynamic>{},
-                        ),
-                      ),
-                    );
-                  },
-            child: Text(
-              'Edit onboarding details',
-              style:
-                  TextStyle(color: Colors.blueGrey.shade700, fontSize: 12.sp),
-            ),
-          ),
         TextButton(
           onPressed: _isLoading ? null : () => Navigator.pop(context),
           child: Text(
@@ -3524,17 +3939,24 @@ class ProfileDialogState extends State<ProfileDialog> {
                               _expectedSalaryMaxController.text.trim(),
                           'noticePeriod':
                               _noticePeriodController.text.trim(),
-                          // Preserve complex onboarding structures if present
-                          if (_profileDataFromInitial
-                                  ?['educationDetails'] !=
-                              null)
-                            'educationDetails':
-                                _profileDataFromInitial!['educationDetails'],
-                          if (_profileDataFromInitial
-                                  ?['previousExperiences'] !=
-                              null)
-                            'previousExperiences':
-                                _profileDataFromInitial!['previousExperiences'],
+                          // Onboarding fields edited in-place
+                          'industry': _industryController.text.trim(),
+                          'projects': _projectsController.text.trim(),
+                          'internships': _internshipsController.text.trim(),
+                          'softSkills': _softSkillsController.text.trim(),
+                          'achievements': _achievementsController.text.trim(),
+                          'githubUrl': _githubUrlController.text.trim(),
+                          'portfolioUrl': _portfolioUrlController.text.trim(),
+                          'resumeUrl': _resumeUrlController.text.trim(),
+                          'educationDetails': _buildEducationDetailsPayload(),
+                          'previousExperiences': _prevExpControllers
+                              .map((c) => {
+                                    'companyName': c['companyName']!.text.trim(),
+                                    'jobTitle': c['jobTitle']!.text.trim(),
+                                    'startDate': c['startDate']!.text.trim(),
+                                    'endDate': c['endDate']!.text.trim(),
+                                  })
+                              .toList(),
                           'updatedAt': FieldValue.serverTimestamp(),
                         };
 
