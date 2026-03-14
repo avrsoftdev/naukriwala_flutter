@@ -94,14 +94,7 @@ class ProfileScreenState extends State<ProfileScreen> {
     '12+ years',
   ];
 
-  final List<String> specializationOptions = [
-    'Others',
-    'IT/Software',
-    'Business / Finance / Management',
-    'Design / Media / Communication',
-    'Medicine / Healthcare / Pharma',
-    'Engineering',
-  ];
+  List<String> get specializationOptions => _authService.specializationOptions;
 
   final List<String> educationOptions = [
     'Secondary (Class 10)',
@@ -396,10 +389,8 @@ class ProfileScreenState extends State<ProfileScreen> {
     'Other',
   ];
 
-  final Map<String, List<String>> skillsBySpecialization = {
-    'Others': ['Communication Skills', 'Problem Solving', 'Teamwork'],
-    'IT/Software': ['Java', 'Python', 'Dart', 'Flutter', 'React', 'Node.js'],
-  };
+  Map<String, List<String>> get skillsBySpecialization =>
+      _authService.skillsBySpecialization;
 
   bool isLoading = false;
   String? errorMessage;
@@ -3214,138 +3205,6 @@ class ProfileDialogState extends State<ProfileDialog> {
                     ),
                   ),
                   _buildSkillsAutocomplete(),
-                  Padding(
-                    padding: EdgeInsets.symmetric(vertical: 8.h),
-                    child: Container(
-                      constraints: BoxConstraints(maxWidth: 300.w),
-                      child: DropdownButtonFormField<String>(
-                        initialValue:
-                            widget.educationOptions.contains(_education)
-                                ? _education
-                                : null,
-                        decoration: InputDecoration(
-                          labelText: 'Education',
-                          labelStyle: TextStyle(
-                            color: Colors.grey,
-                            fontSize: 12.sp,
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderSide:
-                                BorderSide(color: Colors.grey.shade400),
-                            borderRadius: BorderRadius.circular(12.r),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderSide: BorderSide(
-                              color: Colors.teal,
-                              width: 2.w,
-                            ),
-                            borderRadius: BorderRadius.circular(12.r),
-                          ),
-                          filled: true,
-                          fillColor: Colors.white,
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 12.w,
-                            vertical: 10.h,
-                          ),
-                        ),
-                        isExpanded: true,
-                        menuMaxHeight: 300.h,
-                        items:
-                            widget.educationOptions.map((String education) {
-                          return DropdownMenuItem<String>(
-                            value: education,
-                            child: Container(
-                              constraints: BoxConstraints(maxWidth: 250.w),
-                              child: Text(
-                                education,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: Colors.black87,
-                                  fontSize: 12.sp,
-                                ),
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                        onChanged: (value) {
-                          setState(() {
-                            _education = value;
-                            _errorMessage = null;
-                          });
-                        },
-                        validator: (value) =>
-                            value == null ? 'Education is required' : null,
-                      ),
-                    ),
-                  ),
-                  Padding(
-                    padding: EdgeInsets.symmetric(vertical: 8.h),
-                    child: Container(
-                      constraints: BoxConstraints(maxWidth: 300.w),
-                      child: DropdownButtonFormField<String>(
-                        initialValue:
-                            _experienceController.text.isNotEmpty &&
-                                    widget.experienceOptions.contains(
-                                      _experienceController.text,
-                                    )
-                                ? _experienceController.text
-                                : null,
-                        decoration: InputDecoration(
-                          labelText: 'Experience',
-                          labelStyle: TextStyle(
-                            color: Colors.grey,
-                            fontSize: 12.sp,
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderSide:
-                                BorderSide(color: Colors.grey.shade400),
-                            borderRadius: BorderRadius.circular(12.r),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderSide: BorderSide(
-                              color: Colors.teal,
-                              width: 2.w,
-                            ),
-                            borderRadius: BorderRadius.circular(12.r),
-                          ),
-                          filled: true,
-                          fillColor: Colors.white,
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 12.w,
-                            vertical: 10.h,
-                          ),
-                        ),
-                        isExpanded: true,
-                        menuMaxHeight: 300.h,
-                        items: widget.experienceOptions.map((
-                          String experience,
-                        ) {
-                          return DropdownMenuItem<String>(
-                            value: experience,
-                            child: Container(
-                              constraints: BoxConstraints(maxWidth: 250.w),
-                              child: Text(
-                                experience,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: Colors.black87,
-                                  fontSize: 12.sp,
-                                ),
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                        onChanged: (value) {
-                          setState(() {
-                            _experienceController.text = value ?? '';
-                            _errorMessage = null;
-                          });
-                        },
-                        validator: (value) =>
-                            value == null ? 'Experience is required' : null,
-                      ),
-                    ),
-                  ),
                   _buildTextField(
                     'Current CTC',
                     controller: _currentCtcController,

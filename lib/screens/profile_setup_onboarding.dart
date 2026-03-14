@@ -906,6 +906,8 @@ class _ProfileSetupOnboardingState extends State<ProfileSetupOnboarding> {
         'portfolioUrl': _portfolioUrlController.text.trim(),
         'specialization': _selectedSpecialization,
         'skills': List<String>.from(_selectedSkills),
+        'currentCtc': _currentCtcController.text.trim(),
+        'expectedCtc': _expectedCtcController.text.trim(),
         if (_resumeUrl != null) 'resumeUrl': _resumeUrl,
 
         // Preferences
@@ -1649,6 +1651,26 @@ class _ProfileSetupOnboardingState extends State<ProfileSetupOnboarding> {
               style: TextStyle(fontSize: 12.sp, color: Colors.red.shade700),
             ),
           ),
+        SizedBox(height: 12.h),
+        TextFormField(
+          controller: _currentCtcController,
+          textInputAction: TextInputAction.next,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(
+            labelText: 'Current CTC (optional)',
+            hintText: 'e.g. 500000 or 5 LPA',
+          ),
+        ),
+        SizedBox(height: 10.h),
+        TextFormField(
+          controller: _expectedCtcController,
+          textInputAction: TextInputAction.done,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(
+            labelText: 'Expected CTC (optional)',
+            hintText: 'e.g. 800000 or 8 LPA',
+          ),
+        ),
       ],
     ];
   }
