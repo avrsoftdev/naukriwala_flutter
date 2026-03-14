@@ -1162,7 +1162,11 @@ class ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildInfoRow(String label, String? value) {
     final display = (value ?? '').toString().trim();
-    final isEmpty = display.isEmpty || display.toLowerCase() == 'null';
+    final isEmpty = display.isEmpty ||
+        display.toLowerCase() == 'null' ||
+        display.toLowerCase() == 'not provided';
+    // Only show rows that have a value; hide "Not provided" fields
+    if (isEmpty) return const SizedBox.shrink();
 
     return Padding(
       padding: EdgeInsets.only(bottom: 8.h),
@@ -1186,7 +1190,7 @@ class ProfileScreenState extends State<ProfileScreen> {
               vertical: 8.h,
             ),
             decoration: BoxDecoration(
-              color: isEmpty ? Colors.grey.shade50 : Colors.grey.shade100,
+              color: Colors.grey.shade100,
               borderRadius: BorderRadius.circular(12.r),
               border: Border.all(
                 color: Colors.grey.shade300,
@@ -1194,11 +1198,11 @@ class ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
             child: Text(
-              isEmpty ? 'Not provided' : display,
+              display,
               style: TextStyle(
                 fontSize: 12.sp,
-                color: isEmpty ? Colors.blueGrey.shade400 : Colors.black87,
-                fontWeight: isEmpty ? FontWeight.w400 : FontWeight.w500,
+                color: Colors.black87,
+                fontWeight: FontWeight.w500,
               ),
             ),
           ),
