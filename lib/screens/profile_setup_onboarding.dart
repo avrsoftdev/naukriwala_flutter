@@ -13,6 +13,7 @@ import 'package:naukariwala/screens/recruiter_dashboard.dart';
 import 'package:naukariwala/screens/seeker_dashboard.dart';
 import 'package:naukariwala/screens/unified_screen.dart';
 import 'package:naukariwala/services/auth_service.dart';
+import 'package:naukariwala/widgets/address_autocomplete_field.dart';
 import 'package:naukariwala/widgets/skills_autocomplete_multi_select.dart';
 
 class ProfileSetupOnboarding extends StatefulWidget {
@@ -1125,12 +1126,11 @@ class _ProfileSetupOnboardingState extends State<ProfileSetupOnboarding> {
             validator: _validatePhone,
           ),
           SizedBox(height: 10.h),
-          TextFormField(
+          AddressAutocompleteField(
             controller: _locationController,
+            labelText: 'Address (India)',
+            helperText: 'Start typing to see location suggestions',
             textInputAction: TextInputAction.done,
-            decoration: const InputDecoration(
-              labelText: 'Current location (City)',
-            ),
             validator: (v) =>
                 (v == null || v.trim().isEmpty) ? 'Required' : null,
           ),
@@ -2600,12 +2600,11 @@ class _ProfileSetupOnboardingState extends State<ProfileSetupOnboarding> {
             ),
           ),
           SizedBox(height: 10.h),
-          TextFormField(
+          AddressAutocompleteField(
             controller: _companyHqController,
+            labelText: 'Headquarters address (India)',
+            helperText: 'Start typing to see location suggestions',
             textInputAction: TextInputAction.next,
-            decoration: const InputDecoration(
-              labelText: 'Headquarters location (City)',
-            ),
             validator: (v) =>
                 (v == null || v.trim().isEmpty) ? 'Required' : null,
           ),
