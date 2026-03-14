@@ -398,11 +398,12 @@ class AuthService {
                 .where((s) => s.isNotEmpty)
                 .toList()
             : normalizedData['skills'] as List<dynamic>? ?? [];
+        final skillsList = skills.cast<String>();
         final validSkills = skillsBySpecialization[normalizedData['specialization']] ?? skillsBySpecialization['Others']!;
-        normalizedData['skills'] = skills
-            .cast<String>()
-            .where((skill) => validSkills.contains(skill))
-            .toList();
+        final filtered = skillsList.where((skill) => validSkills.contains(skill)).toList();
+        // Preserve user-selected skills from onboarding if filter would remove them all
+        // (onboarding uses skills.json which may include skills not in skillsBySpecialization)
+        normalizedData['skills'] = filtered.isNotEmpty ? filtered : skillsList;
         if (normalizedData['skills'].isEmpty) {
           dev.log("[2025-10-10 00:35 IST] No valid skills provided for UID: $uid, specialization: ${normalizedData['specialization']}", name: 'AuthService');
         }
