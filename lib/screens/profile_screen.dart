@@ -2389,7 +2389,6 @@ class ProfileScreenState extends State<ProfileScreen> {
                         _buildBasicInformationCard(),
                         _buildEducationalDetailsCard(),
                         _buildPreviousExperienceCard(),
-                        _buildResumeCard(),
                       ],
                     ),
                   ),
