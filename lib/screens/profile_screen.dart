@@ -946,12 +946,6 @@ class ProfileScreenState extends State<ProfileScreen> {
         setDialogState(() => errorMessage = 'Experience is required');
         return;
       }
-      if (!experienceOptions.contains(profileData['experience'].trim())) {
-        setDialogState(
-          () => errorMessage = 'Please select a valid experience level',
-        );
-        return;
-      }
       if (profileData['specialization'] == null) {
         setDialogState(() => errorMessage = 'Specialization is required');
         return;
@@ -2979,6 +2973,75 @@ class ProfileDialogState extends State<ProfileDialog> {
           ),
           filled: true,
           fillColor: Colors.white,
+        ),
+      ),
+    );
+  }
+
+  static final _dateFormat = DateTime(2020, 1, 15); // for format pattern
+  static String _formatDate(DateTime d) =>
+      '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+  DateTime? _parseDate(String text) {
+    final t = text.trim();
+    if (t.isEmpty) return null;
+    final parsed = DateTime.tryParse(t);
+    if (parsed != null) return parsed;
+    final parts = t.split(RegExp(r'[/\-.,\s]+'));
+    if (parts.length >= 3) {
+      final y = int.tryParse(parts.length == 3 ? parts[2] : parts[0]);
+      final m = int.tryParse(parts[0].length <= 2 ? parts[0] : parts[1]);
+      final day = int.tryParse(parts[1].length <= 2 ? parts[1] : parts[2]);
+      if (y != null && m != null && day != null && m >= 1 && m <= 12 && day >= 1 && day <= 31)
+        return DateTime(y, m, day);
+    }
+    return null;
+  }
+
+  Widget _buildDatePickerField({
+    required String label,
+    required TextEditingController controller,
+    DateTime? firstDate,
+    DateTime? lastDate,
+  }) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 4.h),
+      child: InkWell(
+        onTap: () async {
+          final initial = _parseDate(controller.text) ?? DateTime.now();
+          final picked = await showDatePicker(
+            context: context,
+            initialDate: initial,
+            firstDate: firstDate ?? DateTime(1950, 1, 1),
+            lastDate: lastDate ?? DateTime.now(),
+          );
+          if (picked != null && mounted) {
+            setState(() => controller.text = _formatDate(picked));
+          }
+        },
+        child: InputDecorator(
+          decoration: InputDecoration(
+            labelText: label,
+            labelStyle: TextStyle(
+              color: Colors.blueGrey.shade600,
+              fontSize: 12.sp,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10.r),
+            ),
+            contentPadding: EdgeInsets.symmetric(
+              horizontal: 10.w,
+              vertical: 8.h,
+            ),
+            filled: true,
+            fillColor: Colors.white,
+            suffixIcon: Icon(Icons.calendar_today, size: 20.sp, color: Colors.blueGrey.shade600),
+          ),
+          controller: controller,
+          child: Text(
+            controller.text.isEmpty ? '' : controller.text,
+            style: TextStyle(fontSize: 14.sp),
+          ),
         ),
       ),
     );
