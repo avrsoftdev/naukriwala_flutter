@@ -8,11 +8,13 @@ import 'package:flutter_typeahead/flutter_typeahead.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:naukariwala/services/auth_service.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:naukariwala/widgets/address_autocomplete_field.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:developer' as dev;
 
 Future<List<String>> _loadSkillsFromAsset() async {
+
   final raw = await rootBundle.loadString('assets/data/skills.json');
   final decoded = jsonDecode(raw);
 
@@ -491,8 +493,8 @@ class ProfileScreenState extends State<ProfileScreen> {
               );
             }
             final city = data['city']?.toString().trim();
-            _selectedCity = city != null && cityOptions.contains(city) ? city : null;
-            _cityController.text = _selectedCity ?? '';
+            _selectedCity = city != null && cityOptions.contains(city) ? city : city;
+            _cityController.text = city ?? '';
             _isProfileUpdated =
                 data['name'] != null &&
                 data['name'].toString().trim().isNotEmpty &&
@@ -1804,6 +1806,8 @@ class ProfileScreenState extends State<ProfileScreen> {
       ),
     );
   }
+  
+
 
   Widget _buildCityAutocompleteField() {
     return Padding(
@@ -2439,6 +2443,7 @@ class ProfileDialogState extends State<ProfileDialog> {
   late final TextEditingController _expectedCtcController;
   late final TextEditingController _linkedinUrlController;
   late final TextEditingController _cityController;
+  late final TextEditingController _addressController;
   String? _specialization;
   String? _education;
   String? _selectedCity;
@@ -2545,6 +2550,9 @@ class ProfileDialogState extends State<ProfileDialog> {
       text: widget.initialData['linkedinUrl'],
     );
     _cityController = TextEditingController(
+      text: widget.initialData['city'],
+    );
+    _addressController = TextEditingController(
       text: widget.initialData['city'],
     );
     _specialization = widget.initialData['specialization'];
@@ -2734,6 +2742,7 @@ class ProfileDialogState extends State<ProfileDialog> {
     _expectedCtcController.dispose();
     _linkedinUrlController.dispose();
     _cityController.dispose();
+    _addressController.dispose();
     _skillsSearchController.dispose();
     _skillsSearchFocusNode.dispose();
     _currentStatusController.dispose();
@@ -3401,7 +3410,6 @@ class ProfileDialogState extends State<ProfileDialog> {
                         ? 'Name is required'
                         : null,
                   ),
-                  _buildCityAutocompleteField(),
                   _buildTextField(
                     'Company Name',
                     controller: _companyNameController,
@@ -3418,6 +3426,57 @@ class ProfileDialogState extends State<ProfileDialog> {
                     'Designation',
                     controller: _designationController,
                   ),
+                  Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8.h),
+                    child: Container(
+                      constraints: BoxConstraints(maxWidth: 300.w),
+                      child: AddressAutocompleteField(
+                        controller: _addressController,
+                        labelText: 'Headquarters address (India)',
+                        helperText: 'Start typing to see location suggestions',
+                        textInputAction: TextInputAction.next,
+                        validator: (v) =>
+                            (v == null || v.trim().isEmpty) ? 'Required' : null,
+                        decoration: InputDecoration(
+                          labelStyle:
+                              TextStyle(color: Colors.grey, fontSize: 12.sp),
+                          enabledBorder: OutlineInputBorder(
+                            borderSide:
+                                BorderSide(color: Colors.grey.shade400),
+                            borderRadius: BorderRadius.circular(12.r),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderSide: BorderSide(
+                              color: Colors.teal,
+                              width: 2.w,
+                            ),
+                            borderRadius: BorderRadius.circular(12.r),
+                          ),
+                          errorBorder: OutlineInputBorder(
+                            borderSide:
+                                BorderSide(color: Colors.red, width: 2.w),
+                            borderRadius: BorderRadius.circular(12.r),
+                          ),
+                          focusedErrorBorder: OutlineInputBorder(
+                            borderSide:
+                                BorderSide(color: Colors.red, width: 2.w),
+                            borderRadius: BorderRadius.circular(12.r),
+                          ),
+                          errorStyle: TextStyle(
+                            color: Colors.red.shade700,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 11.sp,
+                          ),
+                          filled: true,
+                          fillColor: Colors.white,
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 12.w,
+                            vertical: 10.h,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                   _buildTextField(
                     'LinkedIn URL',
                     controller: _linkedinUrlController,
@@ -3433,7 +3492,57 @@ class ProfileDialogState extends State<ProfileDialog> {
                             ? 'Name is required'
                             : null,
                   ),
-                  _buildCityAutocompleteField(),
+                  Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8.h),
+                    child: Container(
+                      constraints: BoxConstraints(maxWidth: 300.w),
+                      child: AddressAutocompleteField(
+                        controller: _addressController,
+                        labelText: 'Address (India)',
+                        helperText: 'Start typing to see location suggestions',
+                        textInputAction: TextInputAction.next,
+                        validator: (v) =>
+                            (v == null || v.trim().isEmpty) ? 'Required' : null,
+                        decoration: InputDecoration(
+                          labelStyle:
+                              TextStyle(color: Colors.grey, fontSize: 12.sp),
+                          enabledBorder: OutlineInputBorder(
+                            borderSide:
+                                BorderSide(color: Colors.grey.shade400),
+                            borderRadius: BorderRadius.circular(12.r),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderSide: BorderSide(
+                              color: Colors.teal,
+                              width: 2.w,
+                            ),
+                            borderRadius: BorderRadius.circular(12.r),
+                          ),
+                          errorBorder: OutlineInputBorder(
+                            borderSide:
+                                BorderSide(color: Colors.red, width: 2.w),
+                            borderRadius: BorderRadius.circular(12.r),
+                          ),
+                          focusedErrorBorder: OutlineInputBorder(
+                            borderSide:
+                                BorderSide(color: Colors.red, width: 2.w),
+                            borderRadius: BorderRadius.circular(12.r),
+                          ),
+                          errorStyle: TextStyle(
+                            color: Colors.red.shade700,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 11.sp,
+                          ),
+                          filled: true,
+                          fillColor: Colors.white,
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 12.w,
+                            vertical: 10.h,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                   Padding(
                     padding: EdgeInsets.symmetric(vertical: 8.h),
                     child: Container(
@@ -3858,7 +3967,7 @@ class ProfileDialogState extends State<ProfileDialog> {
                       ? {
                           'name': _nameController.text.trim(),
                           'mobileNumber': mobileNumber,
-                          'city': _selectedCity ?? '',
+                          'city': _addressController.text.trim(),
                           'companyName': _companyNameController.text.trim(),
                           'companyProfile':
                               _companyProfileController.text.trim(),
@@ -3869,7 +3978,7 @@ class ProfileDialogState extends State<ProfileDialog> {
                       : {
                           'name': _nameController.text.trim(),
                           'mobileNumber': mobileNumber,
-                          'city': _selectedCity ?? '',
+                          'city': _addressController.text.trim(),
                           'skills': _skills,
                           'education': _education,
                           'experience': _experienceController.text.trim(),
@@ -3943,7 +4052,6 @@ class ProfileDialogState extends State<ProfileDialog> {
     );
   }
 }
-
 class AnimatedScaleButton extends StatefulWidget {
   final VoidCallback onPressed;
   final Widget child;

@@ -11,6 +11,7 @@ class AddressAutocompleteField extends StatefulWidget {
   final TextInputAction? textInputAction;
   final String? Function(String?)? validator;
   final bool enabled;
+  final InputDecoration? decoration;
 
   const AddressAutocompleteField({
     super.key,
@@ -20,6 +21,7 @@ class AddressAutocompleteField extends StatefulWidget {
     this.textInputAction,
     this.validator,
     this.enabled = true,
+    this.decoration,
   });
 
   @override
@@ -92,7 +94,7 @@ class _AddressAutocompleteFieldState extends State<AddressAutocompleteField> {
               enabled: widget.enabled,
               textInputAction:
                   widget.textInputAction ?? TextInputAction.done,
-              decoration: InputDecoration(
+              decoration: (widget.decoration ?? const InputDecoration()).copyWith(
                 labelText: widget.labelText,
                 helperText: widget.helperText,
                 hintText: 'Start typing your city or address...',
