@@ -1146,63 +1146,6 @@ class _ProfileSetupOnboardingState extends State<ProfileSetupOnboarding> {
         title: 'Career details',
         children: _buildCareerDetailsChildren(),
       ),
-      _cardStep(
-        formKey: _formKeys[3],
-        title: 'Resume (optional)',
-        children: [
-          Container(
-            width: double.infinity,
-            padding: EdgeInsets.all(12.w),
-            decoration: BoxDecoration(
-              color: Colors.grey.shade50,
-              borderRadius: BorderRadius.circular(12.r),
-              border: Border.all(color: Colors.grey.shade200),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Supported formats: PDF, DOC, DOCX',
-                  style: TextStyle(fontSize: 12.sp, color: Colors.black54),
-                ),
-                SizedBox(height: 4.h),
-                Text(
-                  'Upload now to reuse your resume later (auto-fill may be added in future updates).',
-                  style: TextStyle(fontSize: 12.sp, color: Colors.black54),
-                ),
-                SizedBox(height: 8.h),
-                Text(
-                  _pickedResume?.name ??
-                      (_resumeUrl != null
-                          ? 'Resume uploaded'
-                          : 'No resume selected'),
-                  style: TextStyle(
-                    fontSize: 13.sp,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                SizedBox(height: 10.h),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: _saving ? null : _pickAndUploadResume,
-                        icon: const Icon(Icons.upload_file_outlined),
-                        label: const Text('Upload / import resume'),
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 6.h),
-                Text(
-                  'You can skip this step and upload later from your profile.',
-                  style: TextStyle(fontSize: 12.sp, color: Colors.black54),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
     ];
   }
 
