@@ -652,6 +652,79 @@ class _AppliedSeekersScreenState extends State<AppliedSeekersScreen> {
                                             _detailLine(Icons.work_outline, 'Experience', resume['experience'] ?? applicant['experience'] ?? 'N/A'),
                                             _detailLine(Icons.account_tree_outlined, 'Specialization', specialization),
                                             _detailLine(Icons.psychology_outlined, 'Skills', skillsDisplay),
+                                            
+                                            // Test Result Section
+                                            if (applicant['testAnswer'] != null) ...[
+                                              SizedBox(height: 8.h),
+                                              Container(
+                                                width: double.infinity,
+                                                padding: EdgeInsets.all(10.w),
+                                                decoration: BoxDecoration(
+                                                  color: applicant['testAnswer']['isCorrect'] == true
+                                                      ? const Color(0xFFF0FDF4)
+                                                      : const Color(0xFFFEF2F2),
+                                                  borderRadius: BorderRadius.circular(8.r),
+                                                  border: Border.all(
+                                                    color: applicant['testAnswer']['isCorrect'] == true
+                                                        ? const Color(0xFF86EFAC)
+                                                        : const Color(0xFFFCA5A5),
+                                                  ),
+                                                ),
+                                                child: Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  children: [
+                                                    Row(
+                                                      children: [
+                                                        Icon(
+                                                          applicant['testAnswer']['isCorrect'] == true
+                                                              ? Icons.check_circle
+                                                              : Icons.cancel,
+                                                          color: applicant['testAnswer']['isCorrect'] == true
+                                                              ? const Color(0xFF166534)
+                                                              : const Color(0xFFDC2626),
+                                                          size: 16.sp,
+                                                        ),
+                                                        SizedBox(width: 6.w),
+                                                        Text(
+                                                          'Test Answer',
+                                                          style: TextStyle(
+                                                            fontSize: 12.sp,
+                                                            fontWeight: FontWeight.w700,
+                                                            color: applicant['testAnswer']['isCorrect'] == true
+                                                                ? const Color(0xFF166534)
+                                                                : const Color(0xFFDC2626),
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                    SizedBox(height: 4.h),
+                                                    Text(
+                                                      'Q: ${applicant['testAnswer']['question'] ?? 'N/A'}',
+                                                      style: TextStyle(
+                                                        fontSize: 11.sp,
+                                                        color: Colors.grey.shade700,
+                                                      ),
+                                                    ),
+                                                    SizedBox(height: 2.h),
+                                                    Text(
+                                                      'Selected: Option ${applicant['testAnswer']['selectedOptionIndex'] + 1}',
+                                                      style: TextStyle(
+                                                        fontSize: 11.sp,
+                                                        color: Colors.grey.shade700,
+                                                      ),
+                                                    ),
+                                                    Text(
+                                                      'Correct: Option ${applicant['testAnswer']['correctOptionIndex'] + 1}',
+                                                      style: TextStyle(
+                                                        fontSize: 11.sp,
+                                                        color: Colors.grey.shade700,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ],
+                                            
                                             SizedBox(height: 8.h),
                                             Row(
                                               children: [

@@ -34,202 +34,207 @@ class ApplyJobScreenState extends State<ApplyJobScreen> {
   Map<String, dynamic>? _seekerProfile;
   String? _errorMessage;
 
+  // Test related variables
+  Map<String, dynamic>? _jobData;
+  List<int?> _selectedAnswerIndices = [];
+  bool _testSubmitted = false;
+
   final List<String> experienceOptions = [
-  'Fresher',
-  '1-2 years',
-  '2-4 years',
-  '4-6 years',
-  '6-8 years',
-  '8-10 years',
-  '10-12 years',
-  '12+ years', // Added to cover more experienced candidates
-];
+    'Fresher',
+    '1-2 years',
+    '2-4 years',
+    '4-6 years',
+    '6-8 years',
+    '8-10 years',
+    '10-12 years',
+    '12+ years', // Added to cover more experienced candidates
+  ];
 
 // Education options
-final List<String> educationOptions = [
-  'Secondary (Class 10)',
-  'Higher Secondary (Class 12)',
-  'Diploma/Certificate',
-  'Undergraduate (Bachelor\'s Degree)',
-  'Postgraduate Diploma',
-  'Postgraduate (Master\'s Degree)',
-  'Doctorate/PhD/MPhil',
-  'Professional Certification',
-  'Vocational Training',
-];
+  final List<String> educationOptions = [
+    'Secondary (Class 10)',
+    'Higher Secondary (Class 12)',
+    'Diploma/Certificate',
+    'Undergraduate (Bachelor\'s Degree)',
+    'Postgraduate Diploma',
+    'Postgraduate (Master\'s Degree)',
+    'Doctorate/PhD/MPhil',
+    'Professional Certification',
+    'Vocational Training',
+  ];
 
 // Specialization options
-final List<String> specializationOptions = [
-  'Computer Science / IT',
-  'Artificial Intelligence / Machine Learning / Data Science',
-  'Electronics / Electrical / Robotics',
-  'Mechanical / Civil / Architecture',
-  'Aerospace / Aeronautical / Automotive',
-  'Chemical / Petroleum / Environmental',
-  'Biomedical / Biotechnology / Nanotechnology',
-  'Business / Finance / Management',
-  'Medicine / Healthcare / Pharma',
-  'Physiotherapy / Public Health / Veterinary Science',
-  'Law / Political Science / Public Administration',
-  'Arts / Humanities / Education',
-  'Design / Media / Communication',
-  'Hotel / Travel / Event Management',
-  'Science / Research / Environment',
-  'Astronomy / Astrophysics / Planetary Science',
-  'Vocational/Domestic Services',
-  'Others',
-];
+  final List<String> specializationOptions = [
+    'Computer Science / IT',
+    'Artificial Intelligence / Machine Learning / Data Science',
+    'Electronics / Electrical / Robotics',
+    'Mechanical / Civil / Architecture',
+    'Aerospace / Aeronautical / Automotive',
+    'Chemical / Petroleum / Environmental',
+    'Biomedical / Biotechnology / Nanotechnology',
+    'Business / Finance / Management',
+    'Medicine / Healthcare / Pharma',
+    'Physiotherapy / Public Health / Veterinary Science',
+    'Law / Political Science / Public Administration',
+    'Arts / Humanities / Education',
+    'Design / Media / Communication',
+    'Hotel / Travel / Event Management',
+    'Science / Research / Environment',
+    'Astronomy / Astrophysics / Planetary Science',
+    'Vocational/Domestic Services',
+    'Others',
+  ];
 
 // Skills by specialization
-final Map<String, List<String>> skillsBySpecialization = {
-  'Computer Science / IT': [
-    'Java', 'Python', 'C++', 'C#', 'Dart', 'Flutter', 'Android Development',
-    'iOS Development', 'React', 'Angular', 'Vue.js', 'Node.js', 'Firebase',
-    'AWS', 'Azure', 'Google Cloud', 'Docker', 'Kubernetes', 'SQL', 'NoSQL',
-    'MongoDB', 'REST APIs', 'GraphQL', 'Data Structures & Algorithms', 'DevOps',
-    'Cybersecurity', 'System Design', 'Web Development', 'Unit Testing', 'Git',
-    'Jenkins', 'Agile Methodologies',
-  ],
-  'Artificial Intelligence / Machine Learning / Data Science': [
-    'Python', 'R', 'TensorFlow', 'PyTorch', 'Keras', 'Scikit-learn', 'Pandas',
-    'NumPy', 'Data Visualization', 'Tableau', 'Power BI', 'Big Data', 'Hadoop',
-    'Spark', 'Deep Learning', 'Natural Language Processing', 'Computer Vision',
-    'Statistical Modeling', 'Data Mining', 'Machine Learning Algorithms',
-    'Time Series Analysis', 'SQL', 'Feature Engineering', 'Model Deployment',
-    'Cloud Computing (AWS, Azure)', 'Jupyter Notebooks',
-  ],
-  'Electronics / Electrical / Robotics': [
-    'Embedded Systems', 'PCB Design', 'VLSI', 'MATLAB', 'Simulink', 'Verilog',
-    'VHDL', 'FPGA Programming', 'Arduino', 'Raspberry Pi', 'IoT Development',
-    'Signal Processing', 'Power Systems', 'Control Systems', 'SCADA', 'PLC Programming',
-    'Circuit Design', 'Robotics Programming', 'Sensor Integration', 'Microcontrollers',
-    'Power Electronics', 'Automation', 'Proteus', 'Multisim',
-    'Calculus', 'Algebra', 'Differential Equations', 'Electromagnetism',
-    'Circuit Theory', 'Ohm\'s Law', 'Basic Electrical Components',
-    'Power Systems Design', 'C Programming', 'C++ Programming', 'Python Programming',
-    'SPICE Simulation', 'System Design & Analysis', 'Troubleshooting Electronics',
-    'Microprocessor Design', 'Hardware Applications',
-    'Problem-Solving', 'Technical Communication', 'Team Collaboration',
-    'Attention to Detail', 'Critical Thinking', 'Creativity in Design',
-  ],
-  'Mechanical / Civil / Architecture': [
-    'AutoCAD', 'SolidWorks', 'CATIA', 'ANSYS', 'STAAD Pro', 'Revit', 'ETABS',
-    'Structural Analysis', 'Thermodynamics', 'Fluid Mechanics', 'Manufacturing Processes',
-    'Finite Element Analysis', 'Construction Management', 'Urban Planning', 'BIM (Building Information Modeling)',
-    'Geotechnical Engineering', 'Hydraulics', 'Surveying', 'CAD/CAM', 'HVAC Design',
-    '3D Printing', 'Project Estimation', 'Material Science',
-  ],
-  'Aerospace / Aeronautical / Automotive': [
-    'CATIA', 'ANSYS Fluent', 'SolidWorks', 'MATLAB', 'Aerodynamics', 'Propulsion Systems',
-    'Flight Mechanics', 'Automotive Design', 'Vehicle Dynamics', 'CFD (Computational Fluid Dynamics)',
-    'Finite Element Analysis', 'Aerospace Materials', 'Avionics', 'AutoCAD', 'Structural Design',
-    'Engine Testing', 'CAD/CAM', 'Thermal Analysis', 'Manufacturing Processes', 'Simulation Tools',
-  ],
-  'Chemical / Petroleum / Environmental': [
-    'Aspen HYSYS', 'MATLAB', 'Chemical Process Design', 'Petroleum Refining', 'Environmental Impact Assessment',
-    'Waste Management', 'Water Treatment', 'Process Simulation', 'Thermodynamics', 'Mass Transfer',
-    'Heat Transfer', 'Piping Design', 'HSE (Health, Safety, Environment)', 'Geochemical Analysis',
-    'Reservoir Engineering', 'Pollution Control', 'Sustainable Design', 'Chemical Safety',
-  ],
-  'Biomedical / Biotechnology / Nanotechnology': [
-    'Bioinformatics', 'Molecular Biology', 'Genetic Engineering', 'Cell Culture', 'PCR Techniques',
-    'Biomedical Instrumentation', 'Biomaterials', 'Nanoparticle Synthesis', 'Microscopy', 'Lab Techniques',
-    'Proteomics', 'Genomics', 'Biomedical Imaging', 'Tissue Engineering', 'Biosensors', 'MATLAB',
-    'Biostatistics', 'Drug Delivery Systems', 'Nanofabrication', 'Biochemical Analysis',
-  ],
-  'Business / Finance / Management': [
-    'Financial Analysis', 'Accounting', 'Tally ERP', 'QuickBooks', 'MS Excel', 'SAP FICO',
-    'Financial Modeling', 'Taxation', 'Auditing', 'Cost Accounting', 'Business Strategy',
-    'Market Research', 'Entrepreneurship Development', 'Investment Analysis', 'Risk Management',
-    'Corporate Finance', 'Budgeting', 'Financial Reporting', 'Business Plan Development',
-    'Venture Capital Analysis', 'GST Compliance', 'Digital Marketing', 'Google Ads', 'SEO',
-    'Social Media Marketing', 'Project Management', 'Agile', 'Scrum', 'Salesforce',
-    'Customer Relationship Management (CRM)',
-  ],
-  'Medicine / Healthcare / Pharma': [
-    'Clinical Diagnosis', 'Patient Care', 'Surgical Assistance', 'Nursing Procedures', 'Pharmacology',
-    'Medical Coding', 'First Aid', 'CPR', 'Dental Procedures', 'Orthodontics', 'Prescription Management',
-    'Clinical Pharmacy', 'Drug Dispensing', 'Wound Care', 'Vital Signs Monitoring', 'Patient Counseling',
-    'Anesthesia Administration', 'Infection Control', 'Medical Ethics', 'Health Education',
-  ],
-  'Physiotherapy / Public Health / Veterinary Science': [
-    'Manual Therapy', 'Exercise Prescription', 'Electrotherapy', 'Rehabilitation Techniques',
-    'Epidemiology', 'Public Health Policy', 'Health Program Management', 'Community Health',
-    'Veterinary Diagnosis', 'Animal Surgery', 'Veterinary Pharmacology', 'Animal Husbandry',
-    'Biostatistics', 'Health Promotion', 'Injury Assessment', 'Kinesiology', 'Vaccination Protocols',
-    'Zoonotic Disease Management', 'Public Health Surveillance',
-  ],
-  'Law / Political Science / Public Administration': [
-    'Legal Research', 'Case Analysis', 'Contract Drafting', 'Litigation', 'Legal Writing',
-    'Constitutional Law Analysis', 'International Law Compliance', 'Arbitration', 'Mediation',
-    'Intellectual Property Law', 'Criminal Law Practice', 'Corporate Law', 'Legal Compliance',
-    'Courtroom Advocacy', 'Policy Analysis', 'Public Speaking', 'Governance Studies',
-    'International Diplomacy', 'Conflict Resolution', 'Public Policy Formulation',
-    'Political Research', 'Legislative Analysis', 'International Trade Policy',
-    'Geopolitical Analysis', 'Public Administration Management',
-  ],
-  'Arts / Humanities / Education': [
-    'Creative Writing', 'Literary Analysis', 'Historical Research', 'Archival Studies',
-    'Philosophical Analysis', 'Critical Thinking', 'Content Writing', 'Editing & Proofreading',
-    'Cultural Studies', 'Art Criticism', 'Translation', 'Manuscript Analysis', 'Oral History',
-    'Ethnography', 'Research Methodologies', 'Academic Writing', 'Classroom Management',
-    'Curriculum Design', 'Lesson Planning', 'E-Learning Tools', 'Pedagogical Techniques',
-    'Special Education Strategies', 'Inclusive Education', 'Assessment Design',
-    'Educational Technology', 'Student Counseling',
-  ],
-  'Design / Media / Communication': [
-    'Adobe Photoshop', 'Adobe Illustrator', 'Figma', 'Adobe XD', 'Canva', 'UI/UX Design',
-    'Fashion Illustration', 'Pattern Making', 'Textile Design', '3D Modeling', 'Blender',
-    'SketchUp', 'Graphic Design', 'Typography', 'Branding', 'Motion Graphics', 'Color Theory',
-    'Video Editing', 'Adobe Premiere Pro', 'Final Cut Pro', 'Journalism Ethics', 'News Writing',
-    'Copywriting', 'Broadcast Journalism', 'Photojournalism', 'Social Media Content Creation',
-    'Public Relations', 'Storyboarding', 'Media Production', 'Podcast Production',
-  ],
-  'Hotel / Travel / Event Management': [
-    'Hospitality Management', 'Event Planning', 'Customer Service', 'Food & Beverage Service',
-    'Culinary Techniques', 'Menu Planning', 'Bartending', 'Housekeeping Management',
-    'Travel Planning', 'Tour Operations', 'Ticketing & Reservations', 'Catering Management',
-    'Hotel Operations', 'Guest Relations', 'Inventory Management', 'Sustainable Tourism',
-    'Vendor Management', 'Event Logistics', 'Budget Planning', 'Sponsorship Management',
-  ],
-  'Science / Research / Environment': [
-    'Laboratory Techniques', 'Chemical Analysis', 'Microscopy', 'Spectroscopy', 'Experimental Design',
-    'Data Analysis', 'Physics Modeling', 'Organic Chemistry', 'Molecular Biology', 'Biochemistry',
-    'Quantum Mechanics', 'Thermodynamics', 'Cell Biology', 'Scientific Writing', 'Lab Safety',
-    'Instrumentation', 'Environmental Impact Assessment', 'Geographic Information System (GIS)',
-    'Remote Sensing', 'Geological Mapping', 'Climate Modeling', 'Marine Biology', 'Oceanography',
-    'Environmental Monitoring', 'Soil Analysis', 'Hydrology', 'Biodiversity Conservation',
-  ],
-  'Astronomy / Astrophysics / Planetary Science': [
-    'Astrometry', 'Telescopic Observation', 'Data Analysis', 'Astrostatistics', 'Orbital Mechanics',
-    'Stellar Astrophysics', 'Planetary Geology', 'Spectroscopy', 'Computational Modeling',
-    'Space Mission Design', 'Astronomical Software (Stellarium, IRAF)', 'Exoplanet Research',
-    'Cosmology', 'Radio Astronomy', 'Image Processing',
-  ],
-  'Vocational/Domestic Services': [
-    'Driving', 'Vehicle Operation (Cars, Trucks, Buses)', 'Defensive Driving', 'Route Navigation',
-    'Vehicle Maintenance', 'Traffic Regulations', 'GPS Usage', 'Delivery Scheduling', 'Cargo Handling',
-    'Housekeeping', 'Cleaning & Sanitation', 'Inventory Stocking', 'Office Management',
-    'Document Handling', 'Filing & Organization', 'Basic Computer Skills (MS Office)', 'Errand Running',
-    'Office Equipment Maintenance', 'Mail Distribution', 'Reception Duties', 'Woodworking',
-    'Furniture Making', 'Carpentry Tools (Saws, Drills, Chisels)', 'Blueprint Reading', 'Wood Finishing',
-    'Cabinet Making', 'Framing', 'Joinery', 'Timber Measurement', 'Wood Carving', 'Cooking',
-    'Childcare', 'Elderly Care', 'Gardening', 'Landscaping', 'Basic Maintenance', 'Plumbing',
-    'Pipe Fitting', 'Electrical Wiring', 'Masonry', 'Painting', 'Welding', 'Construction Labor',
-    'Scaffolding', 'Heavy Machinery Operation', 'Forklift Operation', 'Pest Control',
-    'Customer Service', 'Time Management', 'Physical Stamina', 'Teamwork', 'Problem-Solving',
-    'Work Safety Practices',
-  ],
-  'Others': [
-    'Communication Skills', 'Problem Solving', 'Teamwork', 'Leadership', 'Time Management',
-    'Adaptability', 'Creativity', 'Conflict Resolution', 'Critical Thinking', 'Customer Support',
-    'Basic Computer Skills', 'Typing', 'Remote Work Tools (Zoom, Slack, Trello)', 'Virtual Assistant',
-    'Content Moderation', 'Ethical Analysis', 'Policy Formulation', 'Interdisciplinary Research',
-    'Digital Archiving', 'Data Ethics', 'Climate Policy Analysis', 'Stakeholder Engagement',
-    'Text Analysis', 'Digital Storytelling', 'Public Policy Research', 'AI Governance',
-    'Environmental Ethics', 'Cross-Cultural Analysis',
-  ],
-};
+  final Map<String, List<String>> skillsBySpecialization = {
+    'Computer Science / IT': [
+      'Java', 'Python', 'C++', 'C#', 'Dart', 'Flutter', 'Android Development',
+      'iOS Development', 'React', 'Angular', 'Vue.js', 'Node.js', 'Firebase',
+      'AWS', 'Azure', 'Google Cloud', 'Docker', 'Kubernetes', 'SQL', 'NoSQL',
+      'MongoDB', 'REST APIs', 'GraphQL', 'Data Structures & Algorithms', 'DevOps',
+      'Cybersecurity', 'System Design', 'Web Development', 'Unit Testing', 'Git',
+      'Jenkins', 'Agile Methodologies',
+    ],
+    'Artificial Intelligence / Machine Learning / Data Science': [
+      'Python', 'R', 'TensorFlow', 'PyTorch', 'Keras', 'Scikit-learn', 'Pandas',
+      'NumPy', 'Data Visualization', 'Tableau', 'Power BI', 'Big Data', 'Hadoop',
+      'Spark', 'Deep Learning', 'Natural Language Processing', 'Computer Vision',
+      'Statistical Modeling', 'Data Mining', 'Machine Learning Algorithms',
+      'Time Series Analysis', 'SQL', 'Feature Engineering', 'Model Deployment',
+      'Cloud Computing (AWS, Azure)', 'Jupyter Notebooks',
+    ],
+    'Electronics / Electrical / Robotics': [
+      'Embedded Systems', 'PCB Design', 'VLSI', 'MATLAB', 'Simulink', 'Verilog',
+      'VHDL', 'FPGA Programming', 'Arduino', 'Raspberry Pi', 'IoT Development',
+      'Signal Processing', 'Power Systems', 'Control Systems', 'SCADA', 'PLC Programming',
+      'Circuit Design', 'Robotics Programming', 'Sensor Integration', 'Microcontrollers',
+      'Power Electronics', 'Automation', 'Proteus', 'Multisim',
+      'Calculus', 'Algebra', 'Differential Equations', 'Electromagnetism',
+      'Circuit Theory', 'Ohm\'s Law', 'Basic Electrical Components',
+      'Power Systems Design', 'C Programming', 'C++ Programming', 'Python Programming',
+      'SPICE Simulation', 'System Design & Analysis', 'Troubleshooting Electronics',
+      'Microprocessor Design', 'Hardware Applications',
+      'Problem-Solving', 'Technical Communication', 'Team Collaboration',
+      'Attention to Detail', 'Critical Thinking', 'Creativity in Design',
+    ],
+    'Mechanical / Civil / Architecture': [
+      'AutoCAD', 'SolidWorks', 'CATIA', 'ANSYS', 'STAAD Pro', 'Revit', 'ETABS',
+      'Structural Analysis', 'Thermodynamics', 'Fluid Mechanics', 'Manufacturing Processes',
+      'Finite Element Analysis', 'Construction Management', 'Urban Planning', 'BIM (Building Information Modeling)',
+      'Geotechnical Engineering', 'Hydraulics', 'Surveying', 'CAD/CAM', 'HVAC Design',
+      '3D Printing', 'Project Estimation', 'Material Science',
+    ],
+    'Aerospace / Aeronautical / Automotive': [
+      'CATIA', 'ANSYS Fluent', 'SolidWorks', 'MATLAB', 'Aerodynamics', 'Propulsion Systems',
+      'Flight Mechanics', 'Automotive Design', 'Vehicle Dynamics', 'CFD (Computational Fluid Dynamics)',
+      'Finite Element Analysis', 'Aerospace Materials', 'Avionics', 'AutoCAD', 'Structural Design',
+      'Engine Testing', 'CAD/CAM', 'Thermal Analysis', 'Manufacturing Processes', 'Simulation Tools',
+    ],
+    'Chemical / Petroleum / Environmental': [
+      'Aspen HYSYS', 'MATLAB', 'Chemical Process Design', 'Petroleum Refining', 'Environmental Impact Assessment',
+      'Waste Management', 'Water Treatment', 'Process Simulation', 'Thermodynamics', 'Mass Transfer',
+      'Heat Transfer', 'Piping Design', 'HSE (Health, Safety, Environment)', 'Geochemical Analysis',
+      'Reservoir Engineering', 'Pollution Control', 'Sustainable Design', 'Chemical Safety',
+    ],
+    'Biomedical / Biotechnology / Nanotechnology': [
+      'Bioinformatics', 'Molecular Biology', 'Genetic Engineering', 'Cell Culture', 'PCR Techniques',
+      'Biomedical Instrumentation', 'Biomaterials', 'Nanoparticle Synthesis', 'Microscopy', 'Lab Techniques',
+      'Proteomics', 'Genomics', 'Biomedical Imaging', 'Tissue Engineering', 'Biosensors', 'MATLAB',
+      'Biostatistics', 'Drug Delivery Systems', 'Nanofabrication', 'Biochemical Analysis',
+    ],
+    'Business / Finance / Management': [
+      'Financial Analysis', 'Accounting', 'Tally ERP', 'QuickBooks', 'MS Excel', 'SAP FICO',
+      'Financial Modeling', 'Taxation', 'Auditing', 'Cost Accounting', 'Business Strategy',
+      'Market Research', 'Entrepreneurship Development', 'Investment Analysis', 'Risk Management',
+      'Corporate Finance', 'Budgeting', 'Financial Reporting', 'Business Plan Development',
+      'Venture Capital Analysis', 'GST Compliance', 'Digital Marketing', 'Google Ads', 'SEO',
+      'Social Media Marketing', 'Project Management', 'Agile', 'Scrum', 'Salesforce',
+      'Customer Relationship Management (CRM)',
+    ],
+    'Medicine / Healthcare / Pharma': [
+      'Clinical Diagnosis', 'Patient Care', 'Surgical Assistance', 'Nursing Procedures', 'Pharmacology',
+      'Medical Coding', 'First Aid', 'CPR', 'Dental Procedures', 'Orthodontics', 'Prescription Management',
+      'Clinical Pharmacy', 'Drug Dispensing', 'Wound Care', 'Vital Signs Monitoring', 'Patient Counseling',
+      'Anesthesia Administration', 'Infection Control', 'Medical Ethics', 'Health Education',
+    ],
+    'Physiotherapy / Public Health / Veterinary Science': [
+      'Manual Therapy', 'Exercise Prescription', 'Electrotherapy', 'Rehabilitation Techniques',
+      'Epidemiology', 'Public Health Policy', 'Health Program Management', 'Community Health',
+      'Veterinary Diagnosis', 'Animal Surgery', 'Veterinary Pharmacology', 'Animal Husbandry',
+      'Biostatistics', 'Health Promotion', 'Injury Assessment', 'Kinesiology', 'Vaccination Protocols',
+      'Zoonotic Disease Management', 'Public Health Surveillance',
+    ],
+    'Law / Political Science / Public Administration': [
+      'Legal Research', 'Case Analysis', 'Contract Drafting', 'Litigation', 'Legal Writing',
+      'Constitutional Law Analysis', 'International Law Compliance', 'Arbitration', 'Mediation',
+      'Intellectual Property Law', 'Criminal Law Practice', 'Corporate Law', 'Legal Compliance',
+      'Courtroom Advocacy', 'Policy Analysis', 'Public Speaking', 'Governance Studies',
+      'International Diplomacy', 'Conflict Resolution', 'Public Policy Formulation',
+      'Political Research', 'Legislative Analysis', 'International Trade Policy',
+      'Geopolitical Analysis', 'Public Administration Management',
+    ],
+    'Arts / Humanities / Education': [
+      'Creative Writing', 'Literary Analysis', 'Historical Research', 'Archival Studies',
+      'Philosophical Analysis', 'Critical Thinking', 'Content Writing', 'Editing & Proofreading',
+      'Cultural Studies', 'Art Criticism', 'Translation', 'Manuscript Analysis', 'Oral History',
+      'Ethnography', 'Research Methodologies', 'Academic Writing', 'Classroom Management',
+      'Curriculum Design', 'Lesson Planning', 'E-Learning Tools', 'Pedagogical Techniques',
+      'Special Education Strategies', 'Inclusive Education', 'Assessment Design',
+      'Educational Technology', 'Student Counseling',
+    ],
+    'Design / Media / Communication': [
+      'Adobe Photoshop', 'Adobe Illustrator', 'Figma', 'Adobe XD', 'Canva', 'UI/UX Design',
+      'Fashion Illustration', 'Pattern Making', 'Textile Design', '3D Modeling', 'Blender',
+      'SketchUp', 'Graphic Design', 'Typography', 'Branding', 'Motion Graphics', 'Color Theory',
+      'Video Editing', 'Adobe Premiere Pro', 'Final Cut Pro', 'Journalism Ethics', 'News Writing',
+      'Copywriting', 'Broadcast Journalism', 'Photojournalism', 'Social Media Content Creation',
+      'Public Relations', 'Storyboarding', 'Media Production', 'Podcast Production',
+    ],
+    'Hotel / Travel / Event Management': [
+      'Hospitality Management', 'Event Planning', 'Customer Service', 'Food & Beverage Service',
+      'Culinary Techniques', 'Menu Planning', 'Bartending', 'Housekeeping Management',
+      'Travel Planning', 'Tour Operations', 'Ticketing & Reservations', 'Catering Management',
+      'Hotel Operations', 'Guest Relations', 'Inventory Management', 'Sustainable Tourism',
+      'Vendor Management', 'Event Logistics', 'Budget Planning', 'Sponsorship Management',
+    ],
+    'Science / Research / Environment': [
+      'Laboratory Techniques', 'Chemical Analysis', 'Microscopy', 'Spectroscopy', 'Experimental Design',
+      'Data Analysis', 'Physics Modeling', 'Organic Chemistry', 'Molecular Biology', 'Biochemistry',
+      'Quantum Mechanics', 'Thermodynamics', 'Cell Biology', 'Scientific Writing', 'Lab Safety',
+      'Instrumentation', 'Environmental Impact Assessment', 'Geographic Information System (GIS)',
+      'Remote Sensing', 'Geological Mapping', 'Climate Modeling', 'Marine Biology', 'Oceanography',
+      'Environmental Monitoring', 'Soil Analysis', 'Hydrology', 'Biodiversity Conservation',
+    ],
+    'Astronomy / Astrophysics / Planetary Science': [
+      'Astrometry', 'Telescopic Observation', 'Data Analysis', 'Astrostatistics', 'Orbital Mechanics',
+      'Stellar Astrophysics', 'Planetary Geology', 'Spectroscopy', 'Computational Modeling',
+      'Space Mission Design', 'Astronomical Software (Stellarium, IRAF)', 'Exoplanet Research',
+      'Cosmology', 'Radio Astronomy', 'Image Processing',
+    ],
+    'Vocational/Domestic Services': [
+      'Driving', 'Vehicle Operation (Cars, Trucks, Buses)', 'Defensive Driving', 'Route Navigation',
+      'Vehicle Maintenance', 'Traffic Regulations', 'GPS Usage', 'Delivery Scheduling', 'Cargo Handling',
+      'Housekeeping', 'Cleaning & Sanitation', 'Inventory Stocking', 'Office Management',
+      'Document Handling', 'Filing & Organization', 'Basic Computer Skills (MS Office)', 'Errand Running',
+      'Office Equipment Maintenance', 'Mail Distribution', 'Reception Duties', 'Woodworking',
+      'Furniture Making', 'Carpentry Tools (Saws, Drills, Chisels)', 'Blueprint Reading', 'Wood Finishing',
+      'Cabinet Making', 'Framing', 'Joinery', 'Timber Measurement', 'Wood Carving', 'Cooking',
+      'Childcare', 'Elderly Care', 'Gardening', 'Landscaping', 'Basic Maintenance', 'Plumbing',
+      'Pipe Fitting', 'Electrical Wiring', 'Masonry', 'Painting', 'Welding', 'Construction Labor',
+      'Scaffolding', 'Heavy Machinery Operation', 'Forklift Operation', 'Pest Control',
+      'Customer Service', 'Time Management', 'Physical Stamina', 'Teamwork', 'Problem-Solving',
+      'Work Safety Practices',
+    ],
+    'Others': [
+      'Communication Skills', 'Problem Solving', 'Teamwork', 'Leadership', 'Time Management',
+      'Adaptability', 'Creativity', 'Conflict Resolution', 'Critical Thinking', 'Customer Support',
+      'Basic Computer Skills', 'Typing', 'Remote Work Tools (Zoom, Slack, Trello)', 'Virtual Assistant',
+      'Content Moderation', 'Ethical Analysis', 'Policy Formulation', 'Interdisciplinary Research',
+      'Digital Archiving', 'Data Ethics', 'Climate Policy Analysis', 'Stakeholder Engagement',
+      'Text Analysis', 'Digital Storytelling', 'Public Policy Research', 'AI Governance',
+      'Environmental Ethics', 'Cross-Cultural Analysis',
+    ],
+  };
 
   @override
   void initState() {
@@ -297,6 +302,22 @@ final Map<String, List<String>> skillsBySpecialization = {
         throw const AuthException('You have already applied for this job');
       }
 
+      // Load job data for test question
+      _jobData = jobDoc.data()!;
+      
+      // Initialize selected answer indices for multiple questions
+      if (_jobData!['includeTest'] == true) {
+        final testQuestions = _jobData!['testQuestions'] as List<dynamic>? ?? [];
+        if (testQuestions.isNotEmpty) {
+          _selectedAnswerIndices = List.filled(testQuestions.length, null);
+        } else if (_jobData!['testQuestion'] != null) {
+          // Handle legacy single test question format
+          _selectedAnswerIndices = [null];
+        }
+      }
+      
+      dev.log('[2025-08-13 23:31 IST] Job data loaded: $_jobData', name: 'ApplyJobScreen');
+
       // Extract job requirements
       final jobData = jobDoc.data()!;
       final requiredSkills = (jobData['requiredSkills'] as List<dynamic>?)?.cast<String>().map((s) => s.toLowerCase()).toList() ?? [];
@@ -358,6 +379,30 @@ final Map<String, List<String>> skillsBySpecialization = {
       return;
     }
 
+    // Check if test is required but not answered
+    if (_jobData?['includeTest'] == true) {
+      final testQuestions = _jobData!['testQuestions'] as List<dynamic>? ?? [];
+      final hasLegacyQuestion = _jobData!['testQuestion'] != null;
+      
+      if (testQuestions.isNotEmpty) {
+        // Check if all questions are answered
+        bool allAnswered = true;
+        for (int i = 0; i < _selectedAnswerIndices.length; i++) {
+          if (_selectedAnswerIndices[i] == null) {
+            allAnswered = false;
+            break;
+          }
+        }
+        if (!allAnswered) {
+          setState(() => _errorMessage = 'Please answer all test questions');
+          return;
+        }
+      } else if (hasLegacyQuestion && _selectedAnswerIndices.isEmpty) {
+        setState(() => _errorMessage = 'Please answer the test question');
+        return;
+      }
+    }
+
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) {
       if (mounted) {
@@ -379,6 +424,47 @@ final Map<String, List<String>> skillsBySpecialization = {
       dev.log('[2025-08-13 23:31 IST] Applying for job ${widget.jobId}, seeker profile: $_seekerProfile',
           name: 'ApplyJobScreen');
       String? fcmToken = await _messaging.getToken();
+      
+      // Prepare test answer if test exists
+      Map<String, dynamic>? testAnswer;
+      if (_jobData?['includeTest'] == true) {
+        final testQuestions = _jobData!['testQuestions'] as List<dynamic>? ?? [];
+        
+        if (testQuestions.isNotEmpty) {
+          // Handle multiple questions
+          final answers = <Map<String, dynamic>>[];
+          for (int i = 0; i < testQuestions.length; i++) {
+            if (_selectedAnswerIndices[i] != null) {
+              final question = testQuestions[i] as Map<String, dynamic>;
+              answers.add({
+                'question': question['question'],
+                'selectedOption': question['options'][_selectedAnswerIndices[i]!],
+                'selectedOptionIndex': _selectedAnswerIndices[i]!,
+                'correctOption': question['options'][question['correctOptionIndex']],
+                'correctOptionIndex': question['correctOptionIndex'],
+                'isCorrect': _selectedAnswerIndices[i] == question['correctOptionIndex'],
+              });
+            }
+          }
+          testAnswer = {
+            'answers': answers,
+            'totalQuestions': testQuestions.length,
+            'correctAnswers': answers.where((a) => a['isCorrect'] == true).length,
+          };
+        } else if (_jobData!['testQuestion'] != null && _selectedAnswerIndices.isNotEmpty && _selectedAnswerIndices[0] != null) {
+          // Handle legacy single test question format
+          final testQuestion = _jobData!['testQuestion'] as Map<String, dynamic>;
+          testAnswer = {
+            'question': testQuestion['question'],
+            'selectedOption': testQuestion['options'][_selectedAnswerIndices[0]!],
+            'selectedOptionIndex': _selectedAnswerIndices[0]!,
+            'correctOption': testQuestion['options'][testQuestion['correctOptionIndex']],
+            'correctOptionIndex': testQuestion['correctOptionIndex'],
+            'isCorrect': _selectedAnswerIndices[0] == testQuestion['correctOptionIndex'],
+          };
+        }
+      }
+      
       await _authService.applyToJob(
         jobId: widget.jobId,
         jobTitle: widget.jobTitle,
@@ -386,6 +472,7 @@ final Map<String, List<String>> skillsBySpecialization = {
         coverLetter: _coverLetterController.text.trim(),
         seekerProfile: _seekerProfile!,
         fcmToken: fcmToken ?? '',
+        testAnswer: testAnswer,
       );
 
       if (!mounted) return;
@@ -483,6 +570,255 @@ final Map<String, List<String>> skillsBySpecialization = {
                               value == null || value.trim().isEmpty ? 'Please enter a cover letter' : null,
                         ),
                         SizedBox(height: 20.h),
+                        
+                        // Test Questions Section
+                        if (_jobData?['includeTest'] == true) ...[
+                          Container(
+                            width: double.infinity,
+                            padding: EdgeInsets.all(16.w),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEFF6FF),
+                              borderRadius: BorderRadius.circular(12.r),
+                              border: Border.all(color: const Color(0xFFBFDBFE)),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Icon(Icons.quiz, color: const Color(0xFF1D4ED8), size: 20.sp),
+                                    SizedBox(width: 8.w),
+                                    Text(
+                                      'Test Questions',
+                                      style: TextStyle(
+                                        fontSize: 16.sp,
+                                        fontWeight: FontWeight.w700,
+                                        color: const Color(0xFF1D4ED8),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                SizedBox(height: 12.h),
+                                
+                                // Handle multiple questions
+                                if (_jobData!['testQuestions'] != null) ...[
+                                  ...List.generate((_jobData!['testQuestions'] as List).length, (questionIndex) {
+                                    final question = _jobData!['testQuestions'][questionIndex] as Map<String, dynamic>;
+                                    return Container(
+                                      margin: EdgeInsets.only(bottom: 16.h),
+                                      padding: EdgeInsets.all(12.w),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(8.r),
+                                        border: Border.all(color: const Color(0xFFD1D5DB)),
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Question ${questionIndex + 1}',
+                                            style: TextStyle(
+                                              fontSize: 14.sp,
+                                              fontWeight: FontWeight.w700,
+                                              color: const Color(0xFF0F172A),
+                                            ),
+                                          ),
+                                          SizedBox(height: 8.h),
+                                          Text(
+                                            question['question'] ?? '',
+                                            style: TextStyle(
+                                              fontSize: 14.sp,
+                                              fontWeight: FontWeight.w600,
+                                              color: const Color(0xFF0F172A),
+                                            ),
+                                          ),
+                                          SizedBox(height: 12.h),
+                                          Text(
+                                            'Select one answer:',
+                                            style: TextStyle(
+                                              fontSize: 12.sp,
+                                              color: const Color(0xFF64748B),
+                                            ),
+                                          ),
+                                          SizedBox(height: 8.h),
+                                          ...List.generate(4, (optionIndex) {
+                                            final option = question['options'][optionIndex] ?? '';
+                                            return Padding(
+                                              padding: EdgeInsets.only(bottom: 8.h),
+                                              child: Container(
+                                                width: double.infinity,
+                                                padding: EdgeInsets.all(12.w),
+                                                decoration: BoxDecoration(
+                                                  color: _selectedAnswerIndices[questionIndex] == optionIndex
+                                                      ? const Color(0xFFDBEAFE)
+                                                      : Colors.white,
+                                                  borderRadius: BorderRadius.circular(8.r),
+                                                  border: Border.all(
+                                                    color: _selectedAnswerIndices[questionIndex] == optionIndex
+                                                        ? const Color(0xFF3B82F6)
+                                                        : const Color(0xFFD1D5DB),
+                                                  ),
+                                                ),
+                                                child: InkWell(
+                                                  onTap: () {
+                                                    setState(() {
+                                                      _selectedAnswerIndices[questionIndex] = optionIndex;
+                                                    });
+                                                  },
+                                                  child: Row(
+                                                    children: [
+                                                      Radio<int>(
+                                                        value: optionIndex,
+                                                        groupValue: _selectedAnswerIndices[questionIndex],
+                                                        onChanged: (value) {
+                                                          setState(() {
+                                                            _selectedAnswerIndices[questionIndex] = value;
+                                                          });
+                                                        },
+                                                        activeColor: const Color(0xFF1D4ED8),
+                                                      ),
+                                                      Expanded(
+                                                        child: Text(
+                                                          option,
+                                                          style: TextStyle(
+                                                            fontSize: 14.sp,
+                                                            color: const Color(0xFF0F172A),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ),
+                                            );
+                                          }),
+                                          if (_selectedAnswerIndices[questionIndex] != null)
+                                            Container(
+                                              width: double.infinity,
+                                              margin: EdgeInsets.only(top: 8.h),
+                                              padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                                              decoration: BoxDecoration(
+                                                color: const Color(0xFFF0FDF4),
+                                                borderRadius: BorderRadius.circular(8.r),
+                                                border: Border.all(color: const Color(0xFF86EFAC)),
+                                              ),
+                                              child: Text(
+                                                'You selected: Option ${_selectedAnswerIndices[questionIndex]! + 1}',
+                                                style: TextStyle(
+                                                  color: const Color(0xFF166534),
+                                                  fontWeight: FontWeight.w600,
+                                                  fontSize: 12.sp,
+                                                ),
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    );
+                                  }),
+                                ] else if (_jobData!['testQuestion'] != null) ...[
+                                  // Handle legacy single test question format
+                                  Text(
+                                    _jobData!['testQuestion']['question'] ?? '',
+                                    style: TextStyle(
+                                      fontSize: 14.sp,
+                                      fontWeight: FontWeight.w600,
+                                      color: const Color(0xFF0F172A),
+                                    ),
+                                  ),
+                                  SizedBox(height: 12.h),
+                                  Text(
+                                    'Select one answer:',
+                                    style: TextStyle(
+                                      fontSize: 12.sp,
+                                      color: const Color(0xFF64748B),
+                                    ),
+                                  ),
+                                  SizedBox(height: 8.h),
+                                  ...List.generate(4, (index) {
+                                    final option = _jobData!['testQuestion']['options'][index] ?? '';
+                                    return Padding(
+                                      padding: EdgeInsets.only(bottom: 8.h),
+                                      child: Container(
+                                        width: double.infinity,
+                                        padding: EdgeInsets.all(12.w),
+                                        decoration: BoxDecoration(
+                                          color: _selectedAnswerIndices.isNotEmpty && _selectedAnswerIndices[0] == index
+                                              ? const Color(0xFFDBEAFE)
+                                              : Colors.white,
+                                          borderRadius: BorderRadius.circular(8.r),
+                                          border: Border.all(
+                                            color: _selectedAnswerIndices.isNotEmpty && _selectedAnswerIndices[0] == index
+                                                ? const Color(0xFF3B82F6)
+                                                : const Color(0xFFD1D5DB),
+                                          ),
+                                        ),
+                                        child: InkWell(
+                                          onTap: () {
+                                            setState(() {
+                                              if (_selectedAnswerIndices.isEmpty) {
+                                                _selectedAnswerIndices.add(index);
+                                              } else {
+                                                _selectedAnswerIndices[0] = index;
+                                              }
+                                            });
+                                          },
+                                          child: Row(
+                                            children: [
+                                              Radio<int>(
+                                                value: index,
+                                                groupValue: _selectedAnswerIndices.isNotEmpty ? _selectedAnswerIndices[0] : null,
+                                                onChanged: (value) {
+                                                  setState(() {
+                                                    if (_selectedAnswerIndices.isEmpty) {
+                                                      _selectedAnswerIndices.add(value!);
+                                                    } else {
+                                                      _selectedAnswerIndices[0] = value!;
+                                                    }
+                                                  });
+                                                },
+                                                activeColor: const Color(0xFF1D4ED8),
+                                              ),
+                                              Expanded(
+                                                child: Text(
+                                                  option,
+                                                  style: TextStyle(
+                                                    fontSize: 14.sp,
+                                                    color: const Color(0xFF0F172A),
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  }),
+                                  if (_selectedAnswerIndices.isNotEmpty && _selectedAnswerIndices[0] != null)
+                                    Container(
+                                      width: double.infinity,
+                                      margin: EdgeInsets.only(top: 8.h),
+                                      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFF0FDF4),
+                                        borderRadius: BorderRadius.circular(8.r),
+                                        border: Border.all(color: const Color(0xFF86EFAC)),
+                                      ),
+                                      child: Text(
+                                        'You selected: Option ${_selectedAnswerIndices[0]! + 1}',
+                                        style: TextStyle(
+                                          color: const Color(0xFF166534),
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 12.sp,
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ],
+                            ),
+                          ),
+                          SizedBox(height: 20.h),
+                        ],
+                        
                         if (_seekerProfile != null)
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -513,15 +849,21 @@ final Map<String, List<String>> skillsBySpecialization = {
                         SizedBox(height: 20.h),
                         Center(
                           child: AnimatedScaleButton(
-                            onPressed: _applyForJob,
+                            onPressed: _testSubmitted ? () {} : () => _applyForJob(),
                             child: Container(
                               padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 12.h),
                               decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [Colors.blue.shade700, Colors.teal.shade400],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                ),
+                                gradient: _testSubmitted
+                                    ? LinearGradient(
+                                        colors: [Colors.grey.shade400, Colors.grey.shade600],
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                      )
+                                    : LinearGradient(
+                                        colors: [Colors.blue.shade700, Colors.teal.shade400],
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                      ),
                                 borderRadius: BorderRadius.circular(12.r),
                                 boxShadow: [
                                   BoxShadow(
@@ -532,9 +874,9 @@ final Map<String, List<String>> skillsBySpecialization = {
                                   ),
                                 ],
                               ),
-                              child: const Text(
-                                'Submit Application',
-                                style: TextStyle(
+                              child: Text(
+                                _testSubmitted ? 'Application Submitted' : 'Submit Application',
+                                style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
@@ -547,7 +889,7 @@ final Map<String, List<String>> skillsBySpecialization = {
                     ),
                   ),
                 ),
-        );
+              );
       },
     );
   }

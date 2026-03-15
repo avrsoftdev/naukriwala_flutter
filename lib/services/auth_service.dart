@@ -645,6 +645,7 @@ class AuthService {
     required String coverLetter,
     required Map<String, dynamic> seekerProfile,
     required String fcmToken,
+    Map<String, dynamic>? testAnswer,
   }) async {
     final uid = _auth.currentUser?.uid;
     if (uid == null) throw const AuthException('User not logged in');
@@ -725,6 +726,7 @@ class AuthService {
         'photoUrl': seekerProfile['photoUrl']?.toString() ?? seekerProfile['profilePhotoUrl']?.toString() ?? '',
       },
       'fcmToken': fcmToken,
+      if (testAnswer != null) 'testAnswer': testAnswer,
     };
 
     batch.set(applicationRef, applicationData);
