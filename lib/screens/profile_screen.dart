@@ -1172,7 +1172,7 @@ class ProfileScreenState extends State<ProfileScreen> {
               row('Company Size', data['companySize']),
             ],
             chips('Skills', (data['skills'] as List?)?.cast<dynamic>()),
-            if (educationDetails is Map) ...[
+            if (!widget.isRecruiter && educationDetails is Map) ...[
               SizedBox(height: 6.h),
               _buildSectionHeader('Education Details'),
               row(
@@ -1296,7 +1296,7 @@ class ProfileScreenState extends State<ProfileScreen> {
                 ),
               ],
             ],
-            if (previousExps is List && previousExps.isNotEmpty) ...[
+            if (!widget.isRecruiter && previousExps is List && previousExps.isNotEmpty) ...[
               SizedBox(height: 6.h),
               _buildSectionHeader('Previous Experiences'),
               ...previousExps.take(10).whereType<Map>().map((e) {
@@ -2957,8 +2957,8 @@ class ProfileScreenState extends State<ProfileScreen> {
                         ],
                         SizedBox(height: 14.h),
                         _buildBasicInformationCard(),
-                        _buildEducationalDetailsCard(),
-                        _buildPreviousExperienceCard(),
+                        if (!widget.isRecruiter) _buildEducationalDetailsCard(),
+                        if (!widget.isRecruiter) _buildPreviousExperienceCard(),
                       ],
                     ),
                   ),
