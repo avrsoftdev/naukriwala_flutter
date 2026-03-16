@@ -2103,7 +2103,6 @@ class ProfileScreenState extends State<ProfileScreen> {
                   if (mounted) {
                     setState(() {
                       _selectedSpecialization = value;
-                      _selectedSkills = [];
                       errorMessage = null;
                     });
                   }
@@ -4311,7 +4310,6 @@ class ProfileDialogState extends State<ProfileDialog> {
                         onChanged: (value) {
                           setState(() {
                             _specialization = value;
-                            _skills = [];
                             _errorMessage = null;
                           });
                         },
