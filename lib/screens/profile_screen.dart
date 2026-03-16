@@ -768,6 +768,35 @@ class ProfileScreenState extends State<ProfileScreen> {
                 'Graduation - Currently Studying',
                 (educationDetails['graduation'] as Map?)?['currentlyStudying'],
               ),
+              // Post-Graduation details
+              if (educationDetails['postGraduation'] is Map) ...[
+                SizedBox(height: 6.h),
+                _buildSectionHeader('Post-Graduation'),
+                row(
+                  'Post-Graduation - Degree',
+                  (educationDetails['postGraduation'] as Map?)?['degree'],
+                ),
+                row(
+                  'Post-Graduation - Major',
+                  (educationDetails['postGraduation'] as Map?)?['major'],
+                ),
+                row(
+                  'Post-Graduation - University',
+                  (educationDetails['postGraduation'] as Map?)?['university'],
+                ),
+                row(
+                  'Post-Graduation - Start Year',
+                  (educationDetails['postGraduation'] as Map?)?['startYear'],
+                ),
+                row(
+                  'Post-Graduation - End Year',
+                  (educationDetails['postGraduation'] as Map?)?['endYear'],
+                ),
+                row(
+                  'Post-Graduation - Currently Studying',
+                  (educationDetails['postGraduation'] as Map?)?['currentlyStudying'],
+                ),
+              ],
             ],
             if (previousExps is List && previousExps.isNotEmpty) ...[
               SizedBox(height: 6.h),
@@ -1314,6 +1343,7 @@ class ProfileScreenState extends State<ProfileScreen> {
       final twelfth = educationDetails['twelfth'] as Map?;
       final diploma = educationDetails['diploma'] as Map?;
       final graduation = educationDetails['graduation'] as Map?;
+      final postGraduation = educationDetails['postGraduation'] as Map?;
 
       widgets.addAll([
         _buildInfoRow('After 10th', educationDetails['afterTenth']?.toString()),
@@ -1365,6 +1395,15 @@ class ProfileScreenState extends State<ProfileScreen> {
           'Graduation - Currently Studying',
           graduation?['currentlyStudying']?.toString(),
         ),
+        // Post-Graduation details
+        if (postGraduation != null) ...[
+          _buildInfoRow('Post-Graduation - Degree', postGraduation['degree']?.toString()),
+          _buildInfoRow('Post-Graduation - Major', postGraduation['major']?.toString()),
+          _buildInfoRow('Post-Graduation - University', postGraduation['university']?.toString()),
+          _buildInfoRow('Post-Graduation - Start Year', postGraduation['startYear']?.toString()),
+          _buildInfoRow('Post-Graduation - End Year', postGraduation['endYear']?.toString()),
+          _buildInfoRow('Post-Graduation - Currently Studying', postGraduation['currentlyStudying']?.toString()),
+        ],
       ]);
     }
 
@@ -2502,6 +2541,14 @@ class ProfileDialogState extends State<ProfileDialog> {
   late final TextEditingController _graduationScoreController;
   String? _graduationScoreType = 'CGPA';
 
+  // Post-Graduation controllers
+  late final TextEditingController _postGraduationDegreeController;
+  late final TextEditingController _postGraduationMajorController;
+  late final TextEditingController _postGraduationUniversityController;
+  late final TextEditingController _postGraduationStartYearController;
+  late final TextEditingController _postGraduationEndYearController;
+  bool _hasPostGraduation = false;
+
   static const List<String> _afterTenthOptions = ['Class 12th', 'Diploma'];
   static const List<String> _twelfthStreamOptions = [
     'Science',
@@ -2617,6 +2664,11 @@ class ProfileDialogState extends State<ProfileDialog> {
     _graduationStartYearController = TextEditingController();
     _graduationEndYearController = TextEditingController();
     _graduationScoreController = TextEditingController();
+    _postGraduationDegreeController = TextEditingController();
+    _postGraduationMajorController = TextEditingController();
+    _postGraduationUniversityController = TextEditingController();
+    _postGraduationStartYearController = TextEditingController();
+    _postGraduationEndYearController = TextEditingController();
 
     final edu = p['educationDetails'];
     if (edu is Map) {
@@ -2682,6 +2734,21 @@ class ProfileDialogState extends State<ProfileDialog> {
         if (st != null && _scoreTypeOptions.contains(st)) {
           _graduationScoreType = st;
         }
+      }
+
+      final postGraduation = edu['postGraduation'];
+      if (postGraduation is Map) {
+        _hasPostGraduation = true;
+        _postGraduationDegreeController.text =
+            postGraduation['degree']?.toString() ?? '';
+        _postGraduationMajorController.text =
+            postGraduation['major']?.toString() ?? '';
+        _postGraduationUniversityController.text =
+            postGraduation['university']?.toString() ?? '';
+        _postGraduationStartYearController.text =
+            postGraduation['startYear']?.toString() ?? '';
+        _postGraduationEndYearController.text =
+            postGraduation['endYear']?.toString() ?? '';
       }
     }
 
@@ -2773,6 +2840,11 @@ class ProfileDialogState extends State<ProfileDialog> {
     _graduationStartYearController.dispose();
     _graduationEndYearController.dispose();
     _graduationScoreController.dispose();
+    _postGraduationDegreeController.dispose();
+    _postGraduationMajorController.dispose();
+    _postGraduationUniversityController.dispose();
+    _postGraduationStartYearController.dispose();
+    _postGraduationEndYearController.dispose();
     for (final map in _prevExpControllers) {
       map['companyName']?.dispose();
       map['jobTitle']?.dispose();
@@ -3125,6 +3197,17 @@ class ProfileDialogState extends State<ProfileDialog> {
         'endYear': _graduationEndYearController.text.trim(),
         'scoreType': _graduationScoreType ?? 'CGPA',
         'score': _graduationScoreController.text.trim(),
+      };
+    }
+
+    // Add post-graduation data if applicable
+    if (showGraduation && _hasPostGraduation) {
+      payload['postGraduation'] = {
+        'degree': _postGraduationDegreeController.text.trim(),
+        'major': _postGraduationMajorController.text.trim(),
+        'university': _postGraduationUniversityController.text.trim(),
+        'startYear': _postGraduationStartYearController.text.trim(),
+        'endYear': _postGraduationEndYearController.text.trim(),
       };
     }
     return payload;
@@ -3780,6 +3863,65 @@ class ProfileDialogState extends State<ProfileDialog> {
                       ],
                     ),
                   ),
+                  // Post-Graduation section
+                  if (_afterTwelfthChoice == 'Graduation') ...[
+                    Container(
+                      width: double.infinity,
+                      margin: EdgeInsets.only(bottom: 12.h),
+                      padding: EdgeInsets.all(14.w),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade50,
+                        borderRadius: BorderRadius.circular(12.r),
+                        border: Border.all(color: Colors.grey.shade200),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  'Post-Graduation (optional)',
+                                  style: TextStyle(
+                                    fontSize: 13.sp,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                              ),
+                              Switch(
+                                value: _hasPostGraduation,
+                                onChanged: (v) => setState(() => _hasPostGraduation = v),
+                              ),
+                            ],
+                          ),
+                          if (_hasPostGraduation) ...[
+                            SizedBox(height: 12.h),
+                            _buildEditableOnboardingField(
+                              label: 'Post-Graduation - Degree',
+                              controller: _postGraduationDegreeController,
+                            ),
+                            _buildEditableOnboardingField(
+                              label: 'Post-Graduation - Major',
+                              controller: _postGraduationMajorController,
+                            ),
+                            _buildEditableOnboardingField(
+                              label: 'Post-Graduation - University',
+                              controller: _postGraduationUniversityController,
+                            ),
+                            _buildEditableOnboardingField(
+                              label: 'Post-Graduation - Start Year',
+                              controller: _postGraduationStartYearController,
+                            ),
+                            _buildEditableOnboardingField(
+                              label: 'Post-Graduation - End Year',
+                              controller: _postGraduationEndYearController,
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
                   Theme(
                     data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
                     child: ExpansionTile(

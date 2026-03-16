@@ -89,6 +89,15 @@ class _ProfileSetupOnboardingState extends State<ProfileSetupOnboarding> {
   String _graduationScoreType = 'CGPA';
   bool _graduationCurrentlyStudying = false;
 
+  // Post-Graduation (Seeker)
+  bool _hasPostGraduation = false;
+  final _postGraduationDegreeController = TextEditingController();
+  String? _selectedPostGraduationMajor;
+  final _postGraduationUniversityController = TextEditingController();
+  final _postGraduationStartYearController = TextEditingController();
+  final _postGraduationEndYearController = TextEditingController();
+  bool _postGraduationCurrentlyStudying = false;
+
   final List<_CertificationEntry> _certifications = [];
 
   final _jobTitleController = TextEditingController();
@@ -249,6 +258,10 @@ class _ProfileSetupOnboardingState extends State<ProfileSetupOnboarding> {
     _graduationStartYearController.dispose();
     _graduationEndYearController.dispose();
     _graduationScoreController.dispose();
+    _postGraduationDegreeController.dispose();
+    _postGraduationUniversityController.dispose();
+    _postGraduationStartYearController.dispose();
+    _postGraduationEndYearController.dispose();
     for (final c in _certifications) {
       c.dispose();
     }
@@ -617,6 +630,25 @@ class _ProfileSetupOnboardingState extends State<ProfileSetupOnboarding> {
               graduation['score']?.toString() ?? '';
           _graduationCurrentlyStudying =
               graduation['currentlyStudying'] == true;
+        }
+
+        final postGraduation = edu['postGraduation'];
+        if (postGraduation is Map) {
+          _hasPostGraduation = true;
+          _postGraduationDegreeController.text =
+              postGraduation['degree']?.toString() ?? '';
+          final major = postGraduation['major']?.toString();
+          if (major != null && _majorOptions.contains(major)) {
+            _selectedPostGraduationMajor = major;
+          }
+          _postGraduationUniversityController.text =
+              postGraduation['university']?.toString() ?? '';
+          _postGraduationStartYearController.text =
+              postGraduation['startYear']?.toString() ?? '';
+          _postGraduationEndYearController.text =
+              postGraduation['endYear']?.toString() ?? '';
+          _postGraduationCurrentlyStudying =
+              postGraduation['currentlyStudying'] == true;
         }
 
         final certs = edu['certifications'];
@@ -1736,6 +1768,7 @@ class _ProfileSetupOnboardingState extends State<ProfileSetupOnboarding> {
     final showGraduation =
         (showTwelfth && _afterTwelfthChoice == 'Graduation') ||
         (showDiploma && _pursuedGraduationAfterDiploma);
+    final showPostGraduation = showGraduation && _hasPostGraduation;
     final showCertifications =
         showTwelfth && _afterTwelfthChoice == 'Other certifications';
 
@@ -2083,6 +2116,98 @@ class _ProfileSetupOnboardingState extends State<ProfileSetupOnboarding> {
             ),
           ],
         ),
+        SizedBox(height: 16.h),
+        // Post-Graduation option - only show if graduation is completed
+        if (showGraduation) ...[
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'Post-Graduation (optional)',
+              style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w700),
+            ),
+          ),
+          SizedBox(height: 10.h),
+          SwitchListTile.adaptive(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Have you completed Post-Graduation?'),
+            subtitle: const Text('e.g., Master\'s degree, PhD, etc.'),
+            value: _hasPostGraduation,
+            onChanged: (v) => setState(() => _hasPostGraduation = v),
+          ),
+        ],
+        if (showPostGraduation) ...[
+          SizedBox(height: 16.h),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'Post-Graduation Details',
+              style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w700),
+            ),
+          ),
+          SizedBox(height: 10.h),
+          TextFormField(
+            controller: _postGraduationDegreeController,
+            textInputAction: TextInputAction.next,
+            decoration: const InputDecoration(
+              labelText: 'Degree (e.g., M.Tech, M.Sc, MBA, PhD)',
+            ),
+            validator: (v) => _hasPostGraduation && (v == null || v.trim().isEmpty) ? 'Required' : null,
+          ),
+          SizedBox(height: 10.h),
+          DropdownButtonFormField<String>(
+            value: _majorOptions.contains(_selectedPostGraduationMajor)
+                ? _selectedPostGraduationMajor
+                : null,
+            decoration: const InputDecoration(
+              labelText: 'Major / Field of study',
+            ),
+            items: _majorOptions
+                .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                .toList(),
+            onChanged: (v) => setState(() => _selectedPostGraduationMajor = v),
+            validator: (v) => _hasPostGraduation && (v == null || v.trim().isEmpty) ? 'Required' : null,
+          ),
+          SizedBox(height: 10.h),
+          TextFormField(
+            controller: _postGraduationUniversityController,
+            textInputAction: TextInputAction.next,
+            decoration: const InputDecoration(labelText: 'College / University'),
+            validator: (v) => _hasPostGraduation && (v == null || v.trim().isEmpty) ? 'Required' : null,
+          ),
+          SizedBox(height: 10.h),
+          Row(
+            children: [
+              Expanded(
+                child: _yearDropdownForController(
+                  controller: _postGraduationStartYearController,
+                  labelText: 'Start year',
+                  requiredField: _hasPostGraduation,
+                ),
+              ),
+              SizedBox(width: 10.w),
+              Expanded(
+                child: _yearDropdownForController(
+                  controller: _postGraduationEndYearController,
+                  labelText: 'End year',
+                  requiredField: _hasPostGraduation && !_postGraduationCurrentlyStudying,
+                  enabled: !_postGraduationCurrentlyStudying,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 10.h),
+          SwitchListTile.adaptive(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Currently studying'),
+            value: _postGraduationCurrentlyStudying,
+            onChanged: (v) {
+              setState(() {
+                _postGraduationCurrentlyStudying = v;
+                if (v) _postGraduationEndYearController.clear();
+              });
+            },
+          ),
+        ],
       ],
       if (showCertifications) ...[
         SizedBox(height: 16.h),
@@ -2392,6 +2517,36 @@ class _ProfileSetupOnboardingState extends State<ProfileSetupOnboarding> {
       }
     }
 
+    // Post-graduation validation
+    final showGraduation =
+        (_afterTenthChoice == 'Class 12th' &&
+            _afterTwelfthChoice == 'Graduation') ||
+        (_afterTenthChoice == 'Diploma' && _pursuedGraduationAfterDiploma);
+    
+    if (showGraduation && _hasPostGraduation) {
+      final pgStart = year(_postGraduationStartYearController.text);
+      final pgEnd = year(_postGraduationEndYearController.text);
+      
+      if (pgStart == null) return 'Please enter a valid Post-Graduation start year';
+      
+      // Get graduation end year to validate timeline
+      int? graduationEndYear;
+      if (_afterTenthChoice == 'Class 12th' && _afterTwelfthChoice == 'Graduation') {
+        graduationEndYear = year(_graduationEndYearController.text);
+      } else if (_afterTenthChoice == 'Diploma' && _pursuedGraduationAfterDiploma) {
+        graduationEndYear = year(_graduationEndYearController.text);
+      }
+      
+      if (graduationEndYear != null && pgStart < graduationEndYear) {
+        return 'Post-Graduation start year should be after Graduation end year';
+      }
+      
+      if (!_postGraduationCurrentlyStudying) {
+        if (pgEnd == null) return 'Please enter a valid Post-Graduation end year';
+        if (pgEnd < pgStart) return 'Post-Graduation end year should be after start year';
+      }
+    }
+
     return null;
   }
 
@@ -2403,6 +2558,9 @@ class _ProfileSetupOnboardingState extends State<ProfileSetupOnboarding> {
     final showGraduation =
         (showTwelfth && _afterTwelfthChoice == 'Graduation') ||
         (showDiploma && _pursuedGraduationAfterDiploma);
+    final showPostGraduation = showGraduation && _hasPostGraduation;
+    
+    if (showPostGraduation) return 'Post-Graduation';
     if (showGraduation) return 'Graduation';
     if (showDiploma) return 'Diploma';
     if (showTwelfth) return '12th';
@@ -2459,6 +2617,18 @@ class _ProfileSetupOnboardingState extends State<ProfileSetupOnboarding> {
         'scoreType': _graduationScoreType,
         'score': _graduationScoreController.text.trim(),
         'currentlyStudying': _graduationCurrentlyStudying,
+      };
+    }
+
+    // Add post-graduation data if applicable
+    if (showGraduation && _hasPostGraduation) {
+      payload['postGraduation'] = {
+        'degree': _postGraduationDegreeController.text.trim(),
+        'major': _selectedPostGraduationMajor ?? '',
+        'university': _postGraduationUniversityController.text.trim(),
+        'startYear': _postGraduationStartYearController.text.trim(),
+        'endYear': _postGraduationEndYearController.text.trim(),
+        'currentlyStudying': _postGraduationCurrentlyStudying,
       };
     }
 
