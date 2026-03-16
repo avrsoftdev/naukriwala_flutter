@@ -597,7 +597,11 @@ class ProfileScreenState extends State<ProfileScreen> {
     'Higher Secondary (Class 12)',
     'Diploma/Certificate',
     'Undergraduate (Bachelor\'s Degree)',
+    'Postgraduate Diploma',
     'Postgraduate (Master\'s Degree)',
+    'Doctorate/PhD/MPhil',
+    'Professional Certification',
+    'Vocational Training',
   ];
 
   final List<String> cityOptions = [
@@ -1147,7 +1151,6 @@ class ProfileScreenState extends State<ProfileScreen> {
           ),
           children: [
             _buildSectionHeader(widget.isRecruiter ? 'Recruiter' : 'Seeker'),
-            row('Current Status', data['currentStatus']),
             row('Job Title', data['jobTitle']),
             row('Industry', data['industry']),
             row('Current Company', data['currentCompany']),
@@ -1815,7 +1818,6 @@ class ProfileScreenState extends State<ProfileScreen> {
         _buildInfoRow('Email', _email),
         _buildInfoRow('Mobile Number', _mobileNumber),
         _buildInfoRow('City', city),
-        _buildInfoRow('Current Status', data['currentStatus']?.toString()),
         _buildInfoRow('Job Title', data['jobTitle']?.toString()),
         _buildInfoRow('Current Company', data['currentCompany']?.toString()),
         _buildInfoRow('Employment Type', data['employmentType']?.toString()),
@@ -3093,7 +3095,6 @@ class ProfileDialogState extends State<ProfileDialog> {
           : null;
 
   // Onboarding / preferences editable controllers
-  late final TextEditingController _currentStatusController;
   late final TextEditingController _jobTitleController;
   late final TextEditingController _currentCompanyController;
   late final TextEditingController _employmentTypeController;
@@ -3200,9 +3201,6 @@ class ProfileDialogState extends State<ProfileDialog> {
     _skills = _mapOldSkillsToNewFormat(List<String>.from(widget.initialData['skills'] ?? []));
 
     final p = _profileDataFromInitial ?? const <String, dynamic>{};
-    _currentStatusController = TextEditingController(
-      text: p['currentStatus']?.toString() ?? '',
-    );
     _jobTitleController = TextEditingController(
       text: p['jobTitle']?.toString() ?? '',
     );
@@ -3404,7 +3402,6 @@ class ProfileDialogState extends State<ProfileDialog> {
     _addressController.dispose();
     _skillsSearchController.dispose();
     _skillsSearchFocusNode.dispose();
-    _currentStatusController.dispose();
     _jobTitleController.dispose();
     _currentCompanyController.dispose();
     _employmentTypeController.dispose();
@@ -4319,6 +4316,86 @@ class ProfileDialogState extends State<ProfileDialog> {
                       ),
                     ),
                   ),
+                  Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8.h),
+                    child: Container(
+                      constraints: BoxConstraints(maxWidth: 300.w),
+                      child: DropdownButtonFormField<String>(
+                        initialValue: widget.educationOptions.contains(_education)
+                            ? _education
+                            : null,
+                        decoration: InputDecoration(
+                          labelText: 'Education',
+                          labelStyle: TextStyle(
+                            color: Colors.grey,
+                            fontSize: 12.sp,
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderSide:
+                                BorderSide(color: Colors.grey.shade400),
+                            borderRadius: BorderRadius.circular(12.r),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderSide: BorderSide(
+                              color: Colors.teal,
+                              width: 2.w,
+                            ),
+                            borderRadius: BorderRadius.circular(12.r),
+                          ),
+                          errorBorder: OutlineInputBorder(
+                            borderSide:
+                                BorderSide(color: Colors.red, width: 2.w),
+                            borderRadius: BorderRadius.circular(12.r),
+                          ),
+                          focusedErrorBorder: OutlineInputBorder(
+                            borderSide:
+                                BorderSide(color: Colors.red, width: 2.w),
+                            borderRadius: BorderRadius.circular(12.r),
+                          ),
+                          errorStyle: TextStyle(
+                            color: Colors.red.shade700,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 11.sp,
+                          ),
+                          filled: true,
+                          fillColor: Colors.white,
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 12.w,
+                            vertical: 10.h,
+                          ),
+                        ),
+                        isExpanded: true,
+                        menuMaxHeight: 300.h,
+                        items: widget.educationOptions.map((String education) {
+                          return DropdownMenuItem<String>(
+                            value: education,
+                            child: Container(
+                              constraints: BoxConstraints(maxWidth: 250.w),
+                              child: Text(
+                                education,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: Colors.black87,
+                                  fontSize: 12.sp,
+                                ),
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (value) {
+                          if (mounted) {
+                            setState(() {
+                              _education = value;
+                              _errorMessage = null;
+                            });
+                          }
+                        },
+                        validator: (value) => value == null
+                            ? 'Education is required'
+                            : null,
+                      ),
+                    ),
+                  ),
                   _buildSkillsAutocomplete(),
                   _buildTextField(
                     'Current CTC',
@@ -4337,10 +4414,6 @@ class ProfileDialogState extends State<ProfileDialog> {
                 const SizedBox(height: 16),
                 if (!widget.isRecruiter) ...[
                   _buildReadOnlySectionTitle('Career details'),
-                  _buildEditableOnboardingField(
-                    label: 'Current Status',
-                    controller: _currentStatusController,
-                  ),
                   _buildEditableOnboardingField(
                     label: 'Job Title',
                     controller: _jobTitleController,
@@ -4759,8 +4832,6 @@ class ProfileDialogState extends State<ProfileDialog> {
                               .trim(),
                           'linkedinUrl': _linkedinUrlController.text.trim(),
                           // Onboarding extras (basic info)
-                          'currentStatus':
-                              _currentStatusController.text.trim(),
                           'jobTitle': _jobTitleController.text.trim(),
                           'currentCompany':
                               _currentCompanyController.text.trim(),
