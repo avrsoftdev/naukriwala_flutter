@@ -14,7 +14,6 @@ import 'dart:io';
 import 'dart:developer' as dev;
 
 Future<List<String>> _loadSkillsFromAsset() async {
-
   final raw = await rootBundle.loadString('assets/data/skills.json');
   final decoded = jsonDecode(raw);
 
@@ -36,6 +35,438 @@ Future<List<String>> _loadSkillsFromAsset() async {
   }
 
   return const <String>[];
+}
+
+// Map old skills to new skills.json format for backward compatibility
+Map<String, String> _getOldToNewSkillsMapping() {
+  return {
+    'Java': 'Java Development',
+    'Python': 'Python Development',
+    'C++': 'C++ Development',
+    'C#': 'C# Development',
+    'Dart': 'Dart Development',
+    'Flutter': 'Flutter Development',
+    'Android': 'Android Development',
+    'iOS': 'iOS Development',
+    'React': 'React Development',
+    'Angular': 'Angular Development',
+    'Vue.js': 'Vue.js Development',
+    'Node.js': 'Node.js Development',
+    'Firebase': 'Firebase Development',
+    'MongoDB': 'MongoDB Development',
+    'MySQL': 'MySQL Development',
+    'PostgreSQL': 'PostgreSQL Development',
+    'AWS': 'AWS Development',
+    'Azure': 'Azure Development',
+    'GCP': 'GCP Development',
+    'Docker': 'Docker Development',
+    'Kubernetes': 'Kubernetes Development',
+    'Jenkins': 'Jenkins Development',
+    'Git': 'Git Development',
+    'Linux': 'Linux Development',
+    'Ubuntu': 'Ubuntu Development',
+    'Windows': 'Windows Development',
+    'macOS': 'macOS Development',
+    'Machine Learning': 'Machine Learning Development',
+    'Data Science': 'Data Science Development',
+    'Deep Learning': 'Deep Learning Development',
+    'AI': 'AI Development',
+    'TensorFlow': 'TensorFlow Development',
+    'PyTorch': 'PyTorch Development',
+    'HTML': 'HTML Development',
+    'CSS': 'CSS Development',
+    'JavaScript': 'JavaScript Development',
+    'TypeScript': 'TypeScript Development',
+    'PHP': 'PHP Development',
+    'Ruby': 'Ruby Development',
+    'Go': 'Go Development',
+    'Rust': 'Rust Development',
+    'Swift': 'Swift Development',
+    'Kotlin': 'Kotlin Development',
+    'Scala': 'Scala Development',
+    'R': 'R Development',
+    'MATLAB': 'MATLAB Development',
+    'Salesforce': 'Salesforce Development',
+    'SAP': 'SAP Development',
+    'Oracle': 'Oracle Development',
+    'SharePoint': 'SharePoint Development',
+    'Testing': 'Testing Development',
+    'QA': 'QA Development',
+    'Agile': 'Agile Development',
+    'Scrum': 'Scrum Development',
+    'DevOps': 'DevOps Development',
+    'CI/CD': 'CI/CD Development',
+    'UI/UX': 'UI/UX Development',
+    'UX': 'UX Development',
+    'UI': 'UI Development',
+    'Figma': 'Figma Development',
+    'Sketch': 'Sketch Development',
+    'Adobe XD': 'Adobe XD Development',
+    'Photoshop': 'Photoshop Development',
+    'Illustrator': 'Illustrator Development',
+    'InDesign': 'InDesign Development',
+    'Premiere Pro': 'Premiere Pro Development',
+    'After Effects': 'After Effects Development',
+    'Final Cut Pro': 'Final Cut Pro Development',
+    'Video Editing': 'Video Editing Development',
+    'Audio Editing': 'Audio Editing Development',
+    'Content Writing': 'Content Writing Development',
+    'Copywriting': 'Copywriting Development',
+    'Technical Writing': 'Technical Writing Development',
+    'Blog Writing': 'Blog Writing Development',
+    'SEO': 'SEO Development',
+    'SEM': 'SEM Development',
+    'SMM': 'SMM Development',
+    'Email Marketing': 'Email Marketing Development',
+    'Social Media Marketing': 'Social Media Marketing Development',
+    'Digital Marketing': 'Digital Marketing Development',
+    'Marketing': 'Marketing Development',
+    'Sales': 'Sales Development',
+    'Business Development': 'Business Development Development',
+    'Product Management': 'Product Management Development',
+    'Project Management': 'Project Management Development',
+    'Program Management': 'Program Management Development',
+    'Portfolio Management': 'Portfolio Management Development',
+    'Risk Management': 'Risk Management Development',
+    'Financial Management': 'Financial Management Development',
+    'Accounting': 'Accounting Development',
+    'Finance': 'Finance Development',
+    'Banking': 'Banking Development',
+    'Insurance': 'Insurance Development',
+    'Investment': 'Investment Development',
+    'Tax': 'Tax Development',
+    'Audit': 'Audit Development',
+    'Compliance': 'Compliance Development',
+    'Legal': 'Legal Development',
+    'HR': 'HR Development',
+    'Recruitment': 'Recruitment Development',
+    'Training': 'Training Development',
+    'Learning': 'Learning Development',
+    'Education': 'Education Development',
+    'Teaching': 'Teaching Development',
+    'Research': 'Research Development',
+    'Analytics': 'Analytics Development',
+    'Business Intelligence': 'Business Intelligence Development',
+    'Data Warehousing': 'Data Warehousing Development',
+    'Data Mining': 'Data Mining Development',
+    'Data Visualization': 'Data Visualization Development',
+    'Reporting': 'Reporting Development',
+    'Dashboard': 'Dashboard Development',
+    'KPI': 'KPI Development',
+    'Metrics': 'Metrics Development',
+    'Performance': 'Performance Development',
+    'Optimization': 'Optimization Development',
+    'Automation': 'Automation Development',
+    'Integration': 'Integration Development',
+    'Migration': 'Migration Development',
+    'Upgradation': 'Upgradation Development',
+    'Maintenance': 'Maintenance Development',
+    'Support': 'Support Development',
+    'Troubleshooting': 'Troubleshooting Development',
+    'Monitoring': 'Monitoring Development',
+    'Alerting': 'Alerting Development',
+    'Logging': 'Logging Development',
+    'Debugging': 'Debugging Development',
+    'Testing': 'Testing Development',
+    'Documentation': 'Documentation Development',
+    'Deployment': 'Deployment Development',
+    'Configuration': 'Configuration Development',
+    'Installation': 'Installation Development',
+    'Setup': 'Setup Development',
+    'Implementation': 'Implementation Development',
+    'Customization': 'Customization Development',
+    'Enhancement': 'Enhancement Development',
+    'Modification': 'Modification Development',
+    'Improvement': 'Improvement Development',
+    'Innovation': 'Innovation Development',
+    'Strategy': 'Strategy Development',
+    'Planning': 'Planning Development',
+    'Architecture': 'Architecture Development',
+    'Design': 'Design Development',
+    'Analysis': 'Analysis Development',
+    'Consulting': 'Consulting Development',
+    'Advisory': 'Advisory Development',
+    'Mentoring': 'Mentoring Development',
+    'Coaching': 'Coaching Development',
+    'Leadership': 'Leadership Development',
+    'Management': 'Management Development',
+    'Administration': 'Administration Development',
+    'Operations': 'Operations Development',
+    'Process': 'Process Development',
+    'Workflow': 'Workflow Development',
+    'Quality': 'Quality Development',
+    'Standards': 'Standards Development',
+    'Best Practices': 'Best Practices Development',
+    'Guidelines': 'Guidelines Development',
+    'Policies': 'Policies Development',
+    'Procedures': 'Procedures Development',
+    'Protocols': 'Protocols Development',
+    'Standards': 'Standards Development',
+    'Frameworks': 'Frameworks Development',
+    'Methodologies': 'Methodologies Development',
+    'Tools': 'Tools Development',
+    'Technologies': 'Technologies Development',
+    'Platforms': 'Platforms Development',
+    'Systems': 'Systems Development',
+    'Applications': 'Applications Development',
+    'Software': 'Software Development',
+    'Hardware': 'Hardware Development',
+    'Networking': 'Networking Development',
+    'Security': 'Security Development',
+    'Cloud': 'Cloud Development',
+    'Edge': 'Edge Development',
+    'IoT': 'IoT Development',
+    'Mobile': 'Mobile Development',
+    'Web': 'Web Development',
+    'Desktop': 'Desktop Development',
+    'Embedded': 'Embedded Development',
+    'Gaming': 'Gaming Development',
+    'AR': 'AR Development',
+    'VR': 'VR Development',
+    'MR': 'MR Development',
+    'Blockchain': 'Blockchain Development',
+    'Cryptocurrency': 'Cryptocurrency Development',
+    'NFT': 'NFT Development',
+    'Metaverse': 'Metaverse Development',
+    'Robotics': 'Robotics Development',
+    'Drones': 'Drones Development',
+    '3D Printing': '3D Printing Development',
+    'Biometrics': 'Biometrics Development',
+    'Quantum': 'Quantum Development',
+    '5G': '5G Development',
+    '6G': '6G Development',
+    'WiFi': 'WiFi Development',
+    'Bluetooth': 'Bluetooth Development',
+    'GPS': 'GPS Development',
+    'RFID': 'RFID Development',
+    'NFC': 'NFC Development',
+    'Sensors': 'Sensors Development',
+    'Actuators': 'Actuators Development',
+    'Microcontrollers': 'Microcontrollers Development',
+    'Microprocessors': 'Microprocessors Development',
+    'FPGA': 'FPGA Development',
+    'ASIC': 'ASIC Development',
+    'SoC': 'SoC Development',
+    'Embedded Systems': 'Embedded Systems Development',
+    'Real-time Systems': 'Real-time Systems Development',
+    'Distributed Systems': 'Distributed Systems Development',
+    'Parallel Systems': 'Parallel Systems Development',
+    'Grid Computing': 'Grid Computing Development',
+    'Supercomputing': 'Supercomputing Development',
+    'HPC': 'HPC Development',
+    'Big Data': 'Big Data Development',
+    'Data Engineering': 'Data Engineering Development',
+    'Data Pipeline': 'Data Pipeline Development',
+    'ETL': 'ETL Development',
+    'ELT': 'ELT Development',
+    'Data Lake': 'Data Lake Development',
+    'Data Warehouse': 'Data Warehouse Development',
+    'Data Mart': 'Data Mart Development',
+    'Data Governance': 'Data Governance Development',
+    'Data Quality': 'Data Quality Development',
+    'Data Security': 'Data Security Development',
+    'Data Privacy': 'Data Privacy Development',
+    'Data Compliance': 'Data Compliance Development',
+    'Data Analytics': 'Data Analytics Development',
+    'Business Analytics': 'Business Analytics Development',
+    'Predictive Analytics': 'Predictive Analytics Development',
+    'Prescriptive Analytics': 'Prescriptive Analytics Development',
+    'Descriptive Analytics': 'Descriptive Analytics Development',
+    'Diagnostic Analytics': 'Diagnostic Analytics Development',
+    'Statistical Analysis': 'Statistical Analysis Development',
+    'Quantitative Analysis': 'Quantitative Analysis Development',
+    'Qualitative Analysis': 'Qualitative Analysis Development',
+    'Financial Analysis': 'Financial Analysis Development',
+    'Risk Analysis': 'Risk Analysis Development',
+    'Market Analysis': 'Market Analysis Development',
+    'Competitive Analysis': 'Competitive Analysis Development',
+    'SWOT Analysis': 'SWOT Analysis Development',
+    'PEST Analysis': 'PEST Analysis Development',
+    'Gap Analysis': 'Gap Analysis Development',
+    'Root Cause Analysis': 'Root Cause Analysis Development',
+    'Trend Analysis': 'Trend Analysis Development',
+    'Sentiment Analysis': 'Sentiment Analysis Development',
+    'Text Analysis': 'Text Analysis Development',
+    'Image Analysis': 'Image Analysis Development',
+    'Video Analysis': 'Video Analysis Development',
+    'Audio Analysis': 'Audio Analysis Development',
+    'Speech Analysis': 'Speech Analysis Development',
+    'Voice Analysis': 'Voice Analysis Development',
+    'Facial Recognition': 'Facial Recognition Development',
+    'Object Detection': 'Object Detection Development',
+    'Pattern Recognition': 'Pattern Recognition Development',
+    'Anomaly Detection': 'Anomaly Detection Development',
+    'Fraud Detection': 'Fraud Detection Development',
+    'Threat Detection': 'Threat Detection Development',
+    'Intrusion Detection': 'Intrusion Detection Development',
+    'Malware Detection': 'Malware Detection Development',
+    'Spam Detection': 'Spam Detection Development',
+    'Phishing Detection': 'Phishing Detection Development',
+    'Network Security': 'Network Security Development',
+    'Application Security': 'Application Security Development',
+    'Cloud Security': 'Cloud Security Development',
+    'Endpoint Security': 'Endpoint Security Development',
+    'Mobile Security': 'Mobile Security Development',
+    'Web Security': 'Web Security Development',
+    'Database Security': 'Database Security Development',
+    'API Security': 'API Security Development',
+    'Identity Management': 'Identity Management Development',
+    'Access Control': 'Access Control Development',
+    'Authentication': 'Authentication Development',
+    'Authorization': 'Authorization Development',
+    'Encryption': 'Encryption Development',
+    'Decryption': 'Decryption Development',
+    'Cryptography': 'Cryptography Development',
+    'Blockchain Security': 'Blockchain Security Development',
+    'Cybersecurity': 'Cybersecurity Development',
+    'Information Security': 'Information Security Development',
+    'IT Security': 'IT Security Development',
+    'OT Security': 'OT Security Development',
+    'ICS Security': 'ICS Security Development',
+    'SCADA Security': 'SCADA Security Development',
+    'IoT Security': 'IoT Security Development',
+    'Industrial Security': 'Industrial Security Development',
+    'Critical Infrastructure': 'Critical Infrastructure Development',
+    'Disaster Recovery': 'Disaster Recovery Development',
+    'Business Continuity': 'Business Continuity Development',
+    'Incident Response': 'Incident Response Development',
+    'Forensics': 'Forensics Development',
+    'Penetration Testing': 'Penetration Testing Development',
+    'Vulnerability Assessment': 'Vulnerability Assessment Development',
+    'Security Audit': 'Security Audit Development',
+    'Compliance Audit': 'Compliance Audit Development',
+    'Risk Assessment': 'Risk Assessment Development',
+    'Threat Assessment': 'Threat Assessment Development',
+    'Security Assessment': 'Security Assessment Development',
+    'Security Testing': 'Security Testing Development',
+    'Security Monitoring': 'Security Monitoring Development',
+    'Security Operations': 'Security Operations Development',
+    'Security Intelligence': 'Security Intelligence Development',
+    'Threat Intelligence': 'Threat Intelligence Development',
+    'Security Analytics': 'Security Analytics Development',
+    'Security Automation': 'Security Automation Development',
+    'Security Orchestration': 'Security Orchestration Development',
+    'Security Response': 'Security Response Development',
+    'Security Management': 'Security Management Development',
+    'Security Governance': 'Security Governance Development',
+    'Security Strategy': 'Security Strategy Development',
+    'Security Architecture': 'Security Architecture Development',
+    'Security Design': 'Security Design Development',
+    'Security Implementation': 'Security Implementation Development',
+    'Security Deployment': 'Security Deployment Development',
+    'Security Configuration': 'Security Configuration Development',
+    'Security Maintenance': 'Security Maintenance Development',
+    'Security Support': 'Security Support Development',
+    'Security Troubleshooting': 'Security Troubleshooting Development',
+    'Security Documentation': 'Security Documentation Development',
+    'Security Training': 'Security Training Development',
+    'Security Awareness': 'Security Awareness Development',
+    'Security Compliance': 'Security Compliance Development',
+    'Security Policies': 'Security Policies Development',
+    'Security Procedures': 'Security Procedures Development',
+    'Security Standards': 'Security Standards Development',
+    'Security Best Practices': 'Security Best Practices Development',
+    'Security Guidelines': 'Security Guidelines Development',
+    'Security Frameworks': 'Security Frameworks Development',
+    'Security Methodologies': 'Security Methodologies Development',
+    'Security Tools': 'Security Tools Development',
+    'Security Technologies': 'Security Technologies Development',
+    'Security Platforms': 'Security Platforms Development',
+    'Security Systems': 'Security Systems Development',
+    'Security Applications': 'Security Applications Development',
+    'Security Software': 'Security Software Development',
+    'Security Hardware': 'Security Hardware Development',
+    'Security Networking': 'Security Networking Development',
+    'Security Cloud': 'Security Cloud Development',
+    'Security Edge': 'Security Edge Development',
+    'Security IoT': 'Security IoT Development',
+    'Security Mobile': 'Security Mobile Development',
+    'Security Web': 'Security Web Development',
+    'Security Desktop': 'Security Desktop Development',
+    'Security Embedded': 'Security Embedded Development',
+    'Security Gaming': 'Security Gaming Development',
+    'Security AR': 'Security AR Development',
+    'Security VR': 'Security VR Development',
+    'Security MR': 'Security MR Development',
+    'Security Blockchain': 'Security Blockchain Development',
+    'Security Cryptocurrency': 'Security Cryptocurrency Development',
+    'Security NFT': 'Security NFT Development',
+    'Security Metaverse': 'Security Metaverse Development',
+    'Security Robotics': 'Security Robotics Development',
+    'Security Drones': 'Security Drones Development',
+    'Security 3D Printing': 'Security 3D Printing Development',
+    'Security Biometrics': 'Security Biometrics Development',
+    'Security Quantum': 'Security Quantum Development',
+    'Security 5G': 'Security 5G Development',
+    'Security 6G': 'Security 6G Development',
+    'Security WiFi': 'Security WiFi Development',
+    'Security Bluetooth': 'Security Bluetooth Development',
+    'Security GPS': 'Security GPS Development',
+    'Security RFID': 'Security RFID Development',
+    'Security NFC': 'Security NFC Development',
+    'Security Sensors': 'Security Sensors Development',
+    'Security Actuators': 'Security Actuators Development',
+    'Security Microcontrollers': 'Security Microcontrollers Development',
+    'Security Microprocessors': 'Security Microprocessors Development',
+    'Security FPGA': 'Security FPGA Development',
+    'Security ASIC': 'Security ASIC Development',
+    'Security SoC': 'Security SoC Development',
+    'Security Embedded Systems': 'Security Embedded Systems Development',
+    'Security Real-time Systems': 'Security Real-time Systems Development',
+    'Security Distributed Systems': 'Security Distributed Systems Development',
+    'Security Parallel Systems': 'Security Parallel Systems Development',
+    'Security Grid Computing': 'Security Grid Computing Development',
+    'Security Supercomputing': 'Security Supercomputing Development',
+    'Security HPC': 'Security HPC Development',
+    'Security Big Data': 'Security Big Data Development',
+    'Security Data Engineering': 'Security Data Engineering Development',
+    'Security Data Pipeline': 'Security Data Pipeline Development',
+    'Security ETL': 'Security ETL Development',
+    'Security ELT': 'Security ELT Development',
+    'Security Data Lake': 'Security Data Lake Development',
+    'Security Data Warehouse': 'Security Data Warehouse Development',
+    'Security Data Mart': 'Security Data Mart Development',
+    'Security Data Governance': 'Security Data Governance Development',
+    'Security Data Quality': 'Security Data Quality Development',
+    'Security Data Security': 'Security Data Security Development',
+    'Security Data Privacy': 'Security Data Privacy Development',
+    'Security Data Compliance': 'Security Data Compliance Development',
+    'Security Data Analytics': 'Security Data Analytics Development',
+    'Security Business Analytics': 'Security Business Analytics Development',
+    'Security Predictive Analytics': 'Security Predictive Analytics Development',
+    'Security Prescriptive Analytics': 'Security Prescriptive Analytics Development',
+    'Security Descriptive Analytics': 'Security Descriptive Analytics Development',
+    'Security Diagnostic Analytics': 'Security Diagnostic Analytics Development',
+    'Security Statistical Analysis': 'Security Statistical Analysis Development',
+    'Security Quantitative Analysis': 'Security Quantitative Analysis Development',
+    'Security Qualitative Analysis': 'Security Qualitative Analysis Development',
+    'Security Financial Analysis': 'Security Financial Analysis Development',
+    'Security Risk Analysis': 'Security Risk Analysis Development',
+    'Security Market Analysis': 'Security Market Analysis Development',
+    'Security Competitive Analysis': 'Security Competitive Analysis Development',
+    'Security SWOT Analysis': 'Security SWOT Analysis Development',
+    'Security PEST Analysis': 'Security PEST Analysis Development',
+    'Security Gap Analysis': 'Security Gap Analysis Development',
+    'Security Root Cause Analysis': 'Security Root Cause Analysis Development',
+    'Security Trend Analysis': 'Security Trend Analysis Development',
+    'Security Sentiment Analysis': 'Security Sentiment Analysis Development',
+    'Security Text Analysis': 'Security Text Analysis Development',
+    'Security Image Analysis': 'Security Image Analysis Development',
+    'Security Video Analysis': 'Security Video Analysis Development',
+    'Security Audio Analysis': 'Security Audio Analysis Development',
+    'Security Speech Analysis': 'Security Speech Analysis Development',
+    'Security Voice Analysis': 'Security Voice Analysis Development',
+    'Security Facial Recognition': 'Security Facial Recognition Development',
+    'Security Object Detection': 'Security Object Detection Development',
+    'Security Pattern Recognition': 'Security Pattern Recognition Development',
+    'Security Anomaly Detection': 'Security Anomaly Detection Development',
+    'Security Fraud Detection': 'Security Fraud Detection Development',
+    'Security Threat Detection': 'Security Threat Detection Development',
+    'Security Intrusion Detection': 'Security Intrusion Detection Development',
+    'Security Malware Detection': 'Security Malware Detection Development',
+    'Security Spam Detection': 'Security Spam Detection Development',
+    'Security Phishing Detection': 'Security Phishing Detection Development',
+  };
 }
 
 class ProfileScreen extends StatefulWidget {
@@ -83,6 +514,70 @@ class ProfileScreenState extends State<ProfileScreen> {
   // Track if profile has been updated
   bool _isProfileUpdated = false;
   bool _isUploadingProfilePhoto = false;
+
+  // Map old skills to new skills.json format for backward compatibility
+  List<String> _mapOldSkillsToNewFormat(List<String> oldSkills) {
+    final mapping = _getOldToNewSkillsMapping();
+    final mappedSkills = <String>[];
+    
+    for (final skill in oldSkills) {
+      final trimmedSkill = skill.trim();
+      if (trimmedSkill.isEmpty) continue;
+      
+      // Check if skill already matches new format (contains "Development", "Engineering", etc.)
+      if (trimmedSkill.contains('Development') || 
+          trimmedSkill.contains('Engineering') || 
+          trimmedSkill.contains('Implementation') ||
+          trimmedSkill.contains('Integration') ||
+          trimmedSkill.contains('Optimization') ||
+          trimmedSkill.contains('Automation') ||
+          trimmedSkill.contains('Administration') ||
+          trimmedSkill.contains('Management') ||
+          trimmedSkill.contains('Analysis') ||
+          trimmedSkill.contains('Strategy') ||
+          trimmedSkill.contains('Consulting') ||
+          trimmedSkill.contains('Operations') ||
+          trimmedSkill.contains('Support') ||
+          trimmedSkill.contains('Design') ||
+          trimmedSkill.contains('Architecture') ||
+          trimmedSkill.contains('Deployment') ||
+          trimmedSkill.contains('Monitoring') ||
+          trimmedSkill.contains('Troubleshooting') ||
+          trimmedSkill.contains('Security') ||
+          trimmedSkill.contains('Testing') ||
+          trimmedSkill.contains('Reporting') ||
+          trimmedSkill.contains('Planning') ||
+          trimmedSkill.contains('Configuration') ||
+          trimmedSkill.contains('Migration') ||
+          trimmedSkill.contains('Maintenance') ||
+          trimmedSkill.contains('Training')) {
+        // Skill is already in new format
+        mappedSkills.add(trimmedSkill);
+      } else {
+        // Try to map old skill to new format
+        final mappedSkill = mapping[trimmedSkill];
+        if (mappedSkill != null) {
+          mappedSkills.add(mappedSkill);
+        } else {
+          // If no mapping found, try to find a skill in _allSkills that contains the old skill name
+          if (_allSkills.isNotEmpty) {
+            final matchingSkill = _allSkills.firstWhere(
+              (newSkill) => newSkill.toLowerCase().contains(trimmedSkill.toLowerCase()),
+              orElse: () => '${trimmedSkill} Development', // Fallback: add "Development" suffix
+            );
+            mappedSkills.add(matchingSkill);
+          } else {
+            // Fallback when _allSkills is not yet loaded
+            mappedSkills.add('${trimmedSkill} Development');
+          }
+        }
+      }
+    }
+    
+    // Remove duplicates while preserving order
+    final seen = <String>{};
+    return mappedSkills.where((skill) => seen.add(skill)).toList();
+  }
 
   final List<String> experienceOptions = [
     'Fresher',
@@ -479,8 +974,8 @@ class ProfileScreenState extends State<ProfileScreen> {
                   : education != null && education.isNotEmpty
                   ? 'Other'
                   : null;
-              _selectedSkills =
-                  (data['skills'] as List<dynamic>?)?.cast<String>() ?? [];
+              _selectedSkills = _mapOldSkillsToNewFormat(
+                  (data['skills'] as List<dynamic>?)?.cast<String>() ?? []);
               _selectedSpecialization =
                   specializationOptions.contains(data['specialization'])
                   ? data['specialization']
@@ -1765,12 +2260,47 @@ class ProfileScreenState extends State<ProfileScreen> {
                   if (q.isEmpty) return const <String>[];
                   final selectedLower =
                       _selectedSkills.map((e) => e.toLowerCase()).toSet();
-                  return _allSkills
+                  
+                  // Get all available skills (both from skills.json and old skills)
+                  final allAvailableSkills = <String>[];
+                  allAvailableSkills.addAll(_allSkills); // New skills from JSON
+                  
+                  // Add old skills from skillsBySpecialization for backward compatibility
+                  final oldSkills = skillsBySpecialization.values
+                      .expand((skills) => skills)
+                      .where((skill) => !selectedLower.contains(skill.toLowerCase()))
+                      .toList();
+                  allAvailableSkills.addAll(oldSkills);
+                  
+                  // Filter skills that match search query and aren't already selected
+                  final matchingSkills = allAvailableSkills
                       .where((s) =>
                           !selectedLower.contains(s.toLowerCase()) &&
                           s.toLowerCase().contains(q))
-                      .take(20)
+                      .toSet()
                       .toList();
+                  
+                  // Sort results: prioritize exact matches, then skills starting with query
+                  matchingSkills.sort((a, b) {
+                    final aLower = a.toLowerCase();
+                    final bLower = b.toLowerCase();
+                    final qLower = q;
+                    
+                    // Exact match first
+                    if (aLower == qLower) return -1;
+                    if (bLower == qLower) return 1;
+                    
+                    // Skills starting with query next
+                    final aStarts = aLower.startsWith(qLower);
+                    final bStarts = bLower.startsWith(qLower);
+                    if (aStarts && !bStarts) return -1;
+                    if (!aStarts && bStarts) return 1;
+                    
+                    // Alphabetical order
+                    return aLower.compareTo(bLower);
+                  });
+                  
+                  return matchingSkills.take(20).toList();
                 },
                 itemBuilder: (context, suggestion) {
                   return ListTile(
@@ -2494,6 +3024,70 @@ class ProfileDialogState extends State<ProfileDialog> {
   bool _isLoading = false;
   String? _errorMessage;
 
+  // Map old skills to new skills.json format for backward compatibility
+  List<String> _mapOldSkillsToNewFormat(List<String> oldSkills) {
+    final mapping = _getOldToNewSkillsMapping();
+    final mappedSkills = <String>[];
+    
+    for (final skill in oldSkills) {
+      final trimmedSkill = skill.trim();
+      if (trimmedSkill.isEmpty) continue;
+      
+      // Check if skill already matches new format (contains "Development", "Engineering", etc.)
+      if (trimmedSkill.contains('Development') || 
+          trimmedSkill.contains('Engineering') || 
+          trimmedSkill.contains('Implementation') ||
+          trimmedSkill.contains('Integration') ||
+          trimmedSkill.contains('Optimization') ||
+          trimmedSkill.contains('Automation') ||
+          trimmedSkill.contains('Administration') ||
+          trimmedSkill.contains('Management') ||
+          trimmedSkill.contains('Analysis') ||
+          trimmedSkill.contains('Strategy') ||
+          trimmedSkill.contains('Consulting') ||
+          trimmedSkill.contains('Operations') ||
+          trimmedSkill.contains('Support') ||
+          trimmedSkill.contains('Design') ||
+          trimmedSkill.contains('Architecture') ||
+          trimmedSkill.contains('Deployment') ||
+          trimmedSkill.contains('Monitoring') ||
+          trimmedSkill.contains('Troubleshooting') ||
+          trimmedSkill.contains('Security') ||
+          trimmedSkill.contains('Testing') ||
+          trimmedSkill.contains('Reporting') ||
+          trimmedSkill.contains('Planning') ||
+          trimmedSkill.contains('Configuration') ||
+          trimmedSkill.contains('Migration') ||
+          trimmedSkill.contains('Maintenance') ||
+          trimmedSkill.contains('Training')) {
+        // Skill is already in new format
+        mappedSkills.add(trimmedSkill);
+      } else {
+        // Try to map old skill to new format
+        final mappedSkill = mapping[trimmedSkill];
+        if (mappedSkill != null) {
+          mappedSkills.add(mappedSkill);
+        } else {
+          // If no mapping found, try to find a skill in _allSkills that contains the old skill name
+          if (_allSkills.isNotEmpty) {
+            final matchingSkill = _allSkills.firstWhere(
+              (newSkill) => newSkill.toLowerCase().contains(trimmedSkill.toLowerCase()),
+              orElse: () => '${trimmedSkill} Development', // Fallback: add "Development" suffix
+            );
+            mappedSkills.add(matchingSkill);
+          } else {
+            // Fallback when _allSkills is not yet loaded
+            mappedSkills.add('${trimmedSkill} Development');
+          }
+        }
+      }
+    }
+    
+    // Remove duplicates while preserving order
+    final seen = <String>{};
+    return mappedSkills.where((skill) => seen.add(skill)).toList();
+  }
+
   Map<String, dynamic>? get _profileDataFromInitial =>
       widget.initialData['profileData'] is Map<String, dynamic>
           ? widget.initialData['profileData'] as Map<String, dynamic>
@@ -2604,7 +3198,7 @@ class ProfileDialogState extends State<ProfileDialog> {
     _specialization = widget.initialData['specialization'];
     _education = widget.initialData['education'];
     _selectedCity = widget.initialData['city'];
-    _skills = List<String>.from(widget.initialData['skills']);
+    _skills = _mapOldSkillsToNewFormat(List<String>.from(widget.initialData['skills'] ?? []));
 
     final p = _profileDataFromInitial ?? const <String, dynamic>{};
     _currentStatusController = TextEditingController(
@@ -2896,12 +3490,47 @@ class ProfileDialogState extends State<ProfileDialog> {
                   if (q.isEmpty) return const <String>[];
                   final selectedLower =
                       _skills.map((e) => e.toLowerCase()).toSet();
-                  return _allSkills
+                  
+                  // Get all available skills (both from skills.json and old skills)
+                  final allAvailableSkills = <String>[];
+                  allAvailableSkills.addAll(_allSkills); // New skills from JSON
+                  
+                  // Add old skills from skillsBySpecialization for backward compatibility
+                  final oldSkills = widget.skillsBySpecialization.values
+                      .expand((skills) => skills)
+                      .where((skill) => !selectedLower.contains(skill.toLowerCase()))
+                      .toList();
+                  allAvailableSkills.addAll(oldSkills);
+                  
+                  // Filter skills that match search query and aren't already selected
+                  final matchingSkills = allAvailableSkills
                       .where((s) =>
                           !selectedLower.contains(s.toLowerCase()) &&
                           s.toLowerCase().contains(q))
-                      .take(20)
+                      .toSet()
                       .toList();
+                  
+                  // Sort results: prioritize exact matches, then skills starting with query
+                  matchingSkills.sort((a, b) {
+                    final aLower = a.toLowerCase();
+                    final bLower = b.toLowerCase();
+                    final qLower = q;
+                    
+                    // Exact match first
+                    if (aLower == qLower) return -1;
+                    if (bLower == qLower) return 1;
+                    
+                    // Skills starting with query next
+                    final aStarts = aLower.startsWith(qLower);
+                    final bStarts = bLower.startsWith(qLower);
+                    if (aStarts && !bStarts) return -1;
+                    if (!aStarts && bStarts) return 1;
+                    
+                    // Alphabetical order
+                    return aLower.compareTo(bLower);
+                  });
+                  
+                  return matchingSkills.take(20).toList();
                 },
                 itemBuilder: (context, suggestion) {
                   return ListTile(
