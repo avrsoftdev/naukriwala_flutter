@@ -1810,14 +1810,29 @@ class ProfileScreenState extends State<ProfileScreen> {
             ? _cityController.text.trim()
             : data['city']?.toString());
 
-    return _buildProfileSectionCard(
-      title: 'Basic Information',
-      section: 'basic',
-      children: [
-        _buildInfoRow('Name', name),
-        _buildInfoRow('Email', _email),
-        _buildInfoRow('Mobile Number', _mobileNumber),
-        _buildInfoRow('City', city),
+    final List<Widget> children = [
+      _buildInfoRow('Name', name),
+      _buildInfoRow('Email', _email),
+      _buildInfoRow('Mobile Number', _mobileNumber),
+      _buildInfoRow('City', city),
+    ];
+
+    // Add recruiter-specific fields
+    if (widget.isRecruiter) {
+      children.addAll([
+        _buildInfoRow('Company Name', _companyNameController.text.trim().isNotEmpty 
+            ? _companyNameController.text.trim() 
+            : data['companyName']?.toString()),
+        _buildInfoRow('Designation', _designationController.text.trim().isNotEmpty 
+            ? _designationController.text.trim() 
+            : data['designation']?.toString()),
+        _buildInfoRow('Company Profile', _companyProfileController.text.trim().isNotEmpty 
+            ? _companyProfileController.text.trim() 
+            : data['companyProfile']?.toString()),
+      ]);
+    } else {
+      // Add seeker-specific fields
+      children.addAll([
         _buildInfoRow('Job Title', data['jobTitle']?.toString()),
         _buildInfoRow('Current Company', data['currentCompany']?.toString()),
         _buildInfoRow('Employment Type', data['employmentType']?.toString()),
@@ -1825,7 +1840,13 @@ class ProfileScreenState extends State<ProfileScreen> {
           'Total Experience (years)',
           data['totalExperienceYears']?.toString(),
         ),
-      ],
+      ]);
+    }
+
+    return _buildProfileSectionCard(
+      title: 'Basic Information',
+      section: 'basic',
+      children: children,
     );
   }
 
