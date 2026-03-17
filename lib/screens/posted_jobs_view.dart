@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import 'package:naukariwala/screens/edit_job_screen.dart';
+import 'package:naukariwala/screens/seeker_details_screen.dart';
 import 'dart:developer' as dev;
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
@@ -488,7 +489,7 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
             else if (applicants.isNotEmpty)
               ...applicants.map<Widget>((applicant) {
                 final name = applicant['name']?.toString() ?? 'Unknown Seeker';
-                final resume = applicant['resumeUrl']?.toString() ?? 'N/A';
+                final seekerId = applicant['seekerId']?.toString() ?? 'Unknown';
                 return Padding(
                   padding: EdgeInsets.only(bottom: 8.h),
                   child: Container(
@@ -510,21 +511,25 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
                         ),
                         SizedBox(width: 10.w),
                         Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                name,
-                                style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w600, color: const Color(0xFF243B53)),
-                              ),
-                              Text(
-                                'Resume: $resume',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(fontSize: 11.sp, color: Colors.blueGrey.shade500),
-                              ),
-                            ],
+                          child: Text(
+                            name,
+                            style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w600, color: const Color(0xFF243B53)),
                           ),
+                        ),
+                        IconButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => SeekerDetailsScreen(
+                                  seekerId: seekerId,
+                                  jobId: jobId,
+                                ),
+                              ),
+                            );
+                          },
+                          icon: Icon(Icons.person_search_outlined, color: const Color(0xFF1565C0), size: 20.sp),
+                          tooltip: 'View Details',
                         ),
                       ],
                     ),
@@ -636,6 +641,7 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
       final applicants = snapshot.docs.map((doc) {
         final data = doc.data();
         return {
+          'seekerId': data['seekerId']?.toString() ?? 'Unknown',
           'name': data['resume']?['name']?.toString() ?? 'Unknown Seeker',
           'resumeUrl': data['resume']?['cvUrl']?.toString() ?? 'N/A',
         };
