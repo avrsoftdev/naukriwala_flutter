@@ -660,14 +660,10 @@ class _AppliedSeekersScreenState extends State<AppliedSeekersScreen> {
                                                 width: double.infinity,
                                                 padding: EdgeInsets.all(10.w),
                                                 decoration: BoxDecoration(
-                                                  color: applicant['testAnswer']['isCorrect'] == true
-                                                      ? const Color(0xFFF0FDF4)
-                                                      : const Color(0xFFFEF2F2),
+                                                  color: _getTestResultColor(applicant['testAnswer']),
                                                   borderRadius: BorderRadius.circular(8.r),
                                                   border: Border.all(
-                                                    color: applicant['testAnswer']['isCorrect'] == true
-                                                        ? const Color(0xFF86EFAC)
-                                                        : const Color(0xFFFCA5A5),
+                                                    color: _getTestResultBorderColor(applicant['testAnswer']),
                                                   ),
                                                 ),
                                                 child: Column(
@@ -676,50 +672,23 @@ class _AppliedSeekersScreenState extends State<AppliedSeekersScreen> {
                                                     Row(
                                                       children: [
                                                         Icon(
-                                                          applicant['testAnswer']['isCorrect'] == true
-                                                              ? Icons.check_circle
-                                                              : Icons.cancel,
-                                                          color: applicant['testAnswer']['isCorrect'] == true
-                                                              ? const Color(0xFF166534)
-                                                              : const Color(0xFFDC2626),
+                                                          _getTestResultIcon(applicant['testAnswer']),
+                                                          color: _getTestResultIconColor(applicant['testAnswer']),
                                                           size: 16.sp,
                                                         ),
                                                         SizedBox(width: 6.w),
                                                         Text(
-                                                          'Test Answer',
+                                                          _getTestResultTitle(applicant['testAnswer']),
                                                           style: TextStyle(
                                                             fontSize: 12.sp,
                                                             fontWeight: FontWeight.w700,
-                                                            color: applicant['testAnswer']['isCorrect'] == true
-                                                                ? const Color(0xFF166534)
-                                                                : const Color(0xFFDC2626),
+                                                            color: _getTestResultIconColor(applicant['testAnswer']),
                                                           ),
                                                         ),
                                                       ],
                                                     ),
                                                     SizedBox(height: 4.h),
-                                                    Text(
-                                                      'Q: ${applicant['testAnswer']['question'] ?? 'N/A'}',
-                                                      style: TextStyle(
-                                                        fontSize: 11.sp,
-                                                        color: Colors.grey.shade700,
-                                                      ),
-                                                    ),
-                                                    SizedBox(height: 2.h),
-                                                    Text(
-                                                      'Selected: Option ${applicant['testAnswer']['selectedOptionIndex'] + 1}',
-                                                      style: TextStyle(
-                                                        fontSize: 11.sp,
-                                                        color: Colors.grey.shade700,
-                                                      ),
-                                                    ),
-                                                    Text(
-                                                      'Correct: Option ${applicant['testAnswer']['correctOptionIndex'] + 1}',
-                                                      style: TextStyle(
-                                                        fontSize: 11.sp,
-                                                        color: Colors.grey.shade700,
-                                                      ),
-                                                    ),
+                                                    ..._buildTestAnswerDisplay(applicant['testAnswer']),
                                                   ],
                                                 ),
                                               ),
@@ -970,5 +939,129 @@ class _AppliedSeekersScreenState extends State<AppliedSeekersScreen> {
         ),
       ),
     );
+  }
+
+  // Helper methods for test answer display
+  Color _getTestResultColor(Map<String, dynamic> testAnswer) {
+    if (testAnswer.containsKey('answers')) {
+      // Multiple questions format
+      final correctAnswers = testAnswer['correctAnswers'] ?? 0;
+      final totalQuestions = testAnswer['totalQuestions'] ?? 1;
+      return correctAnswers == totalQuestions ? const Color(0xFFF0FDF4) : const Color(0xFFFEF2F2);
+    } else {
+      // Single question format
+      return testAnswer['isCorrect'] == true ? const Color(0xFFF0FDF4) : const Color(0xFFFEF2F2);
+    }
+  }
+
+  Color _getTestResultBorderColor(Map<String, dynamic> testAnswer) {
+    if (testAnswer.containsKey('answers')) {
+      // Multiple questions format
+      final correctAnswers = testAnswer['correctAnswers'] ?? 0;
+      final totalQuestions = testAnswer['totalQuestions'] ?? 1;
+      return correctAnswers == totalQuestions ? const Color(0xFF86EFAC) : const Color(0xFFFCA5A5);
+    } else {
+      // Single question format
+      return testAnswer['isCorrect'] == true ? const Color(0xFF86EFAC) : const Color(0xFFFCA5A5);
+    }
+  }
+
+  IconData _getTestResultIcon(Map<String, dynamic> testAnswer) {
+    if (testAnswer.containsKey('answers')) {
+      // Multiple questions format
+      final correctAnswers = testAnswer['correctAnswers'] ?? 0;
+      final totalQuestions = testAnswer['totalQuestions'] ?? 1;
+      return correctAnswers == totalQuestions ? Icons.check_circle : Icons.cancel;
+    } else {
+      // Single question format
+      return testAnswer['isCorrect'] == true ? Icons.check_circle : Icons.cancel;
+    }
+  }
+
+  Color _getTestResultIconColor(Map<String, dynamic> testAnswer) {
+    if (testAnswer.containsKey('answers')) {
+      // Multiple questions format
+      final correctAnswers = testAnswer['correctAnswers'] ?? 0;
+      final totalQuestions = testAnswer['totalQuestions'] ?? 1;
+      return correctAnswers == totalQuestions ? const Color(0xFF166534) : const Color(0xFFDC2626);
+    } else {
+      // Single question format
+      return testAnswer['isCorrect'] == true ? const Color(0xFF166534) : const Color(0xFFDC2626);
+    }
+  }
+
+  String _getTestResultTitle(Map<String, dynamic> testAnswer) {
+    if (testAnswer.containsKey('answers')) {
+      // Multiple questions format
+      final correctAnswers = testAnswer['correctAnswers'] ?? 0;
+      final totalQuestions = testAnswer['totalQuestions'] ?? 1;
+      return 'Test Results: $correctAnswers/$totalQuestions Correct';
+    } else {
+      // Single question format
+      return 'Test Answer';
+    }
+  }
+
+  List<Widget> _buildTestAnswerDisplay(Map<String, dynamic> testAnswer) {
+    if (testAnswer.containsKey('answers')) {
+      // Multiple questions format
+      final answers = testAnswer['answers'] as List<dynamic>? ?? [];
+      return answers.map<Widget>((answer) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Q: ${answer['question'] ?? 'N/A'}',
+              style: TextStyle(
+                fontSize: 11.sp,
+                color: Colors.grey.shade700,
+              ),
+            ),
+            SizedBox(height: 2.h),
+            Text(
+              'Selected: ${answer['selectedOption'] ?? 'N/A'}',
+              style: TextStyle(
+                fontSize: 11.sp,
+                color: Colors.grey.shade700,
+              ),
+            ),
+            Text(
+              'Correct: ${answer['correctOption'] ?? 'N/A'}',
+              style: TextStyle(
+                fontSize: 11.sp,
+                color: Colors.grey.shade700,
+              ),
+            ),
+            SizedBox(height: 4.h),
+          ],
+        );
+      }).toList();
+    } else {
+      // Single question format
+      return [
+        Text(
+          'Q: ${testAnswer['question'] ?? 'N/A'}',
+          style: TextStyle(
+            fontSize: 11.sp,
+            color: Colors.grey.shade700,
+          ),
+        ),
+        SizedBox(height: 2.h),
+        Text(
+          'Selected: ${testAnswer['selectedOption'] ?? 'N/A'}',
+          style: TextStyle(
+            fontSize: 11.sp,
+            color: Colors.grey.shade700,
+          ),
+        ),
+        Text(
+          'Correct: ${testAnswer['correctOption'] ?? 'N/A'}',
+          style: TextStyle(
+            fontSize: 11.sp,
+            color: Colors.grey.shade700,
+          ),
+        ),
+      ];
+    }
   }
 }
