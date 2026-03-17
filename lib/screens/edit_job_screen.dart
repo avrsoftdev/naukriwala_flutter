@@ -5,6 +5,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:developer' as dev;
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter/services.dart';
+import 'dart:convert';
+import '../services/auth_service.dart';
+import '../widgets/skills_autocomplete_multi_select.dart';
 
 class EditJobScreen extends StatefulWidget {
   final String jobId;
@@ -23,6 +27,7 @@ class EditJobScreen extends StatefulWidget {
 class _EditJobScreenState extends State<EditJobScreen> {
   final _formKey = GlobalKey<FormState>();
   final Map<String, String> updatedJobData = {};
+  final AuthService _authService = AuthService();
 
   // Controllers for salary fields
   final TextEditingController _minSalaryController = TextEditingController();
@@ -31,8 +36,42 @@ class _EditJobScreenState extends State<EditJobScreen> {
   // State for employment type dropdown
   String? _selectedJobType;
 
+  // State for new dropdown fields
+  List<String> _selectedSkills = [];
+  String? _selectedEducation;
+  String? _selectedExperience;
+  String? _selectedSpecialization;
+
   // Job Type options
   final List<String> jobTypeOptions = ['Full-Time', 'Part-Time', 'Freelancer'];
+
+  // Education options
+  final List<String> educationOptions = [
+    'Secondary (Class 10)',
+    'Higher Secondary (Class 12)',
+    'Diploma/Certificate',
+    'Undergraduate (Bachelor\'s Degree)',
+    'Postgraduate Diploma',
+    'Postgraduate (Master\'s Degree)',
+    'Doctorate/PhD/MPhil',
+    'Professional Certification',
+    'Vocational Training',
+  ];
+
+  // Experience options
+  final List<String> experienceOptions = [
+    'Fresher',
+    '1-2 years',
+    '2-4 years',
+    '4-6 years',
+    '6-8 years',
+    '8-10 years',
+    '10-12 years',
+    '12+ years',
+  ];
+
+  // Specialization options
+  List<String> get specializationOptions => _authService.specializationOptions;
 
   @override
   void initState() {
@@ -62,6 +101,10 @@ class _EditJobScreenState extends State<EditJobScreen> {
       'benefits': 'Benefits & Perks',
       'applicationInstructions': 'Application Instructions',
       'deadline': 'Application Deadline',
+      'skills': 'Skills',
+      'education': 'Education',
+      'experience': 'Experience',
+      'specialization': 'Specialization',
     };
 
     widget.jobData.forEach((key, value) {
@@ -72,6 +115,9 @@ class _EditJobScreenState extends State<EditJobScreen> {
 
     // Initialize salary controllers and job type
     _initializeSalaryAndJobType();
+    
+    // Initialize new dropdown fields
+    _initializeNewFields();
 
     dev.log('EditJobScreen initialized with job data: ${widget.jobData.keys}', name: 'EditJobScreen');
     dev.log('Updated job data keys: ${updatedJobData.keys}', name: 'EditJobScreen');
@@ -94,6 +140,39 @@ class _EditJobScreenState extends State<EditJobScreen> {
     final jobType = widget.jobData['jobType'];
     if (jobType != null && jobTypeOptions.contains(jobType.toString())) {
       _selectedJobType = jobType.toString();
+    }
+  }
+
+  void _initializeNewFields() {
+    // Initialize skills
+    final skills = widget.jobData['skills'];
+    if (skills != null) {
+      if (skills is List) {
+        _selectedSkills = skills.map((s) => s.toString()).toList();
+      } else if (skills is String) {
+        final skillsString = skills.toString().trim();
+        if (skillsString.isNotEmpty) {
+          _selectedSkills = skillsString.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
+        }
+      }
+    }
+
+    // Initialize education
+    final education = widget.jobData['education'];
+    if (education != null && educationOptions.contains(education.toString())) {
+      _selectedEducation = education.toString();
+    }
+
+    // Initialize experience
+    final experience = widget.jobData['experience'];
+    if (experience != null && experienceOptions.contains(experience.toString())) {
+      _selectedExperience = experience.toString();
+    }
+
+    // Initialize specialization
+    final specialization = widget.jobData['specialization'];
+    if (specialization != null && specializationOptions.contains(specialization.toString())) {
+      _selectedSpecialization = specialization.toString();
     }
   }
 
@@ -183,6 +262,10 @@ class _EditJobScreenState extends State<EditJobScreen> {
                   _buildTextField('Company Name', required: true),
                   _buildTextField('Location (Remote, On-site, Hybrid)', required: true),
                   _buildJobTypeDropdown(required: true),
+                  _buildSkillsDropdown(),
+                  _buildEducationDropdown(),
+                  _buildExperienceDropdown(),
+                  _buildSpecializationDropdown(),
                   _buildTextField('Job Summary', maxLines: 3),
                   _buildTextField('Key Responsibilities (comma-separated)', maxLines: 4),
                   _buildTextField('Required Qualifications', maxLines: 3),
@@ -234,6 +317,10 @@ class _EditJobScreenState extends State<EditJobScreen> {
       'Benefits & Perks': 'benefits',
       'Application Instructions': 'applicationInstructions',
       'Application Deadline': 'deadline',
+      'Skills': 'skills',
+      'Education': 'education',
+      'Experience': 'experience',
+      'Specialization': 'specialization',
     };
 
     final fieldName = fieldMapping[label] ?? label;
@@ -355,6 +442,190 @@ class _EditJobScreenState extends State<EditJobScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildSkillsDropdown() {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 8.h),
+      child: Card(
+        elevation: 0,
+        color: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16.r),
+        ),
+        child: Container(
+          constraints: BoxConstraints(maxWidth: double.infinity),
+          padding: EdgeInsets.all(14.w),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.cyan.shade50, Colors.teal.shade50],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            border: Border.all(color: Colors.teal.shade100),
+            borderRadius: BorderRadius.circular(16.r),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.bolt_outlined,
+                    size: 18.sp,
+                    color: Colors.teal.shade700,
+                  ),
+                  SizedBox(width: 6.w),
+                  Text(
+                    'Skills',
+                    style: TextStyle(
+                      fontSize: 12.sp,
+                      color: Colors.teal.shade800,
+                      fontWeight: FontWeight.w700,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                  ),
+                ],
+              ),
+              SizedBox(height: 10.h),
+              SkillsAutocompleteMultiSelect(
+                value: _selectedSkills,
+                onChanged: (skills) {
+                  setState(() {
+                    _selectedSkills = skills;
+                    updatedJobData['skills'] = skills.join(', ');
+                  });
+                },
+                labelText: '',
+                hintText: 'Type to search skills',
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEducationDropdown() {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 8.h),
+      child: DropdownButtonFormField<String>(
+        decoration: InputDecoration(
+          labelText: 'Education',
+          labelStyle: TextStyle(fontSize: 14.sp, color: Colors.grey.shade600),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12.r),
+            borderSide: BorderSide(color: Colors.grey.shade400),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12.r),
+            borderSide: const BorderSide(color: Colors.teal, width: 2),
+          ),
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+        ),
+        items: educationOptions.map((option) {
+          return DropdownMenuItem<String>(
+            value: option,
+            child: Container(
+              constraints: BoxConstraints(maxWidth: 250.w),
+              child: Text(
+                option,
+                overflow: TextOverflow.ellipsis,
+                maxLines: 2,
+                style: TextStyle(fontSize: 12.sp),
+              ),
+            ),
+          );
+        }).toList(),
+        value: _selectedEducation,
+        onChanged: (value) {
+          setState(() => _selectedEducation = value);
+          updatedJobData['education'] = value ?? '';
+        },
+        onSaved: (value) => updatedJobData['education'] = value ?? '',
+      ),
+    );
+  }
+
+  Widget _buildExperienceDropdown() {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 8.h),
+      child: DropdownButtonFormField<String>(
+        decoration: InputDecoration(
+          labelText: 'Experience',
+          labelStyle: TextStyle(fontSize: 14.sp, color: Colors.grey.shade600),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12.r),
+            borderSide: BorderSide(color: Colors.grey.shade400),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12.r),
+            borderSide: const BorderSide(color: Colors.teal, width: 2),
+          ),
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+        ),
+        items: experienceOptions.map((option) {
+          return DropdownMenuItem<String>(
+            value: option,
+            child: Text(option),
+          );
+        }).toList(),
+        value: _selectedExperience,
+        onChanged: (value) {
+          setState(() => _selectedExperience = value);
+          updatedJobData['experience'] = value ?? '';
+        },
+        onSaved: (value) => updatedJobData['experience'] = value ?? '',
+      ),
+    );
+  }
+
+  Widget _buildSpecializationDropdown() {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 8.h),
+      child: DropdownButtonFormField<String>(
+        decoration: InputDecoration(
+          labelText: 'Specialization',
+          labelStyle: TextStyle(fontSize: 14.sp, color: Colors.grey.shade600),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12.r),
+            borderSide: BorderSide(color: Colors.grey.shade400),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12.r),
+            borderSide: const BorderSide(color: Colors.teal, width: 2),
+          ),
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+        ),
+        items: specializationOptions.map((option) {
+          return DropdownMenuItem<String>(
+            value: option,
+            child: Container(
+              constraints: BoxConstraints(maxWidth: 250.w),
+              child: Text(
+                option,
+                overflow: TextOverflow.ellipsis,
+                maxLines: 2,
+                style: TextStyle(fontSize: 12.sp),
+              ),
+            ),
+          );
+        }).toList(),
+        value: _selectedSpecialization,
+        onChanged: (value) {
+          setState(() => _selectedSpecialization = value);
+          updatedJobData['specialization'] = value ?? '';
+        },
+        onSaved: (value) => updatedJobData['specialization'] = value ?? '',
       ),
     );
   }

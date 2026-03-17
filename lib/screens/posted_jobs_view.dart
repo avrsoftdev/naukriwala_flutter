@@ -198,7 +198,18 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
                             final company = job['company'] ?? 'Unknown Company';
                             final location = job['location'] ?? 'Unspecified';
                             final salary = job['salary'] ?? 'Not specified';
-                            final skills = (job['skills'] as List<dynamic>?)?.join(', ') ?? 'N/A';
+                            
+                            // Handle skills which can be either String or List
+                            String skillsText;
+                            final skills = job['skills'];
+                            if (skills is List) {
+                              skillsText = (skills as List).map((s) => s.toString()).join(', ');
+                            } else if (skills is String) {
+                              skillsText = skills.toString().isNotEmpty ? skills.toString() : 'N/A';
+                            } else {
+                              skillsText = 'N/A';
+                            }
+                            
                             final education = job['education'] ?? 'N/A';
                             final experience = job['experience'] ?? 'N/A';
                             final specialization = job['specialization'] ?? 'N/A';
@@ -222,7 +233,7 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
                                     company: company,
                                     location: location,
                                     salary: salary,
-                                    skills: skills,
+                                    skills: skillsText,
                                     education: education,
                                     experience: experience,
                                     specialization: specialization,
