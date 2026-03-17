@@ -237,7 +237,7 @@ class _AppliedSeekersScreenState extends State<AppliedSeekersScreen> {
       endDate: date.add(const Duration(hours: 1)),
     );
     Add2Calendar.addEvent2Cal(event);
-    dev.log('[2025-09-01 14:37 IST] Added calendar event: $title on ${DateFormat('dd MMM yyyy').format(date)}', name: 'AppliedSeekersScreen');
+    dev.log('[2025-09-01 14:37 IST] Added calendar event: $title on ${DateFormat('dd MMM yyyy, hh:mm a').format(date)}', name: 'AppliedSeekersScreen');
   }
 
   void _handleAction(String action, String jobId, String seekerId, Map<String, dynamic> applicant) async {
@@ -304,30 +304,55 @@ class _AppliedSeekersScreenState extends State<AppliedSeekersScreen> {
           ),
         );
       } else if (action == 'schedule') {
+        // First, pick the date
         final pickedDate = await showDatePicker(
           context: context,
           initialDate: DateTime.now().add(const Duration(days: 1)),
           firstDate: DateTime.now(),
           lastDate: DateTime.now().add(const Duration(days: 365)),
         );
+        
         if (pickedDate != null && mounted) {
-          await widget.authService.handleAction(
-            action: action,
-            jobId: jobId,
-            seekerId: seekerId,
-            additionalData: {
-              'interviewDate': Timestamp.fromDate(pickedDate),
+          // Then, pick the time
+          final pickedTime = await showTimePicker(
+            context: context,
+            initialTime: TimeOfDay.fromDateTime(DateTime.now().add(const Duration(hours: 10))), // Default to 10 AM
+            builder: (context, child) {
+              return MediaQuery(
+                data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: false),
+                child: child!,
+              );
             },
           );
-          _addToCalendar('Interview with ${applicant['resume']?['name'] ?? applicant['name'] ?? seekerId}', pickedDate);
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Interview scheduled successfully'),
-                backgroundColor: Colors.teal,
-                behavior: SnackBarBehavior.floating,
-              ),
+          
+          if (pickedTime != null && mounted) {
+            // Combine date and time
+            final interviewDateTime = DateTime(
+              pickedDate.year,
+              pickedDate.month,
+              pickedDate.day,
+              pickedTime.hour,
+              pickedTime.minute,
             );
+            
+            await widget.authService.handleAction(
+              action: action,
+              jobId: jobId,
+              seekerId: seekerId,
+              additionalData: {
+                'interviewDate': Timestamp.fromDate(interviewDateTime),
+              },
+            );
+            _addToCalendar('Interview with ${applicant['resume']?['name'] ?? applicant['name'] ?? seekerId}', interviewDateTime);
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Interview scheduled for ${DateFormat('dd MMM yyyy, hh:mm a').format(interviewDateTime)}'),
+                  backgroundColor: Colors.teal,
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            }
           }
         }
       } else if (action == 'download_cv') {
