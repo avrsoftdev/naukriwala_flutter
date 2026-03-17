@@ -24,6 +24,16 @@ class _EditJobScreenState extends State<EditJobScreen> {
   final _formKey = GlobalKey<FormState>();
   final Map<String, String> updatedJobData = {};
 
+  // Controllers for salary fields
+  final TextEditingController _minSalaryController = TextEditingController();
+  final TextEditingController _maxSalaryController = TextEditingController();
+
+  // State for employment type dropdown
+  String? _selectedJobType;
+
+  // Job Type options
+  final List<String> jobTypeOptions = ['Full-Time', 'Part-Time', 'Freelancer'];
+
   @override
   void initState() {
     super.initState();
@@ -38,11 +48,60 @@ class _EditJobScreenState extends State<EditJobScreen> {
       dev.log('Unauthorized access attempt by $currentUserId for jobId ${widget.jobId}',
           name: 'EditJobScreen');
     }
+    // Initialize updatedJobData with the actual job data using correct field names
+    final fieldMapping = {
+      'title': 'Job Title',
+      'company': 'Company Name',
+      'location': 'Location (Remote, On-site, Hybrid)',
+      'jobType': 'Employment Type',
+      'summary': 'Job Summary',
+      'responsibilities': 'Key Responsibilities (comma-separated)',
+      'requiredQualifications': 'Required Qualifications',
+      'preferredQualifications': 'Preferred Qualifications',
+      'salary': 'Salary Range',
+      'benefits': 'Benefits & Perks',
+      'applicationInstructions': 'Application Instructions',
+      'deadline': 'Application Deadline',
+    };
+
     widget.jobData.forEach((key, value) {
       if (value is String) {
         updatedJobData[key] = value;
       }
     });
+
+    // Initialize salary controllers and job type
+    _initializeSalaryAndJobType();
+
+    dev.log('EditJobScreen initialized with job data: ${widget.jobData.keys}', name: 'EditJobScreen');
+    dev.log('Updated job data keys: ${updatedJobData.keys}', name: 'EditJobScreen');
+  }
+
+  void _initializeSalaryAndJobType() {
+    // Parse salary range from existing data
+    final salaryRange = widget.jobData['salary'];
+    if (salaryRange != null && salaryRange.toString().isNotEmpty) {
+      final salaryStr = salaryRange.toString();
+      // Handle formats like "1.8-2.0 LPA (INR)" or "1.8-2.0"
+      final parts = salaryStr.split('-');
+      if (parts.length >= 2) {
+        _minSalaryController.text = parts[0].trim();
+        _maxSalaryController.text = parts[1].trim().replaceAll(' LPA (INR)', '').trim();
+      }
+    }
+
+    // Set job type from existing data
+    final jobType = widget.jobData['jobType'];
+    if (jobType != null && jobTypeOptions.contains(jobType.toString())) {
+      _selectedJobType = jobType.toString();
+    }
+  }
+
+  @override
+  void dispose() {
+    _minSalaryController.dispose();
+    _maxSalaryController.dispose();
+    super.dispose();
   }
 
   @override
@@ -123,12 +182,12 @@ class _EditJobScreenState extends State<EditJobScreen> {
                   _buildTextField('Job Title', required: true),
                   _buildTextField('Company Name', required: true),
                   _buildTextField('Location (Remote, On-site, Hybrid)', required: true),
-                  _buildTextField('Employment Type', required: true),
+                  _buildJobTypeDropdown(required: true),
                   _buildTextField('Job Summary', maxLines: 3),
                   _buildTextField('Key Responsibilities (comma-separated)', maxLines: 4),
                   _buildTextField('Required Qualifications', maxLines: 3),
                   _buildTextField('Preferred Qualifications', maxLines: 3),
-                  _buildTextField('Salary Range'),
+                  _buildSalaryFields(),
                   _buildTextField('Benefits & Perks', maxLines: 2),
                   _buildTextField('Application Instructions', maxLines: 2),
                   _buildTextField('Application Deadline'),
@@ -161,10 +220,28 @@ class _EditJobScreenState extends State<EditJobScreen> {
   }
 
   Widget _buildTextField(String label, {bool required = false, int maxLines = 1}) {
+    // Map labels to actual field names in the database
+    final fieldMapping = {
+      'Job Title': 'title',
+      'Company Name': 'company',
+      'Location (Remote, On-site, Hybrid)': 'location',
+      'Employment Type': 'jobType',
+      'Job Summary': 'summary',
+      'Key Responsibilities (comma-separated)': 'responsibilities',
+      'Required Qualifications': 'requiredQualifications',
+      'Preferred Qualifications': 'preferredQualifications',
+      'Salary Range': 'salary',
+      'Benefits & Perks': 'benefits',
+      'Application Instructions': 'applicationInstructions',
+      'Application Deadline': 'deadline',
+    };
+
+    final fieldName = fieldMapping[label] ?? label;
+
     return Padding(
       padding: EdgeInsets.symmetric(vertical: 8.h),
       child: TextFormField(
-        initialValue: updatedJobData[label] ?? '',
+        initialValue: updatedJobData[fieldName] ?? widget.jobData[fieldName] ?? '',
         decoration: InputDecoration(
           labelText: label,
           labelStyle: TextStyle(fontSize: 14.sp, color: Colors.grey.shade600),
@@ -185,9 +262,115 @@ class _EditJobScreenState extends State<EditJobScreen> {
         validator: required
             ? (value) => value == null || value.trim().isEmpty ? 'Required field' : null
             : null,
-        onSaved: (value) => updatedJobData[label] = value ?? '',
+        onSaved: (value) => updatedJobData[fieldName] = value ?? '',
       ),
     );
+  }
+
+  Widget _buildJobTypeDropdown({bool required = false}) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 8.h),
+      child: DropdownButtonFormField<String>(
+        decoration: InputDecoration(
+          labelText: 'Employment Type',
+          labelStyle: TextStyle(fontSize: 14.sp, color: Colors.grey.shade600),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12.r),
+            borderSide: BorderSide(color: Colors.grey.shade400),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12.r),
+            borderSide: const BorderSide(color: Colors.teal, width: 2),
+          ),
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+        ),
+        items: jobTypeOptions.map((option) {
+          return DropdownMenuItem<String>(
+            value: option,
+            child: Text(option),
+          );
+        }).toList(),
+        value: _selectedJobType,
+        onChanged: (value) => setState(() => _selectedJobType = value),
+        validator: required
+            ? (value) => value == null || value.isEmpty ? 'Required field' : null
+            : null,
+        onSaved: (value) => updatedJobData['jobType'] = value ?? '',
+      ),
+    );
+  }
+
+  Widget _buildSalaryFields() {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 8.h),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextFormField(
+              controller: _minSalaryController,
+              decoration: InputDecoration(
+                labelText: 'Min Salary',
+                labelStyle: TextStyle(fontSize: 14.sp, color: Colors.grey.shade600),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12.r),
+                  borderSide: BorderSide(color: Colors.grey.shade400),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12.r),
+                  borderSide: const BorderSide(color: Colors.teal, width: 2),
+                ),
+                filled: true,
+                fillColor: Colors.white,
+                contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+              ),
+              style: TextStyle(fontSize: 14.sp),
+              validator: (value) => value == null || value.trim().isEmpty ? 'Required field' : null,
+              onSaved: (value) => updatedJobData['minSalary'] = value ?? '',
+            ),
+          ),
+          SizedBox(width: 8.w),
+          Expanded(
+            child: TextFormField(
+              controller: _maxSalaryController,
+              decoration: InputDecoration(
+                labelText: 'Max Salary',
+                labelStyle: TextStyle(fontSize: 14.sp, color: Colors.grey.shade600),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12.r),
+                  borderSide: BorderSide(color: Colors.grey.shade400),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12.r),
+                  borderSide: const BorderSide(color: Colors.teal, width: 2),
+                ),
+                filled: true,
+                fillColor: Colors.white,
+                contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+              ),
+              style: TextStyle(fontSize: 14.sp),
+              validator: (value) => value == null || value.trim().isEmpty ? 'Required field' : null,
+              onSaved: (value) => updatedJobData['maxSalary'] = value ?? '',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Map<String, dynamic> _getFormattedUpdatedData() {
+    final updatedData = Map<String, dynamic>.from(updatedJobData);
+    
+    // Combine min and max salary into salary range
+    final minSalary = updatedData.remove('minSalary');
+    final maxSalary = updatedData.remove('maxSalary');
+    
+    if (minSalary != null && maxSalary != null) {
+      updatedData['salary'] = '$minSalary-$maxSalary LPA (INR)';
+    }
+    
+    return updatedData;
   }
 
   Future<void> _updateJobInFirestore(BuildContext context) async {
@@ -200,7 +383,7 @@ class _EditJobScreenState extends State<EditJobScreen> {
           .doc(uid)
           .collection('Jobs')
           .doc(widget.jobId)
-          .update(updatedJobData);
+          .update(_getFormattedUpdatedData());
 
       if (!mounted) return;
 
