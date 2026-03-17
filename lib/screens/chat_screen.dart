@@ -22,12 +22,14 @@ class ChatScreen extends StatefulWidget {
   final String chatId;
   final String recipientId;
   final String jobId;
+  final String? initialMessage;
 
   const ChatScreen({
     super.key,
     required this.chatId,
     required this.recipientId,
     required this.jobId,
+    this.initialMessage,
   });
 
   @override
@@ -125,6 +127,11 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       _checkIfNewChat(),
       _loadChatDetails(),
     ], eagerError: true);
+
+    // Set initial message if provided
+    if (widget.initialMessage != null && widget.initialMessage!.isNotEmpty) {
+      _messageController.text = widget.initialMessage!;
+    }
 
     if (mounted && _isNewChat) {
       setState(() => _showPrompt = true);

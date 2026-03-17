@@ -657,6 +657,7 @@ class NotificationsScreenState extends State<NotificationsScreen> {
                                           authService: _authService,
                                           jobId: jobId,
                                           seekerId: uid!,
+                                          recruiterId: data['from'] ?? 'Unknown',
                                           notificationId: notificationDocId,
                                           actionStatus: actionStatus ?? 'pending',
                                           interviewDate: interviewDate,
@@ -742,6 +743,7 @@ class InterviewConfirmationActions extends StatefulWidget {
   final AuthService authService;
   final String jobId;
   final String seekerId;
+  final String recruiterId;
   final String notificationId;
   final String actionStatus; // pending/accepted/declined
   final Timestamp? interviewDate;
@@ -750,6 +752,7 @@ class InterviewConfirmationActions extends StatefulWidget {
     required this.authService,
     required this.jobId,
     required this.seekerId,
+    required this.recruiterId,
     required this.notificationId,
     required this.actionStatus,
     required this.interviewDate,
@@ -762,6 +765,43 @@ class InterviewConfirmationActions extends StatefulWidget {
 
 class _InterviewConfirmationActionsState extends State<InterviewConfirmationActions> {
   bool _isLoading = false;
+
+  Future<void> _navigateToChatWithRescheduleMessage() async {
+    if (_isLoading) return;
+    setState(() => _isLoading = true);
+    
+    try {
+      final chatId = await widget.authService.getChatId(
+        seekerId: widget.seekerId,
+        jobId: widget.jobId,
+      );
+      
+      if (!mounted) return;
+      
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ChatScreen(
+            chatId: chatId,
+            recipientId: widget.recruiterId,
+            jobId: widget.jobId,
+            initialMessage: "Hi, I'm not available for the scheduled interview. Could we please reschedule it at a convenient time?",
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error opening chat: $e'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   String _labelForStatus(String status) {
     switch (status.toLowerCase()) {
@@ -841,13 +881,15 @@ class _InterviewConfirmationActionsState extends State<InterviewConfirmationActi
           children: [
             Expanded(
               child: OutlinedButton(
-                onPressed: _isLoading ? null : () => _respond(false),
+                onPressed: _isLoading ? null : _navigateToChatWithRescheduleMessage,
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.red.shade700,
-                  side: BorderSide(color: Colors.red.shade300),
+                  foregroundColor: const Color(0xFF0D47A1),
+                  side: BorderSide(color: const Color(0xFF0D47A1)),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
                 ),
-                child: _isLoading ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('Not Available'),
+                child: _isLoading 
+                  ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2)) 
+                  : const Text('Chat Now'),
               ),
             ),
             SizedBox(width: 10.w),
@@ -859,7 +901,7 @@ class _InterviewConfirmationActionsState extends State<InterviewConfirmationActi
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
                 ),
-                child: _isLoading ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text('Available'),
+                child: _isLoading ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text('Confirm'),
               ),
             ),
           ],
