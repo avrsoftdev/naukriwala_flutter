@@ -42,6 +42,10 @@ class _EditJobScreenState extends State<EditJobScreen> {
   String? _selectedExperience;
   String? _selectedSpecialization;
 
+  // Test questions state
+  List<Map<String, dynamic>> _testQuestions = [];
+  bool _includeTest = false;
+
   // Job Type options
   final List<String> jobTypeOptions = ['Full-Time', 'Part-Time', 'Freelancer'];
 
@@ -109,6 +113,9 @@ class _EditJobScreenState extends State<EditJobScreen> {
     // Initialize new dropdown fields
     _initializeNewFields();
 
+    // Initialize test questions
+    _initializeTestQuestions();
+
     dev.log('EditJobScreen initialized with job data: ${widget.jobData.keys}', name: 'EditJobScreen');
     dev.log('Updated job data keys: ${updatedJobData.keys}', name: 'EditJobScreen');
   }
@@ -143,6 +150,22 @@ class _EditJobScreenState extends State<EditJobScreen> {
     final specialization = widget.jobData['specialization'];
     if (specialization != null && specializationOptions.contains(specialization.toString())) {
       _selectedSpecialization = specialization.toString();
+    }
+  }
+
+  void _initializeTestQuestions() {
+    // Initialize test questions from job data
+    _includeTest = widget.jobData['includeTest'] ?? false;
+    if (_includeTest && widget.jobData['testQuestions'] != null) {
+      _testQuestions = List<Map<String, dynamic>>.from(widget.jobData['testQuestions']);
+    } else if (_includeTest && widget.jobData['testQuestion'] != null) {
+      // Handle legacy single test question format
+      final testQuestion = widget.jobData['testQuestion'] as Map<String, dynamic>;
+      _testQuestions = [{
+        'question': testQuestion['question'] ?? '',
+        'options': testQuestion['options'] ?? ['', '', '', ''],
+        'correctOptionIndex': testQuestion['correctOptionIndex'] ?? 0,
+      }];
     }
   }
 
@@ -253,6 +276,7 @@ class _EditJobScreenState extends State<EditJobScreen> {
                   _buildEducationDropdown(),
                   _buildExperienceDropdown(),
                   _buildSpecializationDropdown(),
+                  _buildTestSection(),
                   SizedBox(height: 20.h),
                   ElevatedButton.icon(
                     icon: const Icon(Icons.save),
@@ -557,6 +581,344 @@ class _EditJobScreenState extends State<EditJobScreen> {
     );
   }
 
+  Widget _buildTestSection() {
+    const accentColor = Color(0xFF0F766E);
+    
+    List<Widget> testChildren = [
+      Padding(
+        padding: EdgeInsets.symmetric(vertical: 8.h),
+        child: SwitchListTile(
+          title: Text(
+            'Include Test Question',
+            style: TextStyle(
+              fontSize: 16.sp,
+              color: const Color(0xFF0F172A),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          subtitle: Text(
+            'Candidates will answer this question when applying',
+            style: TextStyle(fontSize: 13.sp, color: const Color(0xFF64748B)),
+          ),
+          value: _includeTest,
+          onChanged: (value) {
+            setState(() {
+              _includeTest = value;
+              if (!value) {
+                _testQuestions.clear();
+              }
+            });
+          },
+          activeColor: accentColor,
+          activeTrackColor: accentColor.withValues(alpha: 0.25),
+          contentPadding: EdgeInsets.symmetric(horizontal: 12.w),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14.r),
+            side: const BorderSide(color: Color(0xFFD6DFEE)),
+          ),
+          tileColor: const Color(0xFFF8FAFC),
+        ),
+      ),
+    ];
+    
+    if (_includeTest) {
+      testChildren.add(
+        Column(
+          children: [
+            // Add Question Button
+            Container(
+              width: double.infinity,
+              margin: EdgeInsets.only(bottom: 12.h),
+              child: ElevatedButton.icon(
+                onPressed: _addTestQuestion,
+                icon: Icon(Icons.add, size: 18.sp),
+                label: Text(
+                  'Add Question',
+                  style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF1D4ED8),
+                  foregroundColor: Colors.white,
+                  padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8.r),
+                  ),
+                ),
+              ),
+            ),
+            
+            // Display Questions
+            ...List.generate(_testQuestions.length, (questionIndex) {
+              final question = _testQuestions[questionIndex];
+              return Container(
+                margin: EdgeInsets.only(bottom: 16.h),
+                padding: EdgeInsets.all(16.w),
+                decoration: BoxDecoration(
+                  border: Border.all(color: const Color(0xFFD1D5DB)),
+                  borderRadius: BorderRadius.circular(12.r),
+                  color: Colors.white,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Question Header
+                    Row(
+                      children: [
+                        Text(
+                          'Question ${questionIndex + 1}',
+                          style: TextStyle(
+                            fontSize: 16.sp,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFF0F172A),
+                          ),
+                        ),
+                        const Spacer(),
+                        if (_testQuestions.length > 1)
+                          IconButton(
+                            onPressed: () => _removeTestQuestion(questionIndex),
+                            icon: Icon(Icons.delete, color: Colors.red, size: 20.sp),
+                            tooltip: 'Remove Question',
+                          ),
+                      ],
+                    ),
+                    SizedBox(height: 12.h),
+                    
+                    // Question Input
+                    Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8.h),
+                      child: TextFormField(
+                        initialValue: question['question'],
+                        decoration: _inputDecoration(
+                          labelText: 'Question',
+                          prefixIcon: Icons.help_outline_rounded,
+                          hintText: 'Enter your screening question',
+                        ),
+                        validator: (value) => _includeTest && (value == null || value.trim().isEmpty) ? 'Please enter a question' : null,
+                        onChanged: (value) => _updateTestQuestion(questionIndex, 'question', value),
+                      ),
+                    ),
+                    SizedBox(height: 12.h),
+                    
+                    // Options Header
+                    Text(
+                      'Answer Options',
+                      style: TextStyle(
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF0F172A),
+                      ),
+                    ),
+                    SizedBox(height: 8.h),
+                    
+                    // Options
+                    ...List.generate(4, (optionIndex) {
+                      return Padding(
+                        padding: EdgeInsets.only(bottom: 8.h),
+                        child: Row(
+                          children: [
+                            Radio<int>(
+                              value: optionIndex,
+                              groupValue: question['correctOptionIndex'],
+                              onChanged: (value) {
+                                _updateTestQuestion(questionIndex, 'correctOptionIndex', value);
+                              },
+                              activeColor: accentColor,
+                            ),
+                            Expanded(
+                              child: TextFormField(
+                                initialValue: question['options'][optionIndex],
+                                decoration: InputDecoration(
+                                  labelText: 'Option ${optionIndex + 1}',
+                                  hintText: 'Enter option ${optionIndex + 1}',
+                                  prefixIcon: const Icon(Icons.radio_button_unchecked),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12.r),
+                                    borderSide: const BorderSide(color: Color(0xFFD1D5DB)),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12.r),
+                                    borderSide: const BorderSide(color: accentColor, width: 1.3),
+                                  ),
+                                  contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+                                ),
+                                validator: (value) => _includeTest && (value == null || value.trim().isEmpty) ? 'Please enter option ${optionIndex + 1}' : null,
+                                onChanged: (value) {
+                                  final options = List<String>.from(question['options']);
+                                  options[optionIndex] = value;
+                                  _updateTestQuestion(questionIndex, 'options', options);
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                    
+                    // Correct Answer Indicator
+                    if (question['correctOptionIndex'] != null)
+                      Container(
+                        width: double.infinity,
+                        margin: EdgeInsets.only(top: 8.h),
+                        padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF0FDF4),
+                          borderRadius: BorderRadius.circular(12.r),
+                          border: Border.all(color: const Color(0xFF86EFAC)),
+                        ),
+                        child: Text(
+                          'Correct answer: Option ${question['correctOptionIndex'] + 1}',
+                          style: TextStyle(
+                            color: const Color(0xFF166534),
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13.sp,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              );
+            }),
+            
+            if (_testQuestions.isEmpty)
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.all(16.w),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(8.r),
+                  border: Border.all(color: const Color(0xFFD1D5DB)),
+                ),
+                child: Text(
+                  'No questions added yet. Click "Add Question" to create a screening test.',
+                  style: TextStyle(
+                    fontSize: 13.sp,
+                    color: const Color(0xFF64748B),
+                    fontStyle: FontStyle.italic,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+          ],
+        ),
+      );
+    }
+    
+    return _buildSectionCard(
+      icon: Icons.quiz_outlined,
+      title: 'Test Question (Optional)',
+      subtitle: 'Add a screening test for candidates.',
+      children: testChildren,
+    );
+  }
+
+  Widget _buildSectionCard({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required List<Widget> children,
+  }) {
+    return Container(
+      padding: EdgeInsets.all(14.w),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16.r),
+        border: Border.all(color: const Color(0xFFD6DFEE)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 12.r,
+            offset: Offset(0, 4.h),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: const Color(0xFF1D4ED8), size: 20.sp),
+              SizedBox(width: 8.w),
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 16.sp,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF0F172A),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 3.h),
+          Text(
+            subtitle,
+            style: TextStyle(
+              fontSize: 12.sp,
+              color: const Color(0xFF64748B),
+            ),
+          ),
+          SizedBox(height: 10.h),
+          ...children,
+        ],
+      ),
+    );
+  }
+
+  InputDecoration _inputDecoration({
+    required String labelText,
+    IconData? prefixIcon,
+    String? hintText,
+    String? suffixText,
+  }) {
+    return InputDecoration(
+      labelText: labelText,
+      hintText: hintText,
+      prefixIcon: prefixIcon != null ? Icon(prefixIcon, color: const Color(0xFF475569), size: 20.sp) : null,
+      labelStyle: TextStyle(color: const Color(0xFF64748B), fontSize: 14.sp),
+      hintStyle: TextStyle(color: const Color(0xFF94A3B8), fontSize: 13.sp),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14.r),
+        borderSide: const BorderSide(color: Color(0xFFD6DFEE)),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14.r),
+        borderSide: const BorderSide(color: Color(0xFFD6DFEE)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14.r),
+        borderSide: const BorderSide(color: Color(0xFF0F766E), width: 1.5),
+      ),
+      filled: true,
+      fillColor: const Color(0xFFF8FAFC),
+      contentPadding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
+      suffixText: suffixText,
+      suffixStyle: TextStyle(color: const Color(0xFF64748B), fontSize: 13.sp),
+    );
+  }
+
+  void _addTestQuestion() {
+    setState(() {
+      _testQuestions.add({
+        'question': '',
+        'options': ['', '', '', ''],
+        'correctOptionIndex': 0,
+      });
+    });
+  }
+
+  void _removeTestQuestion(int index) {
+    setState(() {
+      _testQuestions.removeAt(index);
+    });
+  }
+
+  void _updateTestQuestion(int index, String field, dynamic value) {
+    setState(() {
+      _testQuestions[index][field] = value;
+    });
+  }
+
   Map<String, dynamic> _getFormattedUpdatedData() {
     final updatedData = Map<String, dynamic>.from(updatedJobData);
     
@@ -566,6 +928,12 @@ class _EditJobScreenState extends State<EditJobScreen> {
     
     if (minSalary != null && maxSalary != null) {
       updatedData['salary'] = '$minSalary-$maxSalary LPA (INR)';
+    }
+    
+    // Add test data if included
+    updatedData['includeTest'] = _includeTest;
+    if (_includeTest) {
+      updatedData['testQuestions'] = _testQuestions;
     }
     
     return updatedData;
