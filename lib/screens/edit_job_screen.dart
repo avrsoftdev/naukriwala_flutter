@@ -89,18 +89,8 @@ class _EditJobScreenState extends State<EditJobScreen> {
     }
     // Initialize updatedJobData with the actual job data using correct field names
     final fieldMapping = {
-      'title': 'Job Title',
-      'company': 'Company Name',
-      'location': 'Location (Remote, On-site, Hybrid)',
       'jobType': 'Employment Type',
-      'summary': 'Job Summary',
-      'responsibilities': 'Key Responsibilities (comma-separated)',
-      'requiredQualifications': 'Required Qualifications',
-      'preferredQualifications': 'Preferred Qualifications',
       'salary': 'Salary Range',
-      'benefits': 'Benefits & Perks',
-      'applicationInstructions': 'Application Instructions',
-      'deadline': 'Application Deadline',
       'skills': 'Skills',
       'education': 'Education',
       'experience': 'Experience',
@@ -121,26 +111,6 @@ class _EditJobScreenState extends State<EditJobScreen> {
 
     dev.log('EditJobScreen initialized with job data: ${widget.jobData.keys}', name: 'EditJobScreen');
     dev.log('Updated job data keys: ${updatedJobData.keys}', name: 'EditJobScreen');
-  }
-
-  void _initializeSalaryAndJobType() {
-    // Parse salary range from existing data
-    final salaryRange = widget.jobData['salary'];
-    if (salaryRange != null && salaryRange.toString().isNotEmpty) {
-      final salaryStr = salaryRange.toString();
-      // Handle formats like "1.8-2.0 LPA (INR)" or "1.8-2.0"
-      final parts = salaryStr.split('-');
-      if (parts.length >= 2) {
-        _minSalaryController.text = parts[0].trim();
-        _maxSalaryController.text = parts[1].trim().replaceAll(' LPA (INR)', '').trim();
-      }
-    }
-
-    // Set job type from existing data
-    final jobType = widget.jobData['jobType'];
-    if (jobType != null && jobTypeOptions.contains(jobType.toString())) {
-      _selectedJobType = jobType.toString();
-    }
   }
 
   void _initializeNewFields() {
@@ -173,6 +143,26 @@ class _EditJobScreenState extends State<EditJobScreen> {
     final specialization = widget.jobData['specialization'];
     if (specialization != null && specializationOptions.contains(specialization.toString())) {
       _selectedSpecialization = specialization.toString();
+    }
+  }
+
+  void _initializeSalaryAndJobType() {
+    // Parse salary range from existing data
+    final salaryRange = widget.jobData['salary'];
+    if (salaryRange != null && salaryRange.toString().isNotEmpty) {
+      final salaryStr = salaryRange.toString();
+      // Handle formats like "1.8-2.0 LPA (INR)" or "1.8-2.0"
+      final parts = salaryStr.split('-');
+      if (parts.length >= 2) {
+        _minSalaryController.text = parts[0].trim();
+        _maxSalaryController.text = parts[1].trim().replaceAll(' LPA (INR)', '').trim();
+      }
+    }
+
+    // Set job type from existing data
+    final jobType = widget.jobData['jobType'];
+    if (jobType != null && jobTypeOptions.contains(jobType.toString())) {
+      _selectedJobType = jobType.toString();
     }
   }
 
@@ -258,22 +248,11 @@ class _EditJobScreenState extends State<EditJobScreen> {
               key: _formKey,
               child: ListView(
                 children: [
-                  _buildTextField('Job Title', required: true),
-                  _buildTextField('Company Name', required: true),
-                  _buildTextField('Location (Remote, On-site, Hybrid)', required: true),
                   _buildJobTypeDropdown(required: true),
                   _buildSkillsDropdown(),
                   _buildEducationDropdown(),
                   _buildExperienceDropdown(),
                   _buildSpecializationDropdown(),
-                  _buildTextField('Job Summary', maxLines: 3),
-                  _buildTextField('Key Responsibilities (comma-separated)', maxLines: 4),
-                  _buildTextField('Required Qualifications', maxLines: 3),
-                  _buildTextField('Preferred Qualifications', maxLines: 3),
-                  _buildSalaryFields(),
-                  _buildTextField('Benefits & Perks', maxLines: 2),
-                  _buildTextField('Application Instructions', maxLines: 2),
-                  _buildTextField('Application Deadline'),
                   SizedBox(height: 20.h),
                   ElevatedButton.icon(
                     icon: const Icon(Icons.save),
@@ -299,58 +278,6 @@ class _EditJobScreenState extends State<EditJobScreen> {
           ),
         );
       },
-    );
-  }
-
-  Widget _buildTextField(String label, {bool required = false, int maxLines = 1}) {
-    // Map labels to actual field names in the database
-    final fieldMapping = {
-      'Job Title': 'title',
-      'Company Name': 'company',
-      'Location (Remote, On-site, Hybrid)': 'location',
-      'Employment Type': 'jobType',
-      'Job Summary': 'summary',
-      'Key Responsibilities (comma-separated)': 'responsibilities',
-      'Required Qualifications': 'requiredQualifications',
-      'Preferred Qualifications': 'preferredQualifications',
-      'Salary Range': 'salary',
-      'Benefits & Perks': 'benefits',
-      'Application Instructions': 'applicationInstructions',
-      'Application Deadline': 'deadline',
-      'Skills': 'skills',
-      'Education': 'education',
-      'Experience': 'experience',
-      'Specialization': 'specialization',
-    };
-
-    final fieldName = fieldMapping[label] ?? label;
-
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: 8.h),
-      child: TextFormField(
-        initialValue: updatedJobData[fieldName] ?? widget.jobData[fieldName] ?? '',
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: TextStyle(fontSize: 14.sp, color: Colors.grey.shade600),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12.r),
-            borderSide: BorderSide(color: Colors.grey.shade400),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12.r),
-            borderSide: const BorderSide(color: Colors.teal, width: 2),
-          ),
-          filled: true,
-          fillColor: Colors.white,
-          contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
-        ),
-        maxLines: maxLines,
-        style: TextStyle(fontSize: 14.sp),
-        validator: required
-            ? (value) => value == null || value.trim().isEmpty ? 'Required field' : null
-            : null,
-        onSaved: (value) => updatedJobData[fieldName] = value ?? '',
-      ),
     );
   }
 
