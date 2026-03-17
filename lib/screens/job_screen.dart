@@ -637,11 +637,39 @@ final Map<String, List<String>> skillsBySpecialization = {
     });
   }
 
+  // Helper function to safely convert skills to List<String>
+  List<String> _convertSkillsToList(dynamic skills) {
+    if (skills == null) return [];
+    
+    if (skills is List) {
+      return skills.map((s) => s.toString().toLowerCase()).toList();
+    } else if (skills is String) {
+      final skillsString = skills;
+      return skillsString.isNotEmpty ? skillsString.split(',').map((s) => s.trim().toLowerCase()).toList() : [];
+    }
+    
+    return [];
+  }
+
+  // Helper function to format skills for display
+  String _formatSkillsForDisplay(dynamic skills) {
+    if (skills == null) return 'N/A';
+    
+    if (skills is List) {
+      return skills.map((s) => s.toString()).join(', ');
+    } else if (skills is String) {
+      final skillsString = skills;
+      return skillsString.isNotEmpty ? skillsString : 'N/A';
+    }
+    
+    return 'N/A';
+  }
+
   bool _checkJobCompatibilityForJob(Map<String, dynamic> jobData) {
     if (_seekerProfile == null || jobData == null) return false;
 
-    final jobSkills = (jobData['skills'] as List<dynamic>?)?.cast<String>().map((s) => s.toLowerCase()).toList() ?? [];
-    final seekerSkills = (_seekerProfile!['skills'] as List<dynamic>?)?.cast<String>().map((s) => s.toLowerCase()).toList() ?? [];
+    final jobSkills = _convertSkillsToList(jobData['skills']);
+    final seekerSkills = _convertSkillsToList(_seekerProfile!['skills']);
     final jobEducation = jobData['education']?.toString().toLowerCase() ?? '';
     final seekerEducation = _seekerProfile!['education']?.toString().toLowerCase() ?? '';
     final jobSpecialization = jobData['specialization']?.toString().toLowerCase() ?? '';
@@ -664,8 +692,8 @@ final Map<String, List<String>> skillsBySpecialization = {
   bool _checkJobCompatibility() {
     if (_seekerProfile == null || _jobData == null) return false;
 
-    final jobSkills = (_jobData!['skills'] as List<dynamic>?)?.cast<String>().map((s) => s.toLowerCase()).toList() ?? [];
-    final seekerSkills = (_seekerProfile!['skills'] as List<dynamic>?)?.cast<String>().map((s) => s.toLowerCase()).toList() ?? [];
+    final jobSkills = _convertSkillsToList(_jobData!['skills']);
+    final seekerSkills = _convertSkillsToList(_seekerProfile!['skills']);
     final jobEducation = _jobData!['education']?.toString().toLowerCase() ?? '';
     final seekerEducation = _seekerProfile!['education']?.toString().toLowerCase() ?? '';
     final jobSpecialization = _jobData!['specialization']?.toString().toLowerCase() ?? '';
@@ -690,8 +718,8 @@ final Map<String, List<String>> skillsBySpecialization = {
       return 'Unable to verify eligibility due to missing profile or job data.';
     }
 
-    final jobSkills = (_jobData!['skills'] as List<dynamic>?)?.cast<String>().map((s) => s.toLowerCase()).toList() ?? [];
-    final seekerSkills = (_seekerProfile!['skills'] as List<dynamic>?)?.cast<String>().map((s) => s.toLowerCase()).toList() ?? [];
+    final jobSkills = _convertSkillsToList(_jobData!['skills']);
+    final seekerSkills = _convertSkillsToList(_seekerProfile!['skills']);
     final jobEducation = _jobData!['education']?.toString().toLowerCase() ?? '';
     final seekerEducation = _seekerProfile!['education']?.toString().toLowerCase() ?? '';
     final jobSpecialization = _jobData!['specialization']?.toString().toLowerCase() ?? '';
@@ -1053,7 +1081,7 @@ final Map<String, List<String>> skillsBySpecialization = {
                                                       SizedBox(height: 12.h),
                                                       Text('Salary: ${_jobData?['salary']?.toString() ?? _selectedJob!['salary']?.toString() ?? 'Not specified'}', style: TextStyle(fontSize: 16.sp)),
                                                       Text('Experience Required: ${_jobData?['experience']?.toString() ?? _selectedJob!['experience']?.toString() ?? 'N/A'}', style: TextStyle(fontSize: 16.sp)),
-                                                      Text('Skills: ${(_jobData?['skills'] as List<dynamic>?)?.cast<String>().join(', ') ?? _selectedJob!['skills']?.toString() ?? 'N/A'}', style: TextStyle(fontSize: 16.sp)),
+                                                      Text('Skills: ${_formatSkillsForDisplay(_jobData?['skills'] ?? _selectedJob!['skills'])}', style: TextStyle(fontSize: 16.sp)),
                                                       Text('Education: ${_jobData?['education']?.toString() ?? _selectedJob!['education']?.toString() ?? 'N/A'}', style: TextStyle(fontSize: 16.sp)),
                                                       Text('Specialization: ${_jobData?['specialization']?.toString() ?? _selectedJob!['specialization']?.toString() ?? 'N/A'}', style: TextStyle(fontSize: 16.sp)),
                                                       SizedBox(height: 20.h),
@@ -1225,7 +1253,7 @@ final Map<String, List<String>> skillsBySpecialization = {
                                                                               crossAxisAlignment: CrossAxisAlignment.start,
                                                                               children: [
                                                                                 Text('Job: ${applicant['jobTitle'] ?? 'Unknown Job'}'),
-                                                                                Text('Skills: ${(applicant['skills'] as List<dynamic>?)?.cast<String>().join(', ') ?? resume['skills']?.join(', ') ?? 'N/A'}'),
+                                                                                Text('Skills: ${_formatSkillsForDisplay(applicant['skills'] ?? resume['skills'])}'),
                                                                                 Text('Education: ${resume['education'] ?? 'N/A'}'),
                                                                                 Text('Experience: ${resume['experience'] ?? 'N/A'}'),
                                                                                 Text('Specialization: ${resume['specialization'] ?? 'N/A'}'),
@@ -1258,7 +1286,7 @@ final Map<String, List<String>> skillsBySpecialization = {
                                                                                       crossAxisAlignment: CrossAxisAlignment.start,
                                                                                       children: [
                                                                                         Text('Job: ${applicant['jobTitle'] ?? 'Unknown Job'}'),
-                                                                                        Text('Skills: ${(applicant['skills'] as List<dynamic>?)?.cast<String>().join(', ') ?? resume['skills']?.join(', ') ?? 'N/A'}'),
+                                                                                        Text('Skills: ${_formatSkillsForDisplay(applicant['skills'] ?? resume['skills'])}'),
                                                                                         Text('Education: ${resume['education'] ?? 'N/A'}'),
                                                                                         Text('Experience: ${resume['experience'] ?? 'N/A'}'),
                                                                                         Text('Specialization: ${resume['specialization'] ?? 'N/A'}'),
