@@ -675,7 +675,7 @@ final Map<String, List<String>> skillsBySpecialization = {
     final jobSpecialization = jobData['specialization']?.toString().toLowerCase() ?? '';
     final seekerSpecialization = _seekerProfile!['specialization']?.toString().toLowerCase() ?? '';
     final jobExperience = _parseExperience(jobData['experience']?.toString() ?? '0');
-    final seekerExperience = _parseExperience(_seekerProfile!['experience']?.toString() ?? '0');
+    final seekerExperience = _parseExperience(_seekerProfile!['totalExperienceYears']?.toString() ?? '0');
 
     final matchingSkills = jobSkills.where((skill) => seekerSkills.contains(skill)).length;
     final skillMatchPercentage = jobSkills.isEmpty ? 100.0 : (matchingSkills / jobSkills.length) * 100;
@@ -699,7 +699,7 @@ final Map<String, List<String>> skillsBySpecialization = {
     final jobSpecialization = _jobData!['specialization']?.toString().toLowerCase() ?? '';
     final seekerSpecialization = _seekerProfile!['specialization']?.toString().toLowerCase() ?? '';
     final jobExperience = _parseExperience(_jobData!['experience']?.toString() ?? '0');
-    final seekerExperience = _parseExperience(_seekerProfile!['experience']?.toString() ?? '0');
+    final seekerExperience = _parseExperience(_seekerProfile!['totalExperienceYears']?.toString() ?? '0');
 
     final matchingSkills = jobSkills.where((skill) => seekerSkills.contains(skill)).length;
     final skillMatchPercentage = jobSkills.isEmpty ? 100.0 : (matchingSkills / jobSkills.length) * 100;
@@ -725,7 +725,7 @@ final Map<String, List<String>> skillsBySpecialization = {
     final jobSpecialization = _jobData!['specialization']?.toString().toLowerCase() ?? '';
     final seekerSpecialization = _seekerProfile!['specialization']?.toString().toLowerCase() ?? '';
     final jobExperience = _parseExperience(_jobData!['experience']?.toString() ?? '0');
-    final seekerExperience = _parseExperience(_seekerProfile!['experience']?.toString() ?? '0');
+    final seekerExperience = _parseExperience(_seekerProfile!['totalExperienceYears']?.toString() ?? '0');
 
     List<String> reasons = [];
     if (jobSkills.isNotEmpty) {
