@@ -444,7 +444,7 @@ final Map<String, List<String>> skillsBySpecialization = {
       'Type: ${job['jobType'] ?? 'N/A'}',
       'Salary: ${job['salary'] ?? 'Not specified'}',
       '',
-      'Shared via Naukariwala',
+      'Download Now - https://play.google.com/store/apps/details?id=com.naukariwala.avr',
     ].join('\n');
 
     try {
