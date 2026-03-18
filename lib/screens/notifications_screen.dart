@@ -392,21 +392,6 @@ class NotificationsScreenState extends State<NotificationsScreen> {
     });
   }
 
-  Future<String?> _getResumeUrl(String jobId, String seekerId) async {
-    try {
-      final appDoc = await FirebaseFirestore.instance
-          .collection('Applications')
-          .doc('${seekerId}_$jobId')
-          .get();
-      if (appDoc.exists && widget.isRecruiter) {
-        final data = appDoc.data()!;
-        return data['resume']?['cvUrl'] ?? 'N/A';
-      }
-    } catch (e) {
-      dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Error fetching resume URL for job $jobId, seeker $seekerId: $e', name: 'NotificationsScreen', error: e);
-    }
-    return null;
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -555,12 +540,7 @@ class NotificationsScreenState extends State<NotificationsScreen> {
                   final actionStatus = (data['actionStatus'] as String?)?.toLowerCase();
                   final interviewDate = data['interviewDate'] as Timestamp?;
 
-                  return FutureBuilder<String?>(
-                    future: _getResumeUrl(jobId, seekerId),
-                    builder: (context, resumeSnapshot) {
-                      final resumeUrl = resumeSnapshot.data;
-
-                      return AnimatedListItem(
+                  return AnimatedListItem(
                         child: GestureDetector(
                           onTap: () {
                             if (_isSelectionMode) {
@@ -663,19 +643,6 @@ class NotificationsScreenState extends State<NotificationsScreen> {
                                           interviewDate: interviewDate,
                                         ),
                                       ),
-                                    if (resumeUrl != null && widget.isRecruiter)
-                                      Padding(
-                                        padding: EdgeInsets.only(top: 4.h),
-                                        child: InkWell(
-                                          onTap: () {
-                                            dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Resume URL tapped: $resumeUrl', name: 'NotificationsScreen');
-                                          },
-                                          child: Text(
-                                            'Resume: $resumeUrl',
-                                            style: TextStyle(color: Colors.blue.shade600, fontSize: 14.sp),
-                                          ),
-                                        ),
-                                      ),
                                   ],
                                 ),
                               ),
@@ -683,8 +650,6 @@ class NotificationsScreenState extends State<NotificationsScreen> {
                           ),
                         ),
                       );
-                    },
-                  );
                 },
               );
             },
