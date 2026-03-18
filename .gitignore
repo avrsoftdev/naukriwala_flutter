@@ -52,8 +52,12 @@ functions/play-integrity-service-account-key.json
 # Environment variables (AdMob credentials, etc.)
 .env
 
-# Config files with sensitive data
-lib/config/
+# Config files with sensitive data - ALLOW SAFE CONFIGS
+lib/config/secrets/
+*.secret.dart
+*.private.dart
+# Safe config files are allowed (they use environment variables)
+!lib/config/admob_config.dart
 
 # Any other potential secret files
 *.env
