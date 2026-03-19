@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:naukariwala/services/auth_service.dart';
 import 'dart:developer' as dev;
 
 class SeekerDetailsScreen extends StatelessWidget {
@@ -589,6 +590,40 @@ class SeekerDetailsScreen extends StatelessWidget {
                   ),
                 ),
                 SizedBox(height: 18.h),
+                // Add last profile update display
+                FutureBuilder<String?>(
+                  future: AuthService.getLastProfileUpdateForUser(seekerId),
+                  builder: (context, snapshot) {
+                    if (snapshot.hasData && snapshot.data != null) {
+                      return Container(
+                        width: double.infinity,
+                        margin: EdgeInsets.only(bottom: 12.h),
+                        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.shade50,
+                          borderRadius: BorderRadius.circular(8.r),
+                          border: Border.all(color: Colors.blue.shade100),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.update_outlined, 
+                                 color: Colors.blue.shade700, size: 16.sp),
+                            SizedBox(width: 6.w),
+                            Text(
+                              'Profile updated: ${snapshot.data}',
+                              style: TextStyle(
+                                color: Colors.blue.shade800,
+                                fontSize: 11.sp,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+                    return const SizedBox.shrink();
+                  },
+                ),
                 _detailTile(Icons.mail_outline, 'Email', data['email']?.toString() ?? ''),
                 _detailTile(Icons.phone_outlined, 'Mobile Number', data['mobileNumber']?.toString() ?? ''),
                 _detailTile(Icons.location_city_outlined, 'City', data['city']?.toString() ?? ''),

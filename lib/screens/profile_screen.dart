@@ -514,6 +514,10 @@ class ProfileScreenState extends State<ProfileScreen> {
   // Track if profile has been updated
   bool _isProfileUpdated = false;
   bool _isUploadingProfilePhoto = false;
+  
+  // Profile update tracking
+  String? _lastProfileUpdate;
+  bool _needsProfileUpdateReminder = false;
 
   // Map old skills to new skills.json format for backward compatibility
   List<String> _mapOldSkillsToNewFormat(List<String> oldSkills) {
@@ -1013,6 +1017,11 @@ class ProfileScreenState extends State<ProfileScreen> {
             );
           });
         }
+        
+        // Load profile update tracking info
+        if (!widget.isRecruiter) {
+          await _loadProfileUpdateInfo();
+        }
       }
     } catch (e) {
       dev.log('Error loading profile: $e', name: 'ProfileScreen', error: e);
@@ -1026,6 +1035,21 @@ class ProfileScreenState extends State<ProfileScreen> {
       if (mounted) {
         setState(() => isLoading = false);
       }
+    }
+  }
+
+  Future<void> _loadProfileUpdateInfo() async {
+    try {
+      final lastUpdate = await _authService.getLastProfileUpdate();
+      final needsReminder = await _authService.needsProfileUpdateReminder();
+      if (mounted) {
+        setState(() {
+          _lastProfileUpdate = lastUpdate;
+          _needsProfileUpdateReminder = needsReminder;
+        });
+      }
+    } catch (e) {
+      dev.log('Error loading profile update info: $e', name: 'ProfileScreen', error: e);
     }
   }
 
@@ -1508,6 +1532,10 @@ class ProfileScreenState extends State<ProfileScreen> {
         // Refresh full profile data so all sections, including onboarding
         // and preferences, reflect latest values.
         await _loadUserData();
+        // Refresh profile update tracking info
+        if (!widget.isRecruiter) {
+          await _loadProfileUpdateInfo();
+        }
         setState(() {
           _isProfileUpdated = true;
           errorMessage = null;
@@ -2897,6 +2925,64 @@ class ProfileScreenState extends State<ProfileScreen> {
                             ],
                           ),
                         ),
+                        // Profile update notification and last update info for seekers
+                        if (!widget.isRecruiter) ...[
+                          if (_needsProfileUpdateReminder) ...[
+                            Container(
+                              width: double.infinity,
+                              margin: EdgeInsets.only(top: 12.h),
+                              padding: EdgeInsets.all(12.w),
+                              decoration: BoxDecoration(
+                                color: Colors.orange.shade50,
+                                borderRadius: BorderRadius.circular(12.r),
+                                border: Border.all(color: Colors.orange.shade200),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.notifications_active_outlined, 
+                                       color: Colors.orange.shade700, size: 20.sp),
+                                  SizedBox(width: 8.w),
+                                  Expanded(
+                                    child: Text(
+                                      'Your profile hasn\'t been updated in over 30 days. Keep it fresh for recruiters!',
+                                      style: TextStyle(
+                                        color: Colors.orange.shade800,
+                                        fontSize: 12.sp,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                          if (_lastProfileUpdate != null) ...[
+                            Container(
+                              width: double.infinity,
+                              margin: EdgeInsets.only(top: 8.h),
+                              padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                              decoration: BoxDecoration(
+                                color: Colors.blue.shade50,
+                                borderRadius: BorderRadius.circular(8.r),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.update_outlined, 
+                                       color: Colors.blue.shade700, size: 16.sp),
+                                  SizedBox(width: 6.w),
+                                  Text(
+                                    'Last updated: $_lastProfileUpdate',
+                                    style: TextStyle(
+                                      color: Colors.blue.shade800,
+                                      fontSize: 11.sp,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ],
                         if (!widget.isRecruiter) ...[
                           SizedBox(height: 14.h),
                           Container(

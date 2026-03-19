@@ -376,6 +376,7 @@ class AuthService {
         'name': data['Name']?.toString().trim() ?? '',
         'role': isRecruiter ? 'recruiter' : 'seeker',
         'fcmToken': fcmToken,
+        'lastUpdated': FieldValue.serverTimestamp(),
         ...data,
       };
 
@@ -1381,6 +1382,90 @@ Future<void> sendMessage(
       },
       SetOptions(merge: true),
     );
+  }
+
+  /// Check if seeker needs to update profile (monthly reminder)
+  Future<bool> needsProfileUpdateReminder() async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) return false;
+
+    try {
+      final doc = await _firestore.collection('Seekers').doc(uid).get();
+      if (!doc.exists) return false;
+
+      final lastUpdated = doc.data()?['lastUpdated'] as Timestamp?;
+      if (lastUpdated == null) return true; // No previous update
+
+      final now = DateTime.now();
+      final lastUpdateDate = lastUpdated.toDate();
+      
+      // Check if more than 30 days have passed
+      final daysSinceUpdate = now.difference(lastUpdateDate).inDays;
+      return daysSinceUpdate >= 30;
+    } catch (e) {
+      dev.log('[PROFILE] Error checking profile update reminder: $e', name: 'AuthService', error: e);
+      return false;
+    }
+  }
+
+  /// Get last profile update timestamp
+  Future<String?> getLastProfileUpdate() async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) return null;
+
+    try {
+      final doc = await _firestore.collection('Seekers').doc(uid).get();
+      if (!doc.exists) return null;
+
+      final lastUpdated = doc.data()?['lastUpdated'] as Timestamp?;
+      if (lastUpdated == null) return null;
+
+      final lastUpdateDate = lastUpdated.toDate();
+      final now = DateTime.now();
+      final difference = now.difference(lastUpdateDate);
+
+      if (difference.inDays > 0) {
+        return '${difference.inDays} days ago';
+      } else if (difference.inHours > 0) {
+        return '${difference.inHours} hours ago';
+      } else if (difference.inMinutes > 0) {
+        return '${difference.inMinutes} minutes ago';
+      } else {
+        return 'Just now';
+      }
+    } catch (e) {
+      dev.log('[PROFILE] Error getting last profile update: $e', name: 'AuthService', error: e);
+      return null;
+    }
+  }
+
+  /// Get last profile update timestamp for any user (for seeker details screen)
+  static Future<String?> getLastProfileUpdateForUser(String userId) async {
+    try {
+      final firestore = FirebaseFirestore.instance;
+      final doc = await firestore.collection('Seekers').doc(userId).get();
+      if (!doc.exists) return null;
+
+      final lastUpdated = doc.data()?['lastUpdated'] as Timestamp?;
+      if (lastUpdated == null) return null;
+
+      final lastUpdateDate = lastUpdated.toDate();
+      final now = DateTime.now();
+      final difference = now.difference(lastUpdateDate);
+
+      if (difference.inDays > 0) {
+        return '${difference.inDays} days ago';
+      } else if (difference.inHours > 0) {
+        return '${difference.inHours} hours ago';
+      } else if (difference.inMinutes > 0) {
+        return '${difference.inMinutes} minutes ago';
+      } else {
+        return 'Just now';
+      }
+    } catch (e) {
+      dev.log('[PROFILE] Error getting last profile update for user $userId: $e', name: 'AuthService', error: e);
+      return null;
+    }
   }
 }
 
