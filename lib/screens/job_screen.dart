@@ -651,6 +651,21 @@ final Map<String, List<String>> skillsBySpecialization = {
     return [];
   }
 
+  Set<String> _extractSkillKeywords(List<String> skills) {
+    final keywords = <String>{};
+    final tokenPattern = RegExp(r'[a-z0-9]+');
+    for (final skill in skills) {
+      final matches = tokenPattern.allMatches(skill.toLowerCase());
+      for (final match in matches) {
+        final token = match.group(0);
+        if (token != null && token.isNotEmpty) {
+          keywords.add(token);
+        }
+      }
+    }
+    return keywords;
+  }
+
   // Helper function to format skills for display
   String _formatSkillsForDisplay(dynamic skills) {
     if (skills == null) return 'N/A';
@@ -677,9 +692,11 @@ final Map<String, List<String>> skillsBySpecialization = {
     final jobExperience = _parseExperience(jobData['experience']?.toString() ?? '0');
     final seekerExperience = _parseExperience(_seekerProfile!['totalExperienceYears']?.toString() ?? '0');
 
-    final matchingSkills = jobSkills.where((skill) => seekerSkills.contains(skill)).length;
-    final skillMatchPercentage = jobSkills.isEmpty ? 100.0 : (matchingSkills / jobSkills.length) * 100;
-    final skillsMatch = skillMatchPercentage >= 30;
+    final jobKeywords = _extractSkillKeywords(jobSkills);
+    final seekerKeywords = _extractSkillKeywords(seekerSkills);
+    final matchingKeywords = jobKeywords.intersection(seekerKeywords).length;
+    final skillsMatch = jobKeywords.isEmpty || matchingKeywords > 0;
+    final skillMatchPercentage = jobKeywords.isEmpty ? 100.0 : (matchingKeywords / jobKeywords.length) * 100;
     final educationMatch = jobEducation.isEmpty || jobEducation == seekerEducation;
     final specializationMatch = jobSpecialization.isEmpty || jobSpecialization == seekerSpecialization;
     final experienceMatch = seekerExperience >= jobExperience;
@@ -701,9 +718,11 @@ final Map<String, List<String>> skillsBySpecialization = {
     final jobExperience = _parseExperience(_jobData!['experience']?.toString() ?? '0');
     final seekerExperience = _parseExperience(_seekerProfile!['totalExperienceYears']?.toString() ?? '0');
 
-    final matchingSkills = jobSkills.where((skill) => seekerSkills.contains(skill)).length;
-    final skillMatchPercentage = jobSkills.isEmpty ? 100.0 : (matchingSkills / jobSkills.length) * 100;
-    final skillsMatch = skillMatchPercentage >= 30;
+    final jobKeywords = _extractSkillKeywords(jobSkills);
+    final seekerKeywords = _extractSkillKeywords(seekerSkills);
+    final matchingKeywords = jobKeywords.intersection(seekerKeywords).length;
+    final skillsMatch = jobKeywords.isEmpty || matchingKeywords > 0;
+    final skillMatchPercentage = jobKeywords.isEmpty ? 100.0 : (matchingKeywords / jobKeywords.length) * 100;
     final educationMatch = jobEducation.isEmpty || jobEducation == seekerEducation;
     final specializationMatch = jobSpecialization.isEmpty || jobSpecialization == seekerSpecialization;
     final experienceMatch = seekerExperience >= jobExperience;
@@ -729,10 +748,11 @@ final Map<String, List<String>> skillsBySpecialization = {
 
     List<String> reasons = [];
     if (jobSkills.isNotEmpty) {
-      final matchingSkills = jobSkills.where((skill) => seekerSkills.contains(skill)).length;
-      final skillMatchPercentage = (matchingSkills / jobSkills.length) * 100;
-      if (skillMatchPercentage < 30) {
-        reasons.add('Your skills do not match at least 30% of the required skills (${jobSkills.join(', ')}).');
+      final jobKeywords = _extractSkillKeywords(jobSkills);
+      final seekerKeywords = _extractSkillKeywords(seekerSkills);
+      final hasKeywordMatch = jobKeywords.any(seekerKeywords.contains);
+      if (!hasKeywordMatch) {
+        reasons.add('Your skills do not match the required skills (${jobSkills.join(', ')}).');
       }
     }
     if (jobEducation.isNotEmpty && jobEducation != seekerEducation) {
@@ -745,7 +765,7 @@ final Map<String, List<String>> skillsBySpecialization = {
       reasons.add('Your experience (${seekerExperience.toInt()} years) is less than required ($jobExperience years).');
     }
     return reasons.isEmpty
-        ? 'This job does not match your education, specialization, skills (at least 30%), or experience.'
+        ? 'This job does not match your education, specialization, skills, or experience.'
         : reasons.join(' ');
   }
 

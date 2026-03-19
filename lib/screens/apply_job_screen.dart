@@ -39,6 +39,21 @@ class ApplyJobScreenState extends State<ApplyJobScreen> {
   List<int?> _selectedAnswerIndices = [];
   bool _testSubmitted = false;
 
+  Set<String> _extractSkillKeywords(List<String> skills) {
+    final keywords = <String>{};
+    final tokenPattern = RegExp(r'[a-z0-9]+');
+    for (final skill in skills) {
+      final matches = tokenPattern.allMatches(skill.toLowerCase());
+      for (final match in matches) {
+        final token = match.group(0);
+        if (token != null && token.isNotEmpty) {
+          keywords.add(token);
+        }
+      }
+    }
+    return keywords;
+  }
+
   final List<String> experienceOptions = [
     'Fresher',
     '1-2 years',
@@ -334,12 +349,13 @@ class ApplyJobScreenState extends State<ApplyJobScreen> {
       final seekerEducation = (seekerData['education'] as String?)?.toLowerCase() ?? '';
       final seekerSpecialization = (seekerData['specialization'] as String?)?.toLowerCase() ?? '';
 
-      // Validate skills (at least 30% match)
+      // Validate skills (at least one keyword match)
       if (requiredSkills.isNotEmpty) {
-        final matchingSkills = requiredSkills.where((skill) => seekerSkills.contains(skill)).length;
-        final skillMatchPercentage = (matchingSkills / requiredSkills.length) * 100;
-        if (skillMatchPercentage < 30) {
-          throw AuthException('Your skills do not sufficiently match the job requirements. Required: ${requiredSkills.join(', ')}');
+        final requiredKeywords = _extractSkillKeywords(requiredSkills);
+        final seekerKeywords = _extractSkillKeywords(seekerSkills);
+        final hasKeywordMatch = requiredKeywords.any(seekerKeywords.contains);
+        if (!hasKeywordMatch) {
+          throw AuthException('Your skills do not match the job requirements. Required: ${requiredSkills.join(', ')}');
         }
       }
 

@@ -60,6 +60,21 @@ class AuthService {
   final FirebaseMessaging _messaging = FirebaseMessaging.instance;
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
 
+  Set<String> _extractSkillKeywords(List<String> skills) {
+    final keywords = <String>{};
+    final tokenPattern = RegExp(r'[a-z0-9]+');
+    for (final skill in skills) {
+      final matches = tokenPattern.allMatches(skill.toLowerCase());
+      for (final match in matches) {
+        final token = match.group(0);
+        if (token != null && token.isNotEmpty) {
+          keywords.add(token);
+        }
+      }
+    }
+    return keywords;
+  }
+
   Future<User> _getFreshAuthenticatedUser() async {
     final user = _auth.currentUser;
     if (user == null) {
@@ -681,9 +696,10 @@ class AuthService {
     final seekerSpecialization = (seekerProfile['specialization'] as String?)?.toLowerCase() ?? '';
 
     if (requiredSkills.isNotEmpty) {
-      final matchingSkills = requiredSkills.where((skill) => seekerSkills.contains(skill.toLowerCase())).length;
-      final skillMatchPercentage = (matchingSkills / requiredSkills.length) * 100;
-      if (skillMatchPercentage < 30) {
+      final requiredKeywords = _extractSkillKeywords(requiredSkills);
+      final seekerKeywords = _extractSkillKeywords(seekerSkills);
+      final hasKeywordMatch = requiredKeywords.any(seekerKeywords.contains);
+      if (!hasKeywordMatch) {
         throw AuthException('Insufficient skills match. Required: ${requiredSkills.join(', ')}');
       }
     }
