@@ -17,6 +17,7 @@ import 'package:naukariwala/screens/chat_list_screen.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import '../widgets/chat_icon_with_badge.dart';
 import 'dart:developer' as dev;
+import '../services/update_service.dart';
 
 void main() {
   runApp(const SeekerDashboardApp());
@@ -66,6 +67,7 @@ class _SeekerDashboardState extends State<SeekerDashboard> {
   void initState() {
     super.initState();
     _initializeBannerAd();
+    _checkForAppUpdate();
   }
 
   void _initializeBannerAd() {
@@ -79,6 +81,14 @@ class _SeekerDashboardState extends State<SeekerDashboard> {
     }).catchError((error) {
       dev.log('Banner ad failed to load: $error', name: 'SeekerDashboard');
     });
+  }
+
+  void _checkForAppUpdate() async {
+    // Add a small delay to ensure the widget is fully built
+    await Future.delayed(const Duration(milliseconds: 500));
+    if (mounted) {
+      UpdateService.checkForUpdate(context);
+    }
   }
 
   @override

@@ -15,6 +15,7 @@ import 'package:naukariwala/screens/chat_list_screen.dart';
 import '../widgets/chat_icon_with_badge.dart';
 import '../services/auth_service.dart';
 import 'package:naukariwala/services/ads_service.dart';
+import '../services/update_service.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'dart:developer' as dev;
@@ -52,6 +53,7 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
     _requestNotificationPermissions();
     _checkRoleAndFetchName();
     _initializeBannerAd();
+    _checkForAppUpdate();
   }
 
   void _initializeBannerAd() {
@@ -71,6 +73,14 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
   void dispose() {
     _bannerAd.dispose();
     super.dispose();
+  }
+
+  void _checkForAppUpdate() async {
+    // Add a small delay to ensure the widget is fully built
+    await Future.delayed(const Duration(milliseconds: 500));
+    if (mounted) {
+      UpdateService.checkForUpdate(context);
+    }
   }
 
   void _requestNotificationPermissions() async {
