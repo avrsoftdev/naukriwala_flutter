@@ -6,6 +6,7 @@ import 'package:naukariwala/screens/edit_job_screen.dart';
 import 'package:naukariwala/screens/seeker_details_screen.dart';
 import 'dart:developer' as dev;
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'dart:math';
 
 class PostedJobsScreen extends StatefulWidget {
   const PostedJobsScreen({super.key});
@@ -17,6 +18,8 @@ class PostedJobsScreen extends StatefulWidget {
 class _PostedJobsScreenState extends State<PostedJobsScreen> {
   final user = FirebaseAuth.instance.currentUser;
   String _filter = 'All Jobs';
+  double _selectedDistance = 25.0; // Default 25km
+  bool _distanceFilterEnabled = false; // Distance filter toggle
 
   static const List<String> _filters = <String>[
     'All Jobs',
@@ -276,29 +279,150 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
           ),
         ],
       ),
-      child: Wrap(
-        spacing: 8.w,
-        runSpacing: 8.h,
-        children: _filters.map((filter) {
-          final isSelected = _filter == filter;
-          return ChoiceChip(
-            label: Text(filter, style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w600)),
-            selected: isSelected,
-            onSelected: (_) {
-              setState(() {
-                _filter = filter;
-              });
-              dev.log('[2025-09-01 15:05 IST] Filter changed to: $_filter', name: 'PostedJobsScreen');
-            },
-            backgroundColor: const Color(0xFFE7EEF8),
-            selectedColor: const Color(0xFF1565C0),
-            labelStyle: TextStyle(
-              color: isSelected ? Colors.white : const Color(0xFF0D47A1),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Job type filters
+          Wrap(
+            spacing: 8.w,
+            runSpacing: 8.h,
+            children: _filters.map((filter) {
+              final isSelected = _filter == filter;
+              return ChoiceChip(
+                label: Text(filter, style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w600)),
+                selected: isSelected,
+                onSelected: (_) {
+                  setState(() {
+                    _filter = filter;
+                  });
+                  dev.log('[2025-09-01 15:05 IST] Filter changed to: $_filter', name: 'PostedJobsScreen');
+                },
+                backgroundColor: const Color(0xFFE7EEF8),
+                selectedColor: const Color(0xFF1565C0),
+                labelStyle: TextStyle(
+                  color: isSelected ? Colors.white : const Color(0xFF0D47A1),
+                ),
+                checkmarkColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22.r)),
+              );
+            }).toList(),
+          ),
+          
+          SizedBox(height: 16.h),
+          
+          // Distance filter section
+          Row(
+            children: [
+              Icon(Icons.location_on_outlined, size: 18.sp, color: const Color(0xFF0D47A1)),
+              SizedBox(width: 8.w),
+              Text(
+                'Distance Filter:',
+                style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600, color: const Color(0xFF0D47A1)),
+              ),
+              SizedBox(width: 8.w),
+              Switch(
+                value: _distanceFilterEnabled,
+                onChanged: (value) {
+                  setState(() {
+                    _distanceFilterEnabled = value;
+                  });
+                  dev.log('[2025-09-01 15:05 IST] Distance filter enabled: $value', name: 'PostedJobsScreen');
+                },
+                activeColor: const Color(0xFF1565C0),
+                activeTrackColor: const Color(0xFFE7EEF8),
+                inactiveThumbColor: Colors.grey.shade400,
+                inactiveTrackColor: Colors.grey.shade300,
+              ),
+            ],
+          ),
+          
+          if (_distanceFilterEnabled) ...[
+            SizedBox(height: 8.h),
+            
+            // Distance slider
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      '${_selectedDistance.toStringAsFixed(0)} km',
+                      style: TextStyle(
+                        fontSize: 16.sp,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF1565C0),
+                      ),
+                    ),
+                    Text(
+                      'Max: 100 km',
+                      style: TextStyle(
+                        fontSize: 12.sp,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 8.h),
+                SliderTheme(
+                  data: SliderTheme.of(context).copyWith(
+                    activeTrackColor: const Color(0xFF1565C0),
+                    inactiveTrackColor: const Color(0xFFE7EEF8),
+                    thumbColor: const Color(0xFF1565C0),
+                    overlayColor: const Color(0xFF1565C0).withOpacity(0.2),
+                    valueIndicatorColor: const Color(0xFF1565C0),
+                    valueIndicatorTextStyle: TextStyle(
+                      color: Colors.white,
+                      fontSize: 12.sp,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  child: Slider(
+                    value: _selectedDistance,
+                    min: 1.0,
+                    max: 100.0,
+                    divisions: 99,
+                    label: '${_selectedDistance.toStringAsFixed(0)} km',
+                    onChanged: (value) {
+                      setState(() {
+                        _selectedDistance = value;
+                      });
+                      dev.log('[2025-09-01 15:05 IST] Distance changed to: ${value.toStringAsFixed(0)}km', name: 'PostedJobsScreen');
+                    },
+                  ),
+                ),
+                
+                // Quick distance buttons
+                SizedBox(height: 12.h),
+                Wrap(
+                  spacing: 8.w,
+                  runSpacing: 6.h,
+                  children: [5, 10, 25, 50, 100].map((distance) {
+                    final isSelected = _selectedDistance == distance.toDouble();
+                    return ActionChip(
+                      label: Text('${distance}km', style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w600)),
+                      onPressed: () {
+                        setState(() {
+                          _selectedDistance = distance.toDouble();
+                        });
+                        dev.log('[2025-09-01 15:05 IST] Quick distance selected: ${distance}km', name: 'PostedJobsScreen');
+                      },
+                      backgroundColor: isSelected ? const Color(0xFF1565C0) : const Color(0xFFE7EEF8),
+                      labelStyle: TextStyle(
+                        color: isSelected ? Colors.white : const Color(0xFF0D47A1),
+                      ),
+                      side: BorderSide(
+                        color: isSelected ? const Color(0xFF1565C0) : const Color(0xFFDCE6F3),
+                        width: 1,
+                      ),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+                    );
+                  }).toList(),
+                ),
+              ],
             ),
-            checkmarkColor: Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22.r)),
-          );
-        }).toList(),
+          ],
+        ],
       ),
     );
   }
@@ -501,6 +625,16 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
               ...applicants.map<Widget>((applicant) {
                 final name = applicant['name']?.toString() ?? 'Unknown Seeker';
                 final seekerId = applicant['seekerId']?.toString() ?? 'Unknown';
+                final distance = applicant['distance'] as double? ?? 999999.0;
+                
+                // Format distance display
+                String distanceText;
+                if (distance >= 999999.0) {
+                  distanceText = 'Location unknown';
+                } else {
+                  distanceText = '${distance.toStringAsFixed(1)} km';
+                }
+                
                 return Padding(
                   padding: EdgeInsets.only(bottom: 8.h),
                   child: Container(
@@ -522,9 +656,33 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
                         ),
                         SizedBox(width: 10.w),
                         Expanded(
-                          child: Text(
-                            name,
-                            style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w600, color: const Color(0xFF243B53)),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                name,
+                                style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w600, color: const Color(0xFF243B53)),
+                              ),
+                              SizedBox(height: 2.h),
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.location_on_outlined,
+                                    size: 14.sp,
+                                    color: Colors.blueGrey.shade600,
+                                  ),
+                                  SizedBox(width: 4.w),
+                                  Text(
+                                    distanceText,
+                                    style: TextStyle(
+                                      fontSize: 11.sp,
+                                      color: distance >= 999999.0 ? Colors.red.shade600 : Colors.green.shade600,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
                         ),
                         IconButton(
@@ -649,16 +807,51 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
 
       dev.log('[2025-09-01 15:05 IST] Fetched ${snapshot.docs.length} applicants for job $jobId by user ${user!.uid}', name: 'PostedJobsScreen');
 
-      final applicants = snapshot.docs.map((doc) {
+      // Get recruiter's location from job data
+      final jobDoc = await FirebaseFirestore.instance
+          .collection('Recruiters')
+          .doc(user!.uid)
+          .collection('Jobs')
+          .doc(jobId)
+          .get();
+      
+      final jobData = jobDoc.data();
+      final recruiterLocation = jobData?['location']?.toString() ?? '';
+
+      final List<Future<Map<String, dynamic>>> applicantFutures = snapshot.docs.map((doc) async {
         final data = doc.data();
+        final seekerId = data['seekerId']?.toString() ?? 'Unknown';
+        
+        // Get seeker's location from their profile
+        final seekerLocation = await _getSeekerLocation(seekerId);
+        
+        // Calculate distance
+        final distance = _calculateDistance(
+          recruiterLocation,
+          seekerLocation,
+        );
+        
         return {
-          'seekerId': data['seekerId']?.toString() ?? 'Unknown',
+          'seekerId': seekerId,
           'name': data['resume']?['name']?.toString() ?? 'Unknown Seeker',
           'resumeUrl': data['resume']?['cvUrl']?.toString() ?? 'N/A',
+          'distance': distance,
+          'location': seekerLocation,
         };
       }).toList();
 
-      return {'count': snapshot.docs.length, 'applicants': applicants};
+      final applicants = await Future.wait(applicantFutures);
+
+      // Filter by distance if enabled
+      List<Map<String, dynamic>> filteredApplicants = applicants;
+      if (_distanceFilterEnabled) {
+        filteredApplicants = applicants.where((applicant) {
+          final distance = applicant['distance'] as double? ?? 999999.0;
+          return distance <= _selectedDistance;
+        }).toList();
+      }
+
+      return {'count': filteredApplicants.length, 'applicants': filteredApplicants};
     } catch (e, stackTrace) {
       dev.log('[2025-09-01 15:05 IST] Error fetching applicant data for job $jobId by user ${user!.uid}: $e', name: 'PostedJobsScreen', error: e, stackTrace: stackTrace);
       if (e is FirebaseException) {
@@ -669,6 +862,79 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
       }
       return {'count': 0, 'applicants': []};
     }
+  }
+
+  // Get seeker's location from their profile
+  Future<String> _getSeekerLocation(String seekerId) async {
+    try {
+      final seekerDoc = await FirebaseFirestore.instance
+          .collection('Seekers')
+          .doc(seekerId)
+          .get();
+      
+      if (seekerDoc.exists) {
+        final seekerData = seekerDoc.data() as Map<String, dynamic>?;
+        final location = seekerData?['city']?.toString() ?? 'Unknown';
+        return location;
+      }
+      return 'Unknown';
+    } catch (e) {
+      dev.log('[2025-09-01 15:05 IST] Error getting seeker location: $e', name: 'PostedJobsScreen', error: e);
+      return 'Unknown';
+    }
+  }
+
+  // Simple distance calculation (in km)
+  double _calculateDistance(String location1, String location2) {
+    if (location1 == 'Unknown' || location2 == 'Unknown' || 
+        location1.isEmpty || location2.isEmpty) {
+      return 999999.0; // Return large value for unknown locations
+    }
+    
+    // Simple distance calculation - in real app, you'd use geocoding API
+    // For now, return a mock distance based on city names
+    final Map<String, List<double>> cities = {
+      'Mumbai': [19.0760, 72.8777],
+      'Delhi': [28.6139, 77.2090],
+      'Bangalore': [12.9716, 77.5946],
+      'Chennai': [13.0827, 80.2707],
+      'Kolkata': [22.5726, 88.3639],
+      'Hyderabad': [17.3850, 78.4867],
+      'Pune': [18.5204, 73.8567],
+      'Ahmedabad': [23.0225, 72.5714],
+      'Jaipur': [26.9124, 75.7873],
+      // Add more cities as needed
+    };
+    
+    final coords1 = cities[location1];
+    final coords2 = cities[location2];
+    
+    if (coords1 == null || coords2 == null) {
+      return 999999.0;
+    }
+    
+    final lat1 = coords1[0];
+    final lon1 = coords1[1];
+    final lat2 = coords2[0];
+    final lon2 = coords2[1];
+    
+    // Haversine formula to calculate distance
+    const R = 6371.0; // Earth's radius in km
+    
+    final dLat = _toRadians(lat2 - lat1);
+    final dLon = _toRadians(lon2 - lon1);
+    
+    final a = sin(dLat / 2) * sin(dLat / 2) +
+        cos(_toRadians(lat1)) * cos(_toRadians(lat2)) *
+        sin(dLon / 2) * sin(dLon / 2);
+    final c = 2 * atan2(sqrt(a), sqrt(1 - a));
+    
+    final distance = R * c;
+    return distance;
+  }
+
+  double _toRadians(double degrees) {
+    return degrees * (pi / 180);
   }
 
   void _confirmDeleteJob(BuildContext context, String jobId) {
