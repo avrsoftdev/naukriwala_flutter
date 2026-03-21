@@ -18,6 +18,7 @@ import 'package:flutter/services.dart'; // Added for MethodChannel
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'package:naukariwala/main.dart'; // For exponential backoff
+import 'interview_reminder_service.dart';
 
 class AccountInfo {
   final String email;
@@ -833,6 +834,26 @@ class AuthService {
     await batch.commit();
     dev.log('[2025-10-10 00:35 IST] Scheduled interview for job $jobId, seeker $seekerId by recruiter $uid', name: 'AuthService');
 
+    // Schedule interview reminders for both seeker and recruiter
+    try {
+      final jobTitle = appData['jobTitle']?.toString() ?? 'Untitled';
+      final companyName = appData['company']?.toString() ?? 'Company';
+      
+      await InterviewReminderService().scheduleInterviewReminder(
+        interviewId: applicationId,
+        jobTitle: jobTitle,
+        companyName: companyName,
+        interviewTime: interviewDate,
+        seekerId: seekerId,
+        recruiterId: uid,
+      );
+      
+      dev.log('[2025-10-10 00:35 IST] Scheduled interview reminders for $jobTitle', name: 'AuthService');
+    } catch (e) {
+      dev.log('[2025-10-10 00:35 IST] Error scheduling interview reminders: $e', name: 'AuthService', error: e);
+      // Continue with notification sending even if reminder scheduling fails
+    }
+
     final seekerFcmToken = await _getFcmToken(seekerId);
     if (seekerFcmToken != null) {
       await _sendFcmNotification(
@@ -917,6 +938,30 @@ class AuthService {
     });
 
     await batch.commit();
+
+    // Schedule interview reminders if seeker confirmed availability
+    if (isAvailable && interviewDate != null) {
+      try {
+        final applicationId = '${seekerId}_$jobId';
+        final appData = await _firestore.collection('Applications').doc(applicationId).get();
+        final company = appData.data()?['company']?.toString() ?? 'Company';
+        
+        // Create confirmation notification and schedule 2-hour reminder
+        await InterviewReminderService().createInterviewConfirmationNotification(
+          jobTitle: jobTitle,
+          companyName: company,
+          interviewTime: interviewDate.toDate(),
+          seekerId: seekerId,
+          recruiterId: recruiterId,
+          interviewId: applicationId,
+        );
+        
+        dev.log('[2025-10-10 00:35 IST] Created interview confirmation notifications for $jobTitle', name: 'AuthService');
+      } catch (e) {
+        dev.log('[2025-10-10 00:35 IST] Error creating interview confirmation notifications: $e', name: 'AuthService', error: e);
+        // Continue with notification sending even if reminder scheduling fails
+      }
+    }
 
     final recruiterFcmToken = await _getFcmToken(recruiterId);
     if (recruiterFcmToken != null) {

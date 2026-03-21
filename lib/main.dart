@@ -15,6 +15,7 @@ import 'firebase_options.dart';
 import 'screens/unified_screen.dart';
 import 'services/auth_service.dart';
 import 'services/ads_service.dart';
+import 'services/interview_reminder_service.dart';
 import 'providers/message_state_provider.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -80,6 +81,9 @@ Future<void> main() async {
 
   const channel = AndroidNotificationChannel('fcm_default_channel', 'FCM', importance: Importance.max);
   await localNotif.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()?.createNotificationChannel(channel);
+
+  // Initialize interview reminder service
+  await InterviewReminderService().initialize();
 
   runApp(const NaukariwalaApp());
 }

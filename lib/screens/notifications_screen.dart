@@ -43,7 +43,7 @@ class NotificationsScreenState extends State<NotificationsScreen> {
           .where('to', isEqualTo: uid);
 
       if (widget.isRecruiter) {
-        query = query.where('type', whereIn: ['application', 'message', 'interview_confirmation_response']);
+        query = query.where('type', whereIn: ['application', 'message', 'interview_confirmation_response', 'interview_reminder']);
       } else {
         query = query.where('type', whereIn: [
           'application',
@@ -51,6 +51,7 @@ class NotificationsScreenState extends State<NotificationsScreen> {
           'message',
           'interview_scheduled', // legacy
           'interview_confirmation_request',
+          'interview_reminder',
         ]);
       }
 
@@ -522,7 +523,7 @@ class NotificationsScreenState extends State<NotificationsScreen> {
               }
 
               return ListView.builder(
-                padding: EdgeInsets.all(16.w),
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.w),
                 itemCount: docs.length,
                 itemBuilder: (context, index) {
                   final data = docs[index].data() as Map<String, dynamic>;
@@ -590,6 +591,7 @@ class NotificationsScreenState extends State<NotificationsScreen> {
                           },
                           child: Card(
                             elevation: isSelected ? 6 : 3,
+                            margin: EdgeInsets.only(bottom: 8.h),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12.r),
                               side: BorderSide(
@@ -604,35 +606,86 @@ class NotificationsScreenState extends State<NotificationsScreen> {
                                       ? [Colors.blue.shade100, Colors.blue.shade50]
                                       : (wasInitiallyUnread
                                           ? [Colors.amber.shade50, Colors.amber.shade100]
-                                          : [Colors.grey.shade100, Colors.grey.shade200]),
+                                          : (type == 'interview_reminder'
+                                              ? [Colors.green.shade50, Colors.green.shade100]
+                                              : [Colors.grey.shade100, Colors.grey.shade200])),
                                   begin: Alignment.topLeft,
                                   end: Alignment.bottomRight,
                                 ),
                                 borderRadius: BorderRadius.circular(12.r),
+                                border: type == 'interview_reminder'
+                                    ? Border.all(color: Colors.green.shade300, width: 1)
+                                    : null,
                               ),
                               child: ListTile(
-                                contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+                                contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+                                leading: type == 'interview_reminder'
+                                    ? Container(
+                                        padding: EdgeInsets.all(6.w),
+                                        decoration: BoxDecoration(
+                                          color: Colors.green.shade500,
+                                          borderRadius: BorderRadius.circular(6.r),
+                                        ),
+                                        child: const Icon(
+                                          Icons.alarm,
+                                          color: Colors.white,
+                                          size: 18,
+                                        ),
+                                      )
+                                    : null,
                                 title: Text(
-                                  '$jobTitle: $message',
+                                  type == 'interview_reminder' ? '⏰ $message' : '$jobTitle: $message',
                                   style: TextStyle(
                                     fontWeight: wasInitiallyUnread ? FontWeight.w600 : FontWeight.normal,
-                                    color: Colors.black87,
+                                    color: type == 'interview_reminder' ? Colors.green.shade800 : Colors.black87,
+                                    fontSize: type == 'interview_reminder' ? 14.sp : 15.sp,
                                   ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                                 subtitle: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    SizedBox(height: 4.h),
+                                    SizedBox(height: 2.h),
                                     if (timestamp != null)
                                       Text(
                                         _formatTimestamp(timestamp),
-                                        style: TextStyle(color: Colors.grey.shade600, fontSize: 14.sp),
+                                        style: TextStyle(
+                                          color: type == 'interview_reminder' ? Colors.green.shade600 : Colors.grey.shade600,
+                                          fontSize: 12.sp,
+                                        ),
+                                      ),
+                                    if (type == 'interview_reminder' && interviewDate != null)
+                                      Padding(
+                                        padding: EdgeInsets.only(top: 2.h),
+                                        child: Row(
+                                          children: [
+                                            Icon(
+                                              Icons.event,
+                                              size: 12.sp,
+                                              color: Colors.green.shade600,
+                                            ),
+                                            SizedBox(width: 2.w),
+                                            Expanded(
+                                              child: Text(
+                                                'Interview: ${DateFormat('dd MMM, hh:mm a').format(interviewDate.toDate())}',
+                                                style: TextStyle(
+                                                  color: Colors.green.shade600,
+                                                  fontSize: 11.sp,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
                                       ),
                                     if (!widget.isRecruiter &&
                                         uid != null &&
                                         (type == 'interview_confirmation_request' || type == 'interview_scheduled'))
                                       Padding(
-                                        padding: EdgeInsets.only(top: 10.h),
+                                        padding: EdgeInsets.only(top: 6.h),
                                         child: InterviewConfirmationActions(
                                           authService: _authService,
                                           jobId: jobId,
