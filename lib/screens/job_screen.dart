@@ -1,6 +1,7 @@
 // ignore_for_file: unnecessary_null_comparison
 
 import 'dart:developer' as dev;
+import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -40,6 +41,14 @@ class JobScreenState extends State<JobScreen> {
   bool _isEligible = false;
   String? _ineligibilityReason;
   final Set<String> _savedJobIds = {};
+  double? _selectedDistanceKm;
+
+  final List<double> _distanceOptionsKm = [
+    50,
+    100,
+    150,
+    200,
+  ];
 
   final List<String> experienceOptions = [
     'Fresher',
@@ -415,25 +424,137 @@ final Map<String, List<String>> skillsBySpecialization = {
         ? jobs.where((job) => _savedJobIds.contains(job['jobId']?.toString() ?? '')).toList()
         : jobs;
 
-    if (_searchQuery.isEmpty) {
-      filteredJobs = sourceJobs;
-      return;
+    List<Map<String, dynamic>> working = sourceJobs;
+
+    if (_searchQuery.isNotEmpty) {
+      working = working.where((job) {
+        final title = (job['title'] ?? '').toString().toLowerCase();
+        final company = (job['company'] ?? '').toString().toLowerCase();
+        final location = (job['location'] ?? '').toString().toLowerCase();
+        return title.contains(_searchQuery) ||
+            company.contains(_searchQuery) ||
+            location.contains(_searchQuery);
+      }).toList();
     }
 
-    filteredJobs = sourceJobs.where((job) {
-      final title = (job['title'] ?? '').toString().toLowerCase();
-      final company = (job['company'] ?? '').toString().toLowerCase();
-      final location = (job['location'] ?? '').toString().toLowerCase();
-      return title.contains(_searchQuery) ||
-          company.contains(_searchQuery) ||
-          location.contains(_searchQuery);
-    }).toList();
+    if (_selectedDistanceKm != null && _hasSeekerLocation) {
+      working = working.where((job) {
+        final distance = _getJobDistanceKm(job);
+        if (distance == null) return false;
+        return distance <= _selectedDistanceKm!;
+      }).toList();
+    }
+
+    filteredJobs = working;
 
     dev.log(
       '[2025-09-01 14:44 IST] Filtered jobs: ${filteredJobs.length} found for query "$_searchQuery"',
       name: 'JobScreen',
     );
   }
+
+  bool get _hasSeekerLocation {
+    final location = _seekerProfile?['city']?.toString().trim();
+    return location != null && location.isNotEmpty;
+  }
+
+  double? _getJobDistanceKm(Map<String, dynamic> job) {
+    if (!_hasSeekerLocation) return null;
+    final seekerLocation = _seekerProfile?['city']?.toString() ?? '';
+    final jobLocation = job['location']?.toString() ?? '';
+    return _calculateDistanceKm(jobLocation, seekerLocation);
+  }
+
+  double? _calculateDistanceKm(String location1, String location2) {
+    if (location1.trim().isEmpty || location2.trim().isEmpty) return null;
+
+    final city1 = _resolveCityKey(location1);
+    final city2 = _resolveCityKey(location2);
+    if (city1 == null || city2 == null) return null;
+
+    final coords1 = _cityCoordinates[city1];
+    final coords2 = _cityCoordinates[city2];
+    if (coords1 == null || coords2 == null) return null;
+
+    final lat1 = coords1[0];
+    final lon1 = coords1[1];
+    final lat2 = coords2[0];
+    final lon2 = coords2[1];
+
+    const radius = 6371.0;
+    final dLat = _toRadians(lat2 - lat1);
+    final dLon = _toRadians(lon2 - lon1);
+    final a = sin(dLat / 2) * sin(dLat / 2) +
+        cos(_toRadians(lat1)) * cos(_toRadians(lat2)) *
+            sin(dLon / 2) * sin(dLon / 2);
+    final c = 2 * atan2(sqrt(a), sqrt(1 - a));
+    return radius * c;
+  }
+
+  String? _resolveCityKey(String location) {
+    final normalized = location.toLowerCase();
+    for (final city in _cityCoordinates.keys) {
+      if (normalized.contains(city.toLowerCase())) {
+        return city;
+      }
+    }
+
+    final aliasMatch = _cityAliases.entries.firstWhere(
+      (entry) => normalized.contains(entry.key),
+      orElse: () => const MapEntry('', ''),
+    );
+    if (aliasMatch.key.isNotEmpty && aliasMatch.value.isNotEmpty) {
+      return aliasMatch.value;
+    }
+
+    final firstPart = location.split(',').first.trim().toLowerCase();
+    for (final city in _cityCoordinates.keys) {
+      if (firstPart == city.toLowerCase()) {
+        return city;
+      }
+    }
+    return null;
+  }
+
+  double _toRadians(double degrees) {
+    return degrees * (pi / 180);
+  }
+
+  final Map<String, List<double>> _cityCoordinates = {
+    'Mumbai': [19.0760, 72.8777],
+    'Delhi': [28.6139, 77.2090],
+    'Bangalore': [12.9716, 77.5946],
+    'Bengaluru': [12.9716, 77.5946],
+    'Chennai': [13.0827, 80.2707],
+    'Kolkata': [22.5726, 88.3639],
+    'Hyderabad': [17.3850, 78.4867],
+    'Pune': [18.5204, 73.8567],
+    'Ahmedabad': [23.0225, 72.5714],
+    'Jaipur': [26.9124, 75.7873],
+    'Surat': [21.1702, 72.8311],
+    'Lucknow': [26.8467, 80.9462],
+    'Kanpur': [26.4499, 80.3319],
+    'Nagpur': [21.1458, 79.0882],
+    'Indore': [22.7196, 75.8577],
+    'Bhopal': [23.2599, 77.4126],
+    'Patna': [25.5941, 85.1376],
+    'Chandigarh': [30.7333, 76.7794],
+    'Kochi': [9.9312, 76.2673],
+    'Coimbatore': [11.0168, 76.9558],
+    'Thiruvananthapuram': [8.5241, 76.9366],
+    'Visakhapatnam': [17.6868, 83.2185],
+    'Vadodara': [22.3072, 73.1812],
+    'Noida': [28.5355, 77.3910],
+    'Gurgaon': [28.4595, 77.0266],
+  };
+
+  final Map<String, String> _cityAliases = {
+    'gurugram': 'Gurgaon',
+    'bengaluru': 'Bangalore',
+    'bangalore': 'Bangalore',
+    'delhi ncr': 'Delhi',
+    'ncr': 'Delhi',
+  };
 
   Future<void> _shareJob(Map<String, dynamic> job) async {
     final text = [
@@ -946,6 +1067,44 @@ final Map<String, List<String>> skillsBySpecialization = {
                         ),
                       ),
                     ),
+                    Padding(
+                      padding: EdgeInsets.fromLTRB(16.w, 0, 16.w, 12.h),
+                      child: DropdownButtonFormField<double?>(
+                        value: _selectedDistanceKm,
+                        isExpanded: true,
+                        decoration: InputDecoration(
+                          labelText: _hasSeekerLocation
+                              ? 'Distance from your address'
+                              : 'Distance (add address in profile to enable)',
+                          prefixIcon: Icon(Icons.place_outlined, size: 20.sp),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12.r),
+                          ),
+                          filled: true,
+                          fillColor: Colors.grey.shade100,
+                        ),
+                        items: [
+                          const DropdownMenuItem<double?>(
+                            value: null,
+                            child: Text('Any distance'),
+                          ),
+                          ..._distanceOptionsKm.map(
+                            (km) => DropdownMenuItem<double?>(
+                              value: km,
+                              child: Text('Under ${km.toStringAsFixed(0)} km'),
+                            ),
+                          ),
+                        ],
+                        onChanged: _hasSeekerLocation
+                            ? (value) {
+                                setState(() {
+                                  _selectedDistanceKm = value;
+                                  _recomputeFilteredJobs();
+                                });
+                              }
+                            : null,
+                      ),
+                    ),
                     Expanded(
                       child: filteredJobs.isEmpty
                           ? Center(
@@ -965,6 +1124,10 @@ final Map<String, List<String>> skillsBySpecialization = {
                                 final isApplied = _appliedJobIds.contains(job['jobId']);
                                 final isFeatured = job['isFeatured'] ?? false;
                                 final isSaved = _savedJobIds.contains(jobId);
+                                final distanceKm = _getJobDistanceKm(job);
+                                final distanceText = distanceKm == null
+                                    ? null
+                                    : '${distanceKm.toStringAsFixed(1)} km away';
                                 final Color eligibilityBorderColor = _seekerProfile == null
                                     ? Colors.grey.shade300
                                     : (job['isEligible'] == true ? Colors.green.shade400 : Colors.red.shade300);
@@ -1018,7 +1181,12 @@ final Map<String, List<String>> skillsBySpecialization = {
                                                     ),
                                                     SizedBox(height: 8.h),
                                                     Text(
-                                                      "${job['company'] ?? ''} | ${job['location'] ?? ''} | ${job['jobType'] ?? ''}",
+                                                      [
+                                                        "${job['company'] ?? ''}",
+                                                        "${job['location'] ?? ''}",
+                                                        "${job['jobType'] ?? ''}",
+                                                        if (distanceText != null) distanceText,
+                                                      ].where((part) => part.trim().isNotEmpty).join(' | '),
                                                       style: TextStyle(color: Colors.grey.shade700, fontSize: 14.sp),
                                                     ),
                                                   ],
