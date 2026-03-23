@@ -11584,6 +11584,156 @@
     "skill": "Cultural adaptation"
   },
   {
+    "skill": "Quick Learner"
+  },
+  {
+    "skill": "Eager to Learn"
+  },
+  {
+    "skill": "Adaptability"
+  },
+  {
+    "skill": "Willingness to Learn"
+  },
+  {
+    "skill": "Fast Learner"
+  },
+  {
+    "skill": "Communication Skills"
+  },
+  {
+    "skill": "Verbal Communication"
+  },
+  {
+    "skill": "Written Communication"
+  },
+  {
+    "skill": "English Communication"
+  },
+  {
+    "skill": "Teamwork"
+  },
+  {
+    "skill": "Team Player"
+  },
+  {
+    "skill": "Collaboration"
+  },
+  {
+    "skill": "Problem Solving"
+  },
+  {
+    "skill": "Critical Thinking"
+  },
+  {
+    "skill": "Time Management"
+  },
+  {
+    "skill": "Organizational Skills"
+  },
+  {
+    "skill": "Positive Attitude"
+  },
+  {
+    "skill": "Work Ethic"
+  },
+  {
+    "skill": "Punctuality"
+  },
+  {
+    "skill": "Attention to Detail"
+  },
+  {
+    "skill": "MS Office"
+  },
+  {
+    "skill": "Microsoft Excel Basics"
+  },
+  {
+    "skill": "Google Workspace"
+  },
+  {
+    "skill": "Basic Computer Skills"
+  },
+  {
+    "skill": "Data Entry"
+  },
+  {
+    "skill": "Customer Service Basics"
+  },
+  {
+    "skill": "Presentation Skills"
+  },
+  {
+    "skill": "Emotional Intelligence"
+  },
+  {
+    "skill": "Initiative"
+  },
+  {
+    "skill": "Proactive"
+  },
+  {
+    "skill": "Campus Projects"
+  },
+  {
+    "skill": "Internship Experience"
+  },
+  {
+    "skill": "Project-Based Learning"
+  },
+  {
+    "skill": "Group Projects"
+  },
+  {
+    "skill": "Hackathon Participant"
+  },
+  {
+    "skill": "AI Literacy Basics"
+  },
+  {
+    "skill": "Prompt Engineering Basics"
+  },
+  {
+    "skill": "Python Basics"
+  },
+  {
+    "skill": "Java Basics"
+  },
+  {
+    "skill": "Git Basics"
+  },
+  {
+    "skill": "Canva Basics"
+  },
+  {
+    "skill": "Professionalism"
+  },
+  {
+    "skill": "Reliability"
+  },
+  {
+    "skill": "Ownership"
+  },
+  {
+    "skill": "Resilience"
+  },
+  {
+    "skill": "Creativity"
+  },
+  {
+    "skill": "Analytical Thinking"
+  },
+  {
+    "skill": "Multitasking"
+  },
+  {
+    "skill": "Willing to Relocate"
+  },
+  {
+    "skill": "Fresher with Passion"
+  },
+  {
     "skill": "CAT tools (MemoQ)"
   },
   {
@@ -12068,6 +12218,87 @@
   {"skill": "Masonry"},
   {"skill": "Painting"},
   {"skill": "Welding"},
+  {
+    "skill": "Python Development"
+  },
+  {
+    "skill": "Python Engineering"
+  },
+  {
+    "skill": "Python Implementation"
+  },
+  {
+    "skill": "Python Integration"
+  },
+  {
+    "skill": "Python Optimization"
+  },
+  {
+    "skill": "Python Automation"
+  },
+  {
+    "skill": "Python Administration"
+  },
+  {
+    "skill": "Python Management"
+  },
+  {
+    "skill": "Python Analysis"
+  },
+  {
+    "skill": "Python Strategy"
+  },
+  {
+    "skill": "Python Consulting"
+  },
+  {
+    "skill": "Python Operations"
+  },
+  {
+    "skill": "Python Support"
+  },
+  {
+    "skill": "Python Design"
+  },
+  {
+    "skill": "Python Architecture"
+  },
+  {
+    "skill": "Python Deployment"
+  },
+  {
+    "skill": "Python Monitoring"
+  },
+  {
+    "skill": "Python Troubleshooting"
+  },
+  {
+    "skill": "Python Security"
+  },
+  {
+    "skill": "Python Testing"
+  },
+  {
+    "skill": "Python Reporting"
+  },
+  {
+    "skill": "Python Planning"
+  },
+  {
+    "skill": "Python Configuration"
+  },
+  {
+    "skill": "Python Migration"
+  },
+  {
+    "skill": "Python Maintenance"
+  },
+  {
+    "skill": "Python Training"
+  },
+  {
+    "skill": "Java Development"
+  },
   {"skill": "Construction Labor"},
   {"skill": "Scaffolding"},
   {"skill": "Heavy Machinery Operation"},
