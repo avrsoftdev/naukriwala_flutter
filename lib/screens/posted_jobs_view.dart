@@ -626,13 +626,20 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
                 final name = applicant['name']?.toString() ?? 'Unknown Seeker';
                 final seekerId = applicant['seekerId']?.toString() ?? 'Unknown';
                 final distance = applicant['distance'] as double? ?? 999999.0;
-                
-                // Format distance display
-                String distanceText;
-                if (distance >= 999999.0) {
-                  distanceText = 'Location unknown';
+                final seekerLocation = applicant['location']?.toString() ?? '';
+
+                final hasLocation = seekerLocation.isNotEmpty && seekerLocation != 'Unknown';
+                final hasDistance = distance < 999999.0;
+
+                String locationText;
+                if (hasLocation && hasDistance) {
+                  locationText = '$seekerLocation • ${distance.toStringAsFixed(1)} km';
+                } else if (hasLocation) {
+                  locationText = seekerLocation;
+                } else if (hasDistance) {
+                  locationText = '${distance.toStringAsFixed(1)} km';
                 } else {
-                  distanceText = '${distance.toStringAsFixed(1)} km';
+                  locationText = 'Location unknown';
                 }
                 
                 return Padding(
@@ -672,12 +679,16 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
                                     color: Colors.blueGrey.shade600,
                                   ),
                                   SizedBox(width: 4.w),
-                                  Text(
-                                    distanceText,
-                                    style: TextStyle(
-                                      fontSize: 11.sp,
-                                      color: distance >= 999999.0 ? Colors.red.shade600 : Colors.green.shade600,
-                                      fontWeight: FontWeight.w500,
+                                  Expanded(
+                                    child: Text(
+                                      locationText,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: 11.sp,
+                                        color: (hasLocation || hasDistance) ? Colors.green.shade600 : Colors.red.shade600,
+                                        fontWeight: FontWeight.w500,
+                                      ),
                                     ),
                                   ),
                                 ],
@@ -1164,4 +1175,3 @@ class AnimatedListItemState extends State<AnimatedListItem> with SingleTickerPro
     );
   }
 }
-
