@@ -9,6 +9,7 @@ import 'posted_jobs_view.dart';
 import 'dart:developer' as dev;
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:naukariwala/widgets/skills_autocomplete_multi_select.dart';
+import 'package:naukariwala/widgets/address_autocomplete_field.dart';
 
 class PostJobScreen extends StatefulWidget {
   final Map<String, dynamic>? editJobData;
@@ -564,11 +565,21 @@ class PostJobScreenState extends State<PostJobScreen> {
                                 hintText: 'e.g., Naukariwala Technologies',
                                 prefixIcon: Icons.apartment_rounded,
                               ),
-                              _buildTextField(
-                                controller: _locationController,
-                                labelText: 'Location (City, State)',
-                                hintText: 'e.g., Bengaluru, Karnataka',
-                                prefixIcon: Icons.location_on_outlined,
+                              Padding(
+                                padding: EdgeInsets.symmetric(vertical: 8.h),
+                                child: AddressAutocompleteField(
+                                  controller: _locationController,
+                                  labelText: 'Location (City, State)',
+                                  helperText: 'Start typing to see suggestions',
+                                  textInputAction: TextInputAction.next,
+                                  validator: (value) => value == null || value.trim().isEmpty
+                                      ? 'Please enter Location (City, State)'
+                                      : null,
+                                  decoration: _inputDecoration(
+                                    labelText: 'Location (City, State)',
+                                    prefixIcon: Icons.location_on_outlined,
+                                  ),
+                                ),
                               ),
                               _buildDropdownField(
                                 labelText: 'Experience Required',

@@ -14,7 +14,6 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'firebase_options.dart';
 import 'screens/unified_screen.dart';
 import 'services/auth_service.dart';
-import 'services/ads_service.dart';
 import 'services/interview_reminder_service.dart';
 import 'providers/message_state_provider.dart';
 
@@ -45,14 +44,6 @@ Future<void> main() async {
     await dotenv.load(fileName: '.env');
   } catch (_) {
     // .env optional (e.g. address autocomplete needs GOOGLE_PLACES_API_KEY)
-  }
-
-  // Initialize Google Mobile Ads
-  try {
-    await AdsService.initializeAds();
-  } catch (e) {
-    dev.log('Failed to initialize ads: $e', name: 'main', error: e);
-    // Continue without ads if initialization fails
   }
 
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
