@@ -30,6 +30,11 @@
             android:name="firebase_app_check_debug_token"
             android:value="@string/debug_app_check_token" />
 
+        <!-- AdMob App ID -->
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="ca-app-pub-7682628416837305~6528563797"/>
+
         <activity
             android:name=".MainActivity"
             android:exported="true"

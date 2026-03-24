@@ -15,6 +15,7 @@ import 'firebase_options.dart';
 import 'screens/unified_screen.dart';
 import 'services/auth_service.dart';
 import 'services/interview_reminder_service.dart';
+import 'services/admob_service.dart';
 import 'providers/message_state_provider.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -75,6 +76,9 @@ Future<void> main() async {
 
   // Initialize interview reminder service
   await InterviewReminderService().initialize();
+
+  // Initialize AdMob service
+  await AdMobService().initialize();
 
   runApp(const NaukariwalaApp());
 }

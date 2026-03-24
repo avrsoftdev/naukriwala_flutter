@@ -1,0 +1,110 @@
+import 'dart:developer' as dev;
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
+
+class AdMobService {
+  static final AdMobService _instance = AdMobService._internal();
+  factory AdMobService() => _instance;
+  AdMobService._internal();
+
+  // Ad Unit IDs
+  static const String _productionBannerAdUnitId = 'ca-app-pub-7682628416837305/1855370351';
+  static const String _testBannerAdUnitId = 'ca-app-pub-3940256099942544/6300978111';
+
+  // App ID
+  static const String _appId = 'ca-app-pub-7682628416837305~6528563797';
+
+  bool _isInitialized = false;
+  BannerAd? _bannerAd;
+  bool _isBannerAdLoaded = false;
+
+  // Get the appropriate ad unit ID based on build mode
+  String get _bannerAdUnitId => kDebugMode ? _testBannerAdUnitId : _productionBannerAdUnitId;
+
+  // Initialize the Mobile Ads SDK
+  Future<void> initialize() async {
+    if (_isInitialized) return;
+
+    try {
+      await MobileAds.instance.initialize();
+      _isInitialized = true;
+      dev.log('AdMob initialized successfully');
+      
+      // Set test device IDs for debug mode
+      if (kDebugMode) {
+        MobileAds.instance.updateRequestConfiguration(
+          RequestConfiguration(testDeviceIds: ['YOUR_TEST_DEVICE_ID_HERE']),
+        );
+      }
+    } catch (e) {
+      dev.log('Failed to initialize AdMob: $e');
+      _isInitialized = false;
+    }
+  }
+
+  // Create and load a banner ad
+  void createBannerAd({
+    required AdSize adSize,
+    required void Function(Ad) onAdFailedToLoad,
+    required void Function(Ad) onAdLoaded,
+  }) {
+    if (!_isInitialized) {
+      dev.log('AdMob not initialized. Call initialize() first.');
+      return;
+    }
+
+    // Dispose existing banner ad if any
+    _bannerAd?.dispose();
+    _isBannerAdLoaded = false;
+
+    _bannerAd = BannerAd(
+      adUnitId: _bannerAdUnitId,
+      size: adSize,
+      request: const AdRequest(),
+      listener: BannerAdListener(
+        onAdLoaded: (Ad ad) {
+          dev.log('Banner ad loaded successfully');
+          _isBannerAdLoaded = true;
+          onAdLoaded(ad);
+        },
+        onAdFailedToLoad: (Ad ad, LoadAdError error) {
+          dev.log('Banner ad failed to load: $error');
+          _isBannerAdLoaded = false;
+          ad.dispose();
+          onAdFailedToLoad(ad);
+        },
+        onAdOpened: (Ad ad) => dev.log('Banner ad opened'),
+        onAdClosed: (Ad ad) => dev.log('Banner ad closed'),
+        onAdImpression: (Ad ad) => dev.log('Banner ad impression'),
+      ),
+    );
+
+    _bannerAd!.load();
+  }
+
+  // Get the loaded banner ad widget
+  Widget? getBannerAdWidget() {
+    if (_bannerAd != null && _isBannerAdLoaded) {
+      return AdWidget(ad: _bannerAd!);
+    }
+    return null;
+  }
+
+  // Check if banner ad is loaded
+  bool get isBannerAdLoaded => _isBannerAdLoaded;
+
+  // Dispose banner ad
+  void disposeBannerAd() {
+    _bannerAd?.dispose();
+    _bannerAd = null;
+    _isBannerAdLoaded = false;
+    dev.log('Banner ad disposed');
+  }
+
+  // Dispose all ads
+  void dispose() {
+    disposeBannerAd();
+    dev.log('All AdMob ads disposed');
+  }
+}

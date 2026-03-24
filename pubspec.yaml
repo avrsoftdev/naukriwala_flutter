@@ -44,6 +44,7 @@ dependencies:
   flutter_typeahead: ^5.2.0
   in_app_update: ^4.2.3
   package_info_plus: ^8.1.2
+  google_mobile_ads: ^7.0.0
 
   
 

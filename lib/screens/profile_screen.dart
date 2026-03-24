@@ -9,6 +9,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:naukariwala/services/auth_service.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:naukariwala/widgets/address_autocomplete_field.dart';
+import 'package:naukariwala/widgets/banner_ad_wrapper.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:developer' as dev;
@@ -471,8 +472,13 @@ Map<String, String> _getOldToNewSkillsMapping() {
 
 class ProfileScreen extends StatefulWidget {
   final bool isRecruiter;
+  final bool isNestedInTabView;
 
-  const ProfileScreen({this.isRecruiter = false, super.key});
+  const ProfileScreen({
+    this.isRecruiter = false, 
+    this.isNestedInTabView = false,
+    super.key
+  });
 
   @override
   ProfileScreenState createState() => ProfileScreenState();
@@ -2534,14 +2540,14 @@ class ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return ScreenUtilInit(
+    Widget profileContent = ScreenUtilInit(
       designSize: const Size(360, 690),
       minTextAdapt: true,
       splitScreenMode: true,
       builder: (context, child) {
         return Scaffold(
           backgroundColor: Colors.transparent,
-          appBar: AppBar(
+          appBar: widget.isNestedInTabView ? null : AppBar(
             title: Text(
               widget.isRecruiter ? 'Recruiter Profile' : 'Seeker Profile',
               style: TextStyle(
@@ -3073,6 +3079,16 @@ class ProfileScreenState extends State<ProfileScreen> {
         );
       },
     );
+
+    // Only wrap with BannerAdWrapper if not nested in tab view
+    if (widget.isNestedInTabView) {
+      return profileContent;
+    } else {
+      return BannerAdWrapper(
+        title: widget.isRecruiter ? 'Recruiter Profile' : 'Seeker Profile',
+        child: profileContent,
+      );
+    }
   }
 }
 
