@@ -42,13 +42,10 @@ class JobScreenState extends State<JobScreen> {
   String? _ineligibilityReason;
   final Set<String> _savedJobIds = {};
   double? _selectedDistanceKm;
+  String? _selectedGender;
 
-  final List<double> _distanceOptionsKm = [
-    50,
-    100,
-    150,
-    200,
-  ];
+  final List<double> distanceOptions = [50, 100, 150, 200];
+  final List<String> genderOptions = ['Any', 'Male', 'Female'];
 
   final List<String> experienceOptions = [
     'Fresher',
@@ -442,6 +439,13 @@ final Map<String, List<String>> skillsBySpecialization = {
         final distance = _getJobDistanceKm(job);
         if (distance == null) return false;
         return distance <= _selectedDistanceKm!;
+      }).toList();
+    }
+
+    if (_selectedGender != null && _selectedGender != 'Any') {
+      working = working.where((job) {
+        final jobGender = job['gender']?.toString().toLowerCase();
+        return jobGender == null || jobGender.isEmpty || jobGender.toLowerCase() == _selectedGender!.toLowerCase();
       }).toList();
     }
 
@@ -1000,6 +1004,126 @@ final Map<String, List<String>> skillsBySpecialization = {
     }
   }
 
+  void _showDistanceBottomSheet() {
+    if (!_hasSeekerLocation) return;
+    
+    showModalBottomSheet(
+      context: context,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
+      ),
+      builder: (context) => Container(
+        padding: EdgeInsets.all(20.w),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Select Distance',
+              style: TextStyle(
+                fontSize: 18.sp,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey.shade800,
+              ),
+            ),
+            SizedBox(height: 20.h),
+            ...distanceOptions.map((distance) => Padding(
+              padding: EdgeInsets.only(bottom: 12.h),
+              child: ListTile(
+                title: Text('Under ${distance.toStringAsFixed(0)} km'),
+                trailing: _selectedDistanceKm == distance
+                    ? Icon(Icons.check, color: Colors.blue.shade700)
+                    : null,
+                onTap: () {
+                  setState(() {
+                    _selectedDistanceKm = distance;
+                    _recomputeFilteredJobs();
+                  });
+                  Navigator.pop(context);
+                },
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12.r),
+                  side: BorderSide(
+                    color: _selectedDistanceKm == distance
+                        ? Colors.blue.shade300
+                        : Colors.grey.shade300,
+                  ),
+                ),
+              ),
+            )),
+            SizedBox(height: 10.h),
+            SizedBox(
+              width: double.infinity,
+              child: TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text('Cancel'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showGenderBottomSheet() {
+    showModalBottomSheet(
+      context: context,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
+      ),
+      builder: (context) => Container(
+        padding: EdgeInsets.all(20.w),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Select Gender',
+              style: TextStyle(
+                fontSize: 18.sp,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey.shade800,
+              ),
+            ),
+            SizedBox(height: 20.h),
+            ...genderOptions.map((gender) => Padding(
+              padding: EdgeInsets.only(bottom: 12.h),
+              child: ListTile(
+                title: Text(gender),
+                trailing: _selectedGender == gender
+                    ? Icon(Icons.check, color: Colors.pink.shade700)
+                    : null,
+                onTap: () {
+                  setState(() {
+                    _selectedGender = gender;
+                    _recomputeFilteredJobs();
+                  });
+                  Navigator.pop(context);
+                },
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12.r),
+                  side: BorderSide(
+                    color: _selectedGender == gender
+                        ? Colors.pink.shade300
+                        : Colors.grey.shade300,
+                  ),
+                ),
+              ),
+            )),
+            SizedBox(height: 10.h),
+            SizedBox(
+              width: double.infinity,
+              child: TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text('Cancel'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _searchController.dispose();
@@ -1052,59 +1176,185 @@ final Map<String, List<String>> skillsBySpecialization = {
                 )
               : Column(
                   children: [
-                    Padding(
-                      padding: EdgeInsets.all(16.w),
-                      child: TextField(
-                        controller: _searchController,
-                        decoration: InputDecoration(
-                          hintText: 'Search jobs by title, company, or location...',
-                          prefixIcon: Icon(Icons.search, size: 20.sp),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12.r),
-                          ),
-                          filled: true,
-                          fillColor: Colors.grey.shade100,
+                    // Compact Filter Bar
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        border: Border(
+                          bottom: BorderSide(color: Colors.grey.shade200, width: 1),
                         ),
-                      ),
-                    ),
-                    Padding(
-                      padding: EdgeInsets.fromLTRB(16.w, 0, 16.w, 12.h),
-                      child: DropdownButtonFormField<double?>(
-                        value: _selectedDistanceKm,
-                        isExpanded: true,
-                        decoration: InputDecoration(
-                          labelText: _hasSeekerLocation
-                              ? 'Distance from your address'
-                              : 'Distance (add address in profile to enable)',
-                          prefixIcon: Icon(Icons.place_outlined, size: 20.sp),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12.r),
-                          ),
-                          filled: true,
-                          fillColor: Colors.grey.shade100,
-                        ),
-                        items: [
-                          const DropdownMenuItem<double?>(
-                            value: null,
-                            child: Text('Any distance'),
-                          ),
-                          ..._distanceOptionsKm.map(
-                            (km) => DropdownMenuItem<double?>(
-                              value: km,
-                              child: Text('Under ${km.toStringAsFixed(0)} km'),
-                            ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.03),
+                            blurRadius: 2,
+                            offset: Offset(0, 1),
                           ),
                         ],
-                        onChanged: _hasSeekerLocation
-                            ? (value) {
-                                setState(() {
-                                  _selectedDistanceKm = value;
-                                  _recomputeFilteredJobs();
-                                });
-                              }
-                            : null,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Compact Search and Filters Row
+                          Row(
+                            children: [
+                              // Search Field
+                              Expanded(
+                                flex: 2,
+                                child: TextField(
+                                  controller: _searchController,
+                                  decoration: InputDecoration(
+                                    hintText: 'Search jobs...',
+                                    prefixIcon: Icon(Icons.search, size: 18.sp),
+                                    contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8.r),
+                                      borderSide: BorderSide(color: Colors.grey.shade300),
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8.r),
+                                      borderSide: BorderSide(color: Colors.grey.shade300),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8.r),
+                                      borderSide: BorderSide(color: Colors.blue.shade400, width: 1.5),
+                                    ),
+                                    filled: true,
+                                    fillColor: Colors.grey.shade50,
+                                    isDense: true,
+                                  ),
+                                ),
+                              ),
+                              SizedBox(width: 8.w),
+                              
+                              // Filter Chips
+                              Expanded(
+                                flex: 1,
+                                child: Row(
+                                  children: [
+                                    // Distance Filter Chip
+                                    Expanded(
+                                      child: FilterChip(
+                                        label: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(
+                                              Icons.location_on_outlined,
+                                              size: 12.sp,
+                                              color: _selectedDistanceKm != null ? Colors.blue.shade700 : Colors.grey.shade600,
+                                            ),
+                                            SizedBox(width: 4.w),
+                                            Flexible(
+                                              child: Text(
+                                                _selectedDistanceKm != null 
+                                                    ? '${_selectedDistanceKm!.toStringAsFixed(0)}km'
+                                                    : 'Distance',
+                                                style: TextStyle(
+                                                  fontSize: 11.sp,
+                                                  color: _selectedDistanceKm != null ? Colors.blue.shade700 : Colors.grey.shade600,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        selected: _selectedDistanceKm != null,
+                                        onSelected: _hasSeekerLocation ? (value) {
+                                          _showDistanceBottomSheet();
+                                        } : null,
+                                        backgroundColor: Colors.grey.shade100,
+                                        selectedColor: Colors.blue.shade50,
+                                        checkmarkColor: Colors.blue.shade700,
+                                        disabledColor: Colors.grey.shade50,
+                                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                        padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                                        visualDensity: VisualDensity.compact,
+                                      ),
+                                    ),
+                                    SizedBox(width: 6.w),
+                                    
+                                    // Gender Filter Chip
+                                    Expanded(
+                                      child: FilterChip(
+                                        label: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(
+                                              Icons.person_outline_rounded,
+                                              size: 12.sp,
+                                              color: _selectedGender != null ? Colors.pink.shade700 : Colors.grey.shade600,
+                                            ),
+                                            SizedBox(width: 4.w),
+                                            Flexible(
+                                              child: Text(
+                                                _selectedGender ?? 'Gender',
+                                                style: TextStyle(
+                                                  fontSize: 11.sp,
+                                                  color: _selectedGender != null ? Colors.pink.shade700 : Colors.grey.shade600,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        selected: _selectedGender != null,
+                                        onSelected: (value) {
+                                          _showGenderBottomSheet();
+                                        },
+                                        backgroundColor: Colors.grey.shade100,
+                                        selectedColor: Colors.pink.shade50,
+                                        checkmarkColor: Colors.pink.shade700,
+                                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                        padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                                        visualDensity: VisualDensity.compact,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              
+                              // Clear Button
+                              if (_selectedDistanceKm != null || _selectedGender != null)
+                                Padding(
+                                  padding: EdgeInsets.only(left: 6.w),
+                                  child: IconButton(
+                                    onPressed: () {
+                                      setState(() {
+                                        _selectedDistanceKm = null;
+                                        _selectedGender = null;
+                                        _recomputeFilteredJobs();
+                                      });
+                                    },
+                                    icon: Icon(Icons.clear_all, size: 18.sp),
+                                    iconSize: 18.sp,
+                                    color: Colors.red.shade600,
+                                    tooltip: 'Clear all filters',
+                                    constraints: BoxConstraints(minWidth: 32.w, minHeight: 32.w),
+                                    padding: EdgeInsets.all(6.w),
+                                  ),
+                                ),
+                            ],
+                          ),
+                          
+                          // Helper Text
+                          if (!_hasSeekerLocation)
+                            Padding(
+                              padding: EdgeInsets.only(top: 6.h),
+                              child: Text(
+                                'Add address in profile to enable distance filter',
+                                style: TextStyle(
+                                  fontSize: 10.sp,
+                                  color: Colors.grey.shade500,
+                                  fontStyle: FontStyle.italic,
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                     ),
+                    // Scrollable Job List
                     Expanded(
                       child: filteredJobs.isEmpty
                           ? Center(

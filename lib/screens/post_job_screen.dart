@@ -43,11 +43,15 @@ class PostJobScreenState extends State<PostJobScreen> {
   String? _selectedExperience;
   String? _selectedSpecialization;
   String? _selectedJobType;
+  String? _selectedGender;
   List<String> _selectedSkills = [];
   bool _includeTest = false;
 
   // Job Type options
   final List<String> jobTypeOptions = ['Full-Time', 'Part-Time', 'Freelancer'];
+
+  // Gender options
+  final List<String> genderOptions = ['Male', 'Female', 'Any'];
 
   // Experience options
   final List<String> experienceOptions = [
@@ -278,6 +282,7 @@ class PostJobScreenState extends State<PostJobScreen> {
     _selectedSkills = (widget.editJobData!['skills'] as List<dynamic>?)?.cast<String>() ?? [];
     _selectedEducation = widget.editJobData!['education']?.toString();
     _selectedSpecialization = widget.editJobData!['specialization']?.toString();
+    _selectedGender = widget.editJobData!['gender']?.toString();
     _isFeatured = widget.editJobData!['isFeatured'] ?? false;
     
     // Map test question data if exists
@@ -304,6 +309,9 @@ class PostJobScreenState extends State<PostJobScreen> {
     }
     if (_selectedJobType != null && !jobTypeOptions.contains(_selectedJobType)) {
       _selectedJobType = null;
+    }
+    if (_selectedGender != null && !genderOptions.contains(_selectedGender)) {
+      _selectedGender = null;
     }
     dev.log('Mapped edit data: ${_getFormData()}', name: 'PostJobScreen');
   }
@@ -376,6 +384,7 @@ class PostJobScreenState extends State<PostJobScreen> {
       'skills': _selectedSkills,
       'education': _selectedEducation ?? '',
       'specialization': _selectedSpecialization ?? '',
+      'gender': _selectedGender ?? '',
       'isFeatured': _isFeatured,
       'includeTest': _includeTest,
       if (_includeTest) 'testQuestions': _testQuestions,
@@ -649,6 +658,18 @@ class PostJobScreenState extends State<PostJobScreen> {
                                   });
                                 },
                                 validator: (value) => value == null ? 'Please select a job type' : null,
+                              ),
+                              _buildDropdownField(
+                                labelText: 'Gender Preference (Optional)',
+                                value: _selectedGender,
+                                items: genderOptions,
+                                prefixIcon: Icons.person_outline_rounded,
+                                onChanged: (newValue) {
+                                  setState(() {
+                                    _selectedGender = newValue;
+                                  });
+                                },
+                                validator: (value) => null, // Optional field, no validation
                               ),
                             ],
                           ),
