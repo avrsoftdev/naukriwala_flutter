@@ -614,21 +614,59 @@ class UnifiedScreenState extends State<UnifiedScreen> {
   }
 
   Widget _buildAuthCard({required Widget child}) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 18.w, vertical: 22.h),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24.r),
-        color: Colors.white.withOpacity(0.92),
-        border: Border.all(color: Colors.white.withOpacity(0.55)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.24),
-            blurRadius: 24.r,
-            offset: Offset(0, 8.h),
+    final double logoSize = 88.w;
+    final double overlap = logoSize / 2;
+    final double contentTopPadding = overlap + 16.h;
+
+    return Stack(
+      clipBehavior: Clip.none,
+      alignment: Alignment.topCenter,
+      children: [
+        Container(
+          margin: EdgeInsets.only(top: overlap),
+          padding: EdgeInsets.fromLTRB(18.w, contentTopPadding, 18.w, 22.h),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(24.r),
+            color: Colors.white.withOpacity(0.92),
+            border: Border.all(color: Colors.white.withOpacity(0.55)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.24),
+                blurRadius: 24.r,
+                offset: Offset(0, 8.h),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: child,
+          child: child,
+        ),
+        Positioned(
+          top: 0,
+          child: Container(
+            height: logoSize,
+            width: logoSize,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white,
+              border: Border.all(color: Colors.white.withOpacity(0.9), width: 3.w),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.18),
+                  blurRadius: 16.r,
+                  offset: Offset(0, 6.h),
+                ),
+              ],
+            ),
+            child: Center(
+              child: Image.asset(
+                'assets/logo.png',
+                width: logoSize * 0.6,
+                height: logoSize * 0.6,
+                fit: BoxFit.contain,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
