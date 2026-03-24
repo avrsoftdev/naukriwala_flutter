@@ -970,7 +970,7 @@ class UnifiedScreenState extends State<UnifiedScreen> {
                     });
                   },
                   child: Text(
-                    'Register',
+                    'Create an Account',
                     style: TextStyle(fontSize: 14.sp, color: _primaryBlue, fontWeight: FontWeight.w700),
                   ),
                 ),
