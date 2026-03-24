@@ -12,6 +12,7 @@ import 'package:naukariwala/screens/calls_screen.dart';
 import 'package:naukariwala/screens/notifications_screen.dart';
 import 'package:naukariwala/widgets/notification_bell.dart';
 import 'package:naukariwala/screens/chat_list_screen.dart';
+import 'package:naukariwala/widgets/persistent_banner_ad.dart';
 import '../widgets/chat_icon_with_badge.dart';
 import '../services/auth_service.dart';
 import '../services/update_service.dart';
@@ -295,65 +296,63 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
               ),
             ),
           ),
-          body: SingleChildScrollView(
-            child: DefaultTabController(
-              length: 5,
-              child: Column(
-                children: [
-                  Container(
-                    padding: EdgeInsets.symmetric(
-                      vertical: 8.h,
-                      horizontal: 8.w,
-                    ),
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [Color(0xFF4A00E0), Color(0xFF8E2DE2)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black12,
-                          blurRadius: 8,
-                          offset: Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: TabBar(
-                      isScrollable: true,
-                      labelColor: Colors.white,
-                      unselectedLabelColor: Colors.white70,
-                      indicator: const BoxDecoration(
-                        borderRadius: BorderRadius.all(Radius.circular(20)),
-                        color: Colors.white24,
-                      ),
-                      tabs: [
-                        _buildTab(Icons.person, 'Profile'),
-                        _buildTab(Icons.work, 'Jobs'),
-                        _buildTab(Icons.group_add, 'Seekers'),
-                        _buildTab(Icons.call, 'Calls'),
-                        _buildTab(Icons.post_add, 'Post Job'),
-                      ],
-                    ),
+          body: DefaultTabController(
+            length: 5,
+            child: Column(
+              children: [
+                const PersistentBannerAd(),
+                Container(
+                  padding: EdgeInsets.symmetric(
+                    vertical: 8.h,
+                    horizontal: 8.w,
                   ),
-                  SizedBox(
-                    height: MediaQuery.of(context).size.height * 0.7,
-                    child: TabBarView(
-                      children: [
-                        const ProfileScreen(isRecruiter: true),
-                        PostedJobsScreen(),
-                        AppliedSeekersScreen(
-                          authService: _authService,
-                          jobId: '',
-                          jobTitle: '',
-                        ),
-                        const CallsScreen(),
-                        const PostJobScreen(),
-                      ],
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Color(0xFF4A00E0), Color(0xFF8E2DE2)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black12,
+                        blurRadius: 8,
+                        offset: Offset(0, 4),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                  child: TabBar(
+                    isScrollable: true,
+                    labelColor: Colors.white,
+                    unselectedLabelColor: Colors.white70,
+                    indicator: const BoxDecoration(
+                      borderRadius: BorderRadius.all(Radius.circular(20)),
+                      color: Colors.white24,
+                    ),
+                    tabs: [
+                      _buildTab(Icons.person, 'Profile'),
+                      _buildTab(Icons.work, 'Jobs'),
+                      _buildTab(Icons.group_add, 'Seekers'),
+                      _buildTab(Icons.call, 'Calls'),
+                      _buildTab(Icons.post_add, 'Post Job'),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: TabBarView(
+                    children: [
+                      const ProfileScreen(isRecruiter: true),
+                      PostedJobsScreen(),
+                      AppliedSeekersScreen(
+                        authService: _authService,
+                        jobId: '',
+                        jobTitle: '',
+                      ),
+                      const CallsScreen(),
+                      const PostJobScreen(),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
         );

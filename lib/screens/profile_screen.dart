@@ -3080,15 +3080,7 @@ class ProfileScreenState extends State<ProfileScreen> {
       },
     );
 
-    // Only wrap with BannerAdWrapper if not nested in tab view
-    if (widget.isNestedInTabView) {
-      return profileContent;
-    } else {
-      return BannerAdWrapper(
-        title: widget.isRecruiter ? 'Recruiter Profile' : 'Seeker Profile',
-        child: profileContent,
-      );
-    }
+    return profileContent;
   }
 }
 

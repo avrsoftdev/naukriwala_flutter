@@ -13,6 +13,7 @@ import 'package:naukariwala/screens/notifications_screen.dart';
 import 'package:naukariwala/widgets/notification_bell.dart';
 import 'package:naukariwala/services/auth_service.dart';
 import 'package:naukariwala/screens/chat_list_screen.dart';
+import 'package:naukariwala/widgets/persistent_banner_ad.dart';
 import '../widgets/chat_icon_with_badge.dart';
 import 'dart:developer' as dev;
 import '../services/update_service.dart';
@@ -306,6 +307,7 @@ class _SeekerDashboardState extends State<SeekerDashboard> {
         length: 5,
         child: Column(
           children: [
+            const PersistentBannerAd(),
             Container(
               padding: EdgeInsets.symmetric(vertical: 8.h, horizontal: 8.w),
               decoration: const BoxDecoration(
