@@ -1375,25 +1375,7 @@ class _ProfileSetupOnboardingState extends State<ProfileSetupOnboarding> {
                       : null,
                 ),
               ),
-              if (kDebugMode) ...[
-                SizedBox(width: 12.w),
-                InkWell(
-                  onTap: _debugAuthState,
-                  borderRadius: BorderRadius.circular(20.r),
-                  child: Container(
-                    padding: EdgeInsets.all(8.w),
-                    decoration: BoxDecoration(
-                      color: Colors.orange.shade100,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.bug_report,
-                      size: 20.sp,
-                      color: Colors.orange.shade700,
-                    ),
-                  ),
-                ),
-              ],
+              // Debug icon removed from UI.
             ],
           ),
           SizedBox(height: 14.h),

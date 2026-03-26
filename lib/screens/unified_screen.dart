@@ -242,6 +242,7 @@ class UnifiedScreenState extends State<UnifiedScreen> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
+              scrollable: true,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
               title: Text(
                 'Privacy Policy & Terms and Conditions',
@@ -252,7 +253,7 @@ class UnifiedScreenState extends State<UnifiedScreen> {
                 children: [
                   ConstrainedBox(
                     constraints: BoxConstraints(
-                      maxHeight: MediaQuery.of(context).size.height * 0.46,
+                      maxHeight: MediaQuery.of(context).size.height * 0.38,
                     ),
                     child: SingleChildScrollView(
                       child: Column(
