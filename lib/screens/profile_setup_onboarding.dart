@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
@@ -689,6 +690,51 @@ class _ProfileSetupOnboardingState extends State<ProfileSetupOnboarding> {
     return '+$digits';
   }
 
+  Future<void> _debugAuthState() async {
+    try {
+      await _authService.debugAuthState();
+      
+      if (mounted) {
+        final user = FirebaseAuth.instance.currentUser;
+        String message = 'Authentication Debug Info:\n';
+        
+        if (user == null) {
+          message += '❌ No current user\n';
+        } else {
+          message += '✅ User found:\n';
+          message += 'UID: ${user.uid}\n';
+          message += 'Email: ${user.email ?? "Not available"}\n';
+          message += 'Email Verified: ${user.emailVerified}\n';
+          message += 'Created: ${user.metadata.creationTime}\n';
+          message += 'Last Sign-In: ${user.metadata.lastSignInTime}\n';
+        }
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(message),
+            backgroundColor: Colors.blue,
+            duration: const Duration(seconds: 6),
+            action: SnackBarAction(
+              label: 'OK',
+              textColor: Colors.white,
+              onPressed: () {},
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Debug failed: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    }
+  }
+
   String? _validatePhone(String? value) {
     final v = value?.trim() ?? '';
     if (v.isEmpty) return 'Required';
@@ -715,20 +761,49 @@ class _ProfileSetupOnboardingState extends State<ProfileSetupOnboarding> {
       if (image == null) return;
 
       setState(() => _saving = true);
-      final url = await _authService.uploadProfilePhoto(
-        file: File(image.path),
-        isRecruiter: _isRecruiter,
-      );
+      final currentUser = FirebaseAuth.instance.currentUser;
+      final url = currentUser == null
+          ? await _authService.uploadProfilePhotoUnauthenticated(
+              file: File(image.path),
+              isRecruiter: _isRecruiter,
+            )
+          : await _authService.uploadProfilePhoto(
+              file: File(image.path),
+              isRecruiter: _isRecruiter,
+            );
       setState(() {
         _photoUrl = url;
         _saving = false;
       });
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Profile photo uploaded successfully!'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        ),
+      );
     } catch (e) {
       if (mounted) {
         setState(() => _saving = false);
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Upload failed: $e')));
+        String errorMessage = 'Upload failed';
+        
+        final errorText = e.toString();
+        if (errorText.contains('file-size')) {
+          errorMessage = 'File too large. Please choose an image under 2MB.';
+        } else if (errorText.contains('Session expired') || errorText.contains('login')) {
+          errorMessage = 'Please login again and retry uploading the photo.';
+        } else {
+          errorMessage = 'Upload failed: $e';
+        }
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
+          ),
+        );
       }
     }
   }
@@ -1278,26 +1353,48 @@ class _ProfileSetupOnboardingState extends State<ProfileSetupOnboarding> {
         formKey: _formKeys[0],
         title: 'Basic information',
         children: [
-          Center(
-            child: InkWell(
-              onTap: _saving ? null : _pickAndUploadPhoto,
-              borderRadius: BorderRadius.circular(60.r),
-              child: CircleAvatar(
-                radius: 46.r,
-                backgroundColor: Colors.grey.shade200,
-                backgroundImage:
-                    (_photoUrl != null && _photoUrl!.trim().isNotEmpty)
-                    ? NetworkImage(_photoUrl!)
-                    : null,
-                child: (_photoUrl == null || _photoUrl!.trim().isEmpty)
-                    ? Icon(
-                        Icons.camera_alt_outlined,
-                        size: 28.sp,
-                        color: Colors.grey.shade700,
-                      )
-                    : null,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              InkWell(
+                onTap: _saving ? null : _pickAndUploadPhoto,
+                borderRadius: BorderRadius.circular(60.r),
+                child: CircleAvatar(
+                  radius: 46.r,
+                  backgroundColor: Colors.grey.shade200,
+                  backgroundImage:
+                      (_photoUrl != null && _photoUrl!.trim().isNotEmpty)
+                      ? NetworkImage(_photoUrl!)
+                      : null,
+                  child: (_photoUrl == null || _photoUrl!.trim().isEmpty)
+                      ? Icon(
+                          Icons.camera_alt_outlined,
+                          size: 28.sp,
+                          color: Colors.grey.shade700,
+                        )
+                      : null,
+                ),
               ),
-            ),
+              if (kDebugMode) ...[
+                SizedBox(width: 12.w),
+                InkWell(
+                  onTap: _debugAuthState,
+                  borderRadius: BorderRadius.circular(20.r),
+                  child: Container(
+                    padding: EdgeInsets.all(8.w),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.shade100,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.bug_report,
+                      size: 20.sp,
+                      color: Colors.orange.shade700,
+                    ),
+                  ),
+                ),
+              ],
+            ],
           ),
           SizedBox(height: 14.h),
           TextFormField(

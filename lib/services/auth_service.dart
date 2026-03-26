@@ -76,15 +76,53 @@ class AuthService {
     return keywords;
   }
 
+  // Debug method to check authentication state
+  Future<void> debugAuthState() async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null) {
+        dev.log('[2026-02-21 14:30 IST] DEBUG: No current user', name: 'AuthService');
+        return;
+      }
+      
+      dev.log('[2026-02-21 14:30 IST] DEBUG: Current user UID: ${user.uid}', name: 'AuthService');
+      dev.log('[2026-02-21 14:30 IST] DEBUG: User email: ${user.email}', name: 'AuthService');
+      dev.log('[2026-02-21 14:30 IST] DEBUG: Email verified: ${user.emailVerified}', name: 'AuthService');
+      dev.log('[2026-02-21 14:30 IST] DEBUG: Creation time: ${user.metadata.creationTime}', name: 'AuthService');
+      dev.log('[2026-02-21 14:30 IST] DEBUG: Last sign-in time: ${user.metadata.lastSignInTime}', name: 'AuthService');
+      
+      // Test token refresh
+      try {
+        await user.getIdToken(true);
+        dev.log('[2026-02-21 14:30 IST] DEBUG: Token refresh successful', name: 'AuthService');
+      } catch (e) {
+        dev.log('[2026-02-21 14:30 IST] DEBUG: Token refresh failed: $e', name: 'AuthService');
+      }
+    } catch (e) {
+      dev.log('[2026-02-21 14:30 IST] DEBUG: Auth state check failed: $e', name: 'AuthService');
+    }
+  }
+
   Future<User> _getFreshAuthenticatedUser() async {
     final user = _auth.currentUser;
     if (user == null) {
+      dev.log('[2026-02-21 14:30 IST] No current user found', name: 'AuthService');
       throw const AuthException(
         'Session expired. Please login again and retry.',
       );
     }
-    await user.getIdToken(true);
-    return user;
+    
+    try {
+      // Force token refresh and verify
+      await user.getIdToken(true);
+      dev.log('[2026-02-21 14:30 IST] Token refreshed successfully for user: ${user.uid}', name: 'AuthService');
+      dev.log('[2026-02-21 14:30 IST] User email: ${user.email}, verified: ${user.emailVerified}', name: 'AuthService');
+      return user;
+    } catch (e) {
+      // Don't fail immediately on refresh errors; keep existing session and let upload decide.
+      dev.log('[2026-02-21 14:30 IST] Token refresh failed (continuing with existing user): $e', name: 'AuthService', error: e);
+      return user;
+    }
   }
 
   // Helper method to get Play Integrity token
@@ -553,6 +591,51 @@ class AuthService {
     }
   }
 
+  Future<String> uploadProfilePhotoUnauthenticated({
+    required File file,
+    required bool isRecruiter,
+  }) async {
+    final timestamp = DateTime.now().millisecondsSinceEpoch.toString();
+    final extension = file.path.split('.').last.toLowerCase();
+    final storagePath = isRecruiter
+        ? 'public_uploads/company_logos/temp_$timestamp/logo.$extension'
+        : 'public_uploads/seeker_photos/temp_$timestamp/photo.$extension';
+    final contentType = extension == 'png' ? 'image/png' : 'image/jpeg';
+
+    try {
+      dev.log(
+        '[2026-02-21 14:30 IST] Uploading profile photo without authentication',
+        name: 'AuthService',
+      );
+      
+      final ref = _storage.ref().child(storagePath);
+      final uploadTask = await ref.putFile(
+        file,
+        SettableMetadata(contentType: contentType),
+      );
+      final downloadUrl = await uploadTask.ref.getDownloadURL();
+
+      dev.log(
+        '[2026-02-21 14:30 IST] Profile photo uploaded without authentication: $downloadUrl',
+        name: 'AuthService',
+      );
+      return downloadUrl;
+    } catch (e, stackTrace) {
+      dev.log(
+        '[2026-02-21 14:30 IST] uploadProfilePhotoUnauthenticated ERROR: $e',
+        name: 'AuthService',
+        error: e,
+        stackTrace: stackTrace,
+      );
+      if (e is FirebaseException) {
+        throw AuthException(
+          'Failed to upload profile photo: ${e.code} - ${e.message}',
+        );
+      }
+      rethrow;
+    }
+  }
+
   Future<String> uploadProfilePhoto({
     required File file,
     required bool isRecruiter,
@@ -561,10 +644,10 @@ class AuthService {
     final uid = user.uid;
 
     final collection = isRecruiter ? 'Recruiters' : 'Seekers';
-    final storagePath = isRecruiter
-        ? 'company_logos/$uid/logo.png'
-        : 'seeker_photos/$uid/photo.png';
     final extension = file.path.split('.').last.toLowerCase();
+    final storagePath = isRecruiter
+        ? 'company_logos/$uid/logo.$extension'
+        : 'seeker_photos/$uid/photo.$extension';
     final contentType = extension == 'png' ? 'image/png' : 'image/jpeg';
 
     try {
@@ -572,16 +655,23 @@ class AuthService {
         '[2026-02-21 14:30 IST] Uploading profile photo for $collection/$uid',
         name: 'AuthService',
       );
+      
       final ref = _storage.ref().child(storagePath);
       TaskSnapshot uploadTask;
+      
       try {
         uploadTask = await ref.putFile(
           file,
           SettableMetadata(contentType: contentType),
         );
       } on FirebaseException catch (e) {
-        if (e.code == 'unauthenticated') {
+        dev.log('[2026-02-21 14:30 IST] First upload attempt failed: ${e.code} - ${e.message}', name: 'AuthService');
+        
+        if (e.code == 'unauthenticated' || e.code == 'permission-denied') {
+          dev.log('[2026-02-21 14:30 IST] Attempting token refresh and retry...', name: 'AuthService');
           await user.getIdToken(true);
+          
+          // Retry upload with fresh token
           uploadTask = await ref.putFile(
             file,
             SettableMetadata(contentType: contentType),

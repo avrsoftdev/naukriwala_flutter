@@ -53,12 +53,23 @@ Future<void> main() async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   // App Check
+  dev.log(
+    'Build mode: debug=$kDebugMode, profile=$kProfileMode, release=$kReleaseMode',
+    name: 'AppCheck',
+  );
   await FirebaseAppCheck.instance.activate(
-    androidProvider: kDebugMode
+    androidProvider: (kDebugMode || kProfileMode)
         ? AndroidProvider.debug
         : AndroidProvider.playIntegrity,
     appleProvider: AppleProvider.appAttest,
   );
+  if (kDebugMode || kProfileMode) {
+    // Debug provider already prints the debug secret in logcat.
+    dev.log(
+      'App Check debug provider active. Use the debug secret printed by Firebase and add it in Firebase Console.',
+      name: 'AppCheck',
+    );
+  }
 
   final authService = AuthService();
   await authService.setupFcmTokenRefresh();
