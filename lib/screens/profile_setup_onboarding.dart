@@ -976,6 +976,8 @@ class _ProfileSetupOnboardingState extends State<ProfileSetupOnboarding> {
 
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: const Color(0xFFF7F6F2),
+        elevation: 0,
         leading: IconButton(
           tooltip: 'Back',
           onPressed: _saving
@@ -999,7 +1001,10 @@ class _ProfileSetupOnboardingState extends State<ProfileSetupOnboarding> {
                 onPressed: null,
                 child: Text(
                   'Skip for now',
-                  style: TextStyle(color: Colors.white, fontSize: 14.sp),
+                  style: TextStyle(
+                    color: const Color(0xFF0F766E),
+                    fontSize: 14.sp,
+                  ),
                 ),
               ),
             )
@@ -1008,7 +1013,10 @@ class _ProfileSetupOnboardingState extends State<ProfileSetupOnboarding> {
               onPressed: _saving ? null : _skipForNow,
               child: Text(
                 'Skip for now',
-                style: TextStyle(color: Colors.black, fontSize: 14.sp),
+                style: TextStyle(
+                  color: const Color(0xFF0F766E),
+                  fontSize: 14.sp,
+                ),
               ),
             ),
           SizedBox(width: 6.w),
@@ -1016,90 +1024,249 @@ class _ProfileSetupOnboardingState extends State<ProfileSetupOnboarding> {
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
-          : SafeArea(
-              child: Column(
-                children: [
-                  Padding(
-                    padding: EdgeInsets.fromLTRB(16.w, 12.h, 16.w, 8.h),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'Step ${_stepIndex + 1} of $_totalSteps',
-                              style: TextStyle(
-                                fontSize: 13.sp,
-                                color: Colors.black87,
+          : Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Color(0xFFF7F6F2),
+                    Color(0xFFEFF4F2),
+                    Color(0xFFF9FBFA),
+                  ],
+                ),
+              ),
+              child: SafeArea(
+                child: Column(
+                  children: [
+                    Padding(
+                      padding: EdgeInsets.fromLTRB(16.w, 12.h, 16.w, 8.h),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            width: double.infinity,
+                            padding: EdgeInsets.all(16.w),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(18.r),
+                              gradient: const LinearGradient(
+                                colors: [
+                                  Color(0xFF0F766E),
+                                  Color(0xFF0B5D57),
+                                ],
                               ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.12),
+                                  blurRadius: 18.r,
+                                  offset: Offset(0, 10.h),
+                                ),
+                              ],
                             ),
-                            if (_saving)
-                              SizedBox(
-                                height: 16.h,
-                                width: 16.h,
-                                child: const CircularProgressIndicator(
-                                  strokeWidth: 2,
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        title,
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 18.sp,
+                                          fontWeight: FontWeight.w800,
+                                          letterSpacing: 0.2,
+                                        ),
+                                      ),
+                                      SizedBox(height: 6.h),
+                                      Text(
+                                        _isRecruiter
+                                            ? 'Showcase your company in just a few steps.'
+                                            : 'Complete the highlights that help you get matched.',
+                                        style: TextStyle(
+                                          color: Colors.white.withValues(
+                                            alpha: 0.85,
+                                          ),
+                                          fontSize: 12.5.sp,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Container(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 12.w,
+                                    vertical: 8.h,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: 0.2),
+                                    borderRadius: BorderRadius.circular(12.r),
+                                    border: Border.all(
+                                      color:
+                                          Colors.white.withValues(alpha: 0.3),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    '${_stepIndex + 1}/$_totalSteps',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 12.5.sp,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          SizedBox(height: 12.h),
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 14.w,
+                              vertical: 12.h,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(14.r),
+                              border: Border.all(
+                                color: Colors.black.withValues(alpha: 0.04),
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.04),
+                                  blurRadius: 12.r,
+                                  offset: Offset(0, 6.h),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      'Step ${_stepIndex + 1} of $_totalSteps',
+                                      style: TextStyle(
+                                        fontSize: 12.5.sp,
+                                        color: Colors.black87,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    if (_saving)
+                                      SizedBox(
+                                        height: 16.h,
+                                        width: 16.h,
+                                        child:
+                                            const CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                                SizedBox(height: 10.h),
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(12.r),
+                                  child: LinearProgressIndicator(
+                                    value: (_stepIndex + 1) / _totalSteps,
+                                    minHeight: 8.h,
+                                    backgroundColor: Colors.grey.shade200,
+                                    color: const Color(0xFF0F766E),
+                                  ),
+                                ),
+                                SizedBox(height: 8.h),
+                                Row(
+                                  children: List.generate(
+                                    _totalSteps,
+                                    (index) => AnimatedContainer(
+                                      duration:
+                                          const Duration(milliseconds: 220),
+                                      margin: EdgeInsets.only(right: 6.w),
+                                      height: 6.h,
+                                      width:
+                                          index == _stepIndex ? 26.w : 10.w,
+                                      decoration: BoxDecoration(
+                                        color: index <= _stepIndex
+                                            ? const Color(0xFF0F766E)
+                                            : Colors.grey.shade300,
+                                        borderRadius:
+                                            BorderRadius.circular(10.r),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      child: PageView(
+                        controller: _pageController,
+                        physics: const NeverScrollableScrollPhysics(),
+                        children: _isRecruiter
+                            ? _buildRecruiterPages()
+                            : _buildSeekerPages(),
+                      ),
+                    ),
+                    Padding(
+                      padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 16.h),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: (_stepIndex == 0 || _saving)
+                                  ? null
+                                  : _back,
+                              icon: const Icon(Icons.arrow_back),
+                              label: const Text('Back'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: const Color(0xFF0F766E),
+                                side: const BorderSide(
+                                  color: Color(0xFF0F766E),
+                                ),
+                                padding: EdgeInsets.symmetric(vertical: 14.h),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14.r),
                                 ),
                               ),
-                          ],
-                        ),
-                        SizedBox(height: 8.h),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(12.r),
-                          child: LinearProgressIndicator(
-                            value: (_stepIndex + 1) / _totalSteps,
-                            minHeight: 8.h,
-                            backgroundColor: Colors.grey.shade200,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    child: PageView(
-                      controller: _pageController,
-                      physics: const NeverScrollableScrollPhysics(),
-                      children: _isRecruiter
-                          ? _buildRecruiterPages()
-                          : _buildSeekerPages(),
-                    ),
-                  ),
-                  Padding(
-                    padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 16.h),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: (_stepIndex == 0 || _saving)
-                                ? null
-                                : _back,
-                            icon: const Icon(Icons.arrow_back),
-                            label: const Text('Back'),
-                          ),
-                        ),
-                        SizedBox(width: 12.w),
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: _saving ? null : _next,
-                            icon: Icon(
-                              _stepIndex == _totalSteps - 1
-                                  ? Icons.check
-                                  : Icons.arrow_forward,
-                            ),
-                            label: Text(
-                              _stepIndex == _totalSteps - 1
-                                  ? (_isRecruiter
-                                        ? 'Complete Profile'
-                                        : 'Finish Setup')
-                                  : 'Next',
                             ),
                           ),
-                        ),
-                      ],
+                          SizedBox(width: 12.w),
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: _saving ? null : _next,
+                              icon: Icon(
+                                _stepIndex == _totalSteps - 1
+                                    ? Icons.check
+                                    : Icons.arrow_forward,
+                              ),
+                              label: Text(
+                                _stepIndex == _totalSteps - 1
+                                    ? (_isRecruiter
+                                          ? 'Complete Profile'
+                                          : 'Finish Setup')
+                                    : 'Next',
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF0F766E),
+                                foregroundColor: Colors.white,
+                                padding: EdgeInsets.symmetric(vertical: 14.h),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14.r),
+                                ),
+                                elevation: 0,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
     );
@@ -2658,6 +2825,36 @@ class _ProfileSetupOnboardingState extends State<ProfileSetupOnboarding> {
         formKey: _formKeys[0],
         title: 'Company information',
         children: [
+          Container(
+            padding: EdgeInsets.all(12.w),
+            decoration: BoxDecoration(
+              color: const Color(0xFF0F766E).withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(12.r),
+              border: Border.all(
+                color: const Color(0xFF0F766E).withValues(alpha: 0.15),
+              ),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.auto_awesome_outlined,
+                  color: Color(0xFF0F766E),
+                ),
+                SizedBox(width: 10.w),
+                Expanded(
+                  child: Text(
+                    'Add your logo and basics to build trust with candidates.',
+                    style: TextStyle(
+                      fontSize: 12.5.sp,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF0F766E),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(height: 16.h),
           Center(
             child: InkWell(
               onTap: _saving ? null : _pickAndUploadPhoto,
@@ -2676,6 +2873,17 @@ class _ProfileSetupOnboardingState extends State<ProfileSetupOnboarding> {
                         color: Colors.grey.shade700,
                       )
                     : null,
+              ),
+            ),
+          ),
+          SizedBox(height: 6.h),
+          Center(
+            child: Text(
+              'Tap to upload company logo',
+              style: TextStyle(
+                fontSize: 12.sp,
+                color: Colors.black54,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
@@ -2705,6 +2913,36 @@ class _ProfileSetupOnboardingState extends State<ProfileSetupOnboarding> {
         formKey: _formKeys[1],
         title: 'Company details',
         children: [
+          Container(
+            padding: EdgeInsets.all(12.w),
+            decoration: BoxDecoration(
+              color: const Color(0xFF0F766E).withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(12.r),
+              border: Border.all(
+                color: const Color(0xFF0F766E).withValues(alpha: 0.15),
+              ),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.map_outlined,
+                  color: Color(0xFF0F766E),
+                ),
+                SizedBox(width: 10.w),
+                Expanded(
+                  child: Text(
+                    'Clear company details improve discovery and credibility.',
+                    style: TextStyle(
+                      fontSize: 12.5.sp,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF0F766E),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(height: 16.h),
           TextFormField(
             controller: _companySizeController,
             textInputAction: TextInputAction.next,
@@ -2736,6 +2974,36 @@ class _ProfileSetupOnboardingState extends State<ProfileSetupOnboarding> {
         formKey: _formKeys[2],
         title: 'Recruiter details',
         children: [
+          Container(
+            padding: EdgeInsets.all(12.w),
+            decoration: BoxDecoration(
+              color: const Color(0xFF0F766E).withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(12.r),
+              border: Border.all(
+                color: const Color(0xFF0F766E).withValues(alpha: 0.15),
+              ),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.support_agent_outlined,
+                  color: Color(0xFF0F766E),
+                ),
+                SizedBox(width: 10.w),
+                Expanded(
+                  child: Text(
+                    'These details help candidates recognize who is hiring.',
+                    style: TextStyle(
+                      fontSize: 12.5.sp,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF0F766E),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(height: 16.h),
           TextFormField(
             controller: _recruiterNameController,
             textInputAction: TextInputAction.next,
@@ -2778,20 +3046,26 @@ class _ProfileSetupOnboardingState extends State<ProfileSetupOnboarding> {
           children: [
             Text(
               title,
-              style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.w700),
+              style: TextStyle(
+                fontSize: 18.sp,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.2,
+              ),
             ),
             SizedBox(height: 12.h),
             Container(
-              padding: EdgeInsets.all(14.w),
+              padding: EdgeInsets.all(16.w),
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16.r),
-                border: Border.all(color: Colors.grey.shade200),
+                color: Colors.white.withValues(alpha: 0.96),
+                borderRadius: BorderRadius.circular(18.r),
+                border: Border.all(
+                  color: Colors.black.withValues(alpha: 0.04),
+                ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.04),
-                    blurRadius: 14.r,
-                    offset: Offset(0, 6.h),
+                    color: Colors.black.withValues(alpha: 0.06),
+                    blurRadius: 16.r,
+                    offset: Offset(0, 8.h),
                   ),
                 ],
               ),

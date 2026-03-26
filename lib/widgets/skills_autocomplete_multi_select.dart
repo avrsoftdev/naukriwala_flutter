@@ -114,18 +114,20 @@ class _SkillsAutocompleteMultiSelectState
                 return TypeAheadField<String>(
                   controller: _controller,
                   focusNode: _focusNode,
-                  hideOnEmpty: true,
+                  hideOnEmpty: false,
                   suggestionsCallback: (search) {
                     final q = search.trim().toLowerCase();
-                    if (q.isEmpty) return const <String>[];
                     final selectedLower =
                         (field.value ?? const <String>[])
                             .map((e) => e.toLowerCase())
                             .toSet();
-                    return allSkills
-                        .where((s) =>
-                            !selectedLower.contains(s.toLowerCase()) &&
-                            s.toLowerCase().contains(q))
+                    final Iterable<String> source = q.isEmpty
+                        ? allSkills
+                        : allSkills.where((s) => s.toLowerCase().contains(q));
+                    return source
+                        .where(
+                          (s) => !selectedLower.contains(s.toLowerCase()),
+                        )
                         .take(widget.maxSuggestions)
                         .toList();
                   },
@@ -171,4 +173,3 @@ class _SkillsAutocompleteMultiSelectState
     );
   }
 }
-
