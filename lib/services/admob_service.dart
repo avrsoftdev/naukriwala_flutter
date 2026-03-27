@@ -7,7 +7,7 @@ class AdMobService {
   AdMobService._internal();
 
   // Ad Unit IDs
-  static const String _productionBannerAdUnitId = 'ca-app-pub-7682628416837305/1855370351';
+  static const String _productionBannerAdUnitId = 'ca-app-pub-7682628416837305/2211932306';
   static const String _testBannerAdUnitId = 'ca-app-pub-3940256099942544/6300978111';
 
   bool _isInitialized = false;
