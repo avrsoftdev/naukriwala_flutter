@@ -282,42 +282,52 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Job type filters
-          Wrap(
-            spacing: 8.w,
-            runSpacing: 8.h,
-            children: _filters.map((filter) {
-              final isSelected = _filter == filter;
-              return ChoiceChip(
-                label: Text(filter, style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w600)),
-                selected: isSelected,
-                onSelected: (_) {
-                  setState(() {
-                    _filter = filter;
-                  });
-                  dev.log('[2025-09-01 15:05 IST] Filter changed to: $_filter', name: 'PostedJobsScreen');
-                },
-                backgroundColor: const Color(0xFFE7EEF8),
-                selectedColor: const Color(0xFF1565C0),
-                labelStyle: TextStyle(
-                  color: isSelected ? Colors.white : const Color(0xFF0D47A1),
+          // Job type filters in a row
+          Row(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: _filters.map((filter) {
+                      final isSelected = _filter == filter;
+                      return Container(
+                        margin: EdgeInsets.only(right: 8.w),
+                        child: ChoiceChip(
+                          label: Text(filter, style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w600)),
+                          selected: isSelected,
+                          onSelected: (_) {
+                            setState(() {
+                              _filter = filter;
+                            });
+                            dev.log('[2025-09-01 15:05 IST] Filter changed to: $_filter', name: 'PostedJobsScreen');
+                          },
+                          backgroundColor: const Color(0xFFE7EEF8),
+                          selectedColor: const Color(0xFF1565C0),
+                          labelStyle: TextStyle(
+                            color: isSelected ? Colors.white : const Color(0xFF0D47A1),
+                          ),
+                          checkmarkColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22.r)),
+                        ),
+                      );
+                    }).toList(),
+                  ),
                 ),
-                checkmarkColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22.r)),
-              );
-            }).toList(),
+              ),
+            ],
           ),
           
-          SizedBox(height: 16.h),
+          SizedBox(height: 8.h),
           
-          // Distance filter section
+          // Distance filter section on separate row
           Row(
             children: [
               Icon(Icons.location_on_outlined, size: 18.sp, color: const Color(0xFF0D47A1)),
-              SizedBox(width: 8.w),
+              SizedBox(width: 4.w),
               Text(
-                'Distance Filter:',
-                style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600, color: const Color(0xFF0D47A1)),
+                'Distance Filter',
+                style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w600, color: const Color(0xFF0D47A1)),
               ),
               SizedBox(width: 8.w),
               Switch(
@@ -332,6 +342,7 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
                 activeTrackColor: const Color(0xFFE7EEF8),
                 inactiveThumbColor: Colors.grey.shade400,
                 inactiveTrackColor: Colors.grey.shade300,
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
             ],
           ),
@@ -349,13 +360,13 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
                     Text(
                       '${_selectedDistance.toStringAsFixed(0)} km',
                       style: TextStyle(
-                        fontSize: 16.sp,
+                        fontSize: 14.sp,
                         fontWeight: FontWeight.w700,
                         color: const Color(0xFF1565C0),
                       ),
                     ),
                     Text(
-                      'Max: 100 km',
+                      '100 km',
                       style: TextStyle(
                         fontSize: 12.sp,
                         color: Colors.grey.shade600,
@@ -363,7 +374,7 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
                     ),
                   ],
                 ),
-                SizedBox(height: 8.h),
+                SizedBox(height: 4.h),
                 SliderTheme(
                   data: SliderTheme.of(context).copyWith(
                     activeTrackColor: const Color(0xFF1565C0),
@@ -376,6 +387,8 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
                       fontSize: 12.sp,
                       fontWeight: FontWeight.w600,
                     ),
+                    trackHeight: 3.0,
+                    thumbShape: RoundSliderThumbShape(enabledThumbRadius: 6.0),
                   ),
                   child: Slider(
                     value: _selectedDistance,
@@ -390,34 +403,6 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
                       dev.log('[2025-09-01 15:05 IST] Distance changed to: ${value.toStringAsFixed(0)}km', name: 'PostedJobsScreen');
                     },
                   ),
-                ),
-                
-                // Quick distance buttons
-                SizedBox(height: 12.h),
-                Wrap(
-                  spacing: 8.w,
-                  runSpacing: 6.h,
-                  children: [5, 10, 25, 50, 100].map((distance) {
-                    final isSelected = _selectedDistance == distance.toDouble();
-                    return ActionChip(
-                      label: Text('${distance}km', style: TextStyle(fontSize: 11.sp, fontWeight: FontWeight.w600)),
-                      onPressed: () {
-                        setState(() {
-                          _selectedDistance = distance.toDouble();
-                        });
-                        dev.log('[2025-09-01 15:05 IST] Quick distance selected: ${distance}km', name: 'PostedJobsScreen');
-                      },
-                      backgroundColor: isSelected ? const Color(0xFF1565C0) : const Color(0xFFE7EEF8),
-                      labelStyle: TextStyle(
-                        color: isSelected ? Colors.white : const Color(0xFF0D47A1),
-                      ),
-                      side: BorderSide(
-                        color: isSelected ? const Color(0xFF1565C0) : const Color(0xFFDCE6F3),
-                        width: 1,
-                      ),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
-                    );
-                  }).toList(),
                 ),
               ],
             ),
