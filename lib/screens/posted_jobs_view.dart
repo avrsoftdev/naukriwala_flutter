@@ -326,7 +326,7 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
               Icon(Icons.location_on_outlined, size: 18.sp, color: const Color(0xFF0D47A1)),
               SizedBox(width: 4.w),
               Text(
-                'Distance Filter',
+                'Distance',
                 style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w600, color: const Color(0xFF0D47A1)),
               ),
               SizedBox(width: 8.w),
@@ -344,69 +344,52 @@ class _PostedJobsScreenState extends State<PostedJobsScreen> {
                 inactiveTrackColor: Colors.grey.shade300,
                 materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
-            ],
-          ),
-          
-          if (_distanceFilterEnabled) ...[
-            SizedBox(height: 8.h),
-            
-            // Distance slider
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      '${_selectedDistance.toStringAsFixed(0)} km',
-                      style: TextStyle(
-                        fontSize: 14.sp,
-                        fontWeight: FontWeight.w700,
-                        color: const Color(0xFF1565C0),
-                      ),
-                    ),
-                    Text(
-                      '100 km',
-                      style: TextStyle(
+              
+              if (_distanceFilterEnabled) ...[
+                SizedBox(width: 8.w),
+                Expanded(
+                  child: SliderTheme(
+                    data: SliderTheme.of(context).copyWith(
+                      activeTrackColor: const Color(0xFF1565C0),
+                      inactiveTrackColor: const Color(0xFFE7EEF8),
+                      thumbColor: const Color(0xFF1565C0),
+                      overlayColor: const Color(0xFF1565C0).withOpacity(0.2),
+                      valueIndicatorColor: const Color(0xFF1565C0),
+                      valueIndicatorTextStyle: TextStyle(
+                        color: Colors.white,
                         fontSize: 12.sp,
-                        color: Colors.grey.shade600,
+                        fontWeight: FontWeight.w600,
                       ),
+                      trackHeight: 3.0,
+                      thumbShape: RoundSliderThumbShape(enabledThumbRadius: 6.0),
                     ),
-                  ],
-                ),
-                SizedBox(height: 4.h),
-                SliderTheme(
-                  data: SliderTheme.of(context).copyWith(
-                    activeTrackColor: const Color(0xFF1565C0),
-                    inactiveTrackColor: const Color(0xFFE7EEF8),
-                    thumbColor: const Color(0xFF1565C0),
-                    overlayColor: const Color(0xFF1565C0).withOpacity(0.2),
-                    valueIndicatorColor: const Color(0xFF1565C0),
-                    valueIndicatorTextStyle: TextStyle(
-                      color: Colors.white,
-                      fontSize: 12.sp,
-                      fontWeight: FontWeight.w600,
+                    child: Slider(
+                      value: _selectedDistance,
+                      min: 1.0,
+                      max: 100.0,
+                      divisions: 99,
+                      label: '${_selectedDistance.toStringAsFixed(0)} km',
+                      onChanged: (value) {
+                        setState(() {
+                          _selectedDistance = value;
+                        });
+                        dev.log('[2025-09-01 15:05 IST] Distance changed to: ${value.toStringAsFixed(0)}km', name: 'PostedJobsScreen');
+                      },
                     ),
-                    trackHeight: 3.0,
-                    thumbShape: RoundSliderThumbShape(enabledThumbRadius: 6.0),
                   ),
-                  child: Slider(
-                    value: _selectedDistance,
-                    min: 1.0,
-                    max: 100.0,
-                    divisions: 99,
-                    label: '${_selectedDistance.toStringAsFixed(0)} km',
-                    onChanged: (value) {
-                      setState(() {
-                        _selectedDistance = value;
-                      });
-                      dev.log('[2025-09-01 15:05 IST] Distance changed to: ${value.toStringAsFixed(0)}km', name: 'PostedJobsScreen');
-                    },
+                ),
+                SizedBox(width: 4.w),
+                Text(
+                  '${_selectedDistance.toStringAsFixed(0)}km',
+                  style: TextStyle(
+                    fontSize: 12.sp,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF1565C0),
                   ),
                 ),
               ],
-            ),
-          ],
+            ],
+          ),
         ],
       ),
     );
