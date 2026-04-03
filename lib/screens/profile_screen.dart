@@ -434,17 +434,25 @@ Map<String, String> _getOldToNewSkillsMapping() {
     'Security Data Compliance': 'Security Data Compliance Development',
     'Security Data Analytics': 'Security Data Analytics Development',
     'Security Business Analytics': 'Security Business Analytics Development',
-    'Security Predictive Analytics': 'Security Predictive Analytics Development',
-    'Security Prescriptive Analytics': 'Security Prescriptive Analytics Development',
-    'Security Descriptive Analytics': 'Security Descriptive Analytics Development',
-    'Security Diagnostic Analytics': 'Security Diagnostic Analytics Development',
-    'Security Statistical Analysis': 'Security Statistical Analysis Development',
-    'Security Quantitative Analysis': 'Security Quantitative Analysis Development',
-    'Security Qualitative Analysis': 'Security Qualitative Analysis Development',
+    'Security Predictive Analytics':
+        'Security Predictive Analytics Development',
+    'Security Prescriptive Analytics':
+        'Security Prescriptive Analytics Development',
+    'Security Descriptive Analytics':
+        'Security Descriptive Analytics Development',
+    'Security Diagnostic Analytics':
+        'Security Diagnostic Analytics Development',
+    'Security Statistical Analysis':
+        'Security Statistical Analysis Development',
+    'Security Quantitative Analysis':
+        'Security Quantitative Analysis Development',
+    'Security Qualitative Analysis':
+        'Security Qualitative Analysis Development',
     'Security Financial Analysis': 'Security Financial Analysis Development',
     'Security Risk Analysis': 'Security Risk Analysis Development',
     'Security Market Analysis': 'Security Market Analysis Development',
-    'Security Competitive Analysis': 'Security Competitive Analysis Development',
+    'Security Competitive Analysis':
+        'Security Competitive Analysis Development',
     'Security SWOT Analysis': 'Security SWOT Analysis Development',
     'Security PEST Analysis': 'Security PEST Analysis Development',
     'Security Gap Analysis': 'Security Gap Analysis Development',
@@ -475,9 +483,9 @@ class ProfileScreen extends StatefulWidget {
   final bool isNestedInTabView;
 
   const ProfileScreen({
-    this.isRecruiter = false, 
+    this.isRecruiter = false,
     this.isNestedInTabView = false,
-    super.key
+    super.key,
   });
 
   @override
@@ -520,7 +528,7 @@ class ProfileScreenState extends State<ProfileScreen> {
   // Track if profile has been updated
   bool _isProfileUpdated = false;
   bool _isUploadingProfilePhoto = false;
-  
+
   // Profile update tracking
   String? _lastProfileUpdate;
   bool _needsProfileUpdateReminder = false;
@@ -529,14 +537,14 @@ class ProfileScreenState extends State<ProfileScreen> {
   List<String> _mapOldSkillsToNewFormat(List<String> oldSkills) {
     final mapping = _getOldToNewSkillsMapping();
     final mappedSkills = <String>[];
-    
+
     for (final skill in oldSkills) {
       final trimmedSkill = skill.trim();
       if (trimmedSkill.isEmpty) continue;
-      
+
       // Check if skill already matches new format (contains "Development", "Engineering", etc.)
-      if (trimmedSkill.contains('Development') || 
-          trimmedSkill.contains('Engineering') || 
+      if (trimmedSkill.contains('Development') ||
+          trimmedSkill.contains('Engineering') ||
           trimmedSkill.contains('Implementation') ||
           trimmedSkill.contains('Integration') ||
           trimmedSkill.contains('Optimization') ||
@@ -572,8 +580,10 @@ class ProfileScreenState extends State<ProfileScreen> {
           // If no mapping found, try to find a skill in _allSkills that contains the old skill name
           if (_allSkills.isNotEmpty) {
             final matchingSkill = _allSkills.firstWhere(
-              (newSkill) => newSkill.toLowerCase().contains(trimmedSkill.toLowerCase()),
-              orElse: () => '${trimmedSkill} Development', // Fallback: add "Development" suffix
+              (newSkill) =>
+                  newSkill.toLowerCase().contains(trimmedSkill.toLowerCase()),
+              orElse: () =>
+                  '${trimmedSkill} Development', // Fallback: add "Development" suffix
             );
             mappedSkills.add(matchingSkill);
           } else {
@@ -583,7 +593,7 @@ class ProfileScreenState extends State<ProfileScreen> {
         }
       }
     }
-    
+
     // Remove duplicates while preserving order
     final seen = <String>{};
     return mappedSkills.where((skill) => seen.add(skill)).toList();
@@ -989,7 +999,8 @@ class ProfileScreenState extends State<ProfileScreen> {
                   ? 'Other'
                   : null;
               _selectedSkills = _mapOldSkillsToNewFormat(
-                  (data['skills'] as List<dynamic>?)?.cast<String>() ?? []);
+                (data['skills'] as List<dynamic>?)?.cast<String>() ?? [],
+              );
               _selectedSpecialization =
                   specializationOptions.contains(data['specialization'])
                   ? data['specialization']
@@ -1002,7 +1013,9 @@ class ProfileScreenState extends State<ProfileScreen> {
               );
             }
             final city = data['city']?.toString().trim();
-            _selectedCity = city != null && cityOptions.contains(city) ? city : city;
+            _selectedCity = city != null && cityOptions.contains(city)
+                ? city
+                : city;
             _cityController.text = city ?? '';
             _isProfileUpdated =
                 data['name'] != null &&
@@ -1023,7 +1036,7 @@ class ProfileScreenState extends State<ProfileScreen> {
             );
           });
         }
-        
+
         // Load profile update tracking info
         if (!widget.isRecruiter) {
           await _loadProfileUpdateInfo();
@@ -1055,7 +1068,11 @@ class ProfileScreenState extends State<ProfileScreen> {
         });
       }
     } catch (e) {
-      dev.log('Error loading profile update info: $e', name: 'ProfileScreen', error: e);
+      dev.log(
+        'Error loading profile update info: $e',
+        name: 'ProfileScreen',
+        error: e,
+      );
     }
   }
 
@@ -1105,7 +1122,8 @@ class ProfileScreenState extends State<ProfileScreen> {
     }
 
     Widget chips(String label, List<dynamic>? values) {
-      final list = values
+      final list =
+          values
               ?.map((e) => e.toString().trim())
               .where((e) => e.isNotEmpty)
               .toList() ??
@@ -1209,7 +1227,10 @@ class ProfileScreenState extends State<ProfileScreen> {
                 '10th - Passing Year',
                 (educationDetails['tenth'] as Map?)?['passingYear'],
               ),
-              row('10th - Score', (educationDetails['tenth'] as Map?)?['score']),
+              row(
+                '10th - Score',
+                (educationDetails['tenth'] as Map?)?['score'],
+              ),
               row(
                 '10th - Score Type',
                 (educationDetails['tenth'] as Map?)?['scoreType'],
@@ -1322,11 +1343,14 @@ class ProfileScreenState extends State<ProfileScreen> {
                 ),
                 row(
                   'Post-Graduation - Currently Studying',
-                  (educationDetails['postGraduation'] as Map?)?['currentlyStudying'],
+                  (educationDetails['postGraduation']
+                      as Map?)?['currentlyStudying'],
                 ),
               ],
             ],
-            if (!widget.isRecruiter && previousExps is List && previousExps.isNotEmpty) ...[
+            if (!widget.isRecruiter &&
+                previousExps is List &&
+                previousExps.isNotEmpty) ...[
               SizedBox(height: 6.h),
               _buildSectionHeader('Previous Experiences'),
               ...previousExps.take(10).whereType<Map>().map((e) {
@@ -1615,15 +1639,23 @@ class ProfileScreenState extends State<ProfileScreen> {
     } else {
       // For seekers
       int filled = 0;
-      int total = 8; // name, city, specialization, education, experience, skills, currentCtc, expectedCtc
+      int total =
+          8; // name, city, specialization, education, experience, skills, currentCtc, expectedCtc
       if (_nameController.text.trim().isNotEmpty) filled++;
       if (_selectedCity != null && _selectedCity!.trim().isNotEmpty) filled++;
-      if (_selectedSpecialization != null && _selectedSpecialization!.trim().isNotEmpty) filled++;
-      if (_selectedEducation != null && _selectedEducation!.trim().isNotEmpty) filled++;
+      if (_selectedSpecialization != null &&
+          _selectedSpecialization!.trim().isNotEmpty)
+        filled++;
+      if (_selectedEducation != null && _selectedEducation!.trim().isNotEmpty)
+        filled++;
       if (_experienceController.text.trim().isNotEmpty) filled++;
       if (_selectedSkills.isNotEmpty) filled++;
-      if (_currentCtcController.text.trim().isNotEmpty && _currentCtcController.text.trim() != '0') filled++;
-      if (_expectedCtcController.text.trim().isNotEmpty && _expectedCtcController.text.trim() != '0') filled++;
+      if (_currentCtcController.text.trim().isNotEmpty &&
+          _currentCtcController.text.trim() != '0')
+        filled++;
+      if (_expectedCtcController.text.trim().isNotEmpty &&
+          _expectedCtcController.text.trim() != '0')
+        filled++;
       return (filled / total) * 100;
     }
   }
@@ -1725,7 +1757,8 @@ class ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildInfoRow(String label, String? value) {
     final display = (value ?? '').toString().trim();
-    final isEmpty = display.isEmpty ||
+    final isEmpty =
+        display.isEmpty ||
         display.toLowerCase() == 'null' ||
         display.toLowerCase() == 'not provided';
     // Only show rows that have a value; hide "Not provided" fields
@@ -1748,17 +1781,11 @@ class ProfileScreenState extends State<ProfileScreen> {
           SizedBox(height: 4.h),
           Container(
             width: double.infinity,
-            padding: EdgeInsets.symmetric(
-              horizontal: 10.w,
-              vertical: 8.h,
-            ),
+            padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
             decoration: BoxDecoration(
               color: Colors.grey.shade100,
               borderRadius: BorderRadius.circular(12.r),
-              border: Border.all(
-                color: Colors.grey.shade300,
-                width: 0.8,
-              ),
+              border: Border.all(color: Colors.grey.shade300, width: 0.8),
             ),
             child: Text(
               display,
@@ -1839,7 +1866,8 @@ class ProfileScreenState extends State<ProfileScreen> {
     final name = _nameController.text.trim().isNotEmpty
         ? _nameController.text.trim()
         : data['name']?.toString();
-    final city = _selectedCity ??
+    final city =
+        _selectedCity ??
         (_cityController.text.trim().isNotEmpty
             ? _cityController.text.trim()
             : data['city']?.toString());
@@ -1854,15 +1882,24 @@ class ProfileScreenState extends State<ProfileScreen> {
     // Add recruiter-specific fields
     if (widget.isRecruiter) {
       children.addAll([
-        _buildInfoRow('Company Name', _companyNameController.text.trim().isNotEmpty 
-            ? _companyNameController.text.trim() 
-            : data['companyName']?.toString()),
-        _buildInfoRow('Designation', _designationController.text.trim().isNotEmpty 
-            ? _designationController.text.trim() 
-            : data['designation']?.toString()),
-        _buildInfoRow('Company Profile', _companyProfileController.text.trim().isNotEmpty 
-            ? _companyProfileController.text.trim() 
-            : data['companyProfile']?.toString()),
+        _buildInfoRow(
+          'Company Name',
+          _companyNameController.text.trim().isNotEmpty
+              ? _companyNameController.text.trim()
+              : data['companyName']?.toString(),
+        ),
+        _buildInfoRow(
+          'Designation',
+          _designationController.text.trim().isNotEmpty
+              ? _designationController.text.trim()
+              : data['designation']?.toString(),
+        ),
+        _buildInfoRow(
+          'Company Profile',
+          _companyProfileController.text.trim().isNotEmpty
+              ? _companyProfileController.text.trim()
+              : data['companyProfile']?.toString(),
+        ),
       ]);
     } else {
       // Add seeker-specific fields
@@ -1870,6 +1907,16 @@ class ProfileScreenState extends State<ProfileScreen> {
         _buildInfoRow('Job Title', data['jobTitle']?.toString()),
         _buildInfoRow('Current Company', data['currentCompany']?.toString()),
         _buildInfoRow('Employment Type', data['employmentType']?.toString()),
+        _buildInfoRow('Father Name', data['fatherName']?.toString()),
+        _buildInfoRow(
+          'Father Occupation',
+          data['fatherOccupation']?.toString(),
+        ),
+        _buildInfoRow('Mother Name', data['motherName']?.toString()),
+        _buildInfoRow(
+          'Mother Occupation',
+          data['motherOccupation']?.toString(),
+        ),
         _buildInfoRow(
           'Total Experience (years)',
           data['totalExperienceYears']?.toString(),
@@ -1899,15 +1946,18 @@ class ProfileScreenState extends State<ProfileScreen> {
 
       widgets.addAll([
         _buildInfoRow('After 10th', educationDetails['afterTenth']?.toString()),
-        _buildInfoRow(
-          '10th - Passing Year',
-          tenth?['passingYear']?.toString(),
-        ),
+        _buildInfoRow('10th - Passing Year', tenth?['passingYear']?.toString()),
         _buildInfoRow('10th - Score', tenth?['score']?.toString()),
         _buildInfoRow('10th - Score Type', tenth?['scoreType']?.toString()),
-        _buildInfoRow('After 12th', educationDetails['afterTwelfth']?.toString()),
+        _buildInfoRow(
+          'After 12th',
+          educationDetails['afterTwelfth']?.toString(),
+        ),
         _buildInfoRow('12th - Stream', twelfth?['stream']?.toString()),
-        _buildInfoRow('12th - Stream Other', twelfth?['streamOther']?.toString()),
+        _buildInfoRow(
+          '12th - Stream Other',
+          twelfth?['streamOther']?.toString(),
+        ),
         _buildInfoRow(
           '12th - Passing Year',
           twelfth?['passingYear']?.toString(),
@@ -1915,11 +1965,20 @@ class ProfileScreenState extends State<ProfileScreen> {
         _buildInfoRow('12th - Score', twelfth?['score']?.toString()),
         _buildInfoRow('12th - Score Type', twelfth?['scoreType']?.toString()),
         _buildInfoRow('Diploma - Branch', diploma?['branch']?.toString()),
-        _buildInfoRow('Diploma - University', diploma?['university']?.toString()),
-        _buildInfoRow('Diploma - Start Year', diploma?['startYear']?.toString()),
+        _buildInfoRow(
+          'Diploma - University',
+          diploma?['university']?.toString(),
+        ),
+        _buildInfoRow(
+          'Diploma - Start Year',
+          diploma?['startYear']?.toString(),
+        ),
         _buildInfoRow('Diploma - End Year', diploma?['endYear']?.toString()),
         _buildInfoRow('Diploma - Score', diploma?['score']?.toString()),
-        _buildInfoRow('Diploma - Score Type', diploma?['scoreType']?.toString()),
+        _buildInfoRow(
+          'Diploma - Score Type',
+          diploma?['scoreType']?.toString(),
+        ),
         _buildInfoRow(
           'Graduation After Diploma',
           educationDetails['graduationAfterDiploma']?.toString(),
@@ -1949,12 +2008,30 @@ class ProfileScreenState extends State<ProfileScreen> {
         ),
         // Post-Graduation details
         if (postGraduation != null) ...[
-          _buildInfoRow('Post-Graduation - Degree', postGraduation['degree']?.toString()),
-          _buildInfoRow('Post-Graduation - Major', postGraduation['major']?.toString()),
-          _buildInfoRow('Post-Graduation - University', postGraduation['university']?.toString()),
-          _buildInfoRow('Post-Graduation - Start Year', postGraduation['startYear']?.toString()),
-          _buildInfoRow('Post-Graduation - End Year', postGraduation['endYear']?.toString()),
-          _buildInfoRow('Post-Graduation - Currently Studying', postGraduation['currentlyStudying']?.toString()),
+          _buildInfoRow(
+            'Post-Graduation - Degree',
+            postGraduation['degree']?.toString(),
+          ),
+          _buildInfoRow(
+            'Post-Graduation - Major',
+            postGraduation['major']?.toString(),
+          ),
+          _buildInfoRow(
+            'Post-Graduation - University',
+            postGraduation['university']?.toString(),
+          ),
+          _buildInfoRow(
+            'Post-Graduation - Start Year',
+            postGraduation['startYear']?.toString(),
+          ),
+          _buildInfoRow(
+            'Post-Graduation - End Year',
+            postGraduation['endYear']?.toString(),
+          ),
+          _buildInfoRow(
+            'Post-Graduation - Currently Studying',
+            postGraduation['currentlyStudying']?.toString(),
+          ),
         ],
       ]);
     }
@@ -1963,10 +2040,7 @@ class ProfileScreenState extends State<ProfileScreen> {
       widgets.add(
         Text(
           'No educational details added yet.',
-          style: TextStyle(
-            fontSize: 12.sp,
-            color: Colors.blueGrey.shade500,
-          ),
+          style: TextStyle(fontSize: 12.sp, color: Colors.blueGrey.shade500),
         ),
       );
     }
@@ -2019,10 +2093,7 @@ class ProfileScreenState extends State<ProfileScreen> {
       widgets.add(
         Text(
           'No previous experience added yet.',
-          style: TextStyle(
-            fontSize: 12.sp,
-            color: Colors.blueGrey.shade500,
-          ),
+          style: TextStyle(fontSize: 12.sp, color: Colors.blueGrey.shade500),
         ),
       );
     }
@@ -2049,10 +2120,7 @@ class ProfileScreenState extends State<ProfileScreen> {
           SizedBox(height: 8.h),
           Text(
             'Your resume preview in the top bar is generated from the latest profile details.',
-            style: TextStyle(
-              fontSize: 11.sp,
-              color: Colors.blueGrey.shade500,
-            ),
+            style: TextStyle(fontSize: 11.sp, color: Colors.blueGrey.shade500),
           ),
         ],
       ],
@@ -2314,57 +2382,59 @@ class ProfileScreenState extends State<ProfileScreen> {
                 suggestionsCallback: (search) {
                   final q = search.trim().toLowerCase();
                   if (q.isEmpty) return const <String>[];
-                  final selectedLower =
-                      _selectedSkills.map((e) => e.toLowerCase()).toSet();
-                  
+                  final selectedLower = _selectedSkills
+                      .map((e) => e.toLowerCase())
+                      .toSet();
+
                   // Get all available skills (both from skills.json and old skills)
                   final allAvailableSkills = <String>[];
                   allAvailableSkills.addAll(_allSkills); // New skills from JSON
-                  
+
                   // Add old skills from skillsBySpecialization for backward compatibility
                   final oldSkills = skillsBySpecialization.values
                       .expand((skills) => skills)
-                      .where((skill) => !selectedLower.contains(skill.toLowerCase()))
+                      .where(
+                        (skill) => !selectedLower.contains(skill.toLowerCase()),
+                      )
                       .toList();
                   allAvailableSkills.addAll(oldSkills);
-                  
+
                   // Filter skills that match search query and aren't already selected
                   final matchingSkills = allAvailableSkills
-                      .where((s) =>
-                          !selectedLower.contains(s.toLowerCase()) &&
-                          s.toLowerCase().contains(q))
+                      .where(
+                        (s) =>
+                            !selectedLower.contains(s.toLowerCase()) &&
+                            s.toLowerCase().contains(q),
+                      )
                       .toSet()
                       .toList();
-                  
+
                   // Sort results: prioritize exact matches, then skills starting with query
                   matchingSkills.sort((a, b) {
                     final aLower = a.toLowerCase();
                     final bLower = b.toLowerCase();
                     final qLower = q;
-                    
+
                     // Exact match first
                     if (aLower == qLower) return -1;
                     if (bLower == qLower) return 1;
-                    
+
                     // Skills starting with query next
                     final aStarts = aLower.startsWith(qLower);
                     final bStarts = bLower.startsWith(qLower);
                     if (aStarts && !bStarts) return -1;
                     if (!aStarts && bStarts) return 1;
-                    
+
                     // Alphabetical order
                     return aLower.compareTo(bLower);
                   });
-                  
+
                   return matchingSkills.take(20).toList();
                 },
                 itemBuilder: (context, suggestion) {
                   return ListTile(
                     dense: true,
-                    title: Text(
-                      suggestion,
-                      style: TextStyle(fontSize: 13.sp),
-                    ),
+                    title: Text(suggestion, style: TextStyle(fontSize: 13.sp)),
                   );
                 },
                 onSelected: enabled
@@ -2388,9 +2458,7 @@ class ProfileScreenState extends State<ProfileScreen> {
                     decoration: _fieldDecoration(
                       'Select Skills',
                       icon: Icons.search,
-                    ).copyWith(
-                      hintText: 'Type a skill',
-                    ),
+                    ).copyWith(hintText: 'Type a skill'),
                   );
                 },
               ),
@@ -2405,8 +2473,9 @@ class ProfileScreenState extends State<ProfileScreen> {
                       onDeleted: enabled
                           ? () {
                               setState(() {
-                                _selectedSkills =
-                                    _selectedSkills.where((x) => x != s).toList();
+                                _selectedSkills = _selectedSkills
+                                    .where((x) => x != s)
+                                    .toList();
                               });
                             }
                           : null,
@@ -2431,8 +2500,6 @@ class ProfileScreenState extends State<ProfileScreen> {
       ),
     );
   }
-  
-
 
   Widget _buildCityAutocompleteField() {
     return Padding(
@@ -2445,7 +2512,9 @@ class ProfileScreenState extends State<ProfileScreen> {
               return const Iterable<String>.empty();
             }
             return cityOptions.where((String option) {
-              return option.toLowerCase().contains(textEditingValue.text.toLowerCase());
+              return option.toLowerCase().contains(
+                textEditingValue.text.toLowerCase(),
+              );
             });
           },
           onSelected: (String selection) {
@@ -2455,66 +2524,80 @@ class ProfileScreenState extends State<ProfileScreen> {
               errorMessage = null;
             });
           },
-          fieldViewBuilder: (BuildContext context, TextEditingController textEditingController, FocusNode focusNode, VoidCallback onFieldSubmitted) {
-            // Initialize the autocomplete controller with our current value
-            if (textEditingController.text != _cityController.text) {
-              textEditingController.text = _cityController.text;
-            }
-            // Add listener to update our state when text changes
-            textEditingController.addListener(() {
-              if (_selectedCity != textEditingController.text) {
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  if (mounted) {
-                    setState(() {
-                      _selectedCity = textEditingController.text;
-                      _cityController.text = textEditingController.text;
-                      errorMessage = null;
+          fieldViewBuilder:
+              (
+                BuildContext context,
+                TextEditingController textEditingController,
+                FocusNode focusNode,
+                VoidCallback onFieldSubmitted,
+              ) {
+                // Initialize the autocomplete controller with our current value
+                if (textEditingController.text != _cityController.text) {
+                  textEditingController.text = _cityController.text;
+                }
+                // Add listener to update our state when text changes
+                textEditingController.addListener(() {
+                  if (_selectedCity != textEditingController.text) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (mounted) {
+                        setState(() {
+                          _selectedCity = textEditingController.text;
+                          _cityController.text = textEditingController.text;
+                          errorMessage = null;
+                        });
+                      }
                     });
                   }
                 });
-              }
-            });
-            return TextFormField(
-              controller: textEditingController,
-              focusNode: focusNode,
-              decoration: _fieldDecoration(
-                'City',
-                icon: _iconForLabel('City'),
-              ),
-              validator: (value) => value == null || value.trim().isEmpty
-                  ? 'City is required'
-                  : null,
-              autovalidateMode: AutovalidateMode.onUserInteraction,
-            );
-          },
-          optionsViewBuilder: (BuildContext context, AutocompleteOnSelected<String> onSelected, Iterable<String> options) {
-            return Align(
-              alignment: Alignment.topLeft,
-              child: Material(
-                elevation: 4.0,
-                child: Container(
-                  constraints: BoxConstraints(maxWidth: 300.w, maxHeight: 200.h),
-                  child: ListView.builder(
-                    padding: EdgeInsets.zero,
-                    shrinkWrap: true,
-                    itemCount: options.length,
-                    itemBuilder: (BuildContext context, int index) {
-                      final String option = options.elementAt(index);
-                      return ListTile(
-                        title: Text(
-                          option,
-                          style: TextStyle(fontSize: 14.sp),
-                        ),
-                        onTap: () {
-                          onSelected(option);
-                        },
-                      );
-                    },
+                return TextFormField(
+                  controller: textEditingController,
+                  focusNode: focusNode,
+                  decoration: _fieldDecoration(
+                    'City',
+                    icon: _iconForLabel('City'),
                   ),
-                ),
-              ),
-            );
-          },
+                  validator: (value) => value == null || value.trim().isEmpty
+                      ? 'City is required'
+                      : null,
+                  autovalidateMode: AutovalidateMode.onUserInteraction,
+                );
+              },
+          optionsViewBuilder:
+              (
+                BuildContext context,
+                AutocompleteOnSelected<String> onSelected,
+                Iterable<String> options,
+              ) {
+                return Align(
+                  alignment: Alignment.topLeft,
+                  child: Material(
+                    elevation: 4.0,
+                    child: Container(
+                      constraints: BoxConstraints(
+                        maxWidth: 300.w,
+                        maxHeight: 200.h,
+                      ),
+                      child: ListView.builder(
+                        padding: EdgeInsets.zero,
+                        shrinkWrap: true,
+                        itemCount: options.length,
+                        itemBuilder: (BuildContext context, int index) {
+                          final String option = options.elementAt(index);
+                          return ListTile(
+                            title: Text(
+                              option,
+                              style: TextStyle(fontSize: 14.sp),
+                            ),
+                            onTap: () {
+                              onSelected(option);
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                );
+              },
         ),
       ),
     );
@@ -2547,205 +2630,221 @@ class ProfileScreenState extends State<ProfileScreen> {
       builder: (context, child) {
         return Scaffold(
           backgroundColor: Colors.transparent,
-          appBar: widget.isNestedInTabView ? null : AppBar(
-            title: Text(
-              widget.isRecruiter ? 'Recruiter Profile' : 'Seeker Profile',
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
-                color: Colors.white,
-                fontSize: 18.sp,
-              ),
-            ),
-            centerTitle: true,
-            flexibleSpace: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Colors.blue.shade700, Colors.teal.shade600],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-              ),
-            ),
-            elevation: 0,
-            actions: [
-              if (!widget.isRecruiter) ...[
-                Container(
-                  margin: EdgeInsets.symmetric(horizontal: 4.w, vertical: 6.h),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.18),
-                    shape: BoxShape.circle,
-                  ),
-                  child: IconButton(
-                    icon: const Icon(
-                      Icons.description_outlined,
+          appBar: widget.isNestedInTabView
+              ? null
+              : AppBar(
+                  title: Text(
+                    widget.isRecruiter ? 'Recruiter Profile' : 'Seeker Profile',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
                       color: Colors.white,
-                      size: 20,
+                      fontSize: 18.sp,
                     ),
-                    padding: EdgeInsets.all(2.w),
-                    onPressed: () {
-                      dev.log('Opening resume preview', name: 'ProfileScreen');
-                      final resumeData = _generateResumeData();
-                      showDialog(
-                        context: context,
-                        builder: (context) => AlertDialog(
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16.r),
+                  ),
+                  centerTitle: true,
+                  flexibleSpace: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Colors.blue.shade700, Colors.teal.shade600],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                    ),
+                  ),
+                  elevation: 0,
+                  actions: [
+                    if (!widget.isRecruiter) ...[
+                      Container(
+                        margin: EdgeInsets.symmetric(
+                          horizontal: 4.w,
+                          vertical: 6.h,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.18),
+                          shape: BoxShape.circle,
+                        ),
+                        child: IconButton(
+                          icon: const Icon(
+                            Icons.description_outlined,
+                            color: Colors.white,
+                            size: 20,
                           ),
-                          title: Container(
-                            padding: EdgeInsets.all(12.w),
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [
-                                  Colors.blue.shade700,
-                                  Colors.blue.shade900,
-                                ],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              borderRadius: BorderRadius.vertical(
-                                top: Radius.circular(16.r),
-                              ),
-                            ),
-                            child: const Text(
-                              'Resume Preview',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                            ),
-                          ),
-                          content: SingleChildScrollView(
-                            child: Container(
-                              constraints: BoxConstraints(maxWidth: 300.w),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Email: ${resumeData['email'] ?? 'N/A'}',
-                                    style: TextStyle(fontSize: 14.sp),
-                                  ),
-                                  Text(
-                                    'Mobile: ${resumeData['mobileNumber'] ?? 'N/A'}',
-                                    style: TextStyle(fontSize: 14.sp),
-                                  ),
-                                  Text(
-                                    'Name: ${resumeData['name'] ?? 'N/A'}',
-                                    style: TextStyle(fontSize: 14.sp),
-                                  ),
-                                  SizedBox(height: 6.h),
-                                  Text(
-                                    'Skills:',
-                                    style: TextStyle(
-                                      fontSize: 12.sp,
-                                      color: Colors.blue.shade800,
+                          padding: EdgeInsets.all(2.w),
+                          onPressed: () {
+                            dev.log(
+                              'Opening resume preview',
+                              name: 'ProfileScreen',
+                            );
+                            final resumeData = _generateResumeData();
+                            showDialog(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16.r),
+                                ),
+                                title: Container(
+                                  padding: EdgeInsets.all(12.w),
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        Colors.blue.shade700,
+                                        Colors.blue.shade900,
+                                      ],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    ),
+                                    borderRadius: BorderRadius.vertical(
+                                      top: Radius.circular(16.r),
                                     ),
                                   ),
-                                  Wrap(
-                                    spacing: 6.w,
-                                    runSpacing: 4.h,
-                                    children:
-                                        (resumeData['skills'] as List<dynamic>?)
-                                            ?.cast<String>()
-                                            .map(
-                                              (skill) => Chip(
-                                                label: Text(
-                                                  skill,
-                                                  style: TextStyle(
-                                                    fontSize: 12.sp,
+                                  child: const Text(
+                                    'Resume Preview',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ),
+                                content: SingleChildScrollView(
+                                  child: Container(
+                                    constraints: BoxConstraints(
+                                      maxWidth: 300.w,
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Email: ${resumeData['email'] ?? 'N/A'}',
+                                          style: TextStyle(fontSize: 14.sp),
+                                        ),
+                                        Text(
+                                          'Mobile: ${resumeData['mobileNumber'] ?? 'N/A'}',
+                                          style: TextStyle(fontSize: 14.sp),
+                                        ),
+                                        Text(
+                                          'Name: ${resumeData['name'] ?? 'N/A'}',
+                                          style: TextStyle(fontSize: 14.sp),
+                                        ),
+                                        SizedBox(height: 6.h),
+                                        Text(
+                                          'Skills:',
+                                          style: TextStyle(
+                                            fontSize: 12.sp,
+                                            color: Colors.blue.shade800,
+                                          ),
+                                        ),
+                                        Wrap(
+                                          spacing: 6.w,
+                                          runSpacing: 4.h,
+                                          children:
+                                              (resumeData['skills']
+                                                      as List<dynamic>?)
+                                                  ?.cast<String>()
+                                                  .map(
+                                                    (skill) => Chip(
+                                                      label: Text(
+                                                        skill,
+                                                        style: TextStyle(
+                                                          fontSize: 12.sp,
+                                                        ),
+                                                      ),
+                                                      backgroundColor:
+                                                          Colors.teal.shade100,
+                                                      labelStyle: TextStyle(
+                                                        color: Colors
+                                                            .teal
+                                                            .shade900,
+                                                      ),
+                                                    ),
+                                                  )
+                                                  .toList() ??
+                                              [
+                                                const Chip(
+                                                  label: Text(
+                                                    'N/A',
+                                                    style: TextStyle(
+                                                      fontSize: 12,
+                                                    ),
                                                   ),
                                                 ),
-                                                backgroundColor:
-                                                    Colors.teal.shade100,
-                                                labelStyle: TextStyle(
-                                                  color: Colors.teal.shade900,
-                                                ),
-                                              ),
-                                            )
-                                            .toList() ??
-                                        [
-                                          const Chip(
-                                            label: Text(
-                                              'N/A',
-                                              style: TextStyle(fontSize: 12),
-                                            ),
+                                              ],
+                                        ),
+                                        SizedBox(height: 6.h),
+                                        Text(
+                                          'Education: ${resumeData['education'] ?? 'N/A'}',
+                                          style: TextStyle(fontSize: 14.sp),
+                                        ),
+                                        Text(
+                                          'Experience: ${resumeData['experience'] ?? 'N/A'}',
+                                          style: TextStyle(fontSize: 14.sp),
+                                        ),
+                                        Text(
+                                          'Specialization: ${resumeData['specialization'] ?? 'N/A'}',
+                                          style: TextStyle(fontSize: 14.sp),
+                                        ),
+                                        Text(
+                                          'Current CTC: ${_formatCtc(resumeData['currentCtc'] ?? '0.0')}',
+                                          style: TextStyle(fontSize: 14.sp),
+                                        ),
+                                        Text(
+                                          'Expected CTC: ${_formatCtc(resumeData['expectedCtc'] ?? '0.0')}',
+                                          style: TextStyle(fontSize: 14.sp),
+                                        ),
+                                        if (resumeData['linkedinUrl'] != null &&
+                                            resumeData['linkedinUrl']
+                                                .toString()
+                                                .isNotEmpty)
+                                          Text(
+                                            'LinkedIn: ${resumeData['linkedinUrl']}',
+                                            style: TextStyle(fontSize: 14.sp),
                                           ),
-                                        ],
-                                  ),
-                                  SizedBox(height: 6.h),
-                                  Text(
-                                    'Education: ${resumeData['education'] ?? 'N/A'}',
-                                    style: TextStyle(fontSize: 14.sp),
-                                  ),
-                                  Text(
-                                    'Experience: ${resumeData['experience'] ?? 'N/A'}',
-                                    style: TextStyle(fontSize: 14.sp),
-                                  ),
-                                  Text(
-                                    'Specialization: ${resumeData['specialization'] ?? 'N/A'}',
-                                    style: TextStyle(fontSize: 14.sp),
-                                  ),
-                                  Text(
-                                    'Current CTC: ${_formatCtc(resumeData['currentCtc'] ?? '0.0')}',
-                                    style: TextStyle(fontSize: 14.sp),
-                                  ),
-                                  Text(
-                                    'Expected CTC: ${_formatCtc(resumeData['expectedCtc'] ?? '0.0')}',
-                                    style: TextStyle(fontSize: 14.sp),
-                                  ),
-                                  if (resumeData['linkedinUrl'] != null &&
-                                      resumeData['linkedinUrl']
-                                          .toString()
-                                          .isNotEmpty)
-                                    Text(
-                                      'LinkedIn: ${resumeData['linkedinUrl']}',
-                                      style: TextStyle(fontSize: 14.sp),
+                                      ],
                                     ),
+                                  ),
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context),
+                                    child: const Text(
+                                      'Close',
+                                      style: TextStyle(
+                                        color: Colors.teal,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ),
                                 ],
                               ),
-                            ),
-                          ),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(context),
-                              child: const Text(
-                                'Close',
-                                style: TextStyle(
-                                  color: Colors.teal,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ),
-                          ],
+                            );
+                          },
                         ),
-                      );
-                    },
-                  ),
+                      ),
+                    ],
+                    Container(
+                      margin: EdgeInsets.only(
+                        right: 8.w,
+                        left: 4.w,
+                        top: 6.h,
+                        bottom: 6.h,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.18),
+                        shape: BoxShape.circle,
+                      ),
+                      child: IconButton(
+                        icon: const Icon(
+                          Icons.edit_outlined,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                        padding: EdgeInsets.all(2.w),
+                        onPressed: _showUpdateProfileDialog,
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-              Container(
-                margin: EdgeInsets.only(
-                  right: 8.w,
-                  left: 4.w,
-                  top: 6.h,
-                  bottom: 6.h,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.18),
-                  shape: BoxShape.circle,
-                ),
-                child: IconButton(
-                  icon: const Icon(
-                    Icons.edit_outlined,
-                    color: Colors.white,
-                    size: 20,
-                  ),
-                  padding: EdgeInsets.all(2.w),
-                  onPressed: _showUpdateProfileDialog,
-                ),
-              ),
-            ],
-          ),
           body: Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -2941,12 +3040,17 @@ class ProfileScreenState extends State<ProfileScreen> {
                               decoration: BoxDecoration(
                                 color: Colors.orange.shade50,
                                 borderRadius: BorderRadius.circular(12.r),
-                                border: Border.all(color: Colors.orange.shade200),
+                                border: Border.all(
+                                  color: Colors.orange.shade200,
+                                ),
                               ),
                               child: Row(
                                 children: [
-                                  Icon(Icons.notifications_active_outlined, 
-                                       color: Colors.orange.shade700, size: 20.sp),
+                                  Icon(
+                                    Icons.notifications_active_outlined,
+                                    color: Colors.orange.shade700,
+                                    size: 20.sp,
+                                  ),
                                   SizedBox(width: 8.w),
                                   Expanded(
                                     child: Text(
@@ -2966,15 +3070,21 @@ class ProfileScreenState extends State<ProfileScreen> {
                             Container(
                               width: double.infinity,
                               margin: EdgeInsets.only(top: 8.h),
-                              padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 12.w,
+                                vertical: 8.h,
+                              ),
                               decoration: BoxDecoration(
                                 color: Colors.blue.shade50,
                                 borderRadius: BorderRadius.circular(8.r),
                               ),
                               child: Row(
                                 children: [
-                                  Icon(Icons.update_outlined, 
-                                       color: Colors.blue.shade700, size: 16.sp),
+                                  Icon(
+                                    Icons.update_outlined,
+                                    color: Colors.blue.shade700,
+                                    size: 16.sp,
+                                  ),
                                   SizedBox(width: 6.w),
                                   Text(
                                     'Last updated: $_lastProfileUpdate',
@@ -2998,7 +3108,9 @@ class ProfileScreenState extends State<ProfileScreen> {
                               borderRadius: BorderRadius.circular(16.r),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.blueGrey.withValues(alpha: 0.08),
+                                  color: Colors.blueGrey.withValues(
+                                    alpha: 0.08,
+                                  ),
                                   blurRadius: 12.r,
                                   offset: Offset(0, 4.h),
                                 ),
@@ -3014,15 +3126,17 @@ class ProfileScreenState extends State<ProfileScreen> {
                                       width: 60.w,
                                       height: 60.w,
                                       child: CircularProgressIndicator(
-                                        value: _calculateProfileCompletion() / 100,
+                                        value:
+                                            _calculateProfileCompletion() / 100,
                                         strokeWidth: 6.w,
                                         backgroundColor: Colors.grey.shade200,
                                         valueColor: AlwaysStoppedAnimation<Color>(
                                           _calculateProfileCompletion() >= 80
                                               ? Colors.green.shade500
-                                              : _calculateProfileCompletion() >= 50
-                                                  ? Colors.orange.shade500
-                                                  : Colors.red.shade500,
+                                              : _calculateProfileCompletion() >=
+                                                    50
+                                              ? Colors.orange.shade500
+                                              : Colors.red.shade500,
                                         ),
                                       ),
                                     ),
@@ -3039,7 +3153,8 @@ class ProfileScreenState extends State<ProfileScreen> {
                                 SizedBox(width: 16.w),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         'Profile Completion',
@@ -3053,9 +3168,10 @@ class ProfileScreenState extends State<ProfileScreen> {
                                       Text(
                                         _calculateProfileCompletion() >= 80
                                             ? 'Great! Your profile is almost complete.'
-                                            : _calculateProfileCompletion() >= 50
-                                                ? 'Good progress! Keep filling in your details.'
-                                                : 'Complete your profile to get better job matches.',
+                                            : _calculateProfileCompletion() >=
+                                                  50
+                                            ? 'Good progress! Keep filling in your details.'
+                                            : 'Complete your profile to get better job matches.',
                                         style: TextStyle(
                                           fontSize: 12.sp,
                                           color: Colors.grey.shade600,
@@ -3144,14 +3260,14 @@ class ProfileDialogState extends State<ProfileDialog> {
   List<String> _mapOldSkillsToNewFormat(List<String> oldSkills) {
     final mapping = _getOldToNewSkillsMapping();
     final mappedSkills = <String>[];
-    
+
     for (final skill in oldSkills) {
       final trimmedSkill = skill.trim();
       if (trimmedSkill.isEmpty) continue;
-      
+
       // Check if skill already matches new format (contains "Development", "Engineering", etc.)
-      if (trimmedSkill.contains('Development') || 
-          trimmedSkill.contains('Engineering') || 
+      if (trimmedSkill.contains('Development') ||
+          trimmedSkill.contains('Engineering') ||
           trimmedSkill.contains('Implementation') ||
           trimmedSkill.contains('Integration') ||
           trimmedSkill.contains('Optimization') ||
@@ -3187,8 +3303,10 @@ class ProfileDialogState extends State<ProfileDialog> {
           // If no mapping found, try to find a skill in _allSkills that contains the old skill name
           if (_allSkills.isNotEmpty) {
             final matchingSkill = _allSkills.firstWhere(
-              (newSkill) => newSkill.toLowerCase().contains(trimmedSkill.toLowerCase()),
-              orElse: () => '${trimmedSkill} Development', // Fallback: add "Development" suffix
+              (newSkill) =>
+                  newSkill.toLowerCase().contains(trimmedSkill.toLowerCase()),
+              orElse: () =>
+                  '${trimmedSkill} Development', // Fallback: add "Development" suffix
             );
             mappedSkills.add(matchingSkill);
           } else {
@@ -3198,7 +3316,7 @@ class ProfileDialogState extends State<ProfileDialog> {
         }
       }
     }
-    
+
     // Remove duplicates while preserving order
     final seen = <String>{};
     return mappedSkills.where((skill) => seen.add(skill)).toList();
@@ -3206,8 +3324,8 @@ class ProfileDialogState extends State<ProfileDialog> {
 
   Map<String, dynamic>? get _profileDataFromInitial =>
       widget.initialData['profileData'] is Map<String, dynamic>
-          ? widget.initialData['profileData'] as Map<String, dynamic>
-          : null;
+      ? widget.initialData['profileData'] as Map<String, dynamic>
+      : null;
 
   // Onboarding / preferences editable controllers
   late final TextEditingController _jobTitleController;
@@ -3224,6 +3342,12 @@ class ProfileDialogState extends State<ProfileDialog> {
   late final TextEditingController _githubUrlController;
   late final TextEditingController _portfolioUrlController;
   late final TextEditingController _resumeUrlController;
+
+  // Parent details (seeker)
+  late final TextEditingController _fatherNameController;
+  late final TextEditingController _fatherOccupationController;
+  late final TextEditingController _motherNameController;
+  late final TextEditingController _motherOccupationController;
 
   // Education details (seeker) – editable in Edit Profile
   late final TextEditingController _tenthPassingYearController;
@@ -3304,16 +3428,16 @@ class ProfileDialogState extends State<ProfileDialog> {
     _linkedinUrlController = TextEditingController(
       text: widget.initialData['linkedinUrl'],
     );
-    _cityController = TextEditingController(
-      text: widget.initialData['city'],
-    );
+    _cityController = TextEditingController(text: widget.initialData['city']);
     _addressController = TextEditingController(
       text: widget.initialData['city'],
     );
     _specialization = widget.initialData['specialization'];
     _education = widget.initialData['education'];
     _selectedCity = widget.initialData['city'];
-    _skills = _mapOldSkillsToNewFormat(List<String>.from(widget.initialData['skills'] ?? []));
+    _skills = _mapOldSkillsToNewFormat(
+      List<String>.from(widget.initialData['skills'] ?? []),
+    );
 
     final p = _profileDataFromInitial ?? const <String, dynamic>{};
     _jobTitleController = TextEditingController(
@@ -3352,6 +3476,19 @@ class ProfileDialogState extends State<ProfileDialog> {
     );
     _resumeUrlController = TextEditingController(
       text: p['resumeUrl']?.toString() ?? '',
+    );
+
+    _fatherNameController = TextEditingController(
+      text: p['fatherName']?.toString() ?? '',
+    );
+    _fatherOccupationController = TextEditingController(
+      text: p['fatherOccupation']?.toString() ?? '',
+    );
+    _motherNameController = TextEditingController(
+      text: p['motherName']?.toString() ?? '',
+    );
+    _motherOccupationController = TextEditingController(
+      text: p['motherOccupation']?.toString() ?? '',
     );
 
     _tenthPassingYearController = TextEditingController();
@@ -3400,14 +3537,13 @@ class ProfileDialogState extends State<ProfileDialog> {
           _twelfthScoreType = st;
         }
         final stream = twelfth['stream']?.toString();
-        if (stream != null &&
-            _twelfthStreamOptions.contains(stream)) {
+        if (stream != null && _twelfthStreamOptions.contains(stream)) {
           _twelfthStreamChoice = stream;
         }
       }
       final at12 = edu['afterTwelfth']?.toString();
-      if (at12 != null &&
-          _afterTwelfthOptions.contains(at12)) _afterTwelfthChoice = at12;
+      if (at12 != null && _afterTwelfthOptions.contains(at12))
+        _afterTwelfthChoice = at12;
       final diploma = edu['diploma'];
       if (diploma is Map) {
         _diplomaBranchController.text = diploma['branch']?.toString() ?? '';
@@ -3426,16 +3562,14 @@ class ProfileDialogState extends State<ProfileDialog> {
       if (graduation is Map) {
         _graduationDegreeController.text =
             graduation['degree']?.toString() ?? '';
-        _graduationMajorController.text =
-            graduation['major']?.toString() ?? '';
+        _graduationMajorController.text = graduation['major']?.toString() ?? '';
         _graduationUniversityController.text =
             graduation['university']?.toString() ?? '';
         _graduationStartYearController.text =
             graduation['startYear']?.toString() ?? '';
         _graduationEndYearController.text =
             graduation['endYear']?.toString() ?? '';
-        _graduationScoreController.text =
-            graduation['score']?.toString() ?? '';
+        _graduationScoreController.text = graduation['score']?.toString() ?? '';
         final st = graduation['scoreType']?.toString();
         if (st != null && _scoreTypeOptions.contains(st)) {
           _graduationScoreType = st;
@@ -3462,15 +3596,15 @@ class ProfileDialogState extends State<ProfileDialog> {
     if (prevExps is List) {
       _previousExperiencesList = prevExps
           .whereType<Map>()
-          .map<Map<String, String>>((e) => {
-                'companyName':
-                    (e['companyName'] ?? e['company'] ?? '').toString(),
-                'jobTitle':
-                    (e['jobTitle'] ?? e['role'] ?? '').toString(),
-                'startDate':
-                    (e['startDate'] ?? e['from'] ?? '').toString(),
-                'endDate': (e['endDate'] ?? e['to'] ?? '').toString(),
-              })
+          .map<Map<String, String>>(
+            (e) => {
+              'companyName': (e['companyName'] ?? e['company'] ?? '')
+                  .toString(),
+              'jobTitle': (e['jobTitle'] ?? e['role'] ?? '').toString(),
+              'startDate': (e['startDate'] ?? e['from'] ?? '').toString(),
+              'endDate': (e['endDate'] ?? e['to'] ?? '').toString(),
+            },
+          )
           .toList();
     }
     for (final entry in _previousExperiencesList) {
@@ -3529,6 +3663,10 @@ class ProfileDialogState extends State<ProfileDialog> {
     _githubUrlController.dispose();
     _portfolioUrlController.dispose();
     _resumeUrlController.dispose();
+    _fatherNameController.dispose();
+    _fatherOccupationController.dispose();
+    _motherNameController.dispose();
+    _motherOccupationController.dispose();
     _tenthPassingYearController.dispose();
     _tenthScoreController.dispose();
     _twelfthStreamOtherController.dispose();
@@ -3599,57 +3737,59 @@ class ProfileDialogState extends State<ProfileDialog> {
                 suggestionsCallback: (search) {
                   final q = search.trim().toLowerCase();
                   if (q.isEmpty) return const <String>[];
-                  final selectedLower =
-                      _skills.map((e) => e.toLowerCase()).toSet();
-                  
+                  final selectedLower = _skills
+                      .map((e) => e.toLowerCase())
+                      .toSet();
+
                   // Get all available skills (both from skills.json and old skills)
                   final allAvailableSkills = <String>[];
                   allAvailableSkills.addAll(_allSkills); // New skills from JSON
-                  
+
                   // Add old skills from skillsBySpecialization for backward compatibility
                   final oldSkills = widget.skillsBySpecialization.values
                       .expand((skills) => skills)
-                      .where((skill) => !selectedLower.contains(skill.toLowerCase()))
+                      .where(
+                        (skill) => !selectedLower.contains(skill.toLowerCase()),
+                      )
                       .toList();
                   allAvailableSkills.addAll(oldSkills);
-                  
+
                   // Filter skills that match search query and aren't already selected
                   final matchingSkills = allAvailableSkills
-                      .where((s) =>
-                          !selectedLower.contains(s.toLowerCase()) &&
-                          s.toLowerCase().contains(q))
+                      .where(
+                        (s) =>
+                            !selectedLower.contains(s.toLowerCase()) &&
+                            s.toLowerCase().contains(q),
+                      )
                       .toSet()
                       .toList();
-                  
+
                   // Sort results: prioritize exact matches, then skills starting with query
                   matchingSkills.sort((a, b) {
                     final aLower = a.toLowerCase();
                     final bLower = b.toLowerCase();
                     final qLower = q;
-                    
+
                     // Exact match first
                     if (aLower == qLower) return -1;
                     if (bLower == qLower) return 1;
-                    
+
                     // Skills starting with query next
                     final aStarts = aLower.startsWith(qLower);
                     final bStarts = bLower.startsWith(qLower);
                     if (aStarts && !bStarts) return -1;
                     if (!aStarts && bStarts) return 1;
-                    
+
                     // Alphabetical order
                     return aLower.compareTo(bLower);
                   });
-                  
+
                   return matchingSkills.take(20).toList();
                 },
                 itemBuilder: (context, suggestion) {
                   return ListTile(
                     dense: true,
-                    title: Text(
-                      suggestion,
-                      style: TextStyle(fontSize: 13.sp),
-                    ),
+                    title: Text(suggestion, style: TextStyle(fontSize: 13.sp)),
                   );
                 },
                 onSelected: (suggestion) {
@@ -3669,7 +3809,10 @@ class ProfileDialogState extends State<ProfileDialog> {
                     focusNode: focusNode,
                     decoration: InputDecoration(
                       labelText: 'Select Skills',
-                      labelStyle: TextStyle(color: Colors.grey, fontSize: 12.sp),
+                      labelStyle: TextStyle(
+                        color: Colors.grey,
+                        fontSize: 12.sp,
+                      ),
                       enabledBorder: OutlineInputBorder(
                         borderSide: BorderSide(color: Colors.grey.shade400),
                         borderRadius: BorderRadius.circular(12.r),
@@ -3750,10 +3893,7 @@ class ProfileDialogState extends State<ProfileDialog> {
           SizedBox(height: 2.h),
           Text(
             text,
-            style: TextStyle(
-              fontSize: 12.sp,
-              color: Colors.black87,
-            ),
+            style: TextStyle(fontSize: 12.sp, color: Colors.black87),
           ),
         ],
       ),
@@ -3788,13 +3928,8 @@ class ProfileDialogState extends State<ProfileDialog> {
             color: Colors.blueGrey.shade600,
             fontSize: 12.sp,
           ),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10.r),
-          ),
-          contentPadding: EdgeInsets.symmetric(
-            horizontal: 10.w,
-            vertical: 8.h,
-          ),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10.r)),
+          contentPadding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
           filled: true,
           fillColor: Colors.white,
         ),
@@ -3815,7 +3950,13 @@ class ProfileDialogState extends State<ProfileDialog> {
       final y = int.tryParse(parts.length == 3 ? parts[2] : parts[0]);
       final m = int.tryParse(parts[0].length <= 2 ? parts[0] : parts[1]);
       final day = int.tryParse(parts[1].length <= 2 ? parts[1] : parts[2]);
-      if (y != null && m != null && day != null && m >= 1 && m <= 12 && day >= 1 && day <= 31)
+      if (y != null &&
+          m != null &&
+          day != null &&
+          m >= 1 &&
+          m <= 12 &&
+          day >= 1 &&
+          day <= 31)
         return DateTime(y, m, day);
     }
     return null;
@@ -3839,8 +3980,8 @@ class ProfileDialogState extends State<ProfileDialog> {
     final value = totalYears < 0.1
         ? '0'
         : totalYears >= 12
-            ? '12+'
-            : totalYears.toStringAsFixed(1).replaceFirst(RegExp(r'\.0$'), '');
+        ? '12+'
+        : totalYears.toStringAsFixed(1).replaceFirst(RegExp(r'\.0$'), '');
     if (_totalExperienceYearsController.text != value) {
       _totalExperienceYearsController.text = value;
     }
@@ -3879,16 +4020,15 @@ class ProfileDialogState extends State<ProfileDialog> {
             color: Colors.blueGrey.shade600,
             fontSize: 12.sp,
           ),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10.r),
-          ),
-          contentPadding: EdgeInsets.symmetric(
-            horizontal: 10.w,
-            vertical: 8.h,
-          ),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10.r)),
+          contentPadding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
           filled: true,
           fillColor: Colors.white,
-          suffixIcon: Icon(Icons.calendar_today, size: 20.sp, color: Colors.blueGrey.shade600),
+          suffixIcon: Icon(
+            Icons.calendar_today,
+            size: 20.sp,
+            color: Colors.blueGrey.shade600,
+          ),
         ),
       ),
     );
@@ -3915,8 +4055,7 @@ class ProfileDialogState extends State<ProfileDialog> {
       payload['afterTwelfth'] = _afterTwelfthChoice;
     }
     final showDiploma =
-        _afterTenthChoice == 'Diploma' ||
-        (_afterTwelfthChoice == 'Diploma');
+        _afterTenthChoice == 'Diploma' || (_afterTwelfthChoice == 'Diploma');
     if (showDiploma) {
       payload['diploma'] = {
         'branch': _diplomaBranchController.text.trim(),
@@ -3966,7 +4105,10 @@ class ProfileDialogState extends State<ProfileDialog> {
         value: value,
         decoration: InputDecoration(
           labelText: label,
-          labelStyle: TextStyle(color: Colors.blueGrey.shade600, fontSize: 12.sp),
+          labelStyle: TextStyle(
+            color: Colors.blueGrey.shade600,
+            fontSize: 12.sp,
+          ),
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(10.r)),
           contentPadding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
           filled: true,
@@ -4075,7 +4217,9 @@ class ProfileDialogState extends State<ProfileDialog> {
               return const Iterable<String>.empty();
             }
             return widget.cityOptions.where((String option) {
-              return option.toLowerCase().contains(textEditingValue.text.toLowerCase());
+              return option.toLowerCase().contains(
+                textEditingValue.text.toLowerCase(),
+              );
             });
           },
           onSelected: (String selection) {
@@ -4085,98 +4229,112 @@ class ProfileDialogState extends State<ProfileDialog> {
               _errorMessage = null;
             });
           },
-          fieldViewBuilder: (BuildContext context, TextEditingController textEditingController, FocusNode focusNode, VoidCallback onFieldSubmitted) {
-            // Initialize the autocomplete controller with our current value
-            if (textEditingController.text != _cityController.text) {
-              textEditingController.text = _cityController.text;
-            }
-            // Add listener to update our state when text changes
-            textEditingController.addListener(() {
-              if (_selectedCity != textEditingController.text) {
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  if (mounted) {
-                    setState(() {
-                      _selectedCity = textEditingController.text;
-                      _cityController.text = textEditingController.text;
-                      _errorMessage = null;
+          fieldViewBuilder:
+              (
+                BuildContext context,
+                TextEditingController textEditingController,
+                FocusNode focusNode,
+                VoidCallback onFieldSubmitted,
+              ) {
+                // Initialize the autocomplete controller with our current value
+                if (textEditingController.text != _cityController.text) {
+                  textEditingController.text = _cityController.text;
+                }
+                // Add listener to update our state when text changes
+                textEditingController.addListener(() {
+                  if (_selectedCity != textEditingController.text) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (mounted) {
+                        setState(() {
+                          _selectedCity = textEditingController.text;
+                          _cityController.text = textEditingController.text;
+                          _errorMessage = null;
+                        });
+                      }
                     });
                   }
                 });
-              }
-            });
-            return TextFormField(
-              controller: textEditingController,
-              focusNode: focusNode,
-              decoration: InputDecoration(
-                labelText: 'City',
-                labelStyle: TextStyle(color: Colors.grey, fontSize: 12.sp),
-                enabledBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: Colors.grey.shade400),
-                  borderRadius: BorderRadius.circular(12.r),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: Colors.teal, width: 2.w),
-                  borderRadius: BorderRadius.circular(12.r),
-                ),
-                errorBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: Colors.red, width: 2.w),
-                  borderRadius: BorderRadius.circular(12.r),
-                ),
-                focusedErrorBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: Colors.red, width: 2.w),
-                  borderRadius: BorderRadius.circular(12.r),
-                ),
-                errorStyle: TextStyle(
-                  color: Colors.red.shade700,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 11.sp,
-                ),
-                filled: true,
-                fillColor: Colors.white,
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: 12.w,
-                  vertical: 10.h,
-                ),
-                prefixIcon: Icon(
-                  Icons.location_city_outlined,
-                  color: Colors.teal.shade600,
-                  size: 18.sp,
-                ),
-              ),
-              validator: (value) => value == null || value.trim().isEmpty
-                  ? 'City is required'
-                  : null,
-              autovalidateMode: AutovalidateMode.onUserInteraction,
-            );
-          },
-          optionsViewBuilder: (BuildContext context, AutocompleteOnSelected<String> onSelected, Iterable<String> options) {
-            return Align(
-              alignment: Alignment.topLeft,
-              child: Material(
-                elevation: 4.0,
-                child: Container(
-                  constraints: BoxConstraints(maxWidth: 300.w, maxHeight: 200.h),
-                  child: ListView.builder(
-                    padding: EdgeInsets.zero,
-                    shrinkWrap: true,
-                    itemCount: options.length,
-                    itemBuilder: (BuildContext context, int index) {
-                      final String option = options.elementAt(index);
-                      return ListTile(
-                        title: Text(
-                          option,
-                          style: TextStyle(fontSize: 14.sp),
-                        ),
-                        onTap: () {
-                          onSelected(option);
-                        },
-                      );
-                    },
+                return TextFormField(
+                  controller: textEditingController,
+                  focusNode: focusNode,
+                  decoration: InputDecoration(
+                    labelText: 'City',
+                    labelStyle: TextStyle(color: Colors.grey, fontSize: 12.sp),
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.grey.shade400),
+                      borderRadius: BorderRadius.circular(12.r),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.teal, width: 2.w),
+                      borderRadius: BorderRadius.circular(12.r),
+                    ),
+                    errorBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.red, width: 2.w),
+                      borderRadius: BorderRadius.circular(12.r),
+                    ),
+                    focusedErrorBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.red, width: 2.w),
+                      borderRadius: BorderRadius.circular(12.r),
+                    ),
+                    errorStyle: TextStyle(
+                      color: Colors.red.shade700,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 11.sp,
+                    ),
+                    filled: true,
+                    fillColor: Colors.white,
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 12.w,
+                      vertical: 10.h,
+                    ),
+                    prefixIcon: Icon(
+                      Icons.location_city_outlined,
+                      color: Colors.teal.shade600,
+                      size: 18.sp,
+                    ),
                   ),
-                ),
-              ),
-            );
-          },
+                  validator: (value) => value == null || value.trim().isEmpty
+                      ? 'City is required'
+                      : null,
+                  autovalidateMode: AutovalidateMode.onUserInteraction,
+                );
+              },
+          optionsViewBuilder:
+              (
+                BuildContext context,
+                AutocompleteOnSelected<String> onSelected,
+                Iterable<String> options,
+              ) {
+                return Align(
+                  alignment: Alignment.topLeft,
+                  child: Material(
+                    elevation: 4.0,
+                    child: Container(
+                      constraints: BoxConstraints(
+                        maxWidth: 300.w,
+                        maxHeight: 200.h,
+                      ),
+                      child: ListView.builder(
+                        padding: EdgeInsets.zero,
+                        shrinkWrap: true,
+                        itemCount: options.length,
+                        itemBuilder: (BuildContext context, int index) {
+                          final String option = options.elementAt(index);
+                          return ListTile(
+                            title: Text(
+                              option,
+                              style: TextStyle(fontSize: 14.sp),
+                            ),
+                            onTap: () {
+                              onSelected(option);
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                );
+              },
         ),
       ),
     );
@@ -4260,11 +4418,12 @@ class ProfileDialogState extends State<ProfileDialog> {
                         validator: (v) =>
                             (v == null || v.trim().isEmpty) ? 'Required' : null,
                         decoration: InputDecoration(
-                          labelStyle:
-                              TextStyle(color: Colors.grey, fontSize: 12.sp),
+                          labelStyle: TextStyle(
+                            color: Colors.grey,
+                            fontSize: 12.sp,
+                          ),
                           enabledBorder: OutlineInputBorder(
-                            borderSide:
-                                BorderSide(color: Colors.grey.shade400),
+                            borderSide: BorderSide(color: Colors.grey.shade400),
                             borderRadius: BorderRadius.circular(12.r),
                           ),
                           focusedBorder: OutlineInputBorder(
@@ -4275,13 +4434,17 @@ class ProfileDialogState extends State<ProfileDialog> {
                             borderRadius: BorderRadius.circular(12.r),
                           ),
                           errorBorder: OutlineInputBorder(
-                            borderSide:
-                                BorderSide(color: Colors.red, width: 2.w),
+                            borderSide: BorderSide(
+                              color: Colors.red,
+                              width: 2.w,
+                            ),
                             borderRadius: BorderRadius.circular(12.r),
                           ),
                           focusedErrorBorder: OutlineInputBorder(
-                            borderSide:
-                                BorderSide(color: Colors.red, width: 2.w),
+                            borderSide: BorderSide(
+                              color: Colors.red,
+                              width: 2.w,
+                            ),
                             borderRadius: BorderRadius.circular(12.r),
                           ),
                           errorStyle: TextStyle(
@@ -4309,10 +4472,25 @@ class ProfileDialogState extends State<ProfileDialog> {
                   _buildTextField(
                     'Name',
                     controller: _nameController,
-                    validator: (value) =>
-                        value == null || value.trim().isEmpty
-                            ? 'Name is required'
-                            : null,
+                    validator: (value) => value == null || value.trim().isEmpty
+                        ? 'Name is required'
+                        : null,
+                  ),
+                  _buildTextField(
+                    'Father Name',
+                    controller: _fatherNameController,
+                  ),
+                  _buildTextField(
+                    'Father Occupation',
+                    controller: _fatherOccupationController,
+                  ),
+                  _buildTextField(
+                    'Mother Name',
+                    controller: _motherNameController,
+                  ),
+                  _buildTextField(
+                    'Mother Occupation',
+                    controller: _motherOccupationController,
                   ),
                   Padding(
                     padding: EdgeInsets.symmetric(vertical: 8.h),
@@ -4326,11 +4504,12 @@ class ProfileDialogState extends State<ProfileDialog> {
                         validator: (v) =>
                             (v == null || v.trim().isEmpty) ? 'Required' : null,
                         decoration: InputDecoration(
-                          labelStyle:
-                              TextStyle(color: Colors.grey, fontSize: 12.sp),
+                          labelStyle: TextStyle(
+                            color: Colors.grey,
+                            fontSize: 12.sp,
+                          ),
                           enabledBorder: OutlineInputBorder(
-                            borderSide:
-                                BorderSide(color: Colors.grey.shade400),
+                            borderSide: BorderSide(color: Colors.grey.shade400),
                             borderRadius: BorderRadius.circular(12.r),
                           ),
                           focusedBorder: OutlineInputBorder(
@@ -4341,13 +4520,17 @@ class ProfileDialogState extends State<ProfileDialog> {
                             borderRadius: BorderRadius.circular(12.r),
                           ),
                           errorBorder: OutlineInputBorder(
-                            borderSide:
-                                BorderSide(color: Colors.red, width: 2.w),
+                            borderSide: BorderSide(
+                              color: Colors.red,
+                              width: 2.w,
+                            ),
                             borderRadius: BorderRadius.circular(12.r),
                           ),
                           focusedErrorBorder: OutlineInputBorder(
-                            borderSide:
-                                BorderSide(color: Colors.red, width: 2.w),
+                            borderSide: BorderSide(
+                              color: Colors.red,
+                              width: 2.w,
+                            ),
                             borderRadius: BorderRadius.circular(12.r),
                           ),
                           errorStyle: TextStyle(
@@ -4371,9 +4554,11 @@ class ProfileDialogState extends State<ProfileDialog> {
                       constraints: BoxConstraints(maxWidth: 300.w),
                       child: DropdownButtonFormField<String>(
                         initialValue:
-                            widget.specializationOptions.contains(_specialization)
-                                ? _specialization
-                                : null,
+                            widget.specializationOptions.contains(
+                              _specialization,
+                            )
+                            ? _specialization
+                            : null,
                         decoration: InputDecoration(
                           labelText: 'Specialization',
                           labelStyle: TextStyle(
@@ -4381,8 +4566,7 @@ class ProfileDialogState extends State<ProfileDialog> {
                             fontSize: 12.sp,
                           ),
                           enabledBorder: OutlineInputBorder(
-                            borderSide:
-                                BorderSide(color: Colors.grey.shade400),
+                            borderSide: BorderSide(color: Colors.grey.shade400),
                             borderRadius: BorderRadius.circular(12.r),
                           ),
                           focusedBorder: OutlineInputBorder(
@@ -4425,9 +4609,8 @@ class ProfileDialogState extends State<ProfileDialog> {
                             _errorMessage = null;
                           });
                         },
-                        validator: (value) => value == null
-                            ? 'Specialization is required'
-                            : null,
+                        validator: (value) =>
+                            value == null ? 'Specialization is required' : null,
                       ),
                     ),
                   ),
@@ -4436,7 +4619,8 @@ class ProfileDialogState extends State<ProfileDialog> {
                     child: Container(
                       constraints: BoxConstraints(maxWidth: 300.w),
                       child: DropdownButtonFormField<String>(
-                        initialValue: widget.educationOptions.contains(_education)
+                        initialValue:
+                            widget.educationOptions.contains(_education)
                             ? _education
                             : null,
                         decoration: InputDecoration(
@@ -4446,8 +4630,7 @@ class ProfileDialogState extends State<ProfileDialog> {
                             fontSize: 12.sp,
                           ),
                           enabledBorder: OutlineInputBorder(
-                            borderSide:
-                                BorderSide(color: Colors.grey.shade400),
+                            borderSide: BorderSide(color: Colors.grey.shade400),
                             borderRadius: BorderRadius.circular(12.r),
                           ),
                           focusedBorder: OutlineInputBorder(
@@ -4458,13 +4641,17 @@ class ProfileDialogState extends State<ProfileDialog> {
                             borderRadius: BorderRadius.circular(12.r),
                           ),
                           errorBorder: OutlineInputBorder(
-                            borderSide:
-                                BorderSide(color: Colors.red, width: 2.w),
+                            borderSide: BorderSide(
+                              color: Colors.red,
+                              width: 2.w,
+                            ),
                             borderRadius: BorderRadius.circular(12.r),
                           ),
                           focusedErrorBorder: OutlineInputBorder(
-                            borderSide:
-                                BorderSide(color: Colors.red, width: 2.w),
+                            borderSide: BorderSide(
+                              color: Colors.red,
+                              width: 2.w,
+                            ),
                             borderRadius: BorderRadius.circular(12.r),
                           ),
                           errorStyle: TextStyle(
@@ -4505,9 +4692,8 @@ class ProfileDialogState extends State<ProfileDialog> {
                             });
                           }
                         },
-                        validator: (value) => value == null
-                            ? 'Education is required'
-                            : null,
+                        validator: (value) =>
+                            value == null ? 'Education is required' : null,
                       ),
                     ),
                   ),
@@ -4550,7 +4736,9 @@ class ProfileDialogState extends State<ProfileDialog> {
                     controller: _industryController,
                   ),
                   Theme(
-                    data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                    data: Theme.of(
+                      context,
+                    ).copyWith(dividerColor: Colors.transparent),
                     child: ExpansionTile(
                       initiallyExpanded: false,
                       title: Text(
@@ -4566,7 +4754,8 @@ class ProfileDialogState extends State<ProfileDialog> {
                           label: 'After 10th',
                           value: _afterTenthChoice,
                           items: _afterTenthOptions,
-                          onChanged: (v) => setState(() => _afterTenthChoice = v),
+                          onChanged: (v) =>
+                              setState(() => _afterTenthChoice = v),
                         ),
                         _buildEditableOnboardingField(
                           label: '10th - Passing Year',
@@ -4587,7 +4776,8 @@ class ProfileDialogState extends State<ProfileDialog> {
                             label: '12th - Stream',
                             value: _twelfthStreamChoice,
                             items: _twelfthStreamOptions,
-                            onChanged: (v) => setState(() => _twelfthStreamChoice = v),
+                            onChanged: (v) =>
+                                setState(() => _twelfthStreamChoice = v),
                           ),
                           _buildEditableOnboardingField(
                             label: '12th - Stream Other',
@@ -4605,13 +4795,15 @@ class ProfileDialogState extends State<ProfileDialog> {
                             label: '12th - Score Type',
                             value: _twelfthScoreType,
                             items: _scoreTypeOptions,
-                            onChanged: (v) => setState(() => _twelfthScoreType = v),
+                            onChanged: (v) =>
+                                setState(() => _twelfthScoreType = v),
                           ),
                           _buildDropdownFormField<String>(
                             label: 'After 12th',
                             value: _afterTwelfthChoice,
                             items: _afterTwelfthOptions,
-                            onChanged: (v) => setState(() => _afterTwelfthChoice = v),
+                            onChanged: (v) =>
+                                setState(() => _afterTwelfthChoice = v),
                           ),
                         ],
                         if (_afterTenthChoice == 'Diploma' ||
@@ -4640,7 +4832,8 @@ class ProfileDialogState extends State<ProfileDialog> {
                             label: 'Diploma - Score Type',
                             value: _diplomaScoreType,
                             items: _scoreTypeOptions,
-                            onChanged: (v) => setState(() => _diplomaScoreType = v),
+                            onChanged: (v) =>
+                                setState(() => _diplomaScoreType = v),
                           ),
                         ],
                         if (_afterTwelfthChoice == 'Graduation') ...[
@@ -4672,7 +4865,8 @@ class ProfileDialogState extends State<ProfileDialog> {
                             label: 'Graduation - Score Type',
                             value: _graduationScoreType,
                             items: _scoreTypeOptions,
-                            onChanged: (v) => setState(() => _graduationScoreType = v),
+                            onChanged: (v) =>
+                                setState(() => _graduationScoreType = v),
                           ),
                         ],
                       ],
@@ -4706,7 +4900,8 @@ class ProfileDialogState extends State<ProfileDialog> {
                               ),
                               Switch(
                                 value: _hasPostGraduation,
-                                onChanged: (v) => setState(() => _hasPostGraduation = v),
+                                onChanged: (v) =>
+                                    setState(() => _hasPostGraduation = v),
                               ),
                             ],
                           ),
@@ -4738,7 +4933,9 @@ class ProfileDialogState extends State<ProfileDialog> {
                     ),
                   ],
                   Theme(
-                    data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                    data: Theme.of(
+                      context,
+                    ).copyWith(dividerColor: Colors.transparent),
                     child: ExpansionTile(
                       initiallyExpanded: false,
                       title: Text(
@@ -4782,7 +4979,9 @@ class ProfileDialogState extends State<ProfileDialog> {
                     ),
                   ),
                   Theme(
-                    data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                    data: Theme.of(
+                      context,
+                    ).copyWith(dividerColor: Colors.transparent),
                     child: ExpansionTile(
                       initiallyExpanded: false,
                       title: Text(
@@ -4806,7 +5005,8 @@ class ProfileDialogState extends State<ProfileDialog> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
                                       children: [
                                         Text(
                                           'Experience ${i + 1}',
@@ -4816,17 +5016,26 @@ class ProfileDialogState extends State<ProfileDialog> {
                                           ),
                                         ),
                                         IconButton(
-                                          icon: Icon(Icons.remove_circle_outline,
-                                              size: 20.sp, color: Colors.red),
+                                          icon: Icon(
+                                            Icons.remove_circle_outline,
+                                            size: 20.sp,
+                                            color: Colors.red,
+                                          ),
                                           onPressed: () {
                                             setState(() {
-                                              final removed = _prevExpControllers.removeAt(i);
+                                              final removed =
+                                                  _prevExpControllers.removeAt(
+                                                    i,
+                                                  );
                                               removed['companyName']?.dispose();
                                               removed['jobTitle']?.dispose();
                                               removed['startDate']?.dispose();
                                               removed['endDate']?.dispose();
-                                              if (i < _previousExperiencesList.length) {
-                                                _previousExperiencesList.removeAt(i);
+                                              if (i <
+                                                  _previousExperiencesList
+                                                      .length) {
+                                                _previousExperiencesList
+                                                    .removeAt(i);
                                               }
                                               _updateTotalExperienceFromPrevExperiences();
                                             });
@@ -4848,13 +5057,15 @@ class ProfileDialogState extends State<ProfileDialog> {
                                       label: 'Start Date',
                                       controller: ctrls['startDate']!,
                                       lastDate: DateTime.now(),
-                                      onDatePicked: _updateTotalExperienceFromPrevExperiences,
+                                      onDatePicked:
+                                          _updateTotalExperienceFromPrevExperiences,
                                     ),
                                     _buildDatePickerField(
                                       label: 'End Date',
                                       controller: ctrls['endDate']!,
                                       lastDate: DateTime.now(),
-                                      onDatePicked: _updateTotalExperienceFromPrevExperiences,
+                                      onDatePicked:
+                                          _updateTotalExperienceFromPrevExperiences,
                                     ),
                                   ],
                                 ),
@@ -4925,8 +5136,8 @@ class ProfileDialogState extends State<ProfileDialog> {
                           'mobileNumber': mobileNumber,
                           'city': _addressController.text.trim(),
                           'companyName': _companyNameController.text.trim(),
-                          'companyProfile':
-                              _companyProfileController.text.trim(),
+                          'companyProfile': _companyProfileController.text
+                              .trim(),
                           'designation': _designationController.text.trim(),
                           'linkedinUrl': _linkedinUrlController.text.trim(),
                           'updatedAt': FieldValue.serverTimestamp(),
@@ -4946,12 +5157,18 @@ class ProfileDialogState extends State<ProfileDialog> {
                               .replaceAll(' LPA (INR)', '')
                               .trim(),
                           'linkedinUrl': _linkedinUrlController.text.trim(),
+                          'fatherName': _fatherNameController.text.trim(),
+                          'fatherOccupation': _fatherOccupationController.text
+                              .trim(),
+                          'motherName': _motherNameController.text.trim(),
+                          'motherOccupation': _motherOccupationController.text
+                              .trim(),
                           // Onboarding extras (basic info)
                           'jobTitle': _jobTitleController.text.trim(),
-                          'currentCompany':
-                              _currentCompanyController.text.trim(),
-                          'employmentType':
-                              _employmentTypeController.text.trim(),
+                          'currentCompany': _currentCompanyController.text
+                              .trim(),
+                          'employmentType': _employmentTypeController.text
+                              .trim(),
                           'totalExperienceYears':
                               _totalExperienceYearsController.text.trim(),
                           // Onboarding fields edited in-place
@@ -4965,12 +5182,14 @@ class ProfileDialogState extends State<ProfileDialog> {
                           'resumeUrl': _resumeUrlController.text.trim(),
                           'educationDetails': _buildEducationDetailsPayload(),
                           'previousExperiences': _prevExpControllers
-                              .map((c) => {
-                                    'companyName': c['companyName']!.text.trim(),
-                                    'jobTitle': c['jobTitle']!.text.trim(),
-                                    'startDate': c['startDate']!.text.trim(),
-                                    'endDate': c['endDate']!.text.trim(),
-                                  })
+                              .map(
+                                (c) => {
+                                  'companyName': c['companyName']!.text.trim(),
+                                  'jobTitle': c['jobTitle']!.text.trim(),
+                                  'startDate': c['startDate']!.text.trim(),
+                                  'endDate': c['endDate']!.text.trim(),
+                                },
+                              )
                               .toList(),
                           'updatedAt': FieldValue.serverTimestamp(),
                         };
@@ -5006,6 +5225,7 @@ class ProfileDialogState extends State<ProfileDialog> {
     );
   }
 }
+
 class AnimatedScaleButton extends StatefulWidget {
   final VoidCallback onPressed;
   final Widget child;

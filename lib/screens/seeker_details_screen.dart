@@ -16,122 +16,288 @@ class SeekerDetailsScreen extends StatelessWidget {
   });
 
   Future<Map<String, dynamic>> _fetchSeekerDetails() async {
-    dev.log('[DEBUG] Starting _fetchSeekerDetails with seekerId: $seekerId, jobId: $jobId', name: 'SeekerDetailsScreen');
-    
+    dev.log(
+      '[DEBUG] Starting _fetchSeekerDetails with seekerId: $seekerId, jobId: $jobId',
+      name: 'SeekerDetailsScreen',
+    );
+
     final firestore = FirebaseFirestore.instance;
     final currentUser = FirebaseAuth.instance.currentUser;
-    dev.log('[DEBUG] Current user: ${currentUser?.uid}, email: ${currentUser?.email}', name: 'SeekerDetailsScreen');
+    dev.log(
+      '[DEBUG] Current user: ${currentUser?.uid}, email: ${currentUser?.email}',
+      name: 'SeekerDetailsScreen',
+    );
 
     try {
-      final userIndexFuture = firestore.collection('UsersIndex').doc(seekerId).get();
-      final seekerProfileFuture = firestore.collection('Seekers').doc(seekerId).get();
-      
+      final userIndexFuture = firestore
+          .collection('UsersIndex')
+          .doc(seekerId)
+          .get();
+      final seekerProfileFuture = firestore
+          .collection('Seekers')
+          .doc(seekerId)
+          .get();
+
       // Only fetch application data if jobId is valid and non-empty
       Future<DocumentSnapshot> applicationFuture;
       if (jobId.isNotEmpty && jobId != 'Unknown') {
-        dev.log('[DEBUG] Fetching application data for ${seekerId}_$jobId', name: 'SeekerDetailsScreen');
-        applicationFuture = firestore.collection('Applications').doc('${seekerId}_$jobId').get();
+        dev.log(
+          '[DEBUG] Fetching application data for ${seekerId}_$jobId',
+          name: 'SeekerDetailsScreen',
+        );
+        applicationFuture = firestore
+            .collection('Applications')
+            .doc('${seekerId}_$jobId')
+            .get();
       } else {
-        dev.log('[DEBUG] Skipping application fetch due to empty jobId: "$jobId"', name: 'SeekerDetailsScreen');
+        dev.log(
+          '[DEBUG] Skipping application fetch due to empty jobId: "$jobId"',
+          name: 'SeekerDetailsScreen',
+        );
         // Create a completed future with empty data when jobId is invalid
-        applicationFuture = Future.value(FirebaseFirestore.instance.collection('dummy').doc('dummy').get());
+        applicationFuture = Future.value(
+          FirebaseFirestore.instance.collection('dummy').doc('dummy').get(),
+        );
         // We'll handle this case by checking applicationDoc.exists later
       }
 
-      final results = await Future.wait([userIndexFuture, applicationFuture, seekerProfileFuture]);
+      final results = await Future.wait([
+        userIndexFuture,
+        applicationFuture,
+        seekerProfileFuture,
+      ]);
       final userIndexDoc = results[0];
       final applicationDoc = results[1];
       final seekerProfileDoc = results[2];
 
-      dev.log('[DEBUG] userIndexDoc.exists: ${userIndexDoc.exists}', name: 'SeekerDetailsScreen');
-      dev.log('[DEBUG] applicationDoc.exists: ${applicationDoc.exists}', name: 'SeekerDetailsScreen');
-      dev.log('[DEBUG] seekerProfileDoc.exists: ${seekerProfileDoc.exists}', name: 'SeekerDetailsScreen');
+      dev.log(
+        '[DEBUG] userIndexDoc.exists: ${userIndexDoc.exists}',
+        name: 'SeekerDetailsScreen',
+      );
+      dev.log(
+        '[DEBUG] applicationDoc.exists: ${applicationDoc.exists}',
+        name: 'SeekerDetailsScreen',
+      );
+      dev.log(
+        '[DEBUG] seekerProfileDoc.exists: ${seekerProfileDoc.exists}',
+        name: 'SeekerDetailsScreen',
+      );
 
       final details = <String, dynamic>{};
 
       // Fetch from UsersIndex (basic info)
       if (userIndexDoc.exists) {
-        dev.log('[DEBUG] Processing UsersIndex data', name: 'SeekerDetailsScreen');
-        final userData = userIndexDoc.data() as Map<String, dynamic>? ?? <String, dynamic>{};
-        details['name'] = (details['name'] ?? userData['name'] ?? userData['fullName'] ?? '').toString();
-        details['email'] = (details['email'] ?? userData['email'] ?? '').toString();
-        details['mobileNumber'] = (details['mobileNumber'] ?? userData['mobileNumber'] ?? '').toString();
-        details['photoUrl'] = (details['photoUrl'] ?? userData['photoUrl'] ?? userData['profilePhotoUrl'] ?? '').toString();
-        dev.log('[DEBUG] UsersIndex data processed successfully', name: 'SeekerDetailsScreen');
+        dev.log(
+          '[DEBUG] Processing UsersIndex data',
+          name: 'SeekerDetailsScreen',
+        );
+        final userData =
+            userIndexDoc.data() as Map<String, dynamic>? ?? <String, dynamic>{};
+        details['name'] =
+            (details['name'] ?? userData['name'] ?? userData['fullName'] ?? '')
+                .toString();
+        details['email'] = (details['email'] ?? userData['email'] ?? '')
+            .toString();
+        details['mobileNumber'] =
+            (details['mobileNumber'] ?? userData['mobileNumber'] ?? '')
+                .toString();
+        details['photoUrl'] =
+            (details['photoUrl'] ??
+                    userData['photoUrl'] ??
+                    userData['profilePhotoUrl'] ??
+                    '')
+                .toString();
+        dev.log(
+          '[DEBUG] UsersIndex data processed successfully',
+          name: 'SeekerDetailsScreen',
+        );
       } else {
-        dev.log('[DEBUG] No UsersIndex data found for seekerId: $seekerId', name: 'SeekerDetailsScreen');
+        dev.log(
+          '[DEBUG] No UsersIndex data found for seekerId: $seekerId',
+          name: 'SeekerDetailsScreen',
+        );
       }
 
       // Fetch from Seekers collection (complete profile data)
       if (seekerProfileDoc.exists) {
-        dev.log('[DEBUG] Processing Seekers collection data', name: 'SeekerDetailsScreen');
-        final seekerData = seekerProfileDoc.data() as Map<String, dynamic>? ?? <String, dynamic>{};
-        
+        dev.log(
+          '[DEBUG] Processing Seekers collection data',
+          name: 'SeekerDetailsScreen',
+        );
+        final seekerData =
+            seekerProfileDoc.data() as Map<String, dynamic>? ??
+            <String, dynamic>{};
+
         // Basic profile fields
-        details['name'] = (seekerData['name'] ?? details['name'] ?? '').toString();
-        details['email'] = (seekerData['email'] ?? details['email'] ?? '').toString();
-        details['mobileNumber'] = (seekerData['mobileNumber'] ?? details['mobileNumber'] ?? '').toString();
-        details['photoUrl'] = (seekerData['photoUrl'] ?? seekerData['profilePhotoUrl'] ?? details['photoUrl'] ?? '').toString();
-        details['education'] = (seekerData['education'] ?? details['education'] ?? '').toString();
-        details['experience'] = (seekerData['experience'] ?? details['experience'] ?? '').toString();
-        details['specialization'] = (seekerData['specialization'] ?? details['specialization'] ?? '').toString();
-        details['currentCompany'] = (seekerData['currentCompany'] ?? details['currentCompany'] ?? '').toString();
-        details['currentCtc'] = (seekerData['currentCtc'] ?? details['currentCtc'] ?? '').toString();
-        details['expectedCtc'] = (seekerData['expectedCtc'] ?? details['expectedCtc'] ?? '').toString();
-        details['resumeUrl'] = (seekerData['resumeUrl'] ?? details['resumeUrl'] ?? '').toString();
-        details['city'] = (seekerData['city'] ?? details['city'] ?? '').toString();
-        details['linkedinUrl'] = (seekerData['linkedinUrl'] ?? details['linkedinUrl'] ?? '').toString();
-        
+        details['name'] = (seekerData['name'] ?? details['name'] ?? '')
+            .toString();
+        details['email'] = (seekerData['email'] ?? details['email'] ?? '')
+            .toString();
+        details['mobileNumber'] =
+            (seekerData['mobileNumber'] ?? details['mobileNumber'] ?? '')
+                .toString();
+        details['photoUrl'] =
+            (seekerData['photoUrl'] ??
+                    seekerData['profilePhotoUrl'] ??
+                    details['photoUrl'] ??
+                    '')
+                .toString();
+        details['education'] =
+            (seekerData['education'] ?? details['education'] ?? '').toString();
+        details['experience'] =
+            (seekerData['experience'] ?? details['experience'] ?? '')
+                .toString();
+        details['specialization'] =
+            (seekerData['specialization'] ?? details['specialization'] ?? '')
+                .toString();
+        details['currentCompany'] =
+            (seekerData['currentCompany'] ?? details['currentCompany'] ?? '')
+                .toString();
+        details['currentCtc'] =
+            (seekerData['currentCtc'] ?? details['currentCtc'] ?? '')
+                .toString();
+        details['expectedCtc'] =
+            (seekerData['expectedCtc'] ?? details['expectedCtc'] ?? '')
+                .toString();
+        details['resumeUrl'] =
+            (seekerData['resumeUrl'] ?? details['resumeUrl'] ?? '').toString();
+        details['city'] = (seekerData['city'] ?? details['city'] ?? '')
+            .toString();
+        details['linkedinUrl'] =
+            (seekerData['linkedinUrl'] ?? details['linkedinUrl'] ?? '')
+                .toString();
+        details['fatherName'] =
+            (seekerData['fatherName'] ?? details['fatherName'] ?? '')
+                .toString();
+        details['fatherOccupation'] =
+            (seekerData['fatherOccupation'] ??
+                    details['fatherOccupation'] ??
+                    '')
+                .toString();
+        details['motherName'] =
+            (seekerData['motherName'] ?? details['motherName'] ?? '')
+                .toString();
+        details['motherOccupation'] =
+            (seekerData['motherOccupation'] ??
+                    details['motherOccupation'] ??
+                    '')
+                .toString();
+
         // Skills
         final seekerSkills = seekerData['skills'];
         if (seekerSkills != null && seekerSkills is List) {
           details['skills'] = seekerSkills;
         }
-        
+
         // Onboarding details
-        details['currentStatus'] = (seekerData['currentStatus'] ?? details['currentStatus'] ?? '').toString();
-        details['jobTitle'] = (seekerData['jobTitle'] ?? details['jobTitle'] ?? '').toString();
-        details['industry'] = (seekerData['industry'] ?? details['industry'] ?? '').toString();
-        details['employmentType'] = (seekerData['employmentType'] ?? details['employmentType'] ?? '').toString();
-        details['totalExperienceYears'] = (seekerData['totalExperienceYears'] ?? details['totalExperienceYears'] ?? '').toString();
-        details['currentJobStartDate'] = (seekerData['currentJobStartDate'] ?? details['currentJobStartDate'] ?? '').toString();
-        details['currentJobEndDate'] = (seekerData['currentJobEndDate'] ?? details['currentJobEndDate'] ?? '').toString();
-        details['previousCompanies'] = (seekerData['previousCompanies'] ?? details['previousCompanies'] ?? '').toString();
-        details['achievements'] = (seekerData['achievements'] ?? details['achievements'] ?? '').toString();
-        details['projects'] = (seekerData['projects'] ?? details['projects'] ?? '').toString();
-        details['internships'] = (seekerData['internships'] ?? details['internships'] ?? '').toString();
-        details['softSkills'] = (seekerData['softSkills'] ?? details['softSkills'] ?? '').toString();
-        details['githubUrl'] = (seekerData['githubUrl'] ?? details['githubUrl'] ?? '').toString();
-        details['portfolioUrl'] = (seekerData['portfolioUrl'] ?? details['portfolioUrl'] ?? '').toString();
-        
+        details['currentStatus'] =
+            (seekerData['currentStatus'] ?? details['currentStatus'] ?? '')
+                .toString();
+        details['jobTitle'] =
+            (seekerData['jobTitle'] ?? details['jobTitle'] ?? '').toString();
+        details['industry'] =
+            (seekerData['industry'] ?? details['industry'] ?? '').toString();
+        details['employmentType'] =
+            (seekerData['employmentType'] ?? details['employmentType'] ?? '')
+                .toString();
+        details['totalExperienceYears'] =
+            (seekerData['totalExperienceYears'] ??
+                    details['totalExperienceYears'] ??
+                    '')
+                .toString();
+        details['currentJobStartDate'] =
+            (seekerData['currentJobStartDate'] ??
+                    details['currentJobStartDate'] ??
+                    '')
+                .toString();
+        details['currentJobEndDate'] =
+            (seekerData['currentJobEndDate'] ??
+                    details['currentJobEndDate'] ??
+                    '')
+                .toString();
+        details['previousCompanies'] =
+            (seekerData['previousCompanies'] ??
+                    details['previousCompanies'] ??
+                    '')
+                .toString();
+        details['achievements'] =
+            (seekerData['achievements'] ?? details['achievements'] ?? '')
+                .toString();
+        details['projects'] =
+            (seekerData['projects'] ?? details['projects'] ?? '').toString();
+        details['internships'] =
+            (seekerData['internships'] ?? details['internships'] ?? '')
+                .toString();
+        details['softSkills'] =
+            (seekerData['softSkills'] ?? details['softSkills'] ?? '')
+                .toString();
+        details['githubUrl'] =
+            (seekerData['githubUrl'] ?? details['githubUrl'] ?? '').toString();
+        details['portfolioUrl'] =
+            (seekerData['portfolioUrl'] ?? details['portfolioUrl'] ?? '')
+                .toString();
+
         // Store education details and previous experiences for display
         details['educationDetails'] = seekerData['educationDetails'];
         details['previousExperiences'] = seekerData['previousExperiences'];
-        dev.log('[DEBUG] Seekers collection data processed successfully', name: 'SeekerDetailsScreen');
+        dev.log(
+          '[DEBUG] Seekers collection data processed successfully',
+          name: 'SeekerDetailsScreen',
+        );
       } else {
-        dev.log('[DEBUG] No Seekers collection data found for seekerId: $seekerId', name: 'SeekerDetailsScreen');
+        dev.log(
+          '[DEBUG] No Seekers collection data found for seekerId: $seekerId',
+          name: 'SeekerDetailsScreen',
+        );
       }
 
       // Fetch from Applications (application-specific data)
       if (applicationDoc.exists && jobId.isNotEmpty && jobId != 'Unknown') {
-        dev.log('[DEBUG] Processing Applications collection data', name: 'SeekerDetailsScreen');
-        final applicationData = applicationDoc.data() as Map<String, dynamic>? ?? <String, dynamic>{};
-        final resume = applicationData['resume'] as Map<String, dynamic>? ?? <String, dynamic>{};
+        dev.log(
+          '[DEBUG] Processing Applications collection data',
+          name: 'SeekerDetailsScreen',
+        );
+        final applicationData =
+            applicationDoc.data() as Map<String, dynamic>? ??
+            <String, dynamic>{};
+        final resume =
+            applicationData['resume'] as Map<String, dynamic>? ??
+            <String, dynamic>{};
 
         // Only use application data if seeker profile data is not available
         details['name'] = (resume['name'] ?? details['name'] ?? '').toString();
-        details['email'] = (resume['email'] ?? details['email'] ?? '').toString();
-        details['mobileNumber'] = (resume['mobileNumber'] ?? details['mobileNumber'] ?? '').toString();
-        details['education'] = (details['education'] ?? resume['education'] ?? '').toString();
-        details['experience'] = (details['experience'] ?? resume['experience'] ?? '').toString();
-        details['specialization'] = (details['specialization'] ?? resume['specialization'] ?? '').toString();
-        details['currentCompany'] = (details['currentCompany'] ?? resume['currentCompany'] ?? '').toString();
-        details['currentCtc'] = (details['currentCtc'] ?? resume['currentCtc'] ?? '').toString();
-        details['expectedCtc'] = (details['expectedCtc'] ?? resume['expectedCtc'] ?? '').toString();
-        details['resumeUrl'] = (details['resumeUrl'] ?? resume['cvUrl'] ?? '').toString();
-        details['photoUrl'] = (details['photoUrl'] ?? resume['photoUrl'] ?? resume['profilePhotoUrl'] ?? '').toString();
-        details['jobTitle'] = (applicationData['jobTitle'] ?? details['jobTitle'] ?? '').toString();
-        details['company'] = (applicationData['company'] ?? details['company'] ?? '').toString();
+        details['email'] = (resume['email'] ?? details['email'] ?? '')
+            .toString();
+        details['mobileNumber'] =
+            (resume['mobileNumber'] ?? details['mobileNumber'] ?? '')
+                .toString();
+        details['education'] =
+            (details['education'] ?? resume['education'] ?? '').toString();
+        details['experience'] =
+            (details['experience'] ?? resume['experience'] ?? '').toString();
+        details['specialization'] =
+            (details['specialization'] ?? resume['specialization'] ?? '')
+                .toString();
+        details['currentCompany'] =
+            (details['currentCompany'] ?? resume['currentCompany'] ?? '')
+                .toString();
+        details['currentCtc'] =
+            (details['currentCtc'] ?? resume['currentCtc'] ?? '').toString();
+        details['expectedCtc'] =
+            (details['expectedCtc'] ?? resume['expectedCtc'] ?? '').toString();
+        details['resumeUrl'] = (details['resumeUrl'] ?? resume['cvUrl'] ?? '')
+            .toString();
+        details['photoUrl'] =
+            (details['photoUrl'] ??
+                    resume['photoUrl'] ??
+                    resume['profilePhotoUrl'] ??
+                    '')
+                .toString();
+        details['jobTitle'] =
+            (applicationData['jobTitle'] ?? details['jobTitle'] ?? '')
+                .toString();
+        details['company'] =
+            (applicationData['company'] ?? details['company'] ?? '').toString();
 
         // Use application skills only if seeker profile skills are not available
         if (details['skills'] == null) {
@@ -140,22 +306,41 @@ class SeekerDetailsScreen extends StatelessWidget {
             details['skills'] = resumeSkills;
           }
         }
-        dev.log('[DEBUG] Applications collection data processed successfully', name: 'SeekerDetailsScreen');
+        dev.log(
+          '[DEBUG] Applications collection data processed successfully',
+          name: 'SeekerDetailsScreen',
+        );
       } else {
-        dev.log('[DEBUG] No Applications collection data processed - exists: ${applicationDoc.exists}, jobId: "$jobId"', name: 'SeekerDetailsScreen');
+        dev.log(
+          '[DEBUG] No Applications collection data processed - exists: ${applicationDoc.exists}, jobId: "$jobId"',
+          name: 'SeekerDetailsScreen',
+        );
       }
 
-      dev.log('[DEBUG] Final details keys: ${details.keys.toList()}', name: 'SeekerDetailsScreen');
-      dev.log('[DEBUG] Successfully completed _fetchSeekerDetails', name: 'SeekerDetailsScreen');
+      dev.log(
+        '[DEBUG] Final details keys: ${details.keys.toList()}',
+        name: 'SeekerDetailsScreen',
+      );
+      dev.log(
+        '[DEBUG] Successfully completed _fetchSeekerDetails',
+        name: 'SeekerDetailsScreen',
+      );
       return details;
-      
     } catch (e, stackTrace) {
-      dev.log('[ERROR] Exception in _fetchSeekerDetails: $e', name: 'SeekerDetailsScreen', error: e, stackTrace: stackTrace);
+      dev.log(
+        '[ERROR] Exception in _fetchSeekerDetails: $e',
+        name: 'SeekerDetailsScreen',
+        error: e,
+        stackTrace: stackTrace,
+      );
       rethrow;
     }
   }
 
-  Widget _buildOnboardingDetailsCard(BuildContext context, Map<String, dynamic> data) {
+  Widget _buildOnboardingDetailsCard(
+    BuildContext context,
+    Map<String, dynamic> data,
+  ) {
     if (data.isEmpty) return const SizedBox.shrink();
 
     Widget row(String label, dynamic value) {
@@ -189,7 +374,8 @@ class SeekerDetailsScreen extends StatelessWidget {
     }
 
     Widget chips(String label, List<dynamic>? values) {
-      final list = values
+      final list =
+          values
               ?.map((e) => e.toString().trim())
               .where((e) => e.isNotEmpty)
               .toList() ??
@@ -296,7 +482,10 @@ class SeekerDetailsScreen extends StatelessWidget {
                 '10th - Passing Year',
                 (educationDetails['tenth'] as Map?)?['passingYear'],
               ),
-              row('10th - Score', (educationDetails['tenth'] as Map?)?['score']),
+              row(
+                '10th - Score',
+                (educationDetails['tenth'] as Map?)?['score'],
+              ),
               row(
                 '10th - Score Type',
                 (educationDetails['tenth'] as Map?)?['scoreType'],
@@ -417,7 +606,8 @@ class SeekerDetailsScreen extends StatelessWidget {
                 ),
                 row(
                   'Post-Graduation - Currently Studying',
-                  (educationDetails['postGraduation'] as Map?)?['currentlyStudying'],
+                  (educationDetails['postGraduation']
+                      as Map?)?['currentlyStudying'],
                 ),
               ],
             ],
@@ -478,7 +668,10 @@ class SeekerDetailsScreen extends StatelessWidget {
 
   String _stringList(dynamic value) {
     if (value is List) {
-      return value.map((e) => e.toString()).where((e) => e.trim().isNotEmpty).join(', ');
+      return value
+          .map((e) => e.toString())
+          .where((e) => e.trim().isNotEmpty)
+          .join(', ');
     }
     return value?.toString() ?? '';
   }
@@ -530,10 +723,7 @@ class SeekerDetailsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Seeker Details'),
-        centerTitle: true,
-      ),
+      appBar: AppBar(title: const Text('Seeker Details'), centerTitle: true),
       body: FutureBuilder<Map<String, dynamic>>(
         future: _fetchSeekerDetails(),
         builder: (context, snapshot) {
@@ -542,7 +732,11 @@ class SeekerDetailsScreen extends StatelessWidget {
           }
 
           if (snapshot.hasError) {
-            dev.log('[ERROR] FutureBuilder error: ${snapshot.error}', name: 'SeekerDetailsScreen', error: snapshot.error);
+            dev.log(
+              '[ERROR] FutureBuilder error: ${snapshot.error}',
+              name: 'SeekerDetailsScreen',
+              error: snapshot.error,
+            );
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -573,18 +767,26 @@ class SeekerDetailsScreen extends StatelessWidget {
                     children: [
                       CircleAvatar(
                         radius: 42.r,
-                        backgroundImage: photoUrl.isNotEmpty ? NetworkImage(photoUrl) : null,
+                        backgroundImage: photoUrl.isNotEmpty
+                            ? NetworkImage(photoUrl)
+                            : null,
                         child: photoUrl.isEmpty
                             ? Text(
                                 name.isNotEmpty ? name[0].toUpperCase() : '?',
-                                style: TextStyle(fontSize: 30.sp, fontWeight: FontWeight.bold),
+                                style: TextStyle(
+                                  fontSize: 30.sp,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               )
                             : null,
                       ),
                       SizedBox(height: 10.h),
                       Text(
                         name.isEmpty ? 'Unknown Seeker' : name,
-                        style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          fontSize: 18.sp,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ],
                   ),
@@ -598,7 +800,10 @@ class SeekerDetailsScreen extends StatelessWidget {
                       return Container(
                         width: double.infinity,
                         margin: EdgeInsets.only(bottom: 12.h),
-                        padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 12.w,
+                          vertical: 8.h,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.blue.shade50,
                           borderRadius: BorderRadius.circular(8.r),
@@ -606,8 +811,11 @@ class SeekerDetailsScreen extends StatelessWidget {
                         ),
                         child: Row(
                           children: [
-                            Icon(Icons.update_outlined, 
-                                 color: Colors.blue.shade700, size: 16.sp),
+                            Icon(
+                              Icons.update_outlined,
+                              color: Colors.blue.shade700,
+                              size: 16.sp,
+                            ),
                             SizedBox(width: 6.w),
                             Text(
                               'Profile updated: ${snapshot.data}',
@@ -624,20 +832,96 @@ class SeekerDetailsScreen extends StatelessWidget {
                     return const SizedBox.shrink();
                   },
                 ),
-                _detailTile(Icons.mail_outline, 'Email', data['email']?.toString() ?? ''),
-                _detailTile(Icons.phone_outlined, 'Mobile Number', data['mobileNumber']?.toString() ?? ''),
-                _detailTile(Icons.location_city_outlined, 'City', data['city']?.toString() ?? ''),
-                _detailTile(Icons.school_outlined, 'Education', data['education']?.toString() ?? ''),
-                _detailTile(Icons.work_outline, 'Experience', data['experience']?.toString() ?? ''),
-                _detailTile(Icons.category_outlined, 'Specialization', data['specialization']?.toString() ?? ''),
-                _detailTile(Icons.handyman_outlined, 'Skills', _stringList(data['skills'])),
-                _detailTile(Icons.business_outlined, 'Current Company', data['currentCompany']?.toString() ?? ''),
-                _detailTile(Icons.currency_rupee_outlined, 'Current CTC', data['currentCtc']?.toString() ?? ''),
-                _detailTile(Icons.currency_rupee, 'Expected CTC', data['expectedCtc']?.toString() ?? ''),
-                _detailTile(Icons.link_outlined, 'LinkedIn URL', data['linkedinUrl']?.toString() ?? ''),
-                _detailTile(Icons.description_outlined, 'Resume URL', data['resumeUrl']?.toString() ?? ''),
-                _detailTile(Icons.work_history_outlined, 'Applied Job', data['jobTitle']?.toString() ?? ''),
-                _detailTile(Icons.apartment_outlined, 'Company', data['company']?.toString() ?? ''),
+                _detailTile(
+                  Icons.mail_outline,
+                  'Email',
+                  data['email']?.toString() ?? '',
+                ),
+                _detailTile(
+                  Icons.phone_outlined,
+                  'Mobile Number',
+                  data['mobileNumber']?.toString() ?? '',
+                ),
+                _detailTile(
+                  Icons.location_city_outlined,
+                  'City',
+                  data['city']?.toString() ?? '',
+                ),
+                _detailTile(
+                  Icons.family_restroom_outlined,
+                  'Father Name',
+                  data['fatherName']?.toString() ?? '',
+                ),
+                _detailTile(
+                  Icons.work_outline,
+                  'Father Occupation',
+                  data['fatherOccupation']?.toString() ?? '',
+                ),
+                _detailTile(
+                  Icons.child_care_outlined,
+                  'Mother Name',
+                  data['motherName']?.toString() ?? '',
+                ),
+                _detailTile(
+                  Icons.work_outline,
+                  'Mother Occupation',
+                  data['motherOccupation']?.toString() ?? '',
+                ),
+                _detailTile(
+                  Icons.school_outlined,
+                  'Education',
+                  data['education']?.toString() ?? '',
+                ),
+                _detailTile(
+                  Icons.work_outline,
+                  'Experience',
+                  data['experience']?.toString() ?? '',
+                ),
+                _detailTile(
+                  Icons.category_outlined,
+                  'Specialization',
+                  data['specialization']?.toString() ?? '',
+                ),
+                _detailTile(
+                  Icons.handyman_outlined,
+                  'Skills',
+                  _stringList(data['skills']),
+                ),
+                _detailTile(
+                  Icons.business_outlined,
+                  'Current Company',
+                  data['currentCompany']?.toString() ?? '',
+                ),
+                _detailTile(
+                  Icons.currency_rupee_outlined,
+                  'Current CTC',
+                  data['currentCtc']?.toString() ?? '',
+                ),
+                _detailTile(
+                  Icons.currency_rupee,
+                  'Expected CTC',
+                  data['expectedCtc']?.toString() ?? '',
+                ),
+                _detailTile(
+                  Icons.link_outlined,
+                  'LinkedIn URL',
+                  data['linkedinUrl']?.toString() ?? '',
+                ),
+                _detailTile(
+                  Icons.description_outlined,
+                  'Resume URL',
+                  data['resumeUrl']?.toString() ?? '',
+                ),
+                _detailTile(
+                  Icons.work_history_outlined,
+                  'Applied Job',
+                  data['jobTitle']?.toString() ?? '',
+                ),
+                _detailTile(
+                  Icons.apartment_outlined,
+                  'Company',
+                  data['company']?.toString() ?? '',
+                ),
                 _buildOnboardingDetailsCard(context, data),
               ],
             ),
