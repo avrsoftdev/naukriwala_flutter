@@ -10,17 +10,16 @@ class AdMobService {
 
   // Ad Unit IDs
   static const String _productionBannerAdUnitId = 'ca-app-pub-7682628416837305/2211932306';
-  static const String _testBannerAdUnitId = 'ca-app-pub-3940256099942544/6300978111';
 
-  // App ID
-  static const String _appId = 'ca-app-pub-7682628416837305~6528563797';
+  // App ID (should match AndroidManifest.xml and AdMob console)
+  static const String _appId = 'ca-app-pub-7682628416837305~9778926556';
 
   bool _isInitialized = false;
   BannerAd? _bannerAd;
   bool _isBannerAdLoaded = false;
 
-  // Get the appropriate ad unit ID based on build mode
-  String get _bannerAdUnitId => kDebugMode ? _testBannerAdUnitId : _productionBannerAdUnitId;
+  // Always use production AdUnit ID as requested by user
+  String get _bannerAdUnitId => _productionBannerAdUnitId;
 
   // Initialize the Mobile Ads SDK
   Future<void> initialize() async {
@@ -31,12 +30,8 @@ class AdMobService {
       _isInitialized = true;
       dev.log('AdMob initialized successfully');
       
-      // Set test device IDs for debug mode
-      if (kDebugMode) {
-        MobileAds.instance.updateRequestConfiguration(
-          RequestConfiguration(testDeviceIds: ['YOUR_TEST_DEVICE_ID_HERE']),
-        );
-      }
+      // No test-device IDs: using production AdMob IDs only.
+      // If you need to debug in development, use AdMob console test device setup.
     } catch (e) {
       dev.log('Failed to initialize AdMob: $e');
       _isInitialized = false;
@@ -69,7 +64,7 @@ class AdMobService {
           onAdLoaded(ad);
         },
         onAdFailedToLoad: (Ad ad, LoadAdError error) {
-          dev.log('Banner ad failed to load: $error');
+          dev.log('Banner ad failed to load: code=${error.code}, message=${error.message}, domain=${error.domain}');
           _isBannerAdLoaded = false;
           ad.dispose();
           onAdFailedToLoad(ad);

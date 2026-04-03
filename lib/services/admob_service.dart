@@ -8,12 +8,11 @@ class AdMobService {
 
   // Ad Unit IDs
   static const String _productionBannerAdUnitId = 'ca-app-pub-7682628416837305/2211932306';
-  static const String _testBannerAdUnitId = 'ca-app-pub-3940256099942544/6300978111';
 
   bool _isInitialized = false;
 
-  // Get appropriate ad unit ID based on build mode
-  String get _bannerAdUnitId => kDebugMode ? _testBannerAdUnitId : _productionBannerAdUnitId;
+  // Always use production AdUnit ID
+  String get _bannerAdUnitId => _productionBannerAdUnitId;
 
   // Initialize Mobile Ads SDK
   Future<void> initialize() async {
