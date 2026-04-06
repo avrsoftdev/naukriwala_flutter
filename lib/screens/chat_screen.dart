@@ -1001,7 +1001,12 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
               ),
             ),
             Padding(
-              padding: EdgeInsets.all(8.w),
+              padding: EdgeInsets.only(
+                left: 8.w,
+                right: 8.w,
+                top: 8.w,
+                bottom: 32.h,
+              ),
               child: Row(
                 children: [
                   // Attachment buttons
