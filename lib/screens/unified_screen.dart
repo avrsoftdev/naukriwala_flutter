@@ -36,6 +36,7 @@ class UnifiedScreenState extends State<UnifiedScreen> {
   final _passwordController = TextEditingController();
   final _companyNameController = TextEditingController();
   bool _isLoading = false;
+  bool _isPasswordVisible = false;
 
   final _formKey = GlobalKey<FormState>();
   final Map<String, dynamic> _tempFormData = {};
@@ -477,6 +478,8 @@ class UnifiedScreenState extends State<UnifiedScreen> {
     bool isPassword = false,
     TextInputType? keyboardType,
     TextEditingController? controller,
+    bool? isPasswordVisible,
+    VoidCallback? onTogglePasswordVisibility,
   }) {
     final isPhone = label.toLowerCase().contains('mobile') || label.toLowerCase().contains('phone');
     final lowerLabel = label.toLowerCase();
@@ -494,7 +497,7 @@ class UnifiedScreenState extends State<UnifiedScreen> {
       padding: EdgeInsets.symmetric(vertical: 8.h),
       child: TextFormField(
         controller: controller,
-        obscureText: isPassword,
+        obscureText: isPassword && !(isPasswordVisible ?? false),
         keyboardType: isPhone ? TextInputType.phone : (keyboardType ?? TextInputType.text),
         inputFormatters: isPhone
             ? [
@@ -502,9 +505,24 @@ class UnifiedScreenState extends State<UnifiedScreen> {
                 LengthLimitingTextInputFormatter(10),
               ]
             : null,
+        autofillHints: lowerLabel.contains('email')
+            ? [AutofillHints.email, AutofillHints.username]
+            : lowerLabel.contains('password')
+                ? [AutofillHints.password]
+                : null,
         decoration: InputDecoration(
           labelText: label,
           prefixIcon: Icon(icon, color: _primaryBlue.withOpacity(0.85), size: 22.sp),
+          suffixIcon: isPassword
+              ? IconButton(
+                  icon: Icon(
+                    (isPasswordVisible ?? false) ? Icons.visibility_off : Icons.visibility,
+                    color: _primaryBlue.withOpacity(0.7),
+                    size: 22.sp,
+                  ),
+                  onPressed: onTogglePasswordVisibility,
+                )
+              : null,
           prefixText: isPhone ? '+91 ' : null,
           prefixStyle: TextStyle(color: Colors.grey.shade700, fontWeight: FontWeight.w600, fontSize: 14.sp),
           labelStyle: TextStyle(color: Colors.blueGrey.shade700, fontSize: 14.sp, fontWeight: FontWeight.w500),
@@ -922,7 +940,7 @@ class UnifiedScreenState extends State<UnifiedScreen> {
             ],
             _buildTextField('Email Id', controller: _emailController),
             SizedBox(height: 10.h),
-            _buildTextField('Password', isPassword: true, controller: _passwordController),
+            _buildTextField('Password', isPassword: true, controller: _passwordController, isPasswordVisible: _isPasswordVisible, onTogglePasswordVisibility: () => setState(() => _isPasswordVisible = !_isPasswordVisible)),
             SizedBox(height: 4.h),
             Align(
               alignment: Alignment.centerRight,
@@ -996,7 +1014,7 @@ class UnifiedScreenState extends State<UnifiedScreen> {
               _buildTextField('Name', controller: _nameController),
               _buildTextField('Mobile Number', controller: _phoneController),
               _buildTextField('Email Id', controller: _emailController),
-              _buildTextField('Password', isPassword: true, controller: _passwordController),
+              _buildTextField('Password', isPassword: true, controller: _passwordController, isPasswordVisible: _isPasswordVisible, onTogglePasswordVisibility: () => setState(() => _isPasswordVisible = !_isPasswordVisible)),
               if (_currentState == ScreenState.recruiterSignup)
                 _buildTextField('Company Name', controller: _companyNameController),
               SizedBox(height: 18.h),
