@@ -439,7 +439,29 @@ class ApplyJobScreenState extends State<ApplyJobScreen> {
     try {
       dev.log('[2025-08-13 23:31 IST] Applying for job ${widget.jobId}, seeker profile: $_seekerProfile',
           name: 'ApplyJobScreen');
-      String? fcmToken = await _messaging.getToken();
+      
+      // Get FCM token with retry logic
+      String? fcmToken;
+      for (int attempt = 1; attempt <= 3; attempt++) {
+        try {
+          fcmToken = await _messaging.getToken();
+          if (fcmToken != null) break;
+        } catch (e) {
+          dev.log(
+            '[2025-08-13 23:31 IST] FCM token attempt $attempt failed: $e',
+            name: 'ApplyJobScreen',
+          );
+          if (attempt < 3) {
+            await Future.delayed(Duration(seconds: attempt));
+          }
+        }
+      }
+      if (fcmToken == null) {
+        dev.log(
+          '[2025-08-13 23:31 IST] Unable to get FCM token after retries, continuing without it',
+          name: 'ApplyJobScreen',
+        );
+      }
       
       // Prepare test answer if test exists
       Map<String, dynamic>? testAnswer;

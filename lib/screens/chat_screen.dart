@@ -60,6 +60,9 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   bool _isAppInForeground = true; // Track app state
   bool _isSearchingMessages = false;
   String _messageSearchQuery = '';
+  DateTime? _lastAppCheckAttemptAt;
+  String? _lastAppCheckError;
+  DateTime? _lastAppCheckRateLimitedAt;
 
   @override
   void initState() {
@@ -214,6 +217,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
 
   // ────────────────────────────── FILE ATTACHMENT METHODS ──────────────────────────────
   Future<void> _pickAndSendImage() async {
+    if (_isSending) return;
     try {
       final XFile? image = await _imagePicker.pickImage(source: ImageSource.gallery);
       if (image != null) {
@@ -226,6 +230,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _pickAndSendDocument() async {
+    if (_isSending) return;
     try {
       FilePickerResult? result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
@@ -242,14 +247,85 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     }
   }
 
+  void _setSending(bool isSending) {
+    if (!mounted) return;
+    setState(() {
+      _isSending = isSending;
+    });
+  }
+
+  Future<String?> _refreshAppCheckToken({int retries = 2}) async {
+    // Avoid hammering App Check if previous attempt was very recent
+    final now = DateTime.now();
+    if (_lastAppCheckAttemptAt != null &&
+        now.difference(_lastAppCheckAttemptAt!).inSeconds < 30) {
+      dev.log('App Check refresh throttled to avoid rate limit', name: 'ChatScreen');
+      return null;
+    }
+    _lastAppCheckAttemptAt = now;
+
+    for (int attempt = 1; attempt <= retries; attempt++) {
+      try {
+        final tokenResponse = await FirebaseAppCheck.instance.getToken();
+        dev.log('App Check token obtained (attempt $attempt): success', name: 'ChatScreen');
+        _lastAppCheckError = null;
+        return tokenResponse;
+      } catch (e) {
+        final errorMsg = e.toString();
+        _lastAppCheckError = errorMsg;
+        dev.log('App Check refresh failed (attempt $attempt): $errorMsg', name: 'ChatScreen');
+        
+        // If it's a rate limiting error ("Too many attempts"), wait before retrying
+        if (errorMsg.contains('Too many attempts')) {
+          _lastAppCheckRateLimitedAt = DateTime.now();
+        }
+        if (errorMsg.contains('Too many attempts') && attempt < retries) {
+          await Future.delayed(Duration(seconds: 2 * attempt)); // Exponential backoff
+          continue;
+        }
+        
+        // If it's an attestation failure, don't retry
+        if (errorMsg.contains('attestation failed')) {
+          dev.log('App Check attestation failed - device may not support Play Integrity', name: 'ChatScreen');
+          return null;
+        }
+
+        // If it's an App Check 403, don't retry
+        if (errorMsg.contains('403') && errorMsg.contains('App attestation failed')) {
+          dev.log('App Check 403 attestation failure - debug token likely not registered', name: 'ChatScreen');
+          return null;
+        }
+      }
+    }
+    return null;
+  }
+
+  Future<User?> _waitForAuthenticatedUser({Duration timeout = const Duration(seconds: 10)}) async {
+    final current = _auth.currentUser;
+    if (current != null) return current;
+
+    try {
+      final user = await _auth
+          .authStateChanges()
+          .where((u) => u != null)
+          .cast<User>()
+          .first
+          .timeout(timeout);
+      return user;
+    } catch (e) {
+      dev.log('Auth wait timed out or failed: $e', name: 'ChatScreen');
+      return null;
+    }
+  }
+
   Future<void> _uploadAndSendFile(File file, String type, String fileName) async {
     if (_isSending) return;
-    _isSending = true;
+    _setSending(true);
 
     try {
       // Wait for auth to be ready and check authentication
-      await _auth.authStateChanges().first;
-      final senderId = _auth.currentUser?.uid;
+      final user = await _waitForAuthenticatedUser();
+      final senderId = user?.uid;
 
       dev.log('Current user: ${_auth.currentUser}', name: 'ChatScreen');
       dev.log('Sender ID: $senderId', name: 'ChatScreen');
@@ -266,12 +342,39 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
 
       // Force refresh auth and App Check tokens before uploading
       await _auth.currentUser?.reload();
-      await _auth.currentUser?.getIdToken(true);
-      try {
-        final appCheckToken = await FirebaseAppCheck.instance.getToken();
-        dev.log('App Check token refreshed: $appCheckToken', name: 'ChatScreen');
-      } catch (appCheckError) {
-        dev.log('App Check refresh failed: $appCheckError', name: 'ChatScreen');
+      final idToken = await _auth.currentUser?.getIdToken(true);
+      dev.log('Auth ID token refreshed', name: 'ChatScreen');
+
+      // Refresh App Check token with retry logic
+      final appCheckToken = await _refreshAppCheckToken(retries: 3);
+      if (appCheckToken != null) {
+        dev.log('App Check token successfully obtained', name: 'ChatScreen');
+      } else {
+        dev.log('Warning: App Check token unavailable, attempting upload with fallback', name: 'ChatScreen');
+        if (_lastAppCheckError != null && _lastAppCheckError!.contains('Too many attempts')) {
+          _showError(
+            'App Check is rate-limited ("Too many attempts").\n\n'
+            'Please:\n'
+            '1. Wait 5–10 minutes and try again\n'
+            '2. Make sure the App Check debug token is registered in Firebase Console\n'
+            '3. Restart the app (or clear app data if it keeps happening)\n',
+          );
+          return;
+        }
+        if (_lastAppCheckError != null &&
+            (_lastAppCheckError!.contains('App attestation failed') ||
+             _lastAppCheckError!.contains('403'))) {
+          _showError(
+            'Upload blocked by App Check in debug mode.\n\n'
+            'Fix:\n'
+            '1. Run the app once in debug\n'
+            '2. Copy the "App Check debug token" from Logcat\n'
+            '3. Firebase Console → App Check → Debug tokens → Add token\n'
+            '4. Re-run the app\n',
+          );
+          return;
+        }
+        // Continue anyway - some Firebase rules might allow fallback token
       }
 
       // Create unique file path
@@ -311,39 +414,50 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       dev.log('Error uploading file: $e', name: 'ChatScreen');
       if (e is FirebaseException) {
         final message = e.message ?? e.code;
-        if (message.contains('App Check') || message.contains('app check')) {
+        if (e.code == 'unauthenticated' || message.contains('User is unauthenticated')) {
           _showError(
-            'Upload blocked by Firebase App Check. '
-            'Please register the debug token in Firebase Console or sign in again and retry.',
+            'Upload failed: Authentication issue detected.\n\n'
+            'Please:\n'
+            '1. Check your internet connection\n'
+            '2. Sign out and sign in again\n'
+            '3. If problem persists, restart the app\n\n'
+            'If you continue to have issues, contact support.',
           );
           return;
         }
-        if (e.code == 'unauthenticated') {
-          _showError('Upload failed: Please sign in again and retry.');
+        if (message.contains('App Check') || message.contains('app check')) {
+          _showError(
+            'Upload blocked by security verification.\n\n'
+            'Please try:\n'
+            '1. Restart the app\n'
+            '2. Sign out and sign in again\n'
+            '3. Check your internet connection\n\n'
+            'If issue persists, contact support.',
+          );
           return;
         }
       }
       _showError('Failed to send file: ${e.toString()}');
     } finally {
-      _isSending = false;
+      _setSending(false);
     }
   }
 
   // ────────────────────────────── SEND MESSAGE ──────────────────────────────
   Future<void> _sendMessage([String? preset, String? attachmentUrl, String? attachmentType, String? attachmentName]) async {
     if (_isSending) return;
-    _isSending = true;
+    _setSending(true);
 
     final text = preset ?? _messageController.text.trim();
     if (text.isEmpty) {
-      _isSending = false;
+      _setSending(false);
       return;
     }
 
     final senderId = _auth.currentUser?.uid;
     if (senderId == null) {
       _showError('Please log in to send messages.');
-      _isSending = false;
+      _setSending(false);
       return;
     }
 
@@ -370,7 +484,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     } catch (e) {
       _handleSendError(e, isRecruiter ? 'seeker' : 'recruiter');
     } finally {
-      _isSending = false;
+      _setSending(false);
     }
   }
 
@@ -1011,12 +1125,12 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                 children: [
                   // Attachment buttons
                   IconButton(
-                    onPressed: _pickAndSendImage,
+                    onPressed: _isSending ? null : _pickAndSendImage,
                     icon: Icon(Icons.camera_alt, color: Colors.teal, size: 24.sp),
                     tooltip: 'Send photo',
                   ),
                   IconButton(
-                    onPressed: _pickAndSendDocument,
+                    onPressed: _isSending ? null : _pickAndSendDocument,
                     icon: Icon(Icons.attach_file, color: Colors.teal, size: 24.sp),
                     tooltip: 'Send document',
                   ),
@@ -1024,6 +1138,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                   Expanded(
                     child: TextField(
                       controller: _messageController,
+                      enabled: !_isSending,
                       decoration: InputDecoration(
                         hintText: 'Type a message...',
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.r)),
@@ -1039,7 +1154,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                   ),
                   SizedBox(width: 8.w),
                   GestureDetector(
-                    onTap: _sendMessage,
+                    onTap: _isSending ? null : _sendMessage,
                     child: Container(
                       padding: EdgeInsets.all(12.w),
                       decoration: BoxDecoration(
@@ -1049,7 +1164,16 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                           BoxShadow(color: Colors.black26, blurRadius: 4.r, offset: const Offset(0, 2)),
                         ],
                       ),
-                      child: Icon(Icons.send, color: Colors.white, size: 24.r),
+                      child: _isSending
+                          ? SizedBox(
+                              height: 24.r,
+                              width: 24.r,
+                              child: const CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : Icon(Icons.send, color: Colors.white, size: 24.r),
                     ),
                   ),
                 ],

@@ -65,21 +65,47 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
   }
 
   void _requestNotificationPermissions() async {
-    await _messaging.requestPermission();
-    final token = await _messaging.getToken();
-    if (token != null && recruiterId != null) {
-      await _firestore.collection('UsersIndex').doc(recruiterId).set({
-        'fcmToken': token,
-      }, SetOptions(merge: true));
+    try {
+      await _messaging.requestPermission();
+      
+      // Retry logic for FCM token retrieval
+      String? token;
+      for (int attempt = 1; attempt <= 3; attempt++) {
+        try {
+          token = await _messaging.getToken();
+          if (token != null) break;
+        } catch (e) {
+          dev.log(
+            '[2025-08-08 21:25 IST] FCM token attempt $attempt failed: $e',
+            name: 'RecruiterDashboard',
+          );
+          if (attempt < 3) {
+            await Future.delayed(Duration(seconds: attempt));
+          }
+        }
+      }
+      
+      if (token != null && recruiterId != null) {
+        await _firestore.collection('UsersIndex').doc(recruiterId).set({
+          'fcmToken': token,
+        }, SetOptions(merge: true));
+        dev.log(
+          '[2025-08-08 21:25 IST] FCM token updated for $recruiterId: $token',
+          name: 'RecruiterDashboard',
+        );
+      } else {
+        dev.log(
+          '[2025-08-08 21:25 IST] Failed to retrieve FCM token for $recruiterId after retries',
+          name: 'RecruiterDashboard',
+        );
+      }
+    } catch (e) {
       dev.log(
-        '[2025-08-08 21:25 IST] FCM token updated for $recruiterId: $token',
+        '[2025-08-08 21:25 IST] Error requesting notification permissions: $e',
         name: 'RecruiterDashboard',
+        error: e,
       );
-    } else {
-      dev.log(
-        '[2025-08-08 21:25 IST] Failed to retrieve FCM token for $recruiterId',
-        name: 'RecruiterDashboard',
-      );
+      // Continue gracefully - notifications can still work without token update
     }
   }
 
