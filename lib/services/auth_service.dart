@@ -1273,6 +1273,9 @@ Future<void> sendMessage(
   String jobId,
   String message, {
   String status = 'sent',
+  String? attachmentUrl,
+  String? attachmentType,
+  String? attachmentName,
 }) async {
   final senderId = FirebaseAuth.instance.currentUser!.uid;
   try {
@@ -1330,6 +1333,9 @@ Future<void> sendMessage(
       'message': message,
       'timestamp': FieldValue.serverTimestamp(),
       'status': status,
+      if (attachmentUrl != null) 'attachmentUrl': attachmentUrl,
+      if (attachmentType != null) 'attachmentType': attachmentType,
+      if (attachmentName != null) 'attachmentName': attachmentName,
     });
 
     final notificationId = FirebaseFirestore.instance.collection('SeekerNotifications').doc(recipientId).collection('Notifications').doc().id;
@@ -1349,7 +1355,7 @@ Future<void> sendMessage(
       'seekerId': seekerId,
       'read': false,
       'timestamp': FieldValue.serverTimestamp(),
-      'message': 'New message: $message',
+      'message': attachmentType == 'image' ? 'New photo' : attachmentType == 'document' ? 'New document: $attachmentName' : 'New message: $message',
     });
 
     dev.log('[${DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())} IST] Message sent from $senderId to $recipientId for job $jobId with chatId $chatId, status: $status', name: 'AuthService');

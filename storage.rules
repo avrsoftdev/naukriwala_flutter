@@ -38,7 +38,14 @@ service firebase.storage {
                    request.resource.contentType == 'application/pdf';
     }
 
-    // 🔒 Default Deny
+    // � Chat Attachments (Images and Documents)
+    match /chat_attachments/{chatId}/{fileName} {
+      allow read: if true; // Public read for chat attachments
+      allow write: if request.auth != null &&
+                   request.resource.size < 10 * 1024 * 1024; // 10MB limit for attachments
+    }
+
+    // �🔒 Default Deny
     match /{path=**} {
       allow read, write: if false;
     }

@@ -2,5 +2,4 @@
 <resources>
     <string name="app_name">Naukariwala</string>
     <string name="app_channel_name">Job Alerts</string>
-    <string name="debug_app_check_token">1:307134434935:android:5774416d-ddee-4cf4-bc7f-88c5aa51affd</string> <!-- Replace with actual token -->
 </resources>

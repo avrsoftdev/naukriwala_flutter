@@ -9,12 +9,16 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:cloud_functions/cloud_functions.dart';
 import 'dart:io';
 import 'dart:developer' as dev;
+import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../services/auth_service.dart';
-import '../services/play_integrity_service.dart';
 import '../providers/message_state_provider.dart';
 import 'seeker_details_screen.dart';
 
@@ -44,7 +48,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   final _auth = FirebaseAuth.instance;
   final _messaging = FirebaseMessaging.instance;
   final _localNotifications = FlutterLocalNotificationsPlugin();
-  final _playIntegrity = PlayIntegrityService();
+  final _imagePicker = ImagePicker();
 
   bool _isNewChat = true;
   bool _showPrompt = false;
@@ -208,8 +212,125 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     );
   }
 
+  // ────────────────────────────── FILE ATTACHMENT METHODS ──────────────────────────────
+  Future<void> _pickAndSendImage() async {
+    try {
+      final XFile? image = await _imagePicker.pickImage(source: ImageSource.gallery);
+      if (image != null) {
+        await _uploadAndSendFile(File(image.path), 'image', image.name);
+      }
+    } catch (e) {
+      dev.log('Error picking image: $e', name: 'ChatScreen');
+      _showError('Failed to pick image: ${e.toString()}');
+    }
+  }
+
+  Future<void> _pickAndSendDocument() async {
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf', 'doc', 'docx', 'txt', 'xls', 'xlsx', 'ppt', 'pptx'],
+      );
+
+      if (result != null && result.files.single.path != null) {
+        final file = File(result.files.single.path!);
+        await _uploadAndSendFile(file, 'document', result.files.single.name);
+      }
+    } catch (e) {
+      dev.log('Error picking document: $e', name: 'ChatScreen');
+      _showError('Failed to pick document: ${e.toString()}');
+    }
+  }
+
+  Future<void> _uploadAndSendFile(File file, String type, String fileName) async {
+    if (_isSending) return;
+    _isSending = true;
+
+    try {
+      // Wait for auth to be ready and check authentication
+      await _auth.authStateChanges().first;
+      final senderId = _auth.currentUser?.uid;
+
+      dev.log('Current user: ${_auth.currentUser}', name: 'ChatScreen');
+      dev.log('Sender ID: $senderId', name: 'ChatScreen');
+
+      if (senderId == null) {
+        _showError('Please log in to send files.');
+        return;
+      }
+
+      if (_auth.currentUser == null) {
+        _showError('Authentication required. Please log in again.');
+        return;
+      }
+
+      // Force refresh auth and App Check tokens before uploading
+      await _auth.currentUser?.reload();
+      await _auth.currentUser?.getIdToken(true);
+      try {
+        final appCheckToken = await FirebaseAppCheck.instance.getToken();
+        dev.log('App Check token refreshed: $appCheckToken', name: 'ChatScreen');
+      } catch (appCheckError) {
+        dev.log('App Check refresh failed: $appCheckError', name: 'ChatScreen');
+      }
+
+      // Create unique file path
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final fileExtension = fileName.contains('.') ? fileName.split('.').last : 'file';
+      final filePath = 'chat_attachments/${widget.chatId}/$timestamp.$fileExtension';
+
+      dev.log('Uploading file: $fileName to path: $filePath', name: 'ChatScreen');
+
+      // Upload to Firebase Storage with explicit app reference
+      final storageRef = FirebaseStorage.instanceFor(app: Firebase.app()).ref().child(filePath);
+      final uploadTask = storageRef.putFile(file);
+
+      // Show progress (optional)
+      uploadTask.snapshotEvents.listen((TaskSnapshot snapshot) {
+        final progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+        dev.log('Upload progress: ${progress.toStringAsFixed(1)}%', name: 'ChatScreen');
+      });
+
+      final snapshot = await uploadTask;
+      final downloadUrl = await snapshot.ref.getDownloadURL();
+
+      dev.log('File uploaded successfully. Download URL: $downloadUrl', name: 'ChatScreen');
+
+      // Send message with attachment
+      await _authService.sendMessage(widget.recipientId, widget.jobId, type == 'image' ? '📷 Photo' : '📄 $fileName', status: 'sent', attachmentUrl: downloadUrl, attachmentType: type, attachmentName: fileName);
+
+      if (mounted) {
+        setState(() {
+          _isNewChat = false;
+          _showPrompt = false;
+        });
+      }
+
+      _showSuccess('File sent successfully');
+    } catch (e) {
+      dev.log('Error uploading file: $e', name: 'ChatScreen');
+      if (e is FirebaseException) {
+        final message = e.message ?? e.code;
+        if (message.contains('App Check') || message.contains('app check')) {
+          _showError(
+            'Upload blocked by Firebase App Check. '
+            'Please register the debug token in Firebase Console or sign in again and retry.',
+          );
+          return;
+        }
+        if (e.code == 'unauthenticated') {
+          _showError('Upload failed: Please sign in again and retry.');
+          return;
+        }
+      }
+      _showError('Failed to send file: ${e.toString()}');
+    } finally {
+      _isSending = false;
+    }
+  }
+
   // ────────────────────────────── SEND MESSAGE ──────────────────────────────
-  Future<void> _sendMessage([String? preset]) async {
+  Future<void> _sendMessage([String? preset, String? attachmentUrl, String? attachmentType, String? attachmentName]) async {
     if (_isSending) return;
     _isSending = true;
 
@@ -234,7 +355,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       }
 
       // AuthService.sendMessage() handles both message saving AND FCM notification
-      await _authService.sendMessage(widget.recipientId, widget.jobId, text, status: 'sent');
+      await _authService.sendMessage(widget.recipientId, widget.jobId, text, status: 'sent',
+        attachmentUrl: attachmentUrl, attachmentType: attachmentType, attachmentName: attachmentName);
       _messageController.clear();
 
       if (mounted) {
@@ -308,6 +430,69 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     // Update the message state service to reset unread count for this chat
     messageStateService.resetUnreadCountForChat(widget.chatId);
     dev.log('Marked messages as read for chat: ${widget.chatId}', name: 'ChatScreen');
+  }
+
+  Widget _buildAttachmentWidget(Map<String, dynamic> data) {
+    final attachmentUrl = data['attachmentUrl'] as String?;
+    final attachmentType = data['attachmentType'] as String?;
+    final attachmentName = data['attachmentName'] as String?;
+
+    if (attachmentUrl == null || attachmentType == null) return const SizedBox.shrink();
+
+    if (attachmentType == 'image') {
+      return GestureDetector(
+        onTap: () => _openAttachment(attachmentUrl, attachmentType),
+        child: Container(
+          constraints: BoxConstraints(maxWidth: 200.w, maxHeight: 200.h),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8.r),
+            image: DecorationImage(
+              image: NetworkImage(attachmentUrl),
+              fit: BoxFit.cover,
+            ),
+          ),
+        ),
+      );
+    } else if (attachmentType == 'document') {
+      return GestureDetector(
+        onTap: () => _openAttachment(attachmentUrl, attachmentType),
+        child: Container(
+          padding: EdgeInsets.all(12.w),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(8.r),
+            border: Border.all(color: Colors.grey.shade300),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.insert_drive_file, color: Colors.blue, size: 24.sp),
+              SizedBox(width: 8.w),
+              Flexible(
+                child: Text(
+                  attachmentName ?? 'Document',
+                  style: TextStyle(fontSize: 14.sp, color: Colors.blue),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return const SizedBox.shrink();
+  }
+
+  Future<void> _openAttachment(String url, String type) async {
+    if (type == 'image') {
+      // For images, you could open in a dialog or navigate to a full screen view
+      // For now, just launch the URL
+      await launchUrl(Uri.parse(url));
+    } else {
+      // For documents, launch the URL to open/download
+      await launchUrl(Uri.parse(url));
+    }
   }
 
   // ────────────────────────────── UI HELPERS ──────────────────────────────
@@ -661,7 +846,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                           : docs.where((doc) {
                               final data = doc.data() as Map<String, dynamic>;
                               final messageText = (data['message'] ?? '').toString().toLowerCase();
-                              return messageText.contains(_messageSearchQuery);
+                              final attachmentName = (data['attachmentName'] ?? '').toString().toLowerCase();
+                              return messageText.contains(_messageSearchQuery) || attachmentName.contains(_messageSearchQuery);
                             }).toList();
 
                       final latest = docs.isNotEmpty ? docs.first : null;
@@ -675,7 +861,14 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
 
                           // ONLY SHOW LOCAL NOTIF IF APP IS NOT IN FOREGROUND
                           if (!_isAppInForeground) {
-                            _showLocalNotification(name, data['message'] ?? '');
+                            final attachmentType = data['attachmentType'] as String?;
+                            String notificationText = data['message'] ?? '';
+                            if (attachmentType == 'image') {
+                              notificationText = '📷 Photo';
+                            } else if (attachmentType == 'document') {
+                              notificationText = '📄 Document';
+                            }
+                            _showLocalNotification(name, notificationText);
                           }
 
                           _markAsRead();
@@ -711,24 +904,32 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                                     _showMessageOptions(context, messageId, data['message'] ?? '');
                                   }
                                 },
-                                child: Container(
-                                  padding: EdgeInsets.all(10.w),
-                                  decoration: BoxDecoration(
-                                    color: isMe ? Colors.teal.shade100 : Colors.grey.shade200,
-                                    borderRadius: BorderRadius.circular(12.r),
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        data['message'] ?? '',
-                                        style: TextStyle(fontSize: 16.sp),
-                                      ),
-                                      if (isEdited)
-                                        Padding(
-                                          padding: EdgeInsets.only(top: 4.h),
-                                          child: Text(
+                                  child: Container(
+                                    constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.7),
+                                    padding: EdgeInsets.all(10.w),
+                                    decoration: BoxDecoration(
+                                      color: isMe ? Colors.teal.shade100 : Colors.grey.shade200,
+                                      borderRadius: BorderRadius.circular(12.r),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                                      children: [
+                                        // Display attachment if present
+                                        if (data['attachmentUrl'] != null) ...[
+                                          _buildAttachmentWidget(data),
+                                          SizedBox(height: 8.h),
+                                        ],
+                                        // Display message text
+                                        if (data['message'] != null && data['message'].toString().isNotEmpty)
+                                          Text(
+                                            data['message'] ?? '',
+                                            style: TextStyle(fontSize: 16.sp),
+                                          ),
+                                        if (isEdited)
+                                          Padding(
+                                            padding: EdgeInsets.only(top: 4.h),
+                                            child: Text(
                                             '(edited)',
                                             style: TextStyle(
                                               fontSize: 10.sp,
@@ -803,6 +1004,18 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
               padding: EdgeInsets.all(8.w),
               child: Row(
                 children: [
+                  // Attachment buttons
+                  IconButton(
+                    onPressed: _pickAndSendImage,
+                    icon: Icon(Icons.camera_alt, color: Colors.teal, size: 24.sp),
+                    tooltip: 'Send photo',
+                  ),
+                  IconButton(
+                    onPressed: _pickAndSendDocument,
+                    icon: Icon(Icons.attach_file, color: Colors.teal, size: 24.sp),
+                    tooltip: 'Send document',
+                  ),
+                  SizedBox(width: 8.w),
                   Expanded(
                     child: TextField(
                       controller: _messageController,
