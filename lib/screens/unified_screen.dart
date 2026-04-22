@@ -192,7 +192,34 @@ class UnifiedScreenState extends State<UnifiedScreen> {
 
     setState(() => _isLoading = true);
     try {
-      await FirebaseAuth.instance.signInWithEmailAndPassword(email: email, password: pass);
+      final credential = await FirebaseAuth.instance.signInWithEmailAndPassword(email: email, password: pass);
+      final user = credential.user;
+      if (user == null) throw Exception('Login failed');
+
+      // Check if email is verified
+      if (!user.emailVerified) {
+        _showSnack("Please verify your email before logging in.");
+        await FirebaseAuth.instance.signOut();
+        setState(() => _isLoading = false);
+        return;
+      }
+
+      // Check if there's temp signup data to save
+      final tempData = await _authService.getTempSignupData();
+      if (tempData != null) {
+        // Save the profile data
+        final data = {
+          ...tempData,
+          'UID': user.uid,
+          'profileSetupStatus': 'not_started',
+        };
+        await _authService.storeSignupData(
+          isRecruiter: tempData['role'] == 'recruiter',
+          data: data,
+        );
+        await _authService.clearTempSignupData();
+      }
+
       // Get user info for saving account
       final role = await _authService.getUserRole();
       final profile = role == 'seeker' ? await _authService.fetchProfileData(isRecruiter: false) : null;
@@ -432,24 +459,22 @@ class UnifiedScreenState extends State<UnifiedScreen> {
 
       _showSnack('Verification email sent! Please check your inbox (and spam/junk folder).');
 
-      _tempFormData.clear();
-      _tempFormData.addAll({
+      final tempData = {
         'Name': _nameController.text.trim(),
         'Mobile Number': '+91${_phoneController.text.trim()}',
         'Email Id': email,
+        'role': _selectedRole!,
         if (_currentState == ScreenState.recruiterSignup) 'companyName': _companyNameController.text.trim(),
-      });
+      };
+
+      await _authService.saveTempSignupData(tempData);
 
       if (!mounted) return;
 
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (_) => EmailVerificationScreen(
-            role: _selectedRole!,
-            tempFormData: _tempFormData,
-            authService: _authService,
-          ),
+          builder: (_) => EmailVerificationScreen(),
         ),
       );
     } on FirebaseAuthException catch (e) {
@@ -1080,115 +1105,11 @@ class UnifiedScreenState extends State<UnifiedScreen> {
 //  EMAIL VERIFICATION SCREEN
 // ────────────────────────────────────────────────
 
-class EmailVerificationScreen extends StatefulWidget {
-  final String role;
-  final Map<String, dynamic> tempFormData;
-  final AuthService authService;
-
-  const EmailVerificationScreen({
-    super.key,
-    required this.role,
-    required this.tempFormData,
-    required this.authService,
-  });
-
-  @override
-  State<EmailVerificationScreen> createState() => _EmailVerificationScreenState();
-}
-
-class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
-  Timer? _timer;
-  bool _checking = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _startPolling();
-  }
-
-  void _startPolling() {
-    _timer = Timer.periodic(const Duration(seconds: 4), (timer) async {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) {
-        timer.cancel();
-        return;
-      }
-
-      await user.reload();
-
-      if (user.emailVerified) {
-        timer.cancel();
-        setState(() => _checking = false);
-
-        try {
-          final data = {
-            ...widget.tempFormData,
-            'UID': user.uid,
-            'role': widget.role,
-            'profileSetupStatus': 'not_started',
-          };
-
-          await widget.authService.storeSignupData(
-            isRecruiter: widget.role == 'recruiter',
-            data: data,
-          );
-
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text("Email verified! Welcome!")),
-            );
-
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (_) => ProfileSetupOnboarding(
-                  role: widget.role,
-                  initialData: widget.tempFormData,
-                ),
-              ),
-            );
-          }
-        } catch (e) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text("Profile save failed: $e")),
-            );
-          }
-        }
-      }
-    });
-  }
-
-  Future<void> _resend() async {
-    try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null && !user.emailVerified) {
-        await user.sendEmailVerification();
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Verification email resent")),
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Resend failed: $e")),
-        );
-      }
-    }
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
+class EmailVerificationScreen extends StatelessWidget {
+  const EmailVerificationScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final email = widget.tempFormData['Email Id'] ?? 'your email';
-
     return Scaffold(
       appBar: AppBar(
         title: const Text("Verify Your Email"),
@@ -1205,29 +1126,45 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
       body: Padding(
         padding: const EdgeInsets.all(32),
         child: Center(
-          child: _checking
-              ? Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const CircularProgressIndicator(),
-                    const SizedBox(height: 32),
-                    Text("Verification email sent to:", style: TextStyle(fontSize: 16)),
-                    const SizedBox(height: 8),
-                    Text(email, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 24),
-                    const Text(
-                      "Please open your email and click the verification link.\n\n(Also check spam/junk folder)",
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 40),
-                    OutlinedButton.icon(
-                      onPressed: _resend,
-                      icon: const Icon(Icons.email),
-                      label: const Text("Resend Email"),
-                    ),
-                  ],
-                )
-              : const Text("Verified! Redirecting...", style: TextStyle(fontSize: 18)),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.email,
+                size: 80,
+                color: Colors.blue,
+              ),
+              const SizedBox(height: 24),
+              const Text(
+                "We've sent a verification link to your email. Please verify to continue.",
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 18),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                "(Also check spam/junk folder)",
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 14, color: Colors.grey),
+              ),
+              const SizedBox(height: 40),
+              ElevatedButton(
+                onPressed: () async {
+                  // Sign out the user
+                  await FirebaseAuth.instance.signOut();
+                  // Navigate to login screen
+                  if (context.mounted) {
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const UnifiedScreen(),
+                      ),
+                    );
+                  }
+                },
+                child: const Text("I Have Verified"),
+              ),
+            ],
+          ),
         ),
       ),
     );

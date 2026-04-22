@@ -1624,6 +1624,41 @@ Future<void> sendMessage(
       return null;
     }
   }
+
+  /// Save temporary signup data for email verification flow
+  Future<void> saveTempSignupData(Map<String, dynamic> data) async {
+    try {
+      await _secureStorage.write(key: 'temp_signup_data', value: jsonEncode(data));
+      dev.log('Temp signup data saved', name: 'AuthService');
+    } catch (e) {
+      dev.log('Error saving temp signup data: $e', name: 'AuthService', error: e);
+      rethrow;
+    }
+  }
+
+  /// Get temporary signup data
+  Future<Map<String, dynamic>?> getTempSignupData() async {
+    try {
+      final data = await _secureStorage.read(key: 'temp_signup_data');
+      if (data != null) {
+        return jsonDecode(data) as Map<String, dynamic>;
+      }
+      return null;
+    } catch (e) {
+      dev.log('Error getting temp signup data: $e', name: 'AuthService', error: e);
+      return null;
+    }
+  }
+
+  /// Clear temporary signup data
+  Future<void> clearTempSignupData() async {
+    try {
+      await _secureStorage.delete(key: 'temp_signup_data');
+      dev.log('Temp signup data cleared', name: 'AuthService');
+    } catch (e) {
+      dev.log('Error clearing temp signup data: $e', name: 'AuthService', error: e);
+    }
+  }
 }
 
 // Main function to initialize App Check (call before AuthService usage)
