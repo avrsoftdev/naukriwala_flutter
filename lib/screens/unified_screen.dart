@@ -13,10 +13,12 @@ import 'dart:async';
 
 class UnifiedScreen extends StatefulWidget {
   final bool showWelcomeOnly;
+  final ScreenState? initialState;
 
   const UnifiedScreen({
     super.key,
     this.showWelcomeOnly = false,
+    this.initialState,
   });
 
   @override
@@ -47,7 +49,10 @@ class UnifiedScreenState extends State<UnifiedScreen> {
   @override
   void initState() {
     super.initState();
-    if (widget.showWelcomeOnly) {
+    if (widget.initialState != null) {
+      _currentState = widget.initialState!;
+      _isLoading = false;
+    } else if (widget.showWelcomeOnly) {
       _currentState = ScreenState.roleSelection;
       _isLoading = false;
     } else {
@@ -283,10 +288,12 @@ class UnifiedScreenState extends State<UnifiedScreen> {
                     constraints: BoxConstraints(
                       maxHeight: MediaQuery.of(context).size.height * 0.38,
                     ),
-                    child: SingleChildScrollView(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 4.w),
+                      child: SingleChildScrollView(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
                           Text(
                             'Privacy Policy for Naukariwala App',
                             style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w600, color: Colors.black87),
@@ -367,7 +374,8 @@ class UnifiedScreenState extends State<UnifiedScreen> {
                             '11. **Contact Us** Questions? Email legal@naukariwala.com.',
                             style: TextStyle(fontSize: 14.sp, color: Colors.grey.shade700),
                           ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -474,7 +482,7 @@ class UnifiedScreenState extends State<UnifiedScreen> {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (_) => EmailVerificationScreen(),
+          builder: (_) => EmailVerificationScreen(email: email),
         ),
       );
     } on FirebaseAuthException catch (e) {
@@ -623,34 +631,47 @@ class UnifiedScreenState extends State<UnifiedScreen> {
           ),
         ),
         SafeArea(
-          child: SingleChildScrollView(
-            padding: EdgeInsets.symmetric(horizontal: 22.w, vertical: 18.h),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(height: 10.h),
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 32.sp,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
-                    letterSpacing: 0.3,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return SingleChildScrollView(
+                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                padding: EdgeInsets.fromLTRB(
+                  22.w,
+                  18.h,
+                  22.w,
+                  18.h + MediaQuery.of(context).viewInsets.bottom,
+                ),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(height: 10.h),
+                      Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: 32.sp,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                          letterSpacing: 0.3,
+                        ),
+                      ),
+                      SizedBox(height: 8.h),
+                      Text(
+                        subtitle,
+                        style: TextStyle(
+                          fontSize: 14.sp,
+                          color: Colors.white.withOpacity(0.9),
+                          height: 1.35,
+                        ),
+                      ),
+                      SizedBox(height: 24.h),
+                      child,
+                    ],
                   ),
                 ),
-                SizedBox(height: 8.h),
-                Text(
-                  subtitle,
-                  style: TextStyle(
-                    fontSize: 14.sp,
-                    color: Colors.white.withOpacity(0.9),
-                    height: 1.35,
-                  ),
-                ),
-                SizedBox(height: 24.h),
-                child,
-              ],
-            ),
+              );
+            },
           ),
         ),
       ],
@@ -777,7 +798,8 @@ class UnifiedScreenState extends State<UnifiedScreen> {
   }
 
   Widget _buildRoleSelection() {
-    return SingleChildScrollView(
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 20.w),
       child: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -1105,68 +1127,372 @@ class UnifiedScreenState extends State<UnifiedScreen> {
 //  EMAIL VERIFICATION SCREEN
 // ────────────────────────────────────────────────
 
-class EmailVerificationScreen extends StatelessWidget {
-  const EmailVerificationScreen({super.key});
+class EmailVerificationScreen extends StatefulWidget {
+  final String? email;
+  
+  const EmailVerificationScreen({super.key, this.email});
+
+  @override
+  State<EmailVerificationScreen> createState() => _EmailVerificationScreenState();
+}
+
+class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
+  static const Color _primaryBlue = Color(0xFF0C4A7D);
+  static const Color _accentTeal = Color(0xFF00A6A6);
+  static const Color _lightBg = Color(0xFFF8FAFC);
+  static const Color _borderColor = Color(0xFFE2E8F0);
+  static const Color _deepNavy = Color(0xFF0B1E39);
+  
+  bool _isResending = false;
+  
+  Future<void> _resendVerificationEmail() async {
+    setState(() => _isResending = true);
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        await user.sendEmailVerification();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Verification email resent! Check your inbox.'),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isResending = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("Verify Your Email"),
-        flexibleSpace: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Colors.blue.shade700, Colors.blue.shade900],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+    final userEmail = widget.email ?? FirebaseAuth.instance.currentUser?.email ?? 'your email';
+    
+    return WillPopScope(
+      onWillPop: () async => false,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Row(
+            mainAxisSize: MainAxisSize.min,
+           children: [
+  Image.asset('assets/logo.png', height: 24.h, width: 24.w),
+  SizedBox(width: 8.w),
+  Text(
+    "Verify Email",
+    style: TextStyle(
+      fontSize: 18.sp,
+      fontWeight: FontWeight.w600,
+      color: Colors.white, // 👈 add this line
+    ),
+  ),
+],
+          ),
+          elevation: 0,
+          centerTitle: true,
+          leading: IconButton(
+            icon: Icon(Icons.arrow_back_ios, color: Colors.white, size: 20.sp),
+            onPressed: () async {
+              await FirebaseAuth.instance.signOut();
+              if (context.mounted) {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const UnifiedScreen(initialState: ScreenState.login),
+                  ),
+                );
+              }
+            },
+          ),
+          flexibleSpace: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [_primaryBlue, Color(0xFF0A3A63)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
             ),
           ),
+          backgroundColor: _primaryBlue,
         ),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Center(
+        backgroundColor: _lightBg,
+        body: Padding(
+          padding: EdgeInsets.fromLTRB(20.w, 4.h, 20.w, 16.h),
           child: Column(
-            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              const Icon(
-                Icons.email,
-                size: 80,
-                color: Colors.blue,
+              // Compact Envelope Icon
+              Container(
+                width: 70.w,
+                height: 70.w,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    colors: [_accentTeal.withOpacity(0.1), _primaryBlue.withOpacity(0.05)],
+                  ),
+                ),
+                child: Center(
+                  child: Icon(
+                    Icons.mail_outline_rounded,
+                    size: 36.sp,
+                    color: _accentTeal,
+                  ),
+                ),
               ),
-              const SizedBox(height: 24),
-              const Text(
-                "We've sent a verification link to your email. Please verify to continue.",
+              
+              SizedBox(height: 20.h),
+              
+              // Main Title
+              Text(
+                "Verify Your Email",
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 18),
+                style: TextStyle(
+                  fontSize: 20.sp,
+                  fontWeight: FontWeight.w700,
+                  color: _deepNavy,
+                ),
               ),
-              const SizedBox(height: 16),
-              const Text(
-                "(Also check spam/junk folder)",
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 14, color: Colors.grey),
-              ),
-              const SizedBox(height: 40),
-              ElevatedButton(
-                onPressed: () async {
-                  // Sign out the user
-                  await FirebaseAuth.instance.signOut();
-                  // Navigate to login screen
-                  if (context.mounted) {
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const UnifiedScreen(),
+              
+              SizedBox(height: 8.h),
+              
+              // Subtitle with Email
+              Column(
+                children: [
+                  Text(
+                    "We've sent a verification link to:",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 13.sp,
+                      color: Colors.grey[600],
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+                  SizedBox(height: 6.h),
+                  // Email Display Card
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8.r),
+                      border: Border.all(color: _borderColor, width: 1),
+                    ),
+                    child: Text(
+                      userEmail,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 13.sp,
+                        fontWeight: FontWeight.w600,
+                        color: _primaryBlue,
+                        letterSpacing: 0.3,
                       ),
-                    );
-                  }
-                },
-                child: const Text("I Have Verified"),
+                    ),
+                  ),
+                ],
+              ),
+              
+              SizedBox(height: 16.h),
+              
+              // Compact Steps Section
+              Container(
+                padding: EdgeInsets.all(12.w),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8.r),
+                  border: Border.all(color: _borderColor, width: 1),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "What to do next:",
+                      style: TextStyle(
+                        fontSize: 13.sp,
+                        fontWeight: FontWeight.w600,
+                        color: _deepNavy,
+                      ),
+                    ),
+                    SizedBox(height: 8.h),
+                    _buildStep("1", "Check your inbox"),
+                    SizedBox(height: 6.h),
+                    _buildStep("2", "Click verification link"),
+                    SizedBox(height: 6.h),
+                    _buildStep("3", "Return here"),
+                  ],
+                ),
+              ),
+              
+              SizedBox(height: 12.h),
+              
+              // Compact Warning Card
+              Container(
+                padding: EdgeInsets.all(8.w),
+                decoration: BoxDecoration(
+                  color: Colors.amber[50],
+                  borderRadius: BorderRadius.circular(8.r),
+                  border: Border.all(color: Colors.amber[200]!, width: 1),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline, color: Colors.amber[700], size: 16.sp),
+                    SizedBox(width: 8.w),
+                    Expanded(
+                      child: Text(
+                        "Check spam/junk folder if needed",
+                        style: TextStyle(
+                          fontSize: 11.sp,
+                          color: Colors.amber[900],
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              
+              SizedBox(height: 20.h),
+              
+              // Main Action Button
+              SizedBox(
+                width: double.infinity,
+                height: 44.h,
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8.r),
+                    gradient: const LinearGradient(
+                      colors: [_accentTeal, Color(0xFF00897B)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: _accentTeal.withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      await FirebaseAuth.instance.signOut();
+                      if (context.mounted) {
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const UnifiedScreen(initialState: ScreenState.login),
+                          ),
+                        );
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.transparent,
+                      shadowColor: Colors.transparent,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8.r),
+                      ),
+                    ),
+                    child: Text(
+                      "I Have Verified My Email",
+                      style: TextStyle(
+                        fontSize: 13.sp,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              
+              SizedBox(height: 8.h),
+              
+              // Resend Button
+              SizedBox(
+                width: double.infinity,
+                height: 40.h,
+                child: OutlinedButton(
+                  onPressed: _isResending ? null : _resendVerificationEmail,
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: _accentTeal, width: 1.5),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8.r),
+                    ),
+                  ),
+                  child: _isResending
+                      ? SizedBox(
+                          width: 16.w,
+                          height: 16.w,
+                          child: const CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(_accentTeal),
+                          ),
+                        )
+                      : Text(
+                          "Resend Verification Email",
+                          style: TextStyle(
+                            fontSize: 13.sp,
+                            fontWeight: FontWeight.w600,
+                            color: _accentTeal,
+                          ),
+                        ),
+                ),
               ),
             ],
           ),
         ),
       ),
+    );
+  }
+  
+  Widget _buildStep(String number, String text) {
+    return Row(
+      children: [
+        Container(
+          width: 28.w,
+          height: 28.w,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: const LinearGradient(
+              colors: [_accentTeal, Color(0xFF00897B)],
+            ),
+          ),
+          child: Center(
+            child: Text(
+              number,
+              style: TextStyle(
+                fontSize: 12.sp,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ),
+        SizedBox(width: 12.w),
+        Expanded(
+          child: Text(
+            text,
+            style: TextStyle(
+              fontSize: 13.sp,
+              color: Colors.grey[700],
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
