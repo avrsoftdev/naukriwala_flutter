@@ -1659,6 +1659,22 @@ Future<void> sendMessage(
       dev.log('Error clearing temp signup data: $e', name: 'AuthService', error: e);
     }
   }
+
+  /// Send email verification using Firebase's default service
+  Future<void> sendCustomVerificationEmail(String email, {String? continueUrl}) async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null && !user.emailVerified) {
+        await user.sendEmailVerification();
+        dev.log('Email verification sent successfully', name: 'AuthService');
+      } else {
+        dev.log('User already verified or not logged in', name: 'AuthService');
+      }
+    } catch (e) {
+      dev.log('Error sending email verification: $e', name: 'AuthService', error: e);
+      rethrow;
+    }
+  }
 }
 
 // Main function to initialize App Check (call before AuthService usage)

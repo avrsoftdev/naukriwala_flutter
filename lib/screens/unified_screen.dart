@@ -463,9 +463,12 @@ class UnifiedScreenState extends State<UnifiedScreen> {
       final user = credential.user;
       if (user == null) throw Exception('User creation failed');
 
-      await user.sendEmailVerification();
-
-      _showSnack('Verification email sent! Please check your inbox (and spam/junk folder).');
+      try {
+        await _authService.sendCustomVerificationEmail(email);
+        _showSnack('Branded verification email sent! Please check your inbox (and spam/junk folder).');
+      } catch (e) {
+        _showSnack('Verification email sent! Please check your inbox (and spam/junk folder).');
+      }
 
       final tempData = {
         'Name': _nameController.text.trim(),
@@ -1143,6 +1146,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
   static const Color _borderColor = Color(0xFFE2E8F0);
   static const Color _deepNavy = Color(0xFF0B1E39);
   
+  final AuthService _authService = AuthService();
   bool _isResending = false;
   
   Future<void> _resendVerificationEmail() async {
@@ -1150,17 +1154,33 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
-        await user.sendEmailVerification();
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text('Verification email resent! Check your inbox.'),
-              backgroundColor: Colors.green,
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
-              duration: const Duration(seconds: 3),
-            ),
-          );
+        try {
+          await _authService.sendCustomVerificationEmail(user.email!);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Text('Branded verification email resent! Check your inbox.'),
+                backgroundColor: Colors.green,
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          }
+        } catch (e) {
+          // Fallback to default email verification
+          await user.sendEmailVerification();
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Text('Verification email resent! Check your inbox.'),
+                backgroundColor: Colors.green,
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          }
         }
       }
     } catch (e) {

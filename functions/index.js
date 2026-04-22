@@ -42,6 +42,165 @@ async function retry(fn, maxRetries = 3) {
 }
 
 // MAIN FUNCTION
+// CUSTOM EMAIL VERIFICATION WITH SENDGRID
+exports.sendCustomVerificationEmail = onCall({ enforceAppCheck: false }, async (request) => {
+  try {
+    const { email, continueUrl } = request.data;
+    
+    if (!email || typeof email !== "string") {
+      throw new HttpsError("invalid-argument", "Valid email required");
+    }
+
+    // Generate verification link
+    const actionCodeSettings = {
+      url: continueUrl || "https://naukariwala.web.app",
+      handleCodeInApp: true,
+    };
+
+    const verificationLink = await admin.auth()
+      .generateEmailVerificationLink(email, actionCodeSettings);
+
+    // Create branded email template
+    const emailTemplate = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify Your Email - Naukriwala</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f8f9fa;
+            color: #333;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header {
+            background-color: #4F46E5;
+            padding: 30px 20px;
+            text-align: center;
+        }
+        .logo-text {
+            font-size: 32px;
+            font-weight: bold;
+            color: #ffffff;
+            margin-bottom: 10px;
+            letter-spacing: 2px;
+        }
+        .logo-subtitle {
+            font-size: 14px;
+            color: #e0e7ff;
+            font-weight: 300;
+        }
+        .content {
+            padding: 40px 30px;
+        }
+        .title {
+            font-size: 24px;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .message {
+            font-size: 16px;
+            line-height: 1.6;
+            color: #6b7280;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        .verify-button {
+            display: inline-block;
+            background-color: #4F46E5;
+            color: #ffffff;
+            text-decoration: none;
+            padding: 15px 30px;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            text-align: center;
+            margin: 20px auto;
+            display: block;
+            max-width: 200px;
+        }
+        .verify-button:hover {
+            background-color: #4338ca;
+        }
+        .footer {
+            background-color: #f3f4f6;
+            padding: 20px 30px;
+            text-align: center;
+            font-size: 14px;
+            color: #6b7280;
+        }
+        .footer-note {
+            margin-top: 15px;
+            font-size: 12px;
+            color: #9ca3af;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo-text">NAUKARIWALA</div>
+            <div class="logo-subtitle">Your Career Journey Starts Here</div>
+        </div>
+        <div class="content">
+            <h1 class="title">Verify Your Email Address</h1>
+            <p class="message">
+                Hi there!<br><br>
+                Thanks for signing up on Naukriwala. To activate your account, please verify your email address by clicking the button below:
+            </p>
+            <a href="${verificationLink}" class="verify-button">Verify Email</a>
+            <p class="message">
+                Once your email is verified, return to the app and log in again to continue.
+            </p>
+        </div>
+        <div class="footer">
+            <p>Thanks,<br>Team Naukriwala</p>
+            <p class="footer-note">
+                If you did not create this account, you can safely ignore this email.
+            </p>
+        </div>
+    </div>
+</body>
+</html>`;
+
+    // Try to send email via direct API call (if configured)
+    // For now, we'll use the default Firebase email verification
+    // but return the branded template for manual review
+    
+    logger.info('Generated branded verification template', { email });
+    
+    // Return the template and verification link for testing
+    return { 
+      success: true, 
+      message: "Branded email template generated",
+      verificationLink,
+      emailTemplate,
+      note: "To actually send emails, configure SendGrid in Firebase Console"
+    };
+
+  } catch (error) {
+    const msg = error?.message || String(error);
+    logger.error("sendCustomVerificationEmail failed", { error: msg });
+    
+    if (error instanceof HttpsError) throw error;
+    throw new HttpsError("internal", `Failed: ${msg}`);
+  }
+});
+
+// MAIN FUNCTION
 exports.sendNotification = onCall({ enforceAppCheck: false }, async (request) => {
   try {
     const {
