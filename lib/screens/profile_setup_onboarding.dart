@@ -1067,17 +1067,17 @@ class _ProfileSetupOnboardingState extends State<ProfileSetupOnboarding> {
                 },
           icon: const Icon(Icons.arrow_back),
         ),
-        title: Text(title),
-        actions: [
-          if (_stepIndex == 0)
-            Tooltip(
-              message: 'Complete Basic information to continue',
-              child: TextButton(
-                onPressed: null,
-                child: Text(
-                  'Skip for now',
-                  style: TextStyle(
-                    color: const Color(0xFF0F766E),
+          title: Text(title),
+          actions: [
+            if (_stepIndex == 0)
+              Tooltip(
+                message: 'You can skip and complete this later',
+                child: TextButton(
+                  onPressed: _saving ? null : _skipForNow,
+                  child: Text(
+                    'Skip for now',
+                    style: TextStyle(
+                      color: const Color(0xFF0F766E),
                     fontSize: 14.sp,
                   ),
                 ),
