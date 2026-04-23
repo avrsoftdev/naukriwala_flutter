@@ -49,20 +49,44 @@ Future<void> main() async {
 
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
 
-  // Initialize Firebase
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  var firebaseReady = false;
+  try {
+    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+    firebaseReady = true;
+  } catch (e, stackTrace) {
+    dev.log(
+      'Firebase initialization failed',
+      name: 'Startup',
+      error: e,
+      stackTrace: stackTrace,
+    );
+  }
+
+  if (!firebaseReady) {
+    runApp(const StartupErrorApp());
+    return;
+  }
 
   // App Check
   dev.log(
     'Build mode: debug=$kDebugMode, profile=$kProfileMode, release=$kReleaseMode',
     name: 'AppCheck',
   );
-  await FirebaseAppCheck.instance.activate(
-    androidProvider: (kDebugMode || kProfileMode)
-        ? AndroidProvider.debug
-        : AndroidProvider.playIntegrity,
-    appleProvider: AppleProvider.appAttest,
-  );
+  try {
+    await FirebaseAppCheck.instance.activate(
+      androidProvider: (kDebugMode || kProfileMode)
+          ? AndroidProvider.debug
+          : AndroidProvider.playIntegrity,
+      appleProvider: AppleProvider.appAttest,
+    );
+  } catch (e, stackTrace) {
+    dev.log(
+      'App Check activation failed. Continuing without crash.',
+      name: 'AppCheck',
+      error: e,
+      stackTrace: stackTrace,
+    );
+  }
   if (kDebugMode || kProfileMode) {
     // Debug provider already prints the debug secret in logcat.
     dev.log(
@@ -72,25 +96,67 @@ Future<void> main() async {
   }
 
   final authService = AuthService();
-  await authService.setupFcmTokenRefresh();
+  try {
+    await authService.setupFcmTokenRefresh();
+  } catch (e, stackTrace) {
+    dev.log(
+      'FCM token refresh setup failed. Continuing without crash.',
+      name: 'Startup',
+      error: e,
+      stackTrace: stackTrace,
+    );
+  }
 
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
   // Local Notifications
   final localNotif = FlutterLocalNotificationsPlugin();
-  const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
-  const initSettings = InitializationSettings(android: androidInit);
-  await localNotif.initialize(initSettings);
+  try {
+    const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const initSettings = InitializationSettings(android: androidInit);
+    await localNotif.initialize(initSettings);
 
-  const channel = AndroidNotificationChannel('fcm_default_channel', 'FCM', importance: Importance.max);
-  await localNotif.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()?.createNotificationChannel(channel);
+    const channel = AndroidNotificationChannel(
+      'fcm_default_channel',
+      'FCM',
+      importance: Importance.max,
+    );
+    await localNotif
+        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(channel);
+  } catch (e, stackTrace) {
+    dev.log(
+      'Local notifications initialization failed. Continuing without crash.',
+      name: 'Startup',
+      error: e,
+      stackTrace: stackTrace,
+    );
+  }
 
   // Initialize interview reminder service
-  await InterviewReminderService().initialize();
+  try {
+    await InterviewReminderService().initialize();
+  } catch (e, stackTrace) {
+    dev.log(
+      'Interview reminder initialization failed. Continuing without crash.',
+      name: 'Startup',
+      error: e,
+      stackTrace: stackTrace,
+    );
+  }
 
   // Initialize AdMob service (google_mobile_ads)
-  await AdMobService().initialize();
-  dev.log('AdMob initialize() completed', name: 'AdMob');
+  try {
+    await AdMobService().initialize();
+    dev.log('AdMob initialize() completed', name: 'AdMob');
+  } catch (e, stackTrace) {
+    dev.log(
+      'AdMob initialization failed. Continuing without crash.',
+      name: 'AdMob',
+      error: e,
+      stackTrace: stackTrace,
+    );
+  }
 
   runApp(const NaukariwalaApp());
 }
@@ -108,6 +174,29 @@ class NaukariwalaApp extends StatelessWidget {
           theme: ThemeData(primarySwatch: Colors.blue),
           debugShowCheckedModeBanner: false,
           home: const UnifiedScreen(),
+        ),
+      ),
+    );
+  }
+}
+
+class StartupErrorApp extends StatelessWidget {
+  const StartupErrorApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text(
+              'App startup failed. Please restart the app and check your internet connection.',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+          ),
         ),
       ),
     );

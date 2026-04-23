@@ -78,6 +78,59 @@ class _SeekerDashboardState extends State<SeekerDashboard> {
     super.dispose();
   }
 
+  Future<void> _confirmAndDeleteAccount() async {
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('Delete Account', style: TextStyle(fontSize: 18.sp)),
+        content: Text(
+          'This will permanently delete your account and associated data. This action cannot be undone.',
+          style: TextStyle(fontSize: 14.sp),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text('Cancel', style: TextStyle(fontSize: 14.sp)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text('Delete', style: TextStyle(fontSize: 14.sp, color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldDelete != true || !mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Deleting account...', style: TextStyle(fontSize: 14.sp)),
+      ),
+    );
+
+    try {
+      await _authService.deleteCurrentUserAccount();
+      if (!mounted) return;
+      Navigator.pushReplacementNamed(context, '/');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Account deleted successfully', style: TextStyle(fontSize: 14.sp)),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      final message = e is AuthException ? e.message : 'Failed to delete account. Please try again.';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message, style: TextStyle(fontSize: 14.sp)),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     ScreenUtil.init(
@@ -276,6 +329,14 @@ class _SeekerDashboardState extends State<SeekerDashboard> {
                           const NotificationsScreen(isRecruiter: false),
                     ),
                   );
+                },
+              ),
+              _buildDrawerItem(
+                icon: Icons.delete_forever,
+                title: 'Delete Account',
+                onTap: () async {
+                  Navigator.pop(context);
+                  await _confirmAndDeleteAccount();
                 },
               ),
               _buildDrawerItem(

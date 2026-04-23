@@ -56,6 +56,57 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
     super.dispose();
   }
 
+  Future<void> _confirmAndDeleteAccount() async {
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('Delete Account', style: TextStyle(fontSize: 18.sp)),
+        content: Text(
+          'This will permanently delete your account and associated data. This action cannot be undone.',
+          style: TextStyle(fontSize: 14.sp),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text('Cancel', style: TextStyle(fontSize: 14.sp)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text('Delete', style: TextStyle(fontSize: 14.sp, color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldDelete != true || !mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Deleting account...', style: TextStyle(fontSize: 14.sp))),
+    );
+
+    try {
+      await _authService.deleteCurrentUserAccount();
+      if (!mounted) return;
+      Navigator.pushReplacementNamed(context, '/');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Account deleted successfully', style: TextStyle(fontSize: 14.sp)),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      final message = e is AuthException ? e.message : 'Failed to delete account. Please try again.';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message, style: TextStyle(fontSize: 14.sp)),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
+  }
+
   void _checkForAppUpdate() async {
     // Add a small delay to ensure the widget is fully built
     await Future.delayed(const Duration(milliseconds: 500));
@@ -112,13 +163,21 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
   Future<void> _checkRoleAndFetchName() async {
     try {
       final role = await _authService.getUserRole();
+      final currentUid = FirebaseAuth.instance.currentUser?.uid;
+      if (currentUid == null) {
+        dev.log(
+          '[2026-04-23 00:00 IST] No authenticated user while checking recruiter role',
+          name: 'RecruiterDashboard',
+        );
+        return;
+      }
       dev.log(
-        '[2025-08-08 21:25 IST] Role for UID ${FirebaseAuth.instance.currentUser!.uid}: $role',
+        '[2025-08-08 21:25 IST] Role for UID $currentUid: $role',
         name: 'RecruiterDashboard',
       );
       if (role != 'recruiter') {
         dev.log(
-          '[2025-08-08 21:25 IST] WARNING: User ${FirebaseAuth.instance.currentUser!.uid} does not have recruiter role',
+          '[2025-08-08 21:25 IST] WARNING: User $currentUid does not have recruiter role',
           name: 'RecruiterDashboard',
         );
         if (mounted) {
@@ -301,6 +360,14 @@ class _RecruiterDashboardState extends State<RecruiterDashboard> {
                           builder: (context) => const PostJobScreen(),
                         ),
                       );
+                    },
+                  ),
+                  _buildDrawerItem(
+                    icon: Icons.delete_forever,
+                    title: 'Delete Account',
+                    onTap: () async {
+                      Navigator.pop(context);
+                      await _confirmAndDeleteAccount();
                     },
                   ),
                   _buildDrawerItem(

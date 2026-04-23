@@ -1401,6 +1401,120 @@ Future<void> sendMessage(
 
   User? getCurrentUser() => _auth.currentUser;
 
+  Future<void> _deleteSubcollectionDocs(
+    DocumentReference<Map<String, dynamic>> docRef,
+    String subcollection,
+  ) async {
+    final snap = await docRef.collection(subcollection).get();
+    for (final doc in snap.docs) {
+      await doc.reference.delete();
+    }
+  }
+
+  Future<void> _deleteUserMessages(String uid) async {
+    final messagesSnap = await _firestore.collection('Messages').get();
+    for (final chatDoc in messagesSnap.docs) {
+      if (!chatDoc.id.contains(uid)) continue;
+      await _deleteSubcollectionDocs(chatDoc.reference, 'Chats');
+      await chatDoc.reference.delete();
+    }
+  }
+
+  Future<void> _deleteUserApplications(String uid) async {
+    final seekerApps = await _firestore
+        .collection('Applications')
+        .where('seekerId', isEqualTo: uid)
+        .get();
+    final recruiterApps = await _firestore
+        .collection('Applications')
+        .where('recruiterId', isEqualTo: uid)
+        .get();
+
+    final appDocIds = <String>{};
+    for (final doc in seekerApps.docs) {
+      appDocIds.add(doc.id);
+    }
+    for (final doc in recruiterApps.docs) {
+      appDocIds.add(doc.id);
+    }
+
+    for (final appId in appDocIds) {
+      await _firestore.collection('Applications').doc(appId).delete();
+    }
+  }
+
+  Future<void> _deleteNotificationContainer(String rootCollection, String uid) async {
+    final rootDoc = _firestore.collection(rootCollection).doc(uid);
+    await _deleteSubcollectionDocs(rootDoc, 'Notifications');
+    await rootDoc.delete();
+  }
+
+  Future<void> _deleteRecruiterJobs(String uid) async {
+    final jobsCollection = _firestore.collection('Recruiters').doc(uid).collection('Jobs');
+    final jobsSnap = await jobsCollection.get();
+    for (final jobDoc in jobsSnap.docs) {
+      await _deleteSubcollectionDocs(jobDoc.reference, 'Seekers');
+      await jobDoc.reference.delete();
+    }
+  }
+
+  Future<void> _assertRecentSignIn(User user) async {
+    final lastSignIn = user.metadata.lastSignInTime;
+    if (lastSignIn == null) {
+      throw const AuthException('Please sign in again before deleting your account.');
+    }
+
+    final minutesSinceSignIn = DateTime.now().difference(lastSignIn).inMinutes;
+    if (minutesSinceSignIn >= 5) {
+      throw const AuthException(
+        'For security, please sign out and sign in again, then retry account deletion.',
+      );
+    }
+  }
+
+  Future<void> deleteCurrentUserAccount() async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      throw const AuthException('No signed-in user found.');
+    }
+
+    await _assertRecentSignIn(user);
+    final uid = user.uid;
+
+    try {
+      final roleDoc = await _firestore.collection('UsersIndex').doc(uid).get();
+      final role = roleDoc.data()?['role']?.toString();
+
+      await _deleteUserApplications(uid);
+      await _deleteUserMessages(uid);
+      await _deleteNotificationContainer('SeekerNotifications', uid);
+      await _deleteNotificationContainer('RecruiterNotifications', uid);
+
+      if (role == 'recruiter') {
+        await _deleteRecruiterJobs(uid);
+        await _firestore.collection('Recruiters').doc(uid).delete();
+      } else {
+        await _firestore.collection('Seekers').doc(uid).delete();
+      }
+
+      await _firestore.collection('UsersIndex').doc(uid).delete();
+      await clearSavedAccounts();
+      await clearTempSignupData();
+      await user.delete();
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'requires-recent-login') {
+        throw const AuthException(
+          'For security, please sign out and sign in again before deleting your account.',
+        );
+      }
+      throw AuthException('Failed to delete account: ${e.message ?? e.code}');
+    } on FirebaseException catch (e) {
+      throw AuthException('Failed to delete account data: ${e.message ?? e.code}');
+    } catch (e) {
+      throw AuthException('Failed to delete account: $e');
+    }
+  }
+
   Future<void> signOut() async => await _auth.signOut();
 
   /// Save account information after successful login
