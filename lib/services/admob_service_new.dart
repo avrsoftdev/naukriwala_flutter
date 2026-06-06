@@ -9,7 +9,7 @@ class AdMobService {
   AdMobService._internal();
 
   // Ad Unit IDs
-  static const String _productionBannerAdUnitId = 'ca-app-pub-7682628416837305/2211932306';
+  static const String _productionBannerAdUnitId = 'ca-app-pub-7682628416837305/3097727191';
 
   // App ID (should match AndroidManifest.xml and AdMob console)
   static const String _appId = 'ca-app-pub-7682628416837305~9778926556';

@@ -55,6 +55,7 @@ class PostJobScreenState extends State<PostJobScreen> {
 
   // Experience options
   final List<String> experienceOptions = [
+    'Intern',
     'Fresher',
     '1-2 years',
     '2-4 years',
